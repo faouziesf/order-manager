@@ -1,5 +1,7 @@
 @extends('layouts.admin')
 
+@section('title', 'Gestion des Produits')
+
 @section('content')
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -7,6 +9,31 @@
         <a href="{{ route('admin.products.create') }}" class="btn btn-primary">
             <i class="fas fa-plus-circle"></i> Nouveau Produit
         </a>
+    </div>
+
+    <div class="mb-3">
+        <form action="{{ route('admin.products.index') }}" method="GET" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="search" placeholder="Rechercher un produit..." value="{{ request('search') }}">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="status">
+                    <option value="">Tous les statuts</option>
+                    <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Actif</option>
+                    <option value="0" {{ request('status') == '0' ? 'selected' : '' }}>Inactif</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="stock">
+                    <option value="">Tous les stocks</option>
+                    <option value="in_stock" {{ request('stock') == 'in_stock' ? 'selected' : '' }}>En stock</option>
+                    <option value="out_of_stock" {{ request('stock') == 'out_of_stock' ? 'selected' : '' }}>Rupture de stock</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Filtrer</button>
+            </div>
+        </form>
     </div>
 
     @if(session('success'))
@@ -83,11 +110,28 @@
 @endsection
 
 @section('scripts')
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
     $(document).ready(function() {
         $('#dataTable').DataTable({
-            "paging": false,
-            "info": false
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/fr-FR.json"
+            },
+            "paging": true,
+            "lengthChange": true,
+            "searching": true,
+            "ordering": true,
+            "info": true,
+            "autoWidth": false,
+            "responsive": true,
+            "dom": 'Bfrtip',
+            "buttons": [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ]
         });
     });
 </script>

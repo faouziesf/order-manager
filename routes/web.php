@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\SuperAdmin\AdminController;
 use App\Http\Controllers\SuperAdmin\AuthController as SuperAdminAuthController;
@@ -89,7 +91,7 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
     Route::post('login', [SuperAdminAuthController::class, 'login'])->name('login.submit');
     
     // Routes protégées par middleware
-    Route::middleware(\App\Http\Middleware\EnsureSuperAdminAccess::class)->group(function () {
+    Route::middleware(['super-admin'])->group(function () {
         Route::post('logout', [SuperAdminAuthController::class, 'logout'])->name('logout');
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         
@@ -105,21 +107,27 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
 
 // Routes pour Admin
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
-    // Routes protégées par middleware
-    Route::middleware(['admin', 'check-admin-expiry'])->group(function () {
+    // Routes d'authentification
+    Route::get('login', [AdminAuthController::class, 'showLoginForm'])->name('login');
+    Route::post('login', [AdminAuthController::class, 'login'])->name('login.submit');
+    Route::post('logout', [AdminAuthController::class, 'logout'])->name('logout');
+    Route::get('expired', [AdminAuthController::class, 'showExpiredPage'])->name('expired');
+    
+    // Routes protégées par middleware - notez les crochets [] autour des middlewares
+    Route::middleware(['auth:admin', 'check-admin-expiry'])->group(function () {
         Route::get('dashboard', function() {
             return view('admin.dashboard');
         })->name('dashboard');
+        
+        // Routes pour les produits
+        Route::resource('products', ProductController::class);
     });
-    // Routes pour les produits
-    Route::resource('products', ProductController::class);
 });
 
 // Routes pour Manager
 Route::prefix('manager')->name('manager.')->group(function () {
     // Routes protégées par middleware
-    Route::middleware('manager')->group(function () {
+    Route::middleware(['manager'])->group(function () {
         Route::get('dashboard', function() {
             return "Manager Dashboard"; // À remplacer par une vraie vue
         })->name('dashboard');
@@ -129,7 +137,7 @@ Route::prefix('manager')->name('manager.')->group(function () {
 // Routes pour Employee
 Route::prefix('employee')->name('employee.')->group(function () {
     // Routes protégées par middleware
-    Route::middleware('employee')->group(function () {
+    Route::middleware(['employee'])->group(function () {
         Route::get('dashboard', function() {
             return "Employee Dashboard"; // À remplacer par une vraie vue
         })->name('dashboard');

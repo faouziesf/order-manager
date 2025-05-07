@@ -10,10 +10,31 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $admin = Auth::guard('admin')->user();
-        $products = $admin->products()->orderBy('created_at', 'desc')->paginate(10);
+        $query = $admin->products();
+        
+        // Recherche par nom
+        if ($request->has('search') && $request->search) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+        
+        // Filtre par statut
+        if ($request->has('status') && $request->status !== '') {
+            $query->where('is_active', $request->status);
+        }
+        
+        // Filtre par stock
+        if ($request->has('stock')) {
+            if ($request->stock === 'in_stock') {
+                $query->where('stock', '>', 0);
+            } elseif ($request->stock === 'out_of_stock') {
+                $query->where('stock', '<=', 0);
+            }
+        }
+        
+        $products = $query->orderBy('created_at', 'desc')->paginate(10);
         
         return view('admin.products.index', compact('products'));
     }
