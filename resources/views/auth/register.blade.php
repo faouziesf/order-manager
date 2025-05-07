@@ -1,174 +1,189 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inscription - Order Manager</title>
+@extends('adminlte::auth.register')
+
+@section('title', 'Inscription')
+
+@section('auth_header', 'Créer un compte')
+
+@section('css')
+<style>
+    .register-page {
+        background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+    }
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    .register-card-body {
+        border-radius: 10px;
+    }
     
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    .input-group-text {
+        background-color: #f8f9fc;
+    }
     
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            background-color: #f8f9fc;
-            font-family: 'Nunito', sans-serif;
-            padding: 20px 0;
-        }
+    .btn-primary {
+        background-color: #4e73df;
+        border-color: #4e73df;
+    }
+    
+    .btn-primary:hover {
+        background-color: #2e59d9;
+        border-color: #2e59d9;
+    }
+    
+    .register-card-body .card-header {
+        border-bottom: 1px solid #e3e6f0;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+    }
+</style>
+@stop
+
+@section('auth_body')
+    @if(session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
+    
+    @if(session('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <form action="{{ route('register.submit') }}" method="post">
+        @csrf
         
-        .register-container {
-            max-width: 700px;
-            width: 100%;
-            margin: 0 auto;
-        }
-        
-        .card {
-            border: none;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        }
-        
-        .card-header {
-            background-color: #4e73df;
-            color: white;
-            text-align: center;
-            padding: 1.5rem;
-            border-bottom: none;
-        }
-        
-        .register-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .card-body {
-            padding: 2rem;
-        }
-        
-        .form-floating {
-            margin-bottom: 1rem;
-        }
-        
-        .btn-primary {
-            background-color: #4e73df;
-            border-color: #4e73df;
-        }
-        
-        .btn-primary:hover {
-            background-color: #2e59d9;
-            border-color: #2e59d9;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="register-container">
-            <div class="card">
-                <div class="card-header">
-                    <div class="register-icon">
-                        <i class="fas fa-user-plus"></i>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" 
+                           placeholder="Nom complet" value="{{ old('name') }}" required autofocus>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-user"></span>
+                        </div>
                     </div>
-                    <h4 class="mb-0">Créer un compte</h4>
+                    @error('name')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
                 </div>
-                <div class="card-body">
-                    @if(session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
+            </div>
+            
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" 
+                           placeholder="Email" value="{{ old('email') }}" required>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-envelope"></span>
                         </div>
-                    @endif
-                    
-                    @if(session('error'))
-                        <div class="alert alert-danger">
-                            {{ session('error') }}
-                        </div>
-                    @endif
-                    
-                    <form action="{{ route('register.submit') }}" method="POST">
-                        @csrf
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" placeholder="Nom complet" value="{{ old('name') }}" required>
-                                    <label for="name">Nom complet</label>
-                                    @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="Adresse e-mail" value="{{ old('email') }}" required>
-                                    <label for="email">Adresse e-mail</label>
-                                    @error('email')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" placeholder="Mot de passe" required>
-                                    <label for="password">Mot de passe</label>
-                                    @error('password')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" placeholder="Confirmer le mot de passe" required>
-                                    <label for="password_confirmation">Confirmer le mot de passe</label>
-                                    @error('password_confirmation')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control @error('shop_name') is-invalid @enderror" id="shop_name" name="shop_name" placeholder="Nom de la boutique" value="{{ old('shop_name') }}" required>
-                                    <label for="shop_name">Nom de la boutique</label>
-                                    @error('shop_name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" placeholder="Téléphone" value="{{ old('phone') }}">
-                                    <label for="phone">Téléphone</label>
-                                    @error('phone')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                S'inscrire
-                            </button>
-                            <a href="{{ route('login') }}" class="btn btn-link">Vous avez déjà un compte ? Connectez-vous</a>
-                        </div>
-                    </form>
+                    </div>
+                    @error('email')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
                 </div>
             </div>
         </div>
-    </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" 
+                           placeholder="Mot de passe" required>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-lock"></span>
+                        </div>
+                    </div>
+                    @error('password')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="password" name="password_confirmation" class="form-control" 
+                           placeholder="Confirmer mot de passe" required>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-lock"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="text" name="shop_name" class="form-control @error('shop_name') is-invalid @enderror" 
+                           placeholder="Nom de la boutique" value="{{ old('shop_name') }}" required>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-store"></span>
+                        </div>
+                    </div>
+                    @error('shop_name')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" 
+                           placeholder="Téléphone (optionnel)" value="{{ old('phone') }}">
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-phone"></span>
+                        </div>
+                    </div>
+                    @error('phone')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-block">S'inscrire</button>
+            </div>
+        </div>
+    </form>
     
-    <!-- Bootstrap JS Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <p class="mt-3 mb-1 text-center">
+        <a href="{{ route('login') }}">J'ai déjà un compte</a>
+    </p>
+@stop
+
+@section('js')
+<script>
+    $(document).ready(function() {
+        // Afficher l'animation de chargement lors de la soumission du formulaire
+        $('form').on('submit', function() {
+            // Désactiver le bouton de soumission pour éviter les soumissions multiples
+            $(this).find('button[type="submit"]').prop('disabled', true);
+            
+            // Ajouter une classe pour afficher un indicateur de chargement
+            $(this).find('button[type="submit"]').html('<i class="fas fa-spinner fa-spin"></i> Inscription en cours...');
+        });
+        
+        // Vérification de la conformité du mot de passe
+        $('input[name="password"], input[name="password_confirmation"]').on('keyup', function() {
+            var password = $('input[name="password"]').val();
+            var confirmPassword = $('input[name="password_confirmation"]').val();
+            
+            if (password != '' && confirmPassword != '') {
+                if (password != confirmPassword) {
+                    $('input[name="password_confirmation"]').addClass('is-invalid');
+                    $('input[name="password_confirmation"]').removeClass('is-valid');
+                } else {
+                    $('input[name="password_confirmation"]').removeClass('is-invalid');
+                    $('input[name="password_confirmation"]').addClass('is-valid');
+                }
+            }
+        });
+    });
+</script>
+@stop

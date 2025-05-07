@@ -91,7 +91,7 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
     Route::post('login', [SuperAdminAuthController::class, 'login'])->name('login.submit');
     
     // Routes protégées par middleware
-    Route::middleware(['super-admin'])->group(function () {
+    Route::middleware('super-admin')->group(function () {
         Route::post('logout', [SuperAdminAuthController::class, 'logout'])->name('logout');
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         
@@ -113,8 +113,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('logout', [AdminAuthController::class, 'logout'])->name('logout');
     Route::get('expired', [AdminAuthController::class, 'showExpiredPage'])->name('expired');
     
-    // Routes protégées par middleware - notez les crochets [] autour des middlewares
-    Route::middleware(['auth:admin', 'check-admin-expiry'])->group(function () {
+    // Routes protégées par middleware - corrected to use the alias properly
+    Route::middleware(['auth:admin', \App\Http\Middleware\CheckAdminExpiry::class])->group(function () {
         Route::get('dashboard', function() {
             return view('admin.dashboard');
         })->name('dashboard');
@@ -127,7 +127,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 // Routes pour Manager
 Route::prefix('manager')->name('manager.')->group(function () {
     // Routes protégées par middleware
-    Route::middleware(['manager'])->group(function () {
+    Route::middleware('manager')->group(function () {
         Route::get('dashboard', function() {
             return "Manager Dashboard"; // À remplacer par une vraie vue
         })->name('dashboard');
@@ -137,7 +137,7 @@ Route::prefix('manager')->name('manager.')->group(function () {
 // Routes pour Employee
 Route::prefix('employee')->name('employee.')->group(function () {
     // Routes protégées par middleware
-    Route::middleware(['employee'])->group(function () {
+    Route::middleware('employee')->group(function () {
         Route::get('dashboard', function() {
             return "Employee Dashboard"; // À remplacer par une vraie vue
         })->name('dashboard');

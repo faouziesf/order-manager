@@ -1,138 +1,173 @@
-@extends('layouts.admin')
+@extends('adminlte::page')
 
 @section('title', 'Gestion des Produits')
 
-@section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Gestion des Produits</h1>
+@section('content_header')
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>Gestion des Produits</h1>
         <a href="{{ route('admin.products.create') }}" class="btn btn-primary">
             <i class="fas fa-plus-circle"></i> Nouveau Produit
         </a>
     </div>
+@stop
 
-    <div class="mb-3">
-        <form action="{{ route('admin.products.index') }}" method="GET" class="row g-3">
-            <div class="col-md-4">
-                <input type="text" class="form-control" name="search" placeholder="Rechercher un produit..." value="{{ request('search') }}">
+@section('content')
+    <div class="row">
+        <div class="col-12">
+            <!-- Filtres -->
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-filter mr-1"></i>
+                        Filtres
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('admin.products.index') }}" method="GET" class="row">
+                        <div class="col-md-4 form-group">
+                            <label for="search">Rechercher</label>
+                            <input type="text" class="form-control" id="search" name="search" placeholder="Nom du produit..." value="{{ request('search') }}">
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label for="status">Statut</label>
+                            <select class="form-control" id="status" name="status">
+                                <option value="">Tous les statuts</option>
+                                <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Actif</option>
+                                <option value="0" {{ request('status') == '0' ? 'selected' : '' }}>Inactif</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label for="stock">Stock</label>
+                            <select class="form-control" id="stock" name="stock">
+                                <option value="">Tous les stocks</option>
+                                <option value="in_stock" {{ request('stock') == 'in_stock' ? 'selected' : '' }}>En stock</option>
+                                <option value="out_of_stock" {{ request('stock') == 'out_of_stock' ? 'selected' : '' }}>Rupture de stock</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 form-group d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-search"></i> Filtrer
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="col-md-3">
-                <select class="form-select" name="status">
-                    <option value="">Tous les statuts</option>
-                    <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Actif</option>
-                    <option value="0" {{ request('status') == '0' ? 'selected' : '' }}>Inactif</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select class="form-select" name="stock">
-                    <option value="">Tous les stocks</option>
-                    <option value="in_stock" {{ request('stock') == 'in_stock' ? 'selected' : '' }}>En stock</option>
-                    <option value="out_of_stock" {{ request('stock') == 'out_of_stock' ? 'selected' : '' }}>Rupture de stock</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Filtrer</button>
-            </div>
-        </form>
-    </div>
 
-    @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ session('success') }}
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    @endif
-
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Liste des Produits</h6>
+            <!-- Liste des produits -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Liste des produits</h3>
+                    <div class="card-tools">
+                        <span class="badge badge-primary">Total: {{ $products->total() }}</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px" class="text-center">Image</th>
+                                    <th>Nom</th>
+                                    <th style="width: 120px">Prix</th>
+                                    <th style="width: 100px" class="text-center">Stock</th>
+                                    <th style="width: 100px" class="text-center">Statut</th>
+                                    <th style="width: 120px" class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($products as $product)
+                                <tr>
+                                    <td class="text-center">
+                                        @if($product->image)
+                                            <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="img-size-50 img-circle">
+                                        @else
+                                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 50px; width: 50px; margin: 0 auto; border-radius: 50%;">
+                                                <i class="fas fa-image text-secondary"></i>
+                                            </div>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <strong>{{ $product->name }}</strong>
+                                        @if($product->description)
+                                            <p class="text-muted mb-0 small">{{ Str::limit($product->description, 50) }}</p>
+                                        @endif
+                                    </td>
+                                    <td>{{ number_format($product->price, 3) }} DT</td>
+                                    <td class="text-center">
+                                        <span class="badge {{ $product->stock > 0 ? 'badge-success' : 'badge-danger' }}">
+                                            {{ $product->stock }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="custom-control custom-switch custom-switch-on-success d-flex justify-content-center">
+                                            <input type="checkbox" class="custom-control-input" id="customSwitch{{ $product->id }}" {{ $product->is_active ? 'checked' : '' }} disabled>
+                                            <label class="custom-control-label" for="customSwitch{{ $product->id }}"></label>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-default">
+                                                <i class="fas fa-edit text-primary"></i>
+                                            </a>
+                                            <form action="{{ route('admin.products.destroy', $product) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-default" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit?')">
+                                                    <i class="fas fa-trash text-danger"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="6" class="text-center py-5">
+                                        <div class="text-center">
+                                            <i class="fas fa-box-open fa-3x text-secondary mb-3"></i>
+                                            <p class="text-secondary mb-3">Aucun produit trouvé</p>
+                                            <a href="{{ route('admin.products.create') }}" class="btn btn-primary">
+                                                <i class="fas fa-plus-circle mr-1"></i> Ajouter un produit
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    {{ $products->appends(request()->query())->links() }}
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>Image</th>
-                            <th>Nom</th>
-                            <th>Prix</th>
-                            <th>Stock</th>
-                            <th>Statut</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($products as $product)
-                        <tr>
-                            <td class="text-center">
-                                @if($product->image)
-                                <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" style="height: 40px; width: auto;">
-                                @else
-                                <i class="fas fa-image text-muted" style="font-size: 25px;"></i>
-                                @endif
-                            </td>
-                            <td>{{ $product->name }}</td>
-                            <td>{{ number_format($product->price, 3) }} DT</td>
-                            <td>
-                                <span class="badge badge-{{ $product->stock > 0 ? 'success' : 'danger' }}">
-                                    {{ $product->stock }}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge badge-{{ $product->is_active ? 'success' : 'secondary' }}">
-                                    {{ $product->is_active ? 'Actif' : 'Inactif' }}
-                                </span>
-                            </td>
-                            <td>
-                                <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="{{ route('admin.products.destroy', $product) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit?')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-3">
-                {{ $products->links() }}
-            </div>
-        </div>
     </div>
-</div>
-@endsection
+@stop
 
-@section('scripts')
-<!-- DataTables -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+@section('css')
+    <style>
+        .img-circle {
+            border-radius: 50%;
+            object-fit: cover;
+        }
+    </style>
+@stop
 
-<script>
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/fr-FR.json"
-            },
-            "paging": true,
-            "lengthChange": true,
-            "searching": true,
-            "ordering": true,
-            "info": true,
-            "autoWidth": false,
-            "responsive": true,
-            "dom": 'Bfrtip',
-            "buttons": [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ]
+@section('js')
+    <script>
+        $(function () {
+            // Animer les nouvelles lignes
+            @if(session('success') && Str::contains(session('success'), 'créé'))
+                $('tbody tr:first-child').addClass('bg-success-light');
+                setTimeout(function() {
+                    $('tbody tr:first-child').removeClass('bg-success-light');
+                }, 3000);
+            @endif
         });
-    });
-</script>
-@endsection
+    </script>
+@stop

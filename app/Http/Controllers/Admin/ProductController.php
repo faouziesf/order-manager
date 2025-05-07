@@ -16,17 +16,17 @@ class ProductController extends Controller
         $query = $admin->products();
         
         // Recherche par nom
-        if ($request->has('search') && $request->search) {
+        if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
         
         // Filtre par statut
-        if ($request->has('status') && $request->status !== '') {
-            $query->where('is_active', $request->status);
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->status == '1');
         }
         
         // Filtre par stock
-        if ($request->has('stock')) {
+        if ($request->filled('stock')) {
             if ($request->stock === 'in_stock') {
                 $query->where('stock', '>', 0);
             } elseif ($request->stock === 'out_of_stock') {
