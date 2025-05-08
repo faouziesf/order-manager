@@ -1,254 +1,243 @@
-@extends('adminlte::auth.login')
-
-@section('title', 'Connexion')
-
-@section('auth_header', 'Connexion à Order Manager')
-
-@section('css')
-<style>
-    .login-page {
-        background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
-    }
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Order Manager</title>
     
-    .login-card-body {
-        border-radius: 10px;
-    }
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    .login-logo img {
-        max-height: 100px;
-        margin-bottom: 20px;
-    }
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    .input-group-text {
-        background-color: #f8f9fc;
-    }
-    
-    .btn-primary {
-        background-color: #4e73df;
-        border-color: #4e73df;
-    }
-    
-    .btn-primary:hover {
-        background-color: #2e59d9;
-        border-color: #2e59d9;
-    }
-    
-    .tabs-auth {
-        margin-bottom: 20px;
-    }
-    
-    .tabs-auth .nav-item {
-        width: 33.33%;
-        text-align: center;
-    }
-    
-    .tabs-auth .nav-link {
-        border-radius: 0.25rem;
-        padding: 10px;
-        color: #6c757d;
-        background-color: #f8f9fa;
-        border: 1px solid #dee2e6;
-    }
-    
-    .tabs-auth .nav-link.active {
-        color: #fff;
-        background-color: #4e73df;
-        border-color: #4e73df;
-    }
-</style>
-@stop
-
-@section('auth_body')
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-    
-    @if(session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    <ul class="nav nav-tabs tabs-auth" id="roleTab" role="tablist">
-        <li class="nav-item">
-            <a class="nav-link active" id="admin-tab" data-toggle="tab" href="#admin" role="tab">Admin</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" id="manager-tab" data-toggle="tab" href="#manager" role="tab">Manager</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" id="employee-tab" data-toggle="tab" href="#employee" role="tab">Employé</a>
-        </li>
-    </ul>
-    
-    <div class="tab-content" id="roleTabContent">
-        <div class="tab-pane fade show active" id="admin" role="tabpanel">
-            <form action="{{ route('login.submit') }}" method="post">
-                @csrf
-                <input type="hidden" name="user_type" value="admin">
-                
-                <div class="input-group mb-3">
-                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" 
-                           placeholder="Email" value="{{ old('email') }}" required autofocus>
-                    <div class="input-group-append">
-                        <div class="input-group-text">
-                            <span class="fas fa-envelope"></span>
-                        </div>
-                    </div>
-                    @error('email')
-                        <span class="invalid-feedback">{{ $message }}</span>
-                    @enderror
-                </div>
-                
-                <div class="input-group mb-3">
-                    <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" 
-                           placeholder="Mot de passe" required>
-                    <div class="input-group-append">
-                        <div class="input-group-text">
-                            <span class="fas fa-lock"></span>
-                        </div>
-                    </div>
-                    @error('password')
-                        <span class="invalid-feedback">{{ $message }}</span>
-                    @enderror
-                </div>
-                
-                <div class="row">
-                    <div class="col-8">
-                        <div class="icheck-primary">
-                            <input type="checkbox" id="admin-remember" name="remember">
-                            <label for="admin-remember">
-                                Se souvenir de moi
-                            </label>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <button type="submit" class="btn btn-primary btn-block">Connexion</button>
-                    </div>
-                </div>
-            </form>
-            
-            <p class="mt-3 mb-1 text-center">
-                <a href="{{ route('register') }}">Créer un compte</a>
-            </p>
-        </div>
-        
-        <div class="tab-pane fade" id="manager" role="tabpanel">
-            <form action="{{ route('login.submit') }}" method="post">
-                @csrf
-                <input type="hidden" name="user_type" value="manager">
-                
-                <div class="input-group mb-3">
-                    <input type="email" name="email" class="form-control" 
-                           placeholder="Email" required>
-                    <div class="input-group-append">
-                        <div class="input-group-text">
-                            <span class="fas fa-envelope"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="input-group mb-3">
-                    <input type="password" name="password" class="form-control" 
-                           placeholder="Mot de passe" required>
-                    <div class="input-group-append">
-                        <div class="input-group-text">
-                            <span class="fas fa-lock"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-8">
-                        <div class="icheck-primary">
-                            <input type="checkbox" id="manager-remember" name="remember">
-                            <label for="manager-remember">
-                                Se souvenir de moi
-                            </label>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <button type="submit" class="btn btn-primary btn-block">Connexion</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-        
-        <div class="tab-pane fade" id="employee" role="tabpanel">
-            <form action="{{ route('login.submit') }}" method="post">
-                @csrf
-                <input type="hidden" name="user_type" value="employee">
-                
-                <div class="input-group mb-3">
-                    <input type="email" name="email" class="form-control" 
-                           placeholder="Email" required>
-                    <div class="input-group-append">
-                        <div class="input-group-text">
-                            <span class="fas fa-envelope"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="input-group mb-3">
-                    <input type="password" name="password" class="form-control" 
-                           placeholder="Mot de passe" required>
-                    <div class="input-group-append">
-                        <div class="input-group-text">
-                            <span class="fas fa-lock"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-8">
-                        <div class="icheck-primary">
-                            <input type="checkbox" id="employee-remember" name="remember">
-                            <label for="employee-remember">
-                                Se souvenir de moi
-                            </label>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <button type="submit" class="btn btn-primary btn-block">Connexion</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-@stop
-
-@section('js')
-<script>
-    $(document).ready(function() {
-        // Afficher l'animation de chargement lors de la soumission du formulaire
-        $('form').on('submit', function() {
-            // Désactiver le bouton de soumission pour éviter les soumissions multiples
-            $(this).find('button[type="submit"]').prop('disabled', true);
-            
-            // Ajouter une classe pour afficher un indicateur de chargement
-            $(this).find('button[type="submit"]').html('<i class="fas fa-spinner fa-spin"></i> Connexion...');
-        });
-        
-        // Transition en douceur entre les onglets
-        $('.nav-tabs a').on('click', function (e) {
-            e.preventDefault();
-            $(this).tab('show');
-        });
-        
-        // Récupérer l'onglet actif depuis l'URL ou le localStorage
-        var activeTab = localStorage.getItem('activeLoginTab');
-        if (location.hash) {
-            $('a[href="' + location.hash + '"]').tab('show');
-        } else if (activeTab) {
-            $('a[href="' + activeTab + '"]').tab('show');
+    <style>
+        body {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            background-color: #f8f9fc;
+            font-family: 'Nunito', sans-serif;
         }
         
-        // Stocker l'onglet actif dans localStorage
-        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-            localStorage.setItem('activeLoginTab', $(e.target).attr('href'));
-        });
-    });
-</script>
-@stop
+        .login-container {
+            max-width: 400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+        
+        .card-header {
+            background-color: #4e73df;
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            border-bottom: none;
+        }
+        
+        .login-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-body {
+            padding: 2rem;
+        }
+        
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        
+        .btn-primary {
+            background-color: #4e73df;
+            border-color: #4e73df;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2e59d9;
+            border-color: #2e59d9;
+        }
+        
+        .nav-tabs .nav-link {
+            color: #4e73df;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #4e73df;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="card">
+                <div class="card-header">
+                    <div class="login-icon">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <h4 class="mb-0">Connexion</h4>
+                </div>
+                <div class="card-body">
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            {{ session('success') }}
+                        </div>
+                    @endif
+                    
+                    @if(session('error'))
+                        <div class="alert alert-danger">
+                            {{ session('error') }}
+                        </div>
+                    @enderror
+                    
+                    <ul class="nav nav-tabs mb-3" id="roleTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" type="button" role="tab" aria-controls="admin" aria-selected="true">Admin</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="manager-tab" data-bs-toggle="tab" data-bs-target="#manager" type="button" role="tab" aria-controls="manager" aria-selected="false">Manager</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="employee-tab" data-bs-toggle="tab" data-bs-target="#employee" type="button" role="tab" aria-controls="employee" aria-selected="false">Employé</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="roleTabContent">
+                        <div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">
+                            <form action="{{ route('login.submit') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="user_type" value="admin">
+                                
+                                <div class="form-floating">
+                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="admin-email" name="email" placeholder="Adresse e-mail" value="{{ old('email') }}" required>
+                                    <label for="admin-email">Adresse e-mail</label>
+                                    @error('email')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="form-floating">
+                                    <input type="password" class="form-control @error('password') is-invalid @enderror" id="admin-password" name="password" placeholder="Mot de passe" required>
+                                    <label for="admin-password">Mot de passe</label>
+                                    @error('password')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="admin-remember" name="remember">
+                                    <label class="form-check-label" for="admin-remember">
+                                        Se souvenir de moi
+                                    </label>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        Connexion
+                                    </button>
+                                </div>
+                                
+                                <div class="text-center mt-3">
+                                    <a href="{{ route('register') }}" class="text-decoration-none">Pas encore de compte ? Inscrivez-vous</a>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="manager" role="tabpanel" aria-labelledby="manager-tab">
+                            <form action="{{ route('login.submit') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="user_type" value="manager">
+                                
+                                <div class="form-floating">
+                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="manager-email" name="email" placeholder="Adresse e-mail" value="{{ old('email') }}" required>
+                                    <label for="manager-email">Adresse e-mail</label>
+                                    @error('email')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="form-floating">
+                                    <input type="password" class="form-control @error('password') is-invalid @enderror" id="manager-password" name="password" placeholder="Mot de passe" required>
+                                    <label for="manager-password">Mot de passe</label>
+                                    @error('password')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="manager-remember" name="remember">
+                                    <label class="form-check-label" for="manager-remember">
+                                        Se souvenir de moi
+                                    </label>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        Connexion
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="employee" role="tabpanel" aria-labelledby="employee-tab">
+                            <form action="{{ route('login.submit') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="user_type" value="employee">
+                                
+                                <div class="form-floating">
+                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="employee-email" name="email" placeholder="Adresse e-mail" value="{{ old('email') }}" required>
+                                    <label for="employee-email">Adresse e-mail</label>
+                                    @error('email')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="form-floating">
+                                    <input type="password" class="form-control @error('password') is-invalid @enderror" id="employee-password" name="password" placeholder="Mot de passe" required>
+                                    <label for="employee-password">Mot de passe</label>
+                                    @error('password')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="employee-remember" name="remember">
+                                    <label class="form-check-label" for="employee-remember">
+                                        Se souvenir de moi
+                                    </label>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        Connexion
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

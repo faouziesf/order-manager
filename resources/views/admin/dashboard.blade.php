@@ -1,228 +1,243 @@
-@extends('adminlte::page')
+@extends('layouts.app')
 
 @section('title', 'Tableau de bord')
 
-@section('content_header')
-    <h1>Tableau de bord</h1>
-@stop
+@section('page-heading', 'Tableau de bord')
 
 @section('content')
-    <div class="row">
-        <!-- Carte statistique: Produits -->
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-info">
-                <div class="inner">
-                    <h3>{{ \App\Models\Product::where('admin_id', Auth::guard('admin')->id())->count() }}</h3>
-                    <p>Produits</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-box-open"></i>
-                </div>
-                <a href="{{ route('admin.products.index') }}" class="small-box-footer">
-                    Plus d'info <i class="fas fa-arrow-circle-right"></i>
-                </a>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <!-- Statistiques des commandes -->
+    <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="text-sm font-medium text-gray-500">Total des commandes</h3>
+                <p class="text-2xl font-bold text-indigo-600">{{ $totalOrders }}</p>
+            </div>
+            <div class="p-3 bg-indigo-50 rounded-lg">
+                <i class="fas fa-shopping-cart text-indigo-500"></i>
             </div>
         </div>
-        
-        <!-- Carte statistique: Produits actifs -->
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-success">
-                <div class="inner">
-                    <h3>{{ \App\Models\Product::where('admin_id', Auth::guard('admin')->id())->where('is_active', true)->count() }}</h3>
-                    <p>Produits actifs</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <a href="{{ route('admin.products.index') }}?status=1" class="small-box-footer">
-                    Plus d'info <i class="fas fa-arrow-circle-right"></i>
-                </a>
-            </div>
-        </div>
-        
-        <!-- Carte statistique: Produits en rupture de stock -->
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-warning">
-                <div class="inner">
-                    <h3>{{ \App\Models\Product::where('admin_id', Auth::guard('admin')->id())->where('stock', '<=', 0)->count() }}</h3>
-                    <p>Ruptures de stock</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <a href="{{ route('admin.products.index') }}?stock=out_of_stock" class="small-box-footer">
-                    Plus d'info <i class="fas fa-arrow-circle-right"></i>
-                </a>
-            </div>
-        </div>
-        
-        <!-- Carte statistique: Valeur totale des produits -->
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-danger">
-                <div class="inner">
-                    <h3>{{ number_format(\App\Models\Product::where('admin_id', Auth::guard('admin')->id())->sum('price'), 3) }} DT</h3>
-                    <p>Valeur des produits</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-money-bill"></i>
-                </div>
-                <a href="{{ route('admin.products.index') }}" class="small-box-footer">
-                    Plus d'info <i class="fas fa-arrow-circle-right"></i>
-                </a>
-            </div>
+        <div class="flex items-center text-xs">
+            <span class="text-green-500 flex items-center mr-2">
+                <i class="fas fa-arrow-up mr-1"></i> 12%
+            </span>
+            <span class="text-gray-500">depuis le mois dernier</span>
         </div>
     </div>
-    
-    <div class="row">
-        <!-- Produits récents -->
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-box-open mr-1"></i>
-                        Produits récents
-                    </h3>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table m-0">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Prix</th>
-                                    <th>Stock</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php
-                                    $recentProducts = \App\Models\Product::where('admin_id', Auth::guard('admin')->id())
-                                        ->orderBy('created_at', 'desc')
-                                        ->take(5)
-                                        ->get();
-                                @endphp
-                                
-                                @forelse($recentProducts as $product)
-                                    <tr>
-                                        <td>
-                                            @if($product->image)
-                                                <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="img-circle mr-2" width="35">
-                                            @else
-                                                <i class="fas fa-box mr-2"></i>
-                                            @endif
-                                            {{ $product->name }}
-                                        </td>
-                                        <td>{{ number_format($product->price, 3) }} DT</td>
-                                        <td>
-                                            <span class="badge {{ $product->stock > 0 ? 'badge-success' : 'badge-danger' }}">
-                                                {{ $product->stock }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group">
-                                                <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-default">
-                                                    <i class="fas fa-edit text-primary"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="text-center py-3">Aucun produit trouvé</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="card-footer clearfix">
-                    <a href="{{ route('admin.products.create') }}" class="btn btn-sm btn-primary float-left">
-                        <i class="fas fa-plus"></i> Nouveau produit
-                    </a>
-                    <a href="{{ route('admin.products.index') }}" class="btn btn-sm btn-secondary float-right">
-                        Voir tous les produits
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Info utilisateur -->
-        <div class="col-md-4">
-            <div class="card card-primary card-outline">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Informations du compte
-                    </h3>
-                </div>
-                <div class="card-body box-profile">
-                    <div class="text-center">
-                        <img class="profile-user-img img-fluid img-circle" 
-                             src="{{ asset('vendor/adminlte/dist/img/user2-160x160.jpg') }}" 
-                             alt="Photo de profil">
-                    </div>
-                    
-                    <h3 class="profile-username text-center">{{ Auth::guard('admin')->user()->name }}</h3>
-                    <p class="text-muted text-center">Administrateur</p>
-                    
-                    <ul class="list-group list-group-unbordered mb-3">
-                        <li class="list-group-item">
-                            <b>Email</b> <a class="float-right">{{ Auth::guard('admin')->user()->email }}</a>
-                        </li>
-                        <li class="list-group-item">
-                            <b>Boutique</b> <a class="float-right">{{ Auth::guard('admin')->user()->shop_name }}</a>
-                        </li>
-                        <li class="list-group-item">
-                            <b>Identifiant</b> <a class="float-right">{{ Auth::guard('admin')->user()->identifier }}</a>
-                        </li>
-                        <li class="list-group-item">
-                            <b>Date d'expiration</b> 
-                            <a class="float-right">
-                                @if(Auth::guard('admin')->user()->expiry_date)
-                                    {{ Auth::guard('admin')->user()->expiry_date->format('d/m/Y') }}
-                                @else
-                                    Illimitée
-                                @endif
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-@stop
 
-@section('css')
-    <style>
-        .img-circle {
-            border-radius: 50%;
-            object-fit: cover;
-        }
+    <!-- Revenu total -->
+    <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="text-sm font-medium text-gray-500">Revenu total</h3>
+                <p class="text-2xl font-bold text-green-600">{{ number_format($totalRevenue, 2, ',', ' ') }} €</p>
+            </div>
+            <div class="p-3 bg-green-50 rounded-lg">
+                <i class="fas fa-money-bill-wave text-green-500"></i>
+            </div>
+        </div>
+        <div class="flex items-center text-xs">
+            <span class="text-green-500 flex items-center mr-2">
+                <i class="fas fa-arrow-up mr-1"></i> 8%
+            </span>
+            <span class="text-gray-500">depuis le mois dernier</span>
+        </div>
+    </div>
+
+    <!-- Nouveaux clients -->
+    <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="text-sm font-medium text-gray-500">Nouveaux clients</h3>
+                <p class="text-2xl font-bold text-blue-600">{{ $newCustomers }}</p>
+            </div>
+            <div class="p-3 bg-blue-50 rounded-lg">
+                <i class="fas fa-users text-blue-500"></i>
+            </div>
+        </div>
+        <div class="flex items-center text-xs">
+            <span class="text-green-500 flex items-center mr-2">
+                <i class="fas fa-arrow-up mr-1"></i> 5%
+            </span>
+            <span class="text-gray-500">depuis le mois dernier</span>
+        </div>
+    </div>
+
+    <!-- Produits populaires -->
+    <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="text-sm font-medium text-gray-500">Produits en stock</h3>
+                <p class="text-2xl font-bold text-orange-600">{{ $productsInStock }}</p>
+            </div>
+            <div class="p-3 bg-orange-50 rounded-lg">
+                <i class="fas fa-box text-orange-500"></i>
+            </div>
+        </div>
+        <div class="flex items-center text-xs">
+            <span class="text-red-500 flex items-center mr-2">
+                <i class="fas fa-arrow-down mr-1"></i> 3%
+            </span>
+            <span class="text-gray-500">depuis le mois dernier</span>
+        </div>
+    </div>
+</div>
+
+<!-- Graphique et commandes récentes -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <!-- Graphique des ventes -->
+    <div class="lg:col-span-2 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-gray-800">Statistiques des ventes</h3>
+            <div class="flex items-center space-x-2">
+                <select class="text-sm border-gray-200 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                    <option>7 derniers jours</option>
+                    <option>30 derniers jours</option>
+                    <option>Cette année</option>
+                </select>
+            </div>
+        </div>
         
-        .small-box .icon {
-            font-size: 70px;
-            opacity: 0.2;
-        }
-    </style>
-@stop
+        <div class="h-80">
+            <!-- Ici, vous pouvez intégrer un graphique avec Chart.js ou une autre bibliothèque -->
+            <div class="w-full h-full flex items-center justify-center text-gray-400">
+                <p>Graphique des ventes sera affiché ici</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commandes récentes -->
+    <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-gray-800">Commandes récentes</h3>
+            <a href="{{ route('admin.orders.index') }}" class="text-sm text-indigo-600 hover:text-indigo-700">Voir tout</a>
+        </div>
+        
+        <div class="space-y-4">
+            @forelse($recentOrders as $order)
+            <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div class="flex items-center">
+                    <div class="p-2 bg-indigo-50 rounded-md mr-3">
+                        <i class="fas fa-shopping-bag text-indigo-500"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium">{{ $order->customer_name }}</p>
+                        <p class="text-xs text-gray-500">{{ $order->created_at->format('d/m/Y H:i') }}</p>
+                    </div>
+                </div>
+                <div>
+                    <span class="px-2 py-1 text-xs rounded-full 
+                        @if($order->status == 'pending') bg-yellow-100 text-yellow-700 
+                        @elseif($order->status == 'processing') bg-blue-100 text-blue-700 
+                        @elseif($order->status == 'completed') bg-green-100 text-green-700 
+                        @else bg-red-100 text-red-700 @endif">
+                        {{ ucfirst($order->status) }}
+                    </span>
+                </div>
+            </div>
+            @empty
+            <div class="text-center text-gray-500 py-6">
+                <p>Aucune commande récente</p>
+            </div>
+            @endforelse
+        </div>
+    </div>
+</div>
+
+<!-- Produits populaires et dernières activités -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Produits populaires -->
+    <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-gray-800">Produits populaires</h3>
+            <a href="{{ route('admin.products.index') }}" class="text-sm text-indigo-600 hover:text-indigo-700">Voir tout</a>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ventes</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @forelse($popularProducts as $product)
+                    <tr>
+                        <td class="px-3 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center mr-3">
+                                    @if($product->image)
+                                    <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="w-8 h-8 rounded-md object-cover">
+                                    @else
+                                    <i class="fas fa-box text-gray-400"></i>
+                                    @endif
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700">{{ $product->name }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">{{ number_format($product->price, 2, ',', ' ') }} €</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">{{ $product->sales_count }}</td>
+                        <td class="px-3 py-4 whitespace-nowrap">
+                            @if($product->stock > 10)
+                                <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">En stock</span>
+                            @elseif($product->stock > 0)
+                                <span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Faible</span>
+                            @else
+                                <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Épuisé</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" class="px-3 py-4 text-center text-gray-500">
+                            Aucun produit disponible
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Dernières activités -->
+    <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-gray-800">Dernières activités</h3>
+        </div>
+        
+        <div class="relative">
+            <div class="absolute left-4 h-full w-px bg-gray-200"></div>
+            
+            <div class="space-y-6 ml-8">
+                @forelse($activities as $activity)
+                <div class="relative">
+                    <div class="absolute -left-10 mt-1 rounded-full bg-indigo-100 p-2">
+                        <i class="fas fa-{{ $activity->icon ?? 'circle' }} text-indigo-500 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-700">{{ $activity->description }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ $activity->created_at->diffForHumans() }}</p>
+                    </div>
+                </div>
+                @empty
+                <div class="text-center text-gray-500 py-6">
+                    <p>Aucune activité récente</p>
+                </div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
 
 @section('js')
-    <script>
-        $(document).ready(function() {
-            // Animations
-            $('.small-box').addClass('animate__animated animate__fadeIn');
-            
-            // SweetAlert pour bienvenue (uniquement première visite)
-            if (!localStorage.getItem('dashboard_welcome')) {
-                localStorage.setItem('dashboard_welcome', 'true');
-                
-                Swal.fire({
-                    title: 'Bienvenue dans Order Manager!',
-                    text: 'Votre tableau de bord est prêt à l\'utilisation.',
-                    icon: 'success',
-                    confirmButtonText: 'Commencer'
-                });
-            }
-        });
-    </script>
-@stop
+<script>
+    // Ici vous pouvez ajouter le code JavaScript pour les graphiques
+    // Par exemple avec Chart.js
+</script>
+@endsection
