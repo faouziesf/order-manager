@@ -7,6 +7,7 @@ use App\Models\SuperAdmin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -23,15 +24,29 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
+        // Ajout de logs pour le débogage
+        Log::info('SuperAdmin login attempt', ['email' => $request->email]);
+
         $superAdmin = SuperAdmin::where('email', $request->email)->first();
 
-        if (!$superAdmin || !Hash::check($request->password, $superAdmin->password)) {
+        if (!$superAdmin) {
+            Log::info('SuperAdmin not found');
             throw ValidationException::withMessages([
                 'email' => ['Les informations d\'identification fournies sont incorrectes.'],
             ]);
         }
 
+        if (!Hash::check($request->password, $superAdmin->password)) {
+            Log::info('Invalid password');
+            throw ValidationException::withMessages([
+                'email' => ['Les informations d\'identification fournies sont incorrectes.'],
+            ]);
+        }
+
+        Log::info('SuperAdmin authenticated successfully', ['id' => $superAdmin->id]);
         Auth::guard('super-admin')->login($superAdmin, $request->filled('remember'));
+        
+        Log::info('Auth::guard(super-admin)->check() after login = ' . (Auth::guard('super-admin')->check() ? 'true' : 'false'));
 
         return redirect()->route('super-admin.dashboard');
     }

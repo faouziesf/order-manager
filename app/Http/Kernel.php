@@ -64,10 +64,10 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'super-admin' => \App\Http\Middleware\EnsureSuperAdminAccess::class,
+        // 'super-admin' => \App\Http\Middleware\EnsureSuperAdminAccess::class, // Commenté pour éviter les conflits
         'admin' => \App\Http\Middleware\EnsureAdminAccess::class,
         'manager' => \App\Http\Middleware\EnsureManagerAccess::class,
         'employee' => \App\Http\Middleware\EnsureEmployeeAccess::class,
-        'check-admin-expiry' => \App\Http\Middleware\CheckAdminExpiry::class,
+        // 'check-admin-expiry' => \App\Http\Middleware\CheckAdminExpiry::class, // Commenté pour éviter les conflits
     ];
 }

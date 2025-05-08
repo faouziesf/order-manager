@@ -14,14 +14,10 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Animate.css -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-    
     <!-- Custom CSS -->
     <style>
         :root {
             --primary-color: #5a6acf;
-            --primary-light: #eaecf8;
             --secondary-color: #f8f9fc;
             --success-color: #42ba96;
             --danger-color: #df4759;
@@ -36,6 +32,7 @@
             --sidebar-width: 250px;
             --sidebar-collapsed-width: 70px;
             --header-height: 60px;
+            --brand-color: #ffa500; /* Couleur orange pour le logo */
         }
         
         body {
@@ -43,152 +40,97 @@
             background-color: var(--body-bg);
             color: var(--text-color);
             overflow-x: hidden;
-            transition: opacity 0.3s ease-in-out;
-        }
-        
-        /* Preloader */
-        .preloader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease, visibility 0.5s ease;
-        }
-        
-        .preloader.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
-        
-        .preloader-content {
-            text-align: center;
-            transform: translateY(0);
-            transition: transform 0.5s ease-in-out;
-        }
-        
-        .preloader.hidden .preloader-content {
-            transform: translateY(-50px);
-        }
-        
-        .preloader img {
-            width: 120px;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
         }
         
         /* Sidebar */
         .sidebar {
+            min-height: 100vh;
+            background-color: #4e73df;
+            background-image: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
+            background-size: cover;
             position: fixed;
             top: 0;
             left: 0;
-            bottom: 0;
-            width: var(--sidebar-width);
-            background-color: var(--card-bg);
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
-            z-index: 100;
-            transition: all 0.3s ease;
-            padding-top: var(--header-height);
+            width: 250px;
+            z-index: 1;
+            padding-top: 20px;
+            transition: all 0.3s;
         }
         
         .sidebar-collapsed {
-            width: var(--sidebar-collapsed-width);
+            width: 70px;
         }
         
         .sidebar-brand {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: var(--header-height);
-            width: var(--sidebar-width);
-            background-color: var(--primary-color);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            z-index: 101;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--brand-color); /* Couleur spécifique pour le logo */
         }
         
-        .sidebar-collapsed .sidebar-brand {
-            width: var(--sidebar-collapsed-width);
+        .sidebar-brand a {
+            color: var(--brand-color);
+            text-decoration: none;
         }
         
-        .sidebar-brand h3 {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .logo-full {
+            display: block;
+        }
+        
+        .logo-mini {
+            display: none;
+        }
+        
+        .sidebar-collapsed .logo-full {
+            display: none;
+        }
+        
+        .sidebar-collapsed .logo-mini {
+            display: block;
         }
         
         .sidebar-menu {
-            list-style: none;
             padding: 0;
-            margin: 15px 0;
-            overflow-y: auto;
-            height: calc(100vh - var(--header-height) - 20px);
+            list-style: none;
         }
         
         .sidebar-item {
+            position: relative;
             margin-bottom: 5px;
         }
         
         .sidebar-link {
             display: flex;
             align-items: center;
-            padding: 12px 15px;
-            color: var(--text-color);
+            padding: 15px;
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
-            border-radius: 5px;
-            margin: 0 10px;
             transition: all 0.3s;
-            white-space: nowrap;
-            overflow: hidden;
         }
         
         .sidebar-link:hover {
-            background-color: var(--primary-light);
-            color: var(--primary-color);
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
         }
         
         .sidebar-link.active {
-            background-color: var(--primary-light);
-            color: var(--primary-color);
-            font-weight: 500;
+            color: white;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         
         .sidebar-icon {
             min-width: 30px;
             text-align: center;
             font-size: 1.1rem;
-            margin-right: 10px;
-            transition: margin 0.3s;
-        }
-        
-        .sidebar-collapsed .sidebar-icon {
-            margin-right: 0;
         }
         
         .sidebar-text {
-            opacity: 1;
-            transition: opacity 0.3s;
+            margin-left: 10px;
+            font-weight: 500;
         }
         
         .sidebar-collapsed .sidebar-text {
-            opacity: 0;
+            display: none;
         }
         
         /* Submenu */
@@ -204,276 +146,146 @@
             max-height: 200px;
         }
         
+        .sidebar-collapsed .sidebar-submenu {
+            position: absolute;
+            left: 70px;
+            top: 0;
+            width: 180px;
+            background-color: #4e73df;
+            border-radius: 0 4px 4px 0;
+            display: none;
+            max-height: none;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .sidebar-collapsed .sidebar-item:hover .sidebar-submenu {
+            display: block;
+        }
+        
         .sidebar-submenu-item {
             margin: 5px 0;
         }
         
         .sidebar-submenu-link {
             display: block;
-            color: var(--text-color);
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             padding: 8px 15px 8px 55px;
             font-size: 0.9rem;
             transition: all 0.3s;
-            white-space: nowrap;
-            overflow: hidden;
-            border-radius: 5px;
-            margin: 0 10px;
+        }
+        
+        .sidebar-collapsed .sidebar-submenu-link {
+            padding: 8px 15px;
         }
         
         .sidebar-submenu-link:hover {
-            background-color: var(--primary-light);
-            color: var(--primary-color);
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
         }
         
         .sidebar-submenu-link.active {
-            background-color: var(--primary-light);
-            color: var(--primary-color);
-            font-weight: 500;
-        }
-        
-        .has-submenu::after {
-            content: "\f107";
-            font-family: "Font Awesome 5 Free";
-            font-weight: 900;
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            transition: transform 0.3s;
-        }
-        
-        .has-submenu.active::after {
-            transform: translateY(-50%) rotate(180deg);
+            color: white;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         
         /* Content */
         .content {
-            margin-left: var(--sidebar-width);
-            padding: 80px 20px 20px;
-            min-height: 100vh;
-            transition: all 0.3s ease;
+            margin-left: 250px;
+            padding: 20px;
+            transition: all 0.3s;
         }
         
         .content-expanded {
-            margin-left: var(--sidebar-collapsed-width);
+            margin-left: 70px;
         }
         
         /* Header Navbar */
-        .header-navbar {
-            position: fixed;
-            top: 0;
-            right: 0;
-            left: var(--sidebar-width);
-            height: var(--header-height);
-            background-color: var(--card-bg);
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
-            transition: left 0.3s ease;
-            z-index: 99;
-            padding: 0 20px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .content-expanded + .header-navbar {
-            left: var(--sidebar-collapsed-width);
-        }
-        
-        .sidebar-toggle {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 5px;
-            transition: all 0.3s;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-        }
-        
-        .sidebar-toggle:hover {
-            background-color: var(--primary-light);
-            color: var(--primary-color);
-        }
-        
-        /* Card */
-        .card {
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.03);
+        .navbar {
+            background-color: white;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
             margin-bottom: 20px;
-            background-color: var(--card-bg);
+            padding: 0.75rem 1rem;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            margin-bottom: 20px;
             overflow: hidden;
         }
         
         .card-header {
-            background-color: var(--card-bg);
-            border-bottom: 1px solid var(--card-border);
+            background-color: #f8f9fc;
+            border-bottom: 1px solid #e3e6f0;
             padding: 1rem;
         }
-        
-        .card-title {
-            margin-bottom: 0;
-            color: var(--dark-color);
-            font-weight: 600;
-            font-size: 1rem;
-        }
-        
-        .card-body {
-            padding: 1rem;
-        }
-        
-        /* Form controls */
-        .form-control, .form-select {
-            border-radius: 5px;
-            border: 1px solid var(--card-border);
-            padding: 0.5rem 0.75rem;
-            font-size: 0.9rem;
-        }
-        
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.25rem rgba(90, 106, 207, 0.25);
-        }
-        
-        /* Buttons */
-        .btn {
-            border-radius: 5px;
-            font-size: 0.9rem;
-            padding: 0.5rem 1rem;
-            transition: all 0.2s;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: rgba(90, 106, 207, 0.9);
-            border-color: rgba(90, 106, 207, 0.9);
-        }
-        
-        .btn-outline-primary {
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-outline-primary:hover {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        /* Tables */
-        .table {
-            margin-bottom: 0;
-        }
-        
-        .table th {
-            font-weight: 600;
-            color: var(--dark-color);
-            border-top: none;
-        }
-        
-        .table td {
-            vertical-align: middle;
-        }
-        
-        /* Badges */
-        .badge {
-            padding: 0.4em 0.6em;
-            font-weight: 500;
-        }
-        
+
         /* Footer */
         .footer {
-            text-align: center;
+            background-color: white;
             padding: 1rem;
-            color: var(--text-color);
-            font-size: 0.9rem;
+            text-align: center;
             margin-top: 20px;
         }
         
-        /* Responsive */
-        @media (max-width: 992px) {
+        @media (max-width: 768px) {
             .sidebar {
-                transform: translateX(-100%);
+                width: 0;
+                padding-top: 60px;
             }
             
-            .sidebar.show {
-                transform: translateX(0);
+            .content {
+                margin-left: 0;
             }
             
-            .content, .header-navbar {
-                margin-left: 0 !important;
-                left: 0 !important;
+            .sidebar-collapsed {
+                width: 250px;
             }
             
-            .sidebar-brand {
+            .content-expanded {
+                margin-left: 0;
+            }
+            
+            .sidebar-collapsed .sidebar-text {
+                display: inline;
+            }
+            
+            .sidebar-collapsed .logo-mini {
+                display: none;
+            }
+            
+            .sidebar-collapsed .logo-full {
+                display: block;
+            }
+            
+            .sidebar-collapsed .sidebar-submenu {
+                position: static;
                 width: 100%;
+                display: block;
+                box-shadow: none;
             }
-        }
-        
-        /* Animation classes */
-        .fade-in {
-            animation: fadeIn 0.5s;
-        }
-        
-        .slide-in-left {
-            animation: slideInLeft 0.5s;
-        }
-        
-        .slide-in-right {
-            animation: slideInRight 0.5s;
-        }
-        
-        .slide-up {
-            animation: slideUp 0.5s;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        @keyframes slideInLeft {
-            from { transform: translateX(-50px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes slideInRight {
-            from { transform: translateX(50px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            
+            .sidebar-collapsed .sidebar-submenu-link {
+                padding: 8px 15px 8px 55px;
+            }
         }
     </style>
     
     @yield('css')
 </head>
 <body>
-    <!-- Preloader -->
-    <div class="preloader">
-        <div class="preloader-content">
-            <!-- Vous pouvez remplacer ceci par votre logo -->
-            <div class="text-primary mb-2" style="font-size: 40px;">
-                <i class="fas fa-shopping-cart"></i>
-            </div>
-            <h2 class="text-primary">Order Manager</h2>
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Chargement...</span>
-            </div>
-        </div>
-    </div>
-
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-            <h3>Order Manager</h3>
+            <a href="{{ route('admin.dashboard') }}" class="logo-full">
+                <i class="fas fa-shopping-cart me-2"></i>
+                Order Manager
+            </a>
+            <a href="{{ route('admin.dashboard') }}" class="logo-mini">
+                <i class="fas fa-shopping-cart" style="font-size: 24px;"></i>
+            </a>
         </div>
         
         <ul class="sidebar-menu">
@@ -487,13 +299,13 @@
             </li>
             
             <li class="sidebar-item">
-                <a href="#" class="sidebar-link has-submenu {{ request()->routeIs('admin.products*') ? 'active' : '' }}" id="productsMenu">
+                <a href="#" class="sidebar-link {{ request()->routeIs('admin.products*') ? 'active' : '' }}" data-target="productsSubmenu">
                     <div class="sidebar-icon">
                         <i class="fas fa-box-open"></i>
                     </div>
                     <span class="sidebar-text">Produits</span>
                 </a>
-                <ul class="sidebar-submenu {{ request()->routeIs('admin.products*') ? 'show' : '' }}">
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.products*') ? 'show' : '' }}" id="productsSubmenu">
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.products.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.products.index') ? 'active' : '' }}">
                             Liste des produits
@@ -514,8 +326,8 @@
     <!-- Content -->
     <div class="content" id="content">
         <!-- Header Navbar -->
-        <nav class="header-navbar">
-            <button class="sidebar-toggle" id="sidebarToggle">
+        <nav class="navbar navbar-expand navbar-light">
+            <button class="btn" id="sidebarToggle">
                 <i class="fas fa-bars"></i>
             </button>
             
@@ -541,19 +353,16 @@
         </nav>
         
         <!-- Page Content -->
-        <div class="container-fluid fade-in">
-            <!-- Les messages flash ne sont affichés qu'ici, pas dans les vues enfants -->
+        <div class="container-fluid">
             @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show my-3" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
                     {{ session('success') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             @endif
             
             @if(session('error'))
-                <div class="alert alert-danger alert-dismissible fade show my-3" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     {{ session('error') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
@@ -565,7 +374,7 @@
         <!-- Footer -->
         <footer class="footer">
             <div class="container">
-                <span>© {{ date('Y') }} Order Manager. Tous droits réservés.</span>
+                <span class="text-muted">© {{ date('Y') }} Order Manager. Tous droits réservés.</span>
             </div>
         </footer>
     </div>
@@ -579,22 +388,33 @@
     <!-- Custom JS -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Preloader
-            setTimeout(function() {
-                document.querySelector('.preloader').classList.add('hidden');
-                document.body.style.overflow = 'auto'; // Réactiver le défilement
-            }, 800);
-            
-            // Sidebar Toggle
-            const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.getElementById('sidebar');
             const content = document.getElementById('content');
-            const headerNavbar = document.querySelector('.header-navbar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
             
+            // Fonction pour appliquer l'état de la barre latérale
+            function applySidebarState() {
+                const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+                
+                if (isCollapsed) {
+                    sidebar.classList.add('sidebar-collapsed');
+                    content.classList.add('content-expanded');
+                } else {
+                    sidebar.classList.remove('sidebar-collapsed');
+                    content.classList.remove('content-expanded');
+                }
+            }
+            
+            // Appliquer l'état sauvegardé au chargement de la page
+            applySidebarState();
+            
+            // Sidebar Toggle avec sauvegarde dans localStorage
             sidebarToggle.addEventListener('click', function() {
+                const isNowCollapsed = !sidebar.classList.contains('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', isNowCollapsed.toString());
+                
                 sidebar.classList.toggle('sidebar-collapsed');
                 content.classList.toggle('content-expanded');
-                headerNavbar.classList.toggle('content-expanded');
             });
             
             // Auto-hide alerts after 5 seconds
@@ -606,14 +426,23 @@
                 }, 5000);
             });
             
-            // Submenu Toggle
-            const submenus = document.querySelectorAll('.has-submenu');
-            submenus.forEach(function(submenu) {
-                submenu.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    this.classList.toggle('active');
-                    const submenuList = this.nextElementSibling;
-                    submenuList.classList.toggle('show');
+            // Menu Toggle - Non collapsé uniquement
+            const menuLinks = document.querySelectorAll('.sidebar-link[data-target]');
+            menuLinks.forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    // Ne pas afficher/masquer en mode réduit
+                    if (!sidebar.classList.contains('sidebar-collapsed')) {
+                        e.preventDefault();
+                        const targetId = this.getAttribute('data-target');
+                        const submenu = document.getElementById(targetId);
+                        
+                        // Bascule l'état du sous-menu
+                        if (submenu.classList.contains('show')) {
+                            submenu.classList.remove('show');
+                        } else {
+                            submenu.classList.add('show');
+                        }
+                    }
                 });
             });
             
@@ -621,34 +450,10 @@
             const currentSubmenu = document.querySelector('.sidebar-submenu.show');
             if (currentSubmenu) {
                 const parentLink = currentSubmenu.previousElementSibling;
-                if (parentLink.classList.contains('has-submenu')) {
+                if (parentLink && parentLink.hasAttribute('data-target')) {
                     parentLink.classList.add('active');
                 }
             }
-            
-            // Animation pour les éléments de la page
-            document.querySelectorAll('.slide-up').forEach(function(element, index) {
-                setTimeout(function() {
-                    element.classList.add('animate__animated', 'animate__fadeInUp');
-                }, 100 * index);
-            });
-            
-            document.querySelectorAll('.slide-in-left').forEach(function(element, index) {
-                setTimeout(function() {
-                    element.classList.add('animate__animated', 'animate__fadeInLeft');
-                }, 100 * index);
-            });
-            
-            document.querySelectorAll('.slide-in-right').forEach(function(element, index) {
-                setTimeout(function() {
-                    element.classList.add('animate__animated', 'animate__fadeInRight');
-                }, 100 * index);
-            });
-        });
-        
-        // Afficher le préchargeur lors de la navigation
-        window.addEventListener('beforeunload', function() {
-            document.querySelector('.preloader').classList.remove('hidden');
         });
     </script>
     
