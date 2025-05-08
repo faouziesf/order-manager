@@ -53,7 +53,7 @@
             left: 0;
             width: 250px;
             z-index: 1;
-            padding-top: 20px;
+            padding-top: 0; /* Modifié pour le logo */
             transition: all 0.3s;
         }
         
@@ -61,16 +61,23 @@
             width: 70px;
         }
         
+        /* Modification pour le style du logo */
         .sidebar-brand {
+            background-color: #f0f0f0;
+            margin: 0;
             padding: 15px;
             text-align: center;
-            margin-bottom: 20px;
-            color: var(--brand-color); /* Couleur spécifique pour le logo */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
         }
         
         .sidebar-brand a {
-            color: var(--brand-color);
+            color: #333;
+            font-weight: bold;
             text-decoration: none;
+        }
+        
+        .sidebar-brand .fas {
+            color: #333;
         }
         
         .logo-full {
@@ -230,6 +237,41 @@
             margin-top: 20px;
         }
         
+        /* Animation de chargement */
+        .page-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+        
+        .page-loader.fade-out {
+            opacity: 0;
+        }
+        
+        .loader-logo {
+            animation: moveUpDown 1.2s infinite alternate;
+            transform-origin: center;
+        }
+        
+        @keyframes moveUpDown {
+            0% {
+                transform: translateY(20px) scale(0.8);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateY(-20px) scale(1);
+                opacity: 1;
+            }
+        }
+        
         @media (max-width: 768px) {
             .sidebar {
                 width: 0;
@@ -276,6 +318,16 @@
     @yield('css')
 </head>
 <body>
+    <!-- Animation de chargement -->
+    <div class="page-loader">
+        <div class="loader-logo">
+            <i class="fas fa-shopping-cart" style="font-size: 50px; color: #4e73df;"></i>
+            <div style="text-align: center; margin-top: 10px; font-weight: bold; color: #4e73df;">
+                Order Manager
+            </div>
+        </div>
+    </div>
+
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
@@ -314,6 +366,27 @@
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.products.create') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.products.create') ? 'active' : '' }}">
                             Ajouter un produit
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <!-- Ajoutez ce code après la section des produits dans la barre latérale -->
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link {{ request()->routeIs('admin.orders*') ? 'active' : '' }}" data-target="ordersSubmenu">
+                    <div class="sidebar-icon">
+                        <i class="fas fa-shopping-basket"></i>
+                    </div>
+                    <span class="sidebar-text">Commandes</span>
+                </a>
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.orders*') ? 'show' : '' }}" id="ordersSubmenu">
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.orders.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
+                            Liste des commandes
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.orders.create') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.orders.create') ? 'active' : '' }}">
+                            Ajouter une commande
                         </a>
                     </li>
                 </ul>
@@ -391,6 +464,7 @@
             const sidebar = document.getElementById('sidebar');
             const content = document.getElementById('content');
             const sidebarToggle = document.getElementById('sidebarToggle');
+            const pageLoader = document.querySelector('.page-loader');
             
             // Fonction pour appliquer l'état de la barre latérale
             function applySidebarState() {
@@ -454,6 +528,46 @@
                     parentLink.classList.add('active');
                 }
             }
+            
+            // Animation de chargement - masquer après chargement initial
+            window.addEventListener('load', function() {
+                pageLoader.classList.add('fade-out');
+                setTimeout(function() {
+                    pageLoader.style.display = 'none';
+                }, 500);
+            });
+            
+            // Afficher le loader UNIQUEMENT pour certains liens
+            document.addEventListener('click', function(e) {
+                // Vérifier si le clic est sur un lien interne
+                const target = e.target.closest('a');
+                if (target && 
+                    target.href && 
+                    target.href.indexOf(window.location.origin) === 0 && 
+                    !target.hasAttribute('data-bs-toggle') && 
+                    !target.classList.contains('sidebar-link') && 
+                    !target.classList.contains('sidebar-submenu-link') &&
+                    !target.closest('.dropdown-menu')) {
+                    
+                    // Ajouter un délai pour permettre à la navigation de se terminer
+                    setTimeout(function() {
+                        pageLoader.style.opacity = '1';
+                        pageLoader.style.display = 'flex';
+                    }, 10);
+                }
+            });
+            
+            // Form submissions - ajouter un délai avant d'afficher le loader
+            const forms = document.querySelectorAll('form:not([data-no-loader])');
+            forms.forEach(function(form) {
+                form.addEventListener('submit', function(e) {
+                    // Ne pas bloquer la soumission du formulaire
+                    setTimeout(function() {
+                        pageLoader.style.opacity = '1';
+                        pageLoader.style.display = 'flex';
+                    }, 10);
+                });
+            });
         });
     </script>
     

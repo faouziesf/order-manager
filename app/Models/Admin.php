@@ -51,4 +51,10 @@ class Admin extends Authenticatable
     {
         return $this->hasMany(Product::class);
     }
+    
+    // Nouvelle relation pour les commandes
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }

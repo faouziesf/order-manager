@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\SuperAdmin\AdminController;
 use App\Http\Controllers\SuperAdmin\AuthController as SuperAdminAuthController;
 use App\Http\Controllers\SuperAdmin\DashboardController;
@@ -83,6 +85,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         
         // Routes pour les produits
         Route::resource('products', ProductController::class);
+        
+        // Gestion des commandes
+        Route::resource('orders', OrderController::class);
+        Route::get('/orders/{order}/history', [OrderController::class, 'showHistory'])->name('orders.history');
+        Route::post('/orders/{order}/record-attempt', [OrderController::class, 'recordAttempt'])->name('orders.recordAttempt');
+        Route::get('/get-cities', [OrderController::class, 'getCities'])->name('orders.getCities');
+        Route::get('/search-products', [OrderController::class, 'searchProducts'])->name('orders.searchProducts');
     });
 });
 

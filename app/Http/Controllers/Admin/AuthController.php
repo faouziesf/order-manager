@@ -48,7 +48,8 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('admin.login');
+        // Correction ici : rediriger vers 'login' au lieu de 'admin.login'
+        return redirect()->route('login');
     }
 
     public function showExpiredPage()

@@ -29,4 +29,40 @@ class Product extends Model
     {
         return $this->belongsTo(Admin::class);
     }
+
+    // Nouvelles relations pour les commandes
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function orders()
+    {
+        return $this->belongsToMany(Order::class, 'order_items')
+            ->withPivot('quantity', 'unit_price', 'total_price')
+            ->withTimestamps();
+    }
+
+    // Vérifier si le produit est en stock
+    public function isInStock()
+    {
+        return $this->stock > 0;
+    }
+
+    // Décrémenter le stock
+    public function decrementStock($quantity = 1)
+    {
+        if ($this->stock >= $quantity) {
+            $this->decrement('stock', $quantity);
+            return true;
+        }
+        return false;
+    }
+
+    // Incrémenter le stock
+    public function incrementStock($quantity = 1)
+    {
+        $this->increment('stock', $quantity);
+        return true;
+    }
 }
