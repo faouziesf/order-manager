@@ -245,8 +245,12 @@ class OrderController extends Controller
             'priority' => 'required|in:normale,urgente,vip',
             'notes' => 'nullable|string',
             'products' => 'required|array|min:1',
-            'products.*.id' => 'required',
+            'products.*.id' => 'required_without:products.*.is_new',
             'products.*.quantity' => 'required|integer|min:1',
+            'products.*.name' => 'required_if:products.*.is_new,1',
+            'products.*.price' => 'required_if:products.*.is_new,1|numeric|min:0',
+            'confirmed_price' => 'nullable|numeric|min:0',
+            'scheduled_date' => 'nullable|date|required_if:status,datée',
         ]);
         
         // Validation supplémentaire si le statut est "confirmée"
@@ -257,6 +261,20 @@ class OrderController extends Controller
                     ->withInput()
                     ->with('error', 'Tous les champs client sont obligatoires pour une commande confirmée.');
             }
+            
+            // Pour les commandes confirmées, le prix confirmé est obligatoire
+            if (empty($request->confirmed_price)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Le prix confirmé est obligatoire pour une commande confirmée.');
+            }
+        }
+        
+        // Validation supplémentaire si le statut est "datée"
+        if ($request->status === 'datée' && empty($request->scheduled_date)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'La date de livraison est obligatoire pour une commande datée.');
         }
         
         try {
@@ -275,6 +293,8 @@ class OrderController extends Controller
             if ($order->customer_address !== $request->customer_address) $changes['customer_address'] = ['old' => $order->customer_address, 'new' => $request->customer_address];
             if ($order->shipping_cost != $request->shipping_cost) $changes['shipping_cost'] = ['old' => $order->shipping_cost, 'new' => $request->shipping_cost];
             if ($order->priority !== $request->priority) $changes['priority'] = ['old' => $order->priority, 'new' => $request->priority];
+            if ($order->confirmed_price != $request->confirmed_price) $changes['confirmed_price'] = ['old' => $order->confirmed_price, 'new' => $request->confirmed_price];
+            if ($order->scheduled_date != $request->scheduled_date) $changes['scheduled_date'] = ['old' => $order->scheduled_date, 'new' => $request->scheduled_date];
             
             $order->customer_name = $request->customer_name;
             $order->customer_phone = $request->customer_phone;
@@ -284,6 +304,8 @@ class OrderController extends Controller
             $order->customer_address = $request->customer_address;
             $order->shipping_cost = $request->shipping_cost ?? 0;
             $order->priority = $request->priority;
+            $order->confirmed_price = $request->confirmed_price;
+            $order->scheduled_date = $request->scheduled_date;
             
             // Si le statut change, enregistrer l'action spécifique
             $statusAction = 'modification';
@@ -299,6 +321,9 @@ class OrderController extends Controller
                         break;
                     case 'datée':
                         $statusAction = 'datation';
+                        break;
+                    case 'en_route':
+                        $statusAction = 'en_route';
                         break;
                     case 'livrée':
                         $statusAction = 'livraison';
@@ -324,13 +349,16 @@ class OrderController extends Controller
             // 3. Ajouter les nouveaux produits
             $totalPrice = 0;
             foreach ($request->products as $productData) {
+                // Ignorer les lignes vides
+                if (empty($productData['id']) && empty($productData['is_new'])) {
+                    continue;
+                }
+                
                 $product = null;
                 
-                // Vérifier si c'est un produit existant ou un nouveau produit
-                if (isset($productData['id']) && is_numeric($productData['id']) && $productData['id'] > 0) {
-                    $product = Product::find($productData['id']);
-                } else if (isset($productData['name']) && isset($productData['price'])) {
-                    // Création d'un nouveau produit à la volée
+                // Vérifier si c'est un nouveau produit ou un produit existant
+                if (!empty($productData['is_new']) && !empty($productData['name']) && isset($productData['price'])) {
+                    // Création d'un nouveau produit
                     $product = new Product([
                         'admin_id' => $order->admin_id,
                         'name' => $productData['name'],
@@ -339,6 +367,28 @@ class OrderController extends Controller
                         'is_active' => true,
                     ]);
                     $product->save();
+                } 
+                elseif (!empty($productData['id'])) {
+                    // Si l'ID commence par "new:", c'est un nouveau produit déjà traité par le formulaire
+                    if (is_string($productData['id']) && strpos($productData['id'], 'new:') === 0) {
+                        $parts = explode(':', $productData['id']);
+                        if (count($parts) >= 3) {
+                            $productName = $parts[1];
+                            $productPrice = $parts[2];
+                            
+                            $product = new Product([
+                                'admin_id' => $order->admin_id,
+                                'name' => $productName,
+                                'price' => $productPrice,
+                                'stock' => 1000000,
+                                'is_active' => true,
+                            ]);
+                            $product->save();
+                        }
+                    } else {
+                        // Produit existant
+                        $product = Product::find($productData['id']);
+                    }
                 }
                 
                 if ($product) {
@@ -363,6 +413,11 @@ class OrderController extends Controller
             // Mettre à jour le prix total de la commande
             $order->total_price = $totalPrice;
             $order->save();
+            
+            // Gestion des compteurs de tentatives pour l'action "appel effectué"
+            if ($request->has('increment_attempts') && $request->increment_attempts) {
+                $order->incrementAttempts();
+            }
             
             // Enregistrer l'historique
             $order->recordHistory($statusAction, $request->notes, $changes, $statusBefore, $request->status);

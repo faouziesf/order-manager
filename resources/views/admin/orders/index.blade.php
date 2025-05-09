@@ -330,6 +330,12 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
+        // Stocker les URL de base pour éviter les problèmes de paramètres manquants
+        const baseUrls = {
+            edit: "{{ url('admin/orders') }}/",
+            history: "{{ url('admin/orders') }}/"
+        };
+        
         // Gestion de la recherche en temps réel
         let searchTimeout;
         
@@ -368,10 +374,10 @@
             }, 300);
         });
         
-        // Sélection d'un résultat de recherche
+        // Sélection d'un résultat de recherche - CORRIGÉ
         $(document).on('click', '.search-result-item', function() {
             const orderId = $(this).data('id');
-            window.location.href = "{{ route('admin.orders.edit', '') }}/" + orderId;
+            window.location.href = baseUrls.edit + orderId + "/edit";
         });
         
         // Cacher les résultats au clic ailleurs
@@ -381,7 +387,7 @@
             }
         });
         
-        // Gestion du modal d'historique
+        // Gestion du modal d'historique - CORRIGÉ
         $('#historyModal').on('show.bs.modal', function (event) {
             const button = $(event.relatedTarget);
             const orderId = button.data('order-id');
@@ -390,9 +396,9 @@
             // Mettre à jour le titre
             modal.find('.modal-title').text('Historique de la commande #' + orderId);
             
-            // Charger l'historique
+            // Charger l'historique avec URL construite manuellement
             $.ajax({
-                url: "{{ route('admin.orders.history', '') }}/" + orderId,
+                url: baseUrls.history + orderId + "/history",
                 success: function(data) {
                     modal.find('.modal-body').html(data);
                 },
