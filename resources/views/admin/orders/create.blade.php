@@ -8,6 +8,11 @@
     /* Styles généraux */
     .card {
         margin-bottom: 15px;
+        transition: all 0.2s;
+    }
+    
+    .card:hover {
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     }
     
     .form-group {
@@ -42,11 +47,13 @@
         margin-bottom: 10px;
         background-color: #f8f9fc;
         position: relative;
+        transition: all 0.2s;
     }
     
     .product-line:hover {
-        border-color: #d1d3e2;
-        box-shadow: 0 0.15rem 0.5rem 0 rgba(58, 59, 69, 0.15);
+        border-color: #4e73df;
+        box-shadow: 0 0.15rem 0.5rem 0 rgba(78, 115, 223, 0.15);
+        transform: translateY(-2px);
     }
     
     .remove-line {
@@ -56,35 +63,124 @@
         color: #e74a3b;
         font-size: 1.2rem;
         cursor: pointer;
+        z-index: 2;
     }
     
     /* Status selector */
-    .status-selectors {
+    .status-selector-container {
         display: flex;
-        gap: 15px;
+        gap: 10px;
+        margin-bottom: 15px;
     }
     
     .status-selector {
-        display: flex;
-        align-items: center;
+        flex: 1;
+        position: relative;
+        cursor: pointer;
     }
     
-    .status-selector .status-label {
-        margin-right: 5px;
+    .status-selector input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+    }
+    
+    .status-selector label {
+        display: block;
+        padding: 10px;
+        text-align: center;
+        border-radius: 0.35rem;
         font-weight: 500;
+        color: #6e707e;
+        background-color: #f8f9fc;
+        border: 1px solid #e3e6f0;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .status-selector input[type="radio"]:checked + label {
+        background-color: #4e73df;
+        color: white;
+        border-color: #4e73df;
+        box-shadow: 0 0.125rem 0.25rem 0 rgba(78, 115, 223, 0.2);
+    }
+    
+    .status-selector:hover label {
+        border-color: #4e73df;
+    }
+    
+    /* Priority selectors */
+    .priority-selector-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .priority-selector {
+        flex: 1;
+        position: relative;
+        cursor: pointer;
+    }
+    
+    .priority-selector input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+    }
+    
+    .priority-selector label {
+        display: block;
+        padding: 10px;
+        text-align: center;
+        border-radius: 0.35rem;
+        font-weight: 500;
+        color: #6e707e;
+        background-color: #f8f9fc;
+        border: 1px solid #e3e6f0;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .priority-selector input[type="radio"]:checked + label.priority-normale {
+        background-color: #1cc88a;
+        color: white;
+        border-color: #1cc88a;
+    }
+    
+    .priority-selector input[type="radio"]:checked + label.priority-urgente {
+        background-color: #f6c23e;
+        color: white;
+        border-color: #f6c23e;
+    }
+    
+    .priority-selector input[type="radio"]:checked + label.priority-vip {
+        background-color: #e74a3b;
+        color: white;
+        border-color: #e74a3b;
     }
     
     /* Boutons */
     .btn-add-line {
         margin-bottom: 15px;
+        transition: all 0.2s;
+    }
+    
+    .btn-add-line:hover {
+        transform: translateY(-2px);
     }
     
     /* Résumé du panier */
     .cart-summary {
         background-color: #f8f9fc;
         border-radius: 0.5rem;
-        padding: 10px;
-        margin-top: 10px;
+        padding: 15px;
+        margin-top: 15px;
+        box-shadow: 0 0.15rem 0.5rem 0 rgba(0, 0, 0, 0.05);
+        border: 1px solid #e3e6f0;
+    }
+    
+    .cart-total {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #4e73df;
     }
     
     /* Loader */
@@ -101,6 +197,33 @@
         align-items: center;
         display: none;
     }
+    
+    /* Tooltips */
+    .tooltip-icon {
+        color: #4e73df;
+        margin-left: 5px;
+        cursor: pointer;
+    }
+    
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .animate-fadein {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    /* Badges */
+    .status-badge {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+    }
+    
+    .status-nouvelle { background-color: #3498db; color: white; }
+    .status-confirmée { background-color: #2ecc71; color: white; }
 </style>
 @endsection
 
@@ -114,7 +237,7 @@
     </div>
 
     <!-- Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-2">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Nouvelle commande</h1>
         <a href="{{ route('admin.orders.index') }}" class="btn btn-secondary btn-sm">
             <i class="fas fa-arrow-left"></i> Retour
@@ -124,29 +247,52 @@
     <form id="orderForm" action="{{ route('admin.orders.store') }}" method="POST">
         @csrf
         
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Statut et priorité</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="font-weight-bold mb-2">Statut initial :</label>
+                        <div class="status-selector-container">
+                            <div class="status-selector">
+                                <input type="radio" id="status-nouvelle" name="status" value="nouvelle" {{ old('status') == 'nouvelle' ? 'checked' : 'checked' }}>
+                                <label for="status-nouvelle">Nouvelle</label>
+                            </div>
+                            <div class="status-selector">
+                                <input type="radio" id="status-confirmée" name="status" value="confirmée" {{ old('status') == 'confirmée' ? 'checked' : '' }}>
+                                <label for="status-confirmée">Confirmée</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="font-weight-bold mb-2">Priorité :</label>
+                        <div class="priority-selector-container">
+                            <div class="priority-selector">
+                                <input type="radio" id="priority-normale" name="priority" value="normale" {{ old('priority') == 'normale' ? 'checked' : 'checked' }}>
+                                <label for="priority-normale" class="priority-normale">Normale</label>
+                            </div>
+                            <div class="priority-selector">
+                                <input type="radio" id="priority-urgente" name="priority" value="urgente" {{ old('priority') == 'urgente' ? 'checked' : '' }}>
+                                <label for="priority-urgente" class="priority-urgente">Urgente</label>
+                            </div>
+                            <div class="priority-selector">
+                                <input type="radio" id="priority-vip" name="priority" value="vip" {{ old('priority') == 'vip' ? 'checked' : '' }}>
+                                <label for="priority-vip" class="priority-vip">VIP</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="row">
             <!-- Colonne gauche - Informations client et statut -->
             <div class="col-lg-6">
                 <div class="card shadow">
-                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <div class="card-header py-3">
                         <h6 class="m-0 font-weight-bold text-primary">Informations client</h6>
-                        <div class="status-selectors">
-                            <div class="status-selector">
-                                <span class="status-label">Statut:</span>
-                                <select id="status" name="status" class="form-control form-control-sm" style="width:auto;">
-                                    <option value="nouvelle" {{ old('status') == 'nouvelle' ? 'selected' : '' }}>Nouvelle</option>
-                                    <option value="confirmée" {{ old('status') == 'confirmée' ? 'selected' : '' }}>Confirmée</option>
-                                </select>
-                            </div>
-                            <div class="status-selector">
-                                <span class="status-label">Priorité:</span>
-                                <select id="priority" name="priority" class="form-control form-control-sm" style="width:auto;">
-                                    <option value="normale" {{ old('priority') == 'normale' ? 'selected' : '' }}>Normale</option>
-                                    <option value="urgente" {{ old('priority') == 'urgente' ? 'selected' : '' }}>Urgente</option>
-                                    <option value="vip" {{ old('priority') == 'vip' ? 'selected' : '' }}>VIP</option>
-                                </select>
-                            </div>
-                        </div>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -170,31 +316,23 @@
                             </div>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="customer_name">Nom du client</label>
-                                    <input type="text" class="form-control @error('customer_name') is-invalid @enderror" id="customer_name" name="customer_name" value="{{ old('customer_name') }}">
-                                    @error('customer_name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="shipping_cost">Frais de livraison (DT)</label>
-                                    <input type="number" step="0.001" class="form-control @error('shipping_cost') is-invalid @enderror" id="shipping_cost" name="shipping_cost" value="{{ old('shipping_cost', 0) }}">
-                                    @error('shipping_cost')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
+                        <div class="form-group">
+                            <label for="customer_name">Nom du client
+                                <span class="required-field-indicator confirmation-required" style="display: none">*</span>
+                                <i class="fas fa-info-circle tooltip-icon" data-toggle="tooltip" title="Le nom est obligatoire pour les commandes confirmées"></i>
+                            </label>
+                            <input type="text" class="form-control @error('customer_name') is-invalid @enderror" id="customer_name" name="customer_name" value="{{ old('customer_name') }}">
+                            @error('customer_name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="customer_governorate">Gouvernorat</label>
+                                    <label for="customer_governorate">Gouvernorat
+                                        <span class="required-field-indicator confirmation-required" style="display: none">*</span>
+                                    </label>
                                     <select class="form-control select2 @error('customer_governorate') is-invalid @enderror" id="customer_governorate" name="customer_governorate">
                                         <option value="">Sélectionner un gouvernorat</option>
                                         @foreach($regions as $region)
@@ -210,7 +348,9 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="customer_city">Ville</label>
+                                    <label for="customer_city">Ville
+                                        <span class="required-field-indicator confirmation-required" style="display: none">*</span>
+                                    </label>
                                     <select class="form-control select2 @error('customer_city') is-invalid @enderror" id="customer_city" name="customer_city" disabled>
                                         <option value="">Sélectionner d'abord un gouvernorat</option>
                                     </select>
@@ -221,8 +361,33 @@
                             </div>
                         </div>
                         
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="shipping_cost">Frais de livraison (DT)</label>
+                                    <input type="number" step="0.001" class="form-control @error('shipping_cost') is-invalid @enderror" id="shipping_cost" name="shipping_cost" value="{{ old('shipping_cost', 0) }}">
+                                    @error('shipping_cost')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group confirmation-field" style="display: none;">
+                                    <label for="confirmed_price">Prix confirmé (DT)
+                                        <span class="required-field">*</span>
+                                    </label>
+                                    <input type="number" step="0.001" class="form-control @error('confirmed_price') is-invalid @enderror" id="confirmed_price" name="confirmed_price" value="{{ old('confirmed_price', 0) }}">
+                                    @error('confirmed_price')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="form-group">
-                            <label for="customer_address">Adresse détaillée</label>
+                            <label for="customer_address">Adresse détaillée
+                                <span class="required-field-indicator confirmation-required" style="display: none">*</span>
+                            </label>
                             <textarea class="form-control @error('customer_address') is-invalid @enderror" id="customer_address" name="customer_address" rows="2">{{ old('customer_address') }}</textarea>
                             @error('customer_address')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -238,17 +403,17 @@
                         </div>
                         
                         <div class="cart-summary mt-2">
-                            <div class="d-flex justify-content-between mb-1">
+                            <div class="d-flex justify-content-between mb-2">
                                 <span>Sous-total:</span>
                                 <span id="subtotal" class="font-weight-bold">0.000 DT</span>
                             </div>
-                            <div class="d-flex justify-content-between mb-1">
+                            <div class="d-flex justify-content-between mb-2">
                                 <span>Frais de livraison:</span>
                                 <span id="shipping" class="font-weight-bold">0.000 DT</span>
                             </div>
                             <div class="d-flex justify-content-between">
                                 <span>Total:</span>
-                                <span id="total" class="font-weight-bold">0.000 DT</span>
+                                <span id="total" class="cart-total">0.000 DT</span>
                             </div>
                         </div>
                     </div>
@@ -258,7 +423,7 @@
             <!-- Colonne droite - Produits -->
             <div class="col-lg-6">
                 <div class="card shadow">
-                    <div class="card-header py-2">
+                    <div class="card-header py-3">
                         <h6 class="m-0 font-weight-bold text-primary">Produits</h6>
                     </div>
                     <div class="card-body">
@@ -306,8 +471,8 @@
                             <div class="alert alert-danger mt-2">{{ $message }}</div>
                         @enderror
                         
-                        <div class="form-group mt-3 mb-0">
-                            <button type="submit" class="btn btn-success btn-block" id="submitButton">
+                        <div class="form-group mt-4 mb-0">
+                            <button type="submit" class="btn btn-success btn-lg btn-block" id="submitButton">
                                 <i class="fas fa-save"></i> Enregistrer la commande
                             </button>
                         </div>
@@ -352,6 +517,9 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function() {
+        // Initialiser les tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+        
         // Loader pour les actions longues
         function showLoader() {
             $('#pageLoader').fadeIn(100);
@@ -361,8 +529,27 @@
             $('#pageLoader').fadeOut(100);
         }
         
+        // Afficher/masquer les champs obligatoires pour les commandes confirmées
+        function toggleConfirmationFields() {
+            if ($('input[name="status"]:checked').val() === 'confirmée') {
+                $('.confirmation-required').show();
+                $('.confirmation-field').show();
+            } else {
+                $('.confirmation-required').hide();
+                $('.confirmation-field').hide();
+            }
+        }
+        
         // Initialiser Select2
         initializeSelect2();
+        
+        // Exécuter au démarrage
+        toggleConfirmationFields();
+        
+        // Gérer le changement de statut
+        $('input[name="status"]').on('change', function() {
+            toggleConfirmationFields();
+        });
         
         // Compteur de lignes
         let lineCounter = 1;
@@ -403,6 +590,7 @@
                 });
             } else {
                 citySelect.empty().append('<option value="">Sélectionner d\'abord un gouvernorat</option>');
+                citySelect.prop('disabled', true);
             }
         });
         
@@ -422,7 +610,7 @@
         // Ajouter une nouvelle ligne de produit
         $('.btn-add-line').on('click', function() {
             const newLineHtml = `
-                <div class="product-line" id="product-line-${lineCounter}">
+                <div class="product-line animate-fadein" id="product-line-${lineCounter}">
                     <span class="remove-line" data-line="${lineCounter}">❌</span>
                     <div class="row">
                         <div class="col-md-7">
@@ -474,20 +662,12 @@
         // Supprimer une ligne
         $(document).on('click', '.remove-line', function() {
             const lineIndex = $(this).data('line');
-            $(`#product-line-${lineIndex}`).remove();
-            
-            // Réindexer les lignes
-            reindexLines();
-            
-            // Mettre à jour le résumé du panier
-            updateCartSummary();
+            $(`#product-line-${lineIndex}`).fadeOut(300, function() {
+                $(this).remove();
+                // Mettre à jour le résumé du panier
+                updateCartSummary();
+            });
         });
-        
-        // Réindexer les lignes après suppression
-        function reindexLines() {
-            // Pas besoin de réindexer pour le moment, car on utilise des indices fixes
-            // Cette fonction serait utile si on voulait maintenir une séquence continue d'indices
-        }
         
         // Mettre à jour le total d'une ligne quand le produit ou la quantité change
         $(document).on('change', '.product-select', function() {
@@ -601,6 +781,9 @@
             $('#subtotal').text(formatPrice(subtotal) + ' DT');
             $('#shipping').text(formatPrice(shipping) + ' DT');
             $('#total').text(formatPrice(total) + ' DT');
+            
+            // Mettre à jour le prix confirmé
+            $('#confirmed_price').val(formatPrice(total));
         }
         
         // Mettre à jour le résumé quand les frais de livraison changent
@@ -632,7 +815,7 @@
             }
             
             // Si le statut est "confirmée", vérifier que tous les champs client sont remplis
-            if ($('#status').val() === 'confirmée') {
+            if ($('input[name="status"]:checked').val() === 'confirmée') {
                 if (!$('#customer_name').val() || !$('#customer_governorate').val() || 
                     !$('#customer_city').val() || !$('#customer_address').val()) {
                     e.preventDefault();

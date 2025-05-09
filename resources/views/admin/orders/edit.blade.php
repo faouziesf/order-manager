@@ -4,8 +4,124 @@
 
 @section('css')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
     /* Styles généraux */
+
+    .history-section {
+        display: none;
+        max-height: 600px;
+        overflow-y: auto;
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #fff;
+        border: 1px solid #e3e6f0;
+        border-radius: 0.35rem;
+        box-shadow: 0 0.15rem 1rem 0 rgba(58, 59, 69, 0.15);
+    }
+
+    .history-section.show {
+        display: block;
+        animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .timeline {
+        margin: 20px 0;
+        padding: 0;
+    }
+
+    .timeline-container {
+        position: relative;
+        padding-left: 20px;
+    }
+
+    .timeline-container::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background-color: #e0e0e0;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+        padding-left: 25px;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -10px;
+        top: 0;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: #4e73df;
+        border: 3px solid white;
+        box-shadow: 0 0 0 1px #4e73df;
+    }
+
+    .timeline-item-content {
+        position: relative;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f8f9fc;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .timeline-item-date {
+        display: block;
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+
+    .timeline-item-title {
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+
+    .timeline-item-user {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+    }
+
+    .timeline-item-status {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+    }
+
+    .timeline-item-notes {
+        margin-top: 10px;
+    }
+
+    .timeline-item-notes p {
+        margin: 5px 0 0;
+        font-size: 0.9rem;
+        padding: 8px;
+        background-color: #fff;
+        border-radius: 3px;
+        border-left: 3px solid #4e73df;
+    }
+
+    .timeline-item-changes {
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+
+    .timeline-item-changes ul {
+        margin: 5px 0 0;
+        padding-left: 20px;
+    }
+
     .card {
         margin-bottom: 15px;
     }
@@ -120,18 +236,6 @@
         display: none;
     }
     
-    /* Actions rapides */
-    .quick-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        margin-top: 10px;
-    }
-    
-    .quick-actions .btn {
-        margin-bottom: 5px;
-    }
-    
     /* Prix confirmé */
     .confirmed-price-section {
         background-color: #f0fff4;
@@ -139,6 +243,30 @@
         border-radius: 0.35rem;
         padding: 10px;
         margin-top: 10px;
+    }
+    
+    /* Section datée */
+    .scheduled-date-section {
+        background-color: #fef5e9;
+        border: 1px solid #fbd38d;
+        border-radius: 0.35rem;
+        padding: 10px;
+        margin-top: 10px;
+        display: none;
+    }
+    
+    /* Actions section */
+    .actions-section {
+        background-color: #f8f9fc;
+        border: 1px solid #e3e6f0;
+        border-radius: 0.35rem;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .action-label {
+        font-weight: 600;
+        margin-bottom: 8px;
     }
 </style>
 @endsection
@@ -153,14 +281,14 @@
     </div>
 
     <!-- Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-2">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
             Modifier la commande #{{ $order->id }}
             <span class="badge status-{{ $order->status }}">{{ ucfirst($order->status) }}</span>
             <span class="badge priority-{{ $order->priority }}">{{ ucfirst($order->priority) }}</span>
         </h1>
         <div>
-            <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#historyModal" data-order-id="{{ $order->id }}">
+            <button type="button" class="btn btn-info btn-sm" id="toggleHistoryBtn">
                 <i class="fas fa-history"></i> Historique
             </button>
             <a href="{{ route('admin.orders.index') }}" class="btn btn-secondary btn-sm">
@@ -177,7 +305,7 @@
             <!-- Colonne gauche - Informations client et statut -->
             <div class="col-lg-6">
                 <div class="card shadow">
-                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
                         <h6 class="m-0 font-weight-bold text-primary">Informations client</h6>
                         <div class="status-selectors">
                             <div class="status-selector">
@@ -282,14 +410,6 @@
                             @enderror
                         </div>
                         
-                        <div class="form-group">
-                            <label for="notes">Notes</label>
-                            <textarea class="form-control @error('notes') is-invalid @enderror" id="notes" name="notes" rows="2">{{ old('notes') }}</textarea>
-                            @error('notes')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        
                         <div class="cart-summary mt-2">
                             <div class="d-flex justify-content-between mb-1">
                                 <span>Sous-total:</span>
@@ -306,7 +426,7 @@
                         </div>
                         
                         <!-- Section prix confirmé (apparaît uniquement pour les commandes confirmées) -->
-                        <div id="confirmed-price-section" class="confirmed-price-section mt-2" style="{{ $order->status == 'confirmée' ? '' : 'display:none;' }}">
+                        <div id="confirmed-price-section" class="confirmed-price-section mt-2" style="{{ $order->status == 'confirmée' || old('status') == 'confirmée' ? '' : 'display:none;' }}">
                             <div class="form-group mb-0">
                                 <label for="confirmed_price" class="required-field">Prix confirmé (DT)</label>
                                 <input type="number" step="0.001" class="form-control @error('confirmed_price') is-invalid @enderror" id="confirmed_price" name="confirmed_price" value="{{ old('confirmed_price', $order->confirmed_price ?? $order->total_price + $order->shipping_cost) }}">
@@ -317,37 +437,26 @@
                             </div>
                         </div>
                         
-                        <div class="quick-actions mt-3">
-                            <button type="button" class="btn btn-sm btn-info" data-action="call">
-                                <i class="fas fa-phone"></i> Appel effectué
-                            </button>
-                            <button type="button" class="btn btn-sm btn-success" data-action="confirm">
-                                <i class="fas fa-check"></i> Confirmer
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger" data-action="cancel">
-                                <i class="fas fa-times"></i> Annuler
-                            </button>
-                            <button type="button" class="btn btn-sm btn-warning" data-action="schedule">
-                                <i class="fas fa-calendar"></i> Dater
-                            </button>
-                            <button type="button" class="btn btn-sm btn-primary" data-action="deliver">
-                                <i class="fas fa-truck"></i> Livrer
-                            </button>
-                        </div>
-                        
-                        <div class="form-group mt-3 mb-0">
-                            <button type="submit" class="btn btn-success btn-block" id="submitButton">
-                                <i class="fas fa-save"></i> Mettre à jour la commande
-                            </button>
+                        <!-- Section date programmée (apparaît uniquement pour les commandes datées) -->
+                        <div id="scheduled-date-section" class="scheduled-date-section mt-2" style="{{ $order->status == 'datée' || old('status') == 'datée' ? '' : 'display:none;' }}">
+                            <div class="form-group mb-0">
+                                <label for="scheduled_date" class="required-field">Date programmée</label>
+                                <input type="text" class="form-control flatpickr @error('scheduled_date') is-invalid @enderror" id="scheduled_date" name="scheduled_date" value="{{ old('scheduled_date', $order->scheduled_date ? $order->scheduled_date->format('Y-m-d') : '') }}" placeholder="Sélectionner une date...">
+                                <small class="form-text text-muted">Sélectionnez la date de livraison programmée.</small>
+                                @error('scheduled_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Colonne droite - Produits -->
+            <!-- Colonne droite - Produits et actions -->
             <div class="col-lg-6">
-                <div class="card shadow">
-                    <div class="card-header py-2">
+                <!-- Section produits -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
                         <h6 class="m-0 font-weight-bold text-primary">Produits</h6>
                     </div>
                     <div class="card-body">
@@ -436,9 +545,134 @@
                         @enderror
                     </div>
                 </div>
+                
+                <!-- Section actions -->
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Actions à effectuer</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="action_type" class="action-label">Action à effectuer</label>
+                            <select class="form-control" id="action_type" name="action_type">
+                                <option value="">-- Choisir une action --</option>
+                                <option value="call">Tentative d'appel</option>
+                                <option value="confirm">Confirmer la commande</option>
+                                <option value="cancel">Annuler la commande</option>
+                                <option value="schedule">Dater la commande</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="notes" class="required-field">Notes</label>
+                            <textarea class="form-control @error('notes') is-invalid @enderror" id="notes" name="notes" rows="3">{{ old('notes') }}</textarea>
+                            <small class="form-text text-muted">Veuillez expliquer la raison de cette action.</small>
+                            @error('notes')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        
+                        <!-- Champs cachés pour les actions -->
+                        <input type="hidden" name="increment_attempts" id="increment_attempts" value="0">
+                        
+                        <div class="form-group mt-4 mb-0">
+                            <button type="submit" class="btn btn-success btn-block" id="submitButton">
+                                <i class="fas fa-save"></i> Enregistrer
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </form>
+
+
+    <div id="historySection" class="history-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="m-0">Historique de la commande #{{ $order->id }}</h4>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="closeHistoryBtn">
+                <i class="fas fa-times"></i> Fermer
+            </button>
+        </div>
+    
+        @if($order->history->count() > 0)
+            <div class="timeline">
+                <div class="timeline-container">
+                    @foreach($order->history->sortByDesc('created_at') as $entry)
+                        <div class="timeline-item">
+                            <div class="timeline-item-content">
+                                <span class="timeline-item-date">{{ $entry->created_at->format('d/m/Y H:i') }}</span>
+                                <h6 class="timeline-item-title">
+                                    @switch($entry->action)
+                                        @case('création')
+                                            <span class="text-primary"><i class="fas fa-plus-circle"></i> Création</span>
+                                            @break
+                                        @case('modification')
+                                            <span class="text-info"><i class="fas fa-edit"></i> Modification</span>
+                                            @break
+                                        @case('confirmation')
+                                            <span class="text-success"><i class="fas fa-check-circle"></i> Confirmation</span>
+                                            @break
+                                        @case('annulation')
+                                            <span class="text-danger"><i class="fas fa-times-circle"></i> Annulation</span>
+                                            @break
+                                        @case('datation')
+                                            <span class="text-warning"><i class="fas fa-calendar"></i> Datation</span>
+                                            @break
+                                        @case('tentative')
+                                            <span class="text-info"><i class="fas fa-phone"></i> Tentative d'appel</span>
+                                            @break
+                                        @case('livraison')
+                                            <span class="text-success"><i class="fas fa-truck"></i> Livraison</span>
+                                            @break
+                                        @default
+                                            <span class="text-secondary"><i class="fas fa-history"></i> Action</span>
+                                    @endswitch
+                                </h6>
+                                <p class="timeline-item-user">
+                                    Par: <strong>{{ $entry->getUserName() }}</strong>
+                                </p>
+                                
+                                @if($entry->status_before !== $entry->status_after)
+                                    <p class="timeline-item-status">
+                                        Statut: 
+                                        <span class="badge status-{{ $entry->status_before }}">{{ ucfirst($entry->status_before) }}</span>
+                                        →
+                                        <span class="badge status-{{ $entry->status_after }}">{{ ucfirst($entry->status_after) }}</span>
+                                    </p>
+                                @endif
+                                
+                                @if($entry->notes)
+                                    <div class="timeline-item-notes">
+                                        <strong>Notes:</strong>
+                                        <p>{{ $entry->notes }}</p>
+                                    </div>
+                                @endif
+                                
+                                @if($entry->changes)
+                                    <div class="timeline-item-changes">
+                                        <strong>Modifications:</strong>
+                                        <ul>
+                                        @foreach(json_decode($entry->changes, true) as $field => $change)
+                                            <li>
+                                                {{ $field }}: {{ $change['old'] ?? 'Non défini' }} → {{ $change['new'] ?? 'Non défini' }}
+                                            </li>
+                                        @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @else
+            <div class="text-center text-muted">
+                <p>Aucun historique disponible pour cette commande.</p>
+            </div>
+        @endif
+    </div>
+
 </div>
 
 <!-- Modal pour créer un nouveau produit -->
@@ -470,31 +704,6 @@
     </div>
 </div>
 
-<!-- Modal pour l'action rapide -->
-<div class="modal fade" id="actionModal" tabindex="-1" aria-labelledby="actionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="actionModalLabel">Action</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="action-type" value="">
-                <div class="form-group">
-                    <label for="action_notes" class="required-field">Notes</label>
-                    <textarea class="form-control" id="action_notes" rows="3" required></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="saveAction">Enregistrer</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Modal Historique -->
 <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -506,11 +715,82 @@
                 </button>
             </div>
             <div class="modal-body" id="historyModalBody">
-                <div class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="sr-only">Chargement...</span>
+                @if($order->history->count() > 0)
+                    <div class="timeline">
+                        <div class="timeline-container">
+                            @foreach($order->history->sortByDesc('created_at') as $entry)
+                                <div class="timeline-item">
+                                    <div class="timeline-item-content">
+                                        <span class="timeline-item-date">{{ $entry->created_at->format('d/m/Y H:i') }}</span>
+                                        <h6 class="timeline-item-title">
+                                            @switch($entry->action)
+                                                @case('création')
+                                                    <span class="text-primary"><i class="fas fa-plus-circle"></i> Création</span>
+                                                    @break
+                                                @case('modification')
+                                                    <span class="text-info"><i class="fas fa-edit"></i> Modification</span>
+                                                    @break
+                                                @case('confirmation')
+                                                    <span class="text-success"><i class="fas fa-check-circle"></i> Confirmation</span>
+                                                    @break
+                                                @case('annulation')
+                                                    <span class="text-danger"><i class="fas fa-times-circle"></i> Annulation</span>
+                                                    @break
+                                                @case('datation')
+                                                    <span class="text-warning"><i class="fas fa-calendar"></i> Datation</span>
+                                                    @break
+                                                @case('tentative')
+                                                    <span class="text-info"><i class="fas fa-phone"></i> Tentative d'appel</span>
+                                                    @break
+                                                @case('livraison')
+                                                    <span class="text-success"><i class="fas fa-truck"></i> Livraison</span>
+                                                    @break
+                                                @default
+                                                    <span class="text-secondary"><i class="fas fa-history"></i> Action</span>
+                                            @endswitch
+                                        </h6>
+                                        <p class="timeline-item-user">
+                                            Par: <strong>{{ $entry->getUserName() }}</strong>
+                                        </p>
+                                        
+                                        @if($entry->status_before !== $entry->status_after)
+                                            <p class="timeline-item-status">
+                                                Statut: 
+                                                <span class="badge status-{{ $entry->status_before }}">{{ ucfirst($entry->status_before) }}</span>
+                                                →
+                                                <span class="badge status-{{ $entry->status_after }}">{{ ucfirst($entry->status_after) }}</span>
+                                            </p>
+                                        @endif
+                                        
+                                        @if($entry->notes)
+                                            <div class="timeline-item-notes">
+                                                <strong>Notes:</strong>
+                                                <p>{{ $entry->notes }}</p>
+                                            </div>
+                                        @endif
+                                        
+                                        @if($entry->changes)
+                                            <div class="timeline-item-changes">
+                                                <strong>Modifications:</strong>
+                                                <ul>
+                                                @foreach(json_decode($entry->changes, true) as $field => $change)
+                                                    <li>
+                                                        {{ $field }}: {{ $change['old'] ?? 'Non défini' }} → {{ $change['new'] ?? 'Non défini' }}
+                                                    </li>
+                                                @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
-                </div>
+                @else
+                    <div class="text-center text-muted">
+                        <p>Aucun historique disponible pour cette commande.</p>
+                    </div>
+                @endif
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
@@ -522,6 +802,8 @@
 
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
 <script>
     $(document).ready(function() {
         // Loader pour les actions longues
@@ -535,6 +817,14 @@
         
         // Initialiser Select2
         initializeSelect2();
+        
+        // Initialiser Flatpickr (sélecteur de date)
+        flatpickr(".flatpickr", {
+            locale: "fr",
+            dateFormat: "Y-m-d",
+            minDate: "today",
+            disableMobile: "true"
+        });
         
         // Compteur de lignes
         let lineCounter = {{ $lineIndex }}; // Continuer la numérotation à partir du dernier index
@@ -554,6 +844,62 @@
             }
         });
         
+        // Gérer le changement de statut
+        $('#status').on('change', function() {
+            const status = $(this).val();
+            
+            // Gérer l'affichage du prix confirmé
+            if (status === 'confirmée') {
+                $('#confirmed-price-section').slideDown();
+            } else {
+                $('#confirmed-price-section').slideUp();
+            }
+            
+            // Gérer l'affichage de la date programmée
+            if (status === 'datée') {
+                $('#scheduled-date-section').slideDown();
+            } else {
+                $('#scheduled-date-section').slideUp();
+            }
+        });
+        
+// Gérer le changement d'action
+$('#action_type').on('change', function() {
+                const action = $(this).val();
+                let helpText = '';
+                
+                // Mettre à jour le texte d'aide selon l'action
+                switch(action) {
+                    case 'call':
+                        helpText = 'Veuillez indiquer le résultat de l\'appel.';
+                        // Incrémenter les tentatives d'appel
+                        $('#increment_attempts').val(1);
+                        break;
+                    case 'confirm':
+                        helpText = 'Ajoutez des informations complémentaires sur la confirmation.';
+                        // Mettre à jour le statut
+                        $('#status').val('confirmée').trigger('change');
+                        break;
+                    case 'cancel':
+                        helpText = 'Veuillez indiquer la raison de l\'annulation.';
+                        // Mettre à jour le statut
+                        $('#status').val('annulée').trigger('change');
+                        break;
+                    case 'schedule':
+                        helpText = 'Ajoutez des informations sur la livraison programmée.';
+                        // Mettre à jour le statut
+                        $('#status').val('datée').trigger('change');
+                        break;
+                    default:
+                        helpText = 'Veuillez expliquer la raison de cette action.';
+                        $('#increment_attempts').val(0);
+                }
+                
+                // Mettre à jour le texte d'aide
+                $('#notes').siblings('small').text(helpText);
+            });
+        
+        // Charger les villes
         function loadCities(regionId, selectedCityId = null) {
             const citySelect = $('#customer_city');
             citySelect.prop('disabled', true).empty().append('<option value="">Chargement...</option>');
@@ -742,96 +1088,24 @@
             }
         });
         
-        // Gestion du statut pour afficher/masquer le prix confirmé
-        $('#status').on('change', function() {
-            if ($(this).val() === 'confirmée') {
-                $('#confirmed-price-section').slideDown();
-            } else {
-                $('#confirmed-price-section').slideUp();
-            }
-        });
-        
-        // Actions rapides
-        $('.quick-actions button').on('click', function() {
-            const action = $(this).data('action');
-            let statusToSet = '';
-            let actionTitle = '';
+        // Gérer le clic sur le bouton d'historique
+        $('#showOrderHistory').click(function() {
+            // Ouvrir la modal
+            $('#historyModal').modal('show');
             
-            switch(action) {
-                case 'call':
-                    actionTitle = 'Tentative d\'appel';
-                    break;
-                case 'confirm':
-                    statusToSet = 'confirmée';
-                    actionTitle = 'Confirmation de commande';
-                    break;
-                case 'cancel':
-                    statusToSet = 'annulée';
-                    actionTitle = 'Annulation de commande';
-                    break;
-                case 'schedule':
-                    statusToSet = 'datée';
-                    actionTitle = 'Programmation de livraison';
-                    break;
-                case 'deliver':
-                    statusToSet = 'livrée';
-                    actionTitle = 'Livraison de commande';
-                    break;
-            }
-            
-            $('#actionModalLabel').text(actionTitle);
-            $('#action-type').val(action);
-            $('#action_notes').val('');
-            $('#actionModal').modal('show');
-            
-            // Si action change le statut, le présélectionner
-            if (statusToSet) {
-                $('#status').val(statusToSet).trigger('change');
-            }
-        });
-        
-        // Enregistrer l'action rapide
-        $('#saveAction').click(function() {
-            const notes = $('#action_notes').val();
-            const actionType = $('#action-type').val();
-            
-            if (notes) {
-                // Ajouter les notes au formulaire principal
-                $('#notes').val(notes);
-                
-                // Si c'est une tentative d'appel, faire une requête séparée
-                if (actionType === 'call') {
-                    showLoader();
-                    
-                    $.ajax({
-                        url: "{{ route('admin.orders.recordAttempt', $order) }}",
-                        method: 'POST',
-                        data: {
-                            _token: "{{ csrf_token() }}",
-                            notes: notes
-                        },
-                        success: function(response) {
-                            hideLoader();
-                            
-                            // Fermer la modal
-                            $('#actionModal').modal('hide');
-                            
-                            // Afficher un message de succès
-                            alert('Tentative d\'appel enregistrée avec succès.');
-                        },
-                        error: function() {
-                            hideLoader();
-                            alert('Erreur lors de l\'enregistrement de la tentative d\'appel.');
-                        }
-                    });
-                } else {
-                    // Pour les autres actions, soumettre le formulaire
-                    $('#actionModal').modal('hide');
-                    $('#orderForm').submit();
+            // Charger le contenu
+            showLoader();
+            $.ajax({
+                url: "{{ route('admin.orders.history', $order) }}",
+                success: function(data) {
+                    $('#historyModalBody').html(data);
+                    hideLoader();
+                },
+                error: function() {
+                    $('#historyModalBody').html('<div class="alert alert-danger">Erreur lors du chargement de l\'historique</div>');
+                    hideLoader();
                 }
-            } else {
-                alert('Veuillez entrer des notes pour cette action.');
-            }
+            });
         });
         
         // Mettre à jour le résumé du panier
@@ -866,8 +1140,8 @@
             $('#shipping').text(formatPrice(shipping) + ' DT');
             $('#total').text(formatPrice(total) + ' DT');
             
-            // Mettre à jour le prix confirmé aussi
-            if (!$('#confirmed_price').val()) {
+            // Mettre à jour le prix confirmé aussi (si pas déjà défini)
+            if ($('#confirmed_price').val() == '0' || $('#confirmed_price').val() == '') {
                 $('#confirmed_price').val(formatPrice(total));
             }
         }
@@ -881,25 +1155,6 @@
         function formatPrice(price) {
             return parseFloat(price).toFixed(3);
         }
-        
-        // Gestion du modal d'historique
-        $('#historyModal').on('show.bs.modal', function (event) {
-            const modal = $(this);
-            
-            // Charger l'historique
-            showLoader();
-            $.ajax({
-                url: "{{ route('admin.orders.history', $order) }}",
-                success: function(data) {
-                    modal.find('.modal-body').html(data);
-                    hideLoader();
-                },
-                error: function() {
-                    modal.find('.modal-body').html('<div class="alert alert-danger">Erreur lors du chargement de l\'historique</div>');
-                    hideLoader();
-                }
-            });
-        });
         
         // Valider le formulaire avant soumission
         $('#orderForm').on('submit', function(e) {
@@ -919,25 +1174,111 @@
                 return false;
             }
             
-            // Si le statut est "confirmée", vérifier que tous les champs client sont remplis
-            if ($('#status').val() === 'confirmée') {
-                if (!$('#customer_name').val() || !$('#customer_governorate').val() || 
-                    !$('#customer_city').val() || !$('#customer_address').val()) {
+            // Vérifier les champs nécessaires en fonction de l'action choisie
+            const actionType = $('#action_type').val();
+            const notes = $('#notes').val();
+            
+            if (actionType) {
+                // Si une action est sélectionnée, les notes sont obligatoires
+                if (!notes) {
                     e.preventDefault();
-                    alert('Pour une commande confirmée, tous les champs client sont obligatoires.');
+                    alert('Veuillez entrer des notes pour expliquer cette action.');
+                    $('#notes').focus();
                     return false;
                 }
                 
-                // Vérifier que le prix confirmé est bien renseigné
-                if (!$('#confirmed_price').val()) {
+                // Vérifications spécifiques selon l'action
+                switch(actionType) {
+                    case 'confirm':
+                        // Vérifier que tous les champs client sont remplis
+                        if (!$('#customer_name').val() || !$('#customer_governorate').val() || 
+                            !$('#customer_city').val() || !$('#customer_address').val()) {
+                            e.preventDefault();
+                            alert('Pour une commande confirmée, tous les champs client sont obligatoires.');
+                            return false;
+                        }
+                        
+                        // Vérifier que le prix confirmé est bien renseigné
+                        if (!$('#confirmed_price').val()) {
+                            e.preventDefault();
+                            alert('Pour une commande confirmée, le prix confirmé est obligatoire.');
+                            return false;
+                        }
+                        break;
+                        
+                    case 'schedule':
+                        // Vérifier que la date est renseignée
+                        if (!$('#scheduled_date').val()) {
+                            e.preventDefault();
+                            alert('Pour une commande datée, la date de livraison est obligatoire.');
+                            $('#scheduled_date').focus();
+                            return false;
+                        }
+                        break;
+                }
+            } else {
+                // Vérifications standard selon le statut sélectionné
+                if ($('#status').val() === 'confirmée') {
+                    if (!$('#customer_name').val() || !$('#customer_governorate').val() || 
+                        !$('#customer_city').val() || !$('#customer_address').val()) {
+                        e.preventDefault();
+                        alert('Pour une commande confirmée, tous les champs client sont obligatoires.');
+                        return false;
+                    }
+                    
+                    // Vérifier que le prix confirmé est bien renseigné
+                    if (!$('#confirmed_price').val()) {
+                        e.preventDefault();
+                        alert('Pour une commande confirmée, le prix confirmé est obligatoire.');
+                        return false;
+                    }
+                }
+                
+                // Si le statut est "datée", vérifier que la date est renseignée
+                if ($('#status').val() === 'datée' && !$('#scheduled_date').val()) {
                     e.preventDefault();
-                    alert('Pour une commande confirmée, le prix confirmé est obligatoire.');
+                    alert('Pour une commande datée, la date de livraison est obligatoire.');
                     return false;
                 }
             }
             
+            // Traitement de l'action "call" (tentative d'appel)
+            if (actionType === 'call') {
+                e.preventDefault();
+                
+                if (!notes) {
+                    alert('Veuillez entrer des notes pour l\'appel.');
+                    $('#notes').focus();
+                    return false;
+                }
+                
+                // Faire une requête séparée pour l'action d'appel
+                showLoader();
+                $.ajax({
+                    url: "{{ route('admin.orders.recordAttempt', $order) }}",
+                    method: 'POST',
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        notes: notes
+                    },
+                    success: function(response) {
+                        hideLoader();
+                        
+                        // Afficher un message de succès
+                        alert('Tentative d\'appel enregistrée avec succès.');
+                        location.reload();
+                    },
+                    error: function() {
+                        hideLoader();
+                        alert('Erreur lors de l\'enregistrement de la tentative d\'appel.');
+                    }
+                });
+                
+                return false;
+            }
+            
             // Désactiver le bouton de soumission pour éviter les soumissions multiples
-            $('#submitButton').attr('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Mise à jour en cours...');
+            $('#submitButton').attr('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Traitement en cours...');
             
             showLoader();
             
@@ -947,5 +1288,22 @@
         // Mettre à jour le résumé initial
         updateCartSummary();
     });
+</script>
+<script>
+// Gestion de l'affichage de l'historique
+$(document).ready(function() {
+    // Afficher l'historique
+    $('#toggleHistoryBtn').click(function() {
+        $('#historySection').addClass('show');
+        $('html, body').animate({
+            scrollTop: $('#historySection').offset().top - 20
+        }, 500);
+    });
+    
+    // Masquer l'historique
+    $('#closeHistoryBtn').click(function() {
+        $('#historySection').removeClass('show');
+    });
+});
 </script>
 @endsection
