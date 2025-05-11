@@ -448,16 +448,45 @@ $(document).ready(function() {
             url: '/admin/process/' + queue + '/' + order.id + '/form',
             method: 'GET',
             success: function(html) {
-                $('#' + queue + 'Queue').html(html);
+                const container = $('#' + queue + 'Queue');
                 
-                // Initialiser les composants dans le formulaire
-                initializeFormComponents(order.id);
+                // MODIFICATION 1: Nettoyer complètement le conteneur avant le chargement
+                container.empty();
+                container.html(html);
                 
-                hideLoader();
+                // MODIFICATION 2: Attendre que le DOM soit mis à jour avant d'initialiser
+                setTimeout(function() {
+                    // MODIFICATION 3: Nettoyer les handlers globaux avant d'initialiser
+                    cleanupGlobalHandlers();
+                    
+                    // Initialiser les composants dans le formulaire
+                    initializeFormComponents(order.id);
+                    
+                    hideLoader();
+                }, 50);
             },
             error: function() {
                 $('#' + queue + 'Queue').html('<div class="alert alert-danger">Erreur lors du chargement du formulaire.</div>');
                 hideLoader();
+            }
+        });
+    }
+    
+    // MODIFICATION 4: Nouvelle fonction pour nettoyer les handlers globaux
+    function cleanupGlobalHandlers() {
+        // Nettoyer les handlers de produits
+        $(document).off('click', '.btn-add-line');
+        $(document).off('click', '.remove-line');
+        $(document).off('change', '.product-select');
+        $(document).off('change', '.product-quantity');
+        
+        // Nettoyer les handlers du formulaire
+        $(document).off('submit', '#orderForm');
+        
+        // Nettoyer les Select2 existants
+        $('.select2').each(function() {
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2('destroy');
             }
         });
     }
@@ -540,14 +569,16 @@ $(document).ready(function() {
         initializeProductLines();
         
         // Gérer l'historique
-        $('#toggleHistoryBtn').click(function() {
-            $('#historySection').addClass('show');
-            $('html, body').animate({
-                scrollTop: $('#historySection').offset().top - 20
-            }, 500);
+        $('#toggleHistoryBtn').off('click').on('click', function() {
+            $('#historySection').toggleClass('show');
+            if ($('#historySection').hasClass('show')) {
+                $('html, body').animate({
+                    scrollTop: $('#historySection').offset().top - 20
+                }, 500);
+            }
         });
         
-        $('#closeHistoryBtn').click(function() {
+        $('#closeHistoryBtn').off('click').on('click', function() {
             $('#historySection').removeClass('show');
         });
         
@@ -612,20 +643,18 @@ $(document).ready(function() {
     
     // Fonction pour initialiser les lignes de produits
     function initializeProductLines() {
-        // Ajouter une nouvelle ligne
-        $(document).on('click', '.btn-add-line', function() {
+        // MODIFICATION 5: Utiliser des handlers délégués avec des sélecteurs spécifiques
+        $('#product-lines').off('click', '.btn-add-line').on('click', '.btn-add-line', function() {
             addProductLine();
         });
         
-        // Supprimer une ligne
-        $(document).on('click', '.remove-line', function() {
+        $('#product-lines').off('click', '.remove-line').on('click', '.remove-line', function() {
             const lineIndex = $(this).data('line');
             $(`#product-line-${lineIndex}`).remove();
             updateCartSummary();
         });
         
-        // Mettre à jour le total quand le produit change
-        $(document).on('change', '.product-select', function() {
+        $('#product-lines').off('change', '.product-select').on('change', '.product-select', function() {
             const lineIndex = $(this).data('line');
             const selectedOption = $(this).find('option:selected');
             
@@ -640,8 +669,7 @@ $(document).ready(function() {
             }
         });
         
-        // Mettre à jour le total quand la quantité change
-        $(document).on('change', '.product-quantity', function() {
+        $('#product-lines').off('change', '.product-quantity').on('change', '.product-quantity', function() {
             const lineIndex = $(this).data('line');
             updateLineTotal(lineIndex);
         });
@@ -653,7 +681,7 @@ $(document).ready(function() {
         });
         
         // Enregistrer un nouveau produit
-        $('#saveNewProduct').click(function() {
+        $('#saveNewProduct').off('click').on('click', function() {
             const name = $('#new_product_name').val();
             const price = $('#new_product_price').val();
             const lineIndex = $('#current-line-index').val();
@@ -700,7 +728,6 @@ $(document).ready(function() {
                             <label for="product-select-${lineCounter}">Produit <span class="text-danger">*</span></label>
                             <select class="form-control product-select" id="product-select-${lineCounter}" name="products[${lineCounter}][id]" data-line="${lineCounter}" required>
                                 <option value="">Sélectionner un produit</option>
-                                {{-- Les produits seront chargés dynamiquement --}}
                                 <option value="new">➕ Ajouter un nouveau produit</option>
                             </select>
                         </div>

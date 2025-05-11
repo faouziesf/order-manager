@@ -341,61 +341,8 @@
                 <i class="fas fa-shopping-cart" style="font-size: 24px;"></i>
             </a>
         </div>
-        <!-- Dans la section des liens vers les files de traitement -->
-        <li class="sidebar-submenu-item">
-            <a href="{{ route('admin.process.standard') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.process.standard') ? 'active' : '' }}">
-                File Standard
-                @php
-                    $standardCount = App\Models\Order::where('admin_id', Auth::guard('admin')->id())
-                        ->where('status', 'nouvelle')
-                        ->notSuspended()
-                        ->where(function($q) {
-                            $q->where('daily_attempts_count', '<', App\Models\AdminSetting::get('standard_max_daily_attempts', 3))
-                            ->orWhere(function($q2) {
-                                $q2->whereNull('last_attempt_at')
-                                ->orWhere('last_attempt_at', '<=', now()->subHours(App\Models\AdminSetting::get('standard_delay_hours', 2.5)));
-                            });
-                        })
-                        ->count();
-                @endphp
-                @if($standardCount > 0)
-                    <span class="badge badge-pill bg-primary ml-1">{{ $standardCount }}</span>
-                @endif
-            </a>
-        </li>
 
-        <li class="sidebar-submenu-item">
-            <a href="{{ route('admin.process.dated') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.process.dated') ? 'active' : '' }}">
-                File Datée
-                @php
-                    $datedCount = App\Models\Order::where('admin_id', Auth::guard('admin')->id())
-                        ->where('status', 'datée')
-                        ->whereDate('scheduled_date', '<=', now())
-                        ->notSuspended()
-                        ->count();
-                @endphp
-                @if($datedCount > 0)
-                    <span class="badge badge-pill bg-warning ml-1">{{ $datedCount }}</span>
-                @endif
-            </a>
-        </li>
 
-        <li class="sidebar-submenu-item">
-            <a href="{{ route('admin.process.old') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.process.old') ? 'active' : '' }}">
-                File Ancienne
-                @php
-                    $standardMaxAttempts = (int)App\Models\AdminSetting::get("standard_max_total_attempts", 9);
-                    $oldCount = App\Models\Order::where('admin_id', Auth::guard('admin')->id())
-                        ->where('status', 'nouvelle')
-                        ->where('attempts_count', '>=', $standardMaxAttempts)
-                        ->notSuspended()
-                        ->count();
-                @endphp
-                @if($oldCount > 0)
-                    <span class="badge badge-pill bg-danger ml-1">{{ $oldCount }}</span>
-                @endif
-            </a>
-        </li>
         
         <ul class="sidebar-menu">
             <li class="sidebar-item">
