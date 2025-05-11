@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Gate;
 
 class ProductController extends Controller
 {
@@ -100,6 +101,9 @@ class ProductController extends Controller
         $product->description = $request->description;
         $product->is_active = $request->has('is_active');
         
+        // Important: Marquer le produit comme examiné lorsqu'il est mis à jour
+        $product->needs_review = false;
+        
         if ($request->hasFile('image')) {
             // Supprimer l'ancienne image
             if ($product->image) {
@@ -130,4 +134,47 @@ class ProductController extends Controller
         return redirect()->route('admin.products.index')
             ->with('success', 'Produit supprimé avec succès.');
     }
+
+    /**
+     * Afficher et permettre l'examen des nouveaux produits créés automatiquement
+     */
+    public function reviewNewProducts()
+    {
+        $admin = Auth::guard('admin')->user();
+        $products = $admin->products()->where('needs_review', true)->paginate(10);
+        
+        return view('admin.products.review', compact('products'));
+    }
+
+
+    /**
+     * Marquer un produit comme examiné
+     */
+    public function markAsReviewed(Product $product)
+    {
+        $this->authorize('update', $product);
+        
+        $product->markAsReviewed();
+        
+        return redirect()->back()->with('success', 'Le produit a été marqué comme examiné.');
+    }
+
+    /**
+     * Marquer tous les produits comme examinés
+     */
+    public function markAllAsReviewed()
+    {
+        $admin = Auth::guard('admin')->user();
+        $products = $admin->products()->where('needs_review', true)->get();
+        
+        foreach ($products as $product) {
+            if (Gate::allows('update', $product)) {
+                $product->markAsReviewed();
+            }
+        }
+        
+        return redirect()->route('admin.products.index')->with('success', 'Tous les produits ont été marqués comme examinés.');
+    }
+
+
 }

@@ -16,14 +16,23 @@ class Product extends Model
         'price',
         'stock',
         'is_active',
+        'needs_review',
         'description'
     ];
-
+    
     protected $casts = [
         'price' => 'decimal:3',
         'stock' => 'integer',
         'is_active' => 'boolean',
+        'needs_review' => 'boolean',
     ];
+
+    public function markAsReviewed()
+    {
+        $this->needs_review = false;
+        $this->save();
+        return $this;
+    }
 
     public function admin()
     {

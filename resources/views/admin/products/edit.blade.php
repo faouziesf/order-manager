@@ -1,6 +1,14 @@
 @extends('layouts.admin')
 
 @section('content')
+
+@if($product->needs_review)
+
+<div class="alert alert-warning mb-4">
+    <i class="fas fa-exclamation-triangle mr-1"></i> Ce produit a été créé automatiquement lors d'une importation et nécessite votre examen.
+</div>
+@endif
+
 <div class="container-fluid">
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
@@ -42,6 +50,8 @@
                         </div>
                     </div>
                 </div>
+
+                <input type="hidden" name="mark_as_reviewed" value="1">
                 
                 <div class="form-group">
                     <label for="description">Description</label>

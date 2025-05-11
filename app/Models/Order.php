@@ -10,13 +10,17 @@ class Order extends Model
 {
     use HasFactory, SoftDeletes;
 
+    // Ajouter ces champs aux fillables
     protected $fillable = [
         'admin_id',
         'manager_id',
         'employee_id',
+        'external_id',
+        'external_source',
         'customer_name',
         'customer_phone',
         'customer_phone_2',
+        'customer_email',
         'customer_governorate',
         'customer_city',
         'customer_address',
@@ -190,4 +194,145 @@ class Order extends Model
         $this->daily_attempts_count = 0;
         $this->save();
     }
+
+    /**
+     * Vérifie si la commande est disponible pour traitement
+     */
+
+    public function isProcessable()
+    {
+        // Vérifier les stocks pour les commandes nouvelles
+        if ($this->status === 'nouvelle' && $this->hasSufficientStock() === false) {
+            return false;
+        }
+        
+        // Si la commande a déjà été traitée aujourd'hui, vérifier le délai
+        if ($this->daily_attempts_count > 0 && $this->last_attempt_at) {
+            $queueType = $this->getQueueType();
+            $delayHours = Setting::get("{$queueType}_delay_hours", 2.5);
+            
+            if ($this->last_attempt_at->addHours($delayHours) > now()) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Vérifie le stock pour tous les produits de la commande
+     */
+    public function hasSufficientStock()
+    {
+        foreach ($this->items as $item) {
+            if ($item->product && $item->product->stock < $item->quantity) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Détermine le type de file pour cette commande
+     */
+    public function getQueueType()
+    {
+        if ($this->status === 'datée') {
+            return 'dated';
+        }
+        
+        $standardMaxAttempts = (int)AdminSetting::get("standard_max_total_attempts", 9);
+        
+        if ($this->status === 'nouvelle' && $this->attempts_count >= $standardMaxAttempts) {
+            return 'old';
+        }
+        
+        return 'standard';
+    }
+
+    /**
+     * Suspend la commande (généralement pour rupture de stock)
+     */
+    public function suspend($reason = null)
+    {
+        $this->is_suspended = true;
+        $this->suspension_reason = $reason;
+        $this->save();
+        
+        // Enregistrer dans l'historique
+        $this->recordHistory(
+            'suspension', 
+            'Commande suspendue: ' . ($reason ?: 'Raison non spécifiée')
+        );
+        
+        return $this;
+    }
+
+    /**
+     * Réactive une commande suspendue
+     */
+    public function reactivate($note = null)
+    {
+        $this->is_suspended = false;
+        $this->suspension_reason = null;
+        $this->save();
+        
+        // Enregistrer dans l'historique
+        $this->recordHistory(
+            'réactivation', 
+            $note ?: 'Commande réactivée'
+        );
+        
+        return $this;
+    }
+
+    /**
+     * Vérifie la disponibilité des stocks et suspend/réactive la commande si nécessaire
+     */
+    public function checkStockAndUpdateStatus()
+    {
+        $allInStock = true;
+        $missingProducts = [];
+        
+        foreach ($this->items as $item) {
+            if ($item->product && $item->product->stock < $item->quantity) {
+                $allInStock = false;
+                $missingProducts[] = $item->product->name;
+            }
+        }
+        
+        if (!$allInStock && !$this->is_suspended) {
+            $this->suspend('Rupture de stock: ' . implode(', ', $missingProducts));
+            return false;
+        } 
+        elseif ($allInStock && $this->is_suspended) {
+            $this->reactivate('Stock disponible pour tous les produits');
+            return true;
+        }
+        
+        return $allInStock;
+    }
+
+    /**
+     * Scope pour les commandes non suspendues
+     */
+    public function scopeNotSuspended($query)
+    {
+        return $query->where(function($q) {
+            $q->where('is_suspended', false)
+            ->orWhereNull('is_suspended');
+        });
+    }
+
+    /**
+     * Scope pour les commandes suspendues
+     */
+    public function scopeSuspended($query)
+    {
+        return $query->where('is_suspended', true);
+    }
+
+
+
 }

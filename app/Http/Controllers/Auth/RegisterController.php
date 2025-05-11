@@ -35,7 +35,7 @@ class RegisterController extends Controller
 
         // Récupérer la période d'essai dans les paramètres
         $trialPeriod = Setting::where('key', 'trial_period')->first();
-        $trialDays = $trialPeriod ? $trialPeriod->value : 3; // Par défaut 3 jours
+        $trialDays = $trialPeriod ? (int)$trialPeriod->value : 3; // Conversion en entier
         
         // Récupérer le paramètre pour autoriser l'inscription
         $allowRegistration = Setting::where('key', 'allow_registration')->first();
@@ -49,7 +49,7 @@ class RegisterController extends Controller
                 'password' => Hash::make($request->password),
                 'shop_name' => $request->shop_name,
                 'identifier' => $identifier,
-                'expiry_date' => now()->addDays($trialDays),
+                'expiry_date' => now()->addDays($trialDays), // La conversion en int est faite ci-dessus
                 'phone' => $request->phone,
                 'is_active' => $isActive,
                 'max_managers' => 1, // Valeur par défaut

@@ -37,6 +37,12 @@ class Admin extends Authenticatable
         'is_active' => 'boolean',
     ];
 
+    // Relation avec les paramètres WooCommerce
+    public function woocommerceSettings()
+    {
+        return $this->hasOne(WooCommerceSetting::class);
+    }
+
     public function managers()
     {
         return $this->hasMany(Manager::class);

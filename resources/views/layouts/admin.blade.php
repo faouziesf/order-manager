@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title') - Order Manager</title>
@@ -318,6 +319,7 @@
     @yield('css')
 </head>
 <body>
+    
     <!-- Animation de chargement -->
     <div class="page-loader">
         <div class="loader-logo">
@@ -339,6 +341,61 @@
                 <i class="fas fa-shopping-cart" style="font-size: 24px;"></i>
             </a>
         </div>
+        <!-- Dans la section des liens vers les files de traitement -->
+        <li class="sidebar-submenu-item">
+            <a href="{{ route('admin.process.standard') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.process.standard') ? 'active' : '' }}">
+                File Standard
+                @php
+                    $standardCount = App\Models\Order::where('admin_id', Auth::guard('admin')->id())
+                        ->where('status', 'nouvelle')
+                        ->notSuspended()
+                        ->where(function($q) {
+                            $q->where('daily_attempts_count', '<', App\Models\AdminSetting::get('standard_max_daily_attempts', 3))
+                            ->orWhere(function($q2) {
+                                $q2->whereNull('last_attempt_at')
+                                ->orWhere('last_attempt_at', '<=', now()->subHours(App\Models\AdminSetting::get('standard_delay_hours', 2.5)));
+                            });
+                        })
+                        ->count();
+                @endphp
+                @if($standardCount > 0)
+                    <span class="badge badge-pill bg-primary ml-1">{{ $standardCount }}</span>
+                @endif
+            </a>
+        </li>
+
+        <li class="sidebar-submenu-item">
+            <a href="{{ route('admin.process.dated') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.process.dated') ? 'active' : '' }}">
+                File Datée
+                @php
+                    $datedCount = App\Models\Order::where('admin_id', Auth::guard('admin')->id())
+                        ->where('status', 'datée')
+                        ->whereDate('scheduled_date', '<=', now())
+                        ->notSuspended()
+                        ->count();
+                @endphp
+                @if($datedCount > 0)
+                    <span class="badge badge-pill bg-warning ml-1">{{ $datedCount }}</span>
+                @endif
+            </a>
+        </li>
+
+        <li class="sidebar-submenu-item">
+            <a href="{{ route('admin.process.old') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.process.old') ? 'active' : '' }}">
+                File Ancienne
+                @php
+                    $standardMaxAttempts = (int)App\Models\AdminSetting::get("standard_max_total_attempts", 9);
+                    $oldCount = App\Models\Order::where('admin_id', Auth::guard('admin')->id())
+                        ->where('status', 'nouvelle')
+                        ->where('attempts_count', '>=', $standardMaxAttempts)
+                        ->notSuspended()
+                        ->count();
+                @endphp
+                @if($oldCount > 0)
+                    <span class="badge badge-pill bg-danger ml-1">{{ $oldCount }}</span>
+                @endif
+            </a>
+        </li>
         
         <ul class="sidebar-menu">
             <li class="sidebar-item">
@@ -349,6 +406,17 @@
                     <span class="sidebar-text">Tableau de bord</span>
                 </a>
             </li>
+
+            <!-- Section Traitement -->
+            <li class="sidebar-item">
+                <a href="{{ route('admin.process.interface') }}" class="sidebar-link {{ request()->routeIs('admin.process.interface') ? 'active' : '' }}">
+                    <div class="sidebar-icon">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <span class="sidebar-text">Traitement</span>
+                </a>
+            </li>
+
             
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.products*') ? 'active' : '' }}" data-target="productsSubmenu">
@@ -391,6 +459,38 @@
                     </li>
                 </ul>
             </li>
+
+            <!-- Après la section des commandes dans le menu -->
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') ? 'active' : '' }}" data-target="importSubmenu">
+                    <div class="sidebar-icon">
+                        <i class="fas fa-cloud-download-alt"></i>
+                    </div>
+                    <span class="sidebar-text">Importation</span>
+                </a>
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') ? 'show' : '' }}" id="importSubmenu">
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.import.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.import.index') ? 'active' : '' }}">
+                            Import CSV/Excel
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.woocommerce.index') }}" class="sidebar-submenu-link {{ request()->routeIs('admin.woocommerce.index') ? 'active' : '' }}">
+                            WooCommerce
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <!-- Lien vers la page des paramètres -->
+            <li class="sidebar-item">
+                <a href="{{ route('admin.settings.index') }}" class="sidebar-link {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}">
+                    <div class="sidebar-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <span class="sidebar-text">Paramètres</span>
+                </a>
+            </li>
             
             <!-- Autres éléments du menu à ajouter plus tard -->
         </ul>
@@ -424,6 +524,29 @@
                 </div>
             </div>
         </nav>
+
+        <!-- Notification pour les nouveaux produits -->
+        @php
+        $pending_products_count = Auth::guard('admin')->user()->products()->where('needs_review', true)->count();
+        @endphp
+
+        @if($pending_products_count > 0)
+        <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+            <div class="d-flex align-items-center">
+                <div class="alert-icon me-3">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                </div>
+                <div>
+                    <h5 class="mb-1">Nouveaux produits à examiner</h5>
+                    <p class="mb-0">
+                        {{ $pending_products_count }} produit(s) créé(s) automatiquement lors d'importations nécessite(nt) votre attention.
+                        <a href="{{ route('admin.products.review') }}" class="alert-link">Examiner maintenant</a>
+                    </p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        @endif
         
         <!-- Page Content -->
         <div class="container-fluid">
@@ -491,14 +614,7 @@
                 content.classList.toggle('content-expanded');
             });
             
-            // Auto-hide alerts after 5 seconds
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                setTimeout(function() {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 5000);
-            });
+            
             
             // Menu Toggle - Non collapsé uniquement
             const menuLinks = document.querySelectorAll('.sidebar-link[data-target]');
