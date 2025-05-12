@@ -50,6 +50,11 @@ Route::get('admin/process/{queue}', [App\Http\Controllers\Admin\ProcessControlle
 // Route pour charger le formulaire d'une commande spécifique
 Route::get('admin/process/{queue}/{order}/form', [App\Http\Controllers\Admin\ProcessController::class, 'getOrderForm'])->name('admin.process.getForm');
 
+// Routes AJAX pour les villes
+Route::get('admin/get-cities', [App\Http\Controllers\Admin\OrderController::class, 'getCities'])->name('admin.orders.getCities');
+
+// Routes AJAX pour les produits
+Route::get('admin/search-products', [App\Http\Controllers\Admin\OrderController::class, 'searchProducts'])->name('admin.orders.searchProducts');
 
 // Routes AJAX pour charger les commandes
 Route::get('admin/process/{queue}/next', [App\Http\Controllers\Admin\ProcessController::class, 'getNextOrderJson'])
