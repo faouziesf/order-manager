@@ -20,6 +20,144 @@ class ProcessController extends Controller
     {
         return view('admin.process.interface');
     }
+
+/**
+ * Obtient la prochaine commande d'une file d'attente au format JSON
+ * 
+ * @param string $queue Le nom de la file (standard, dated, old)
+ * @return \Illuminate\Http\JsonResponse
+ */
+public function getNextOrderJson($queue)
+{
+    $admin = Auth::guard('admin')->user();
+    $order = $this->findNextOrder($admin, $queue);
+    
+    if ($order) {
+        // Charger les relations nécessaires
+        $order->load(['region', 'city', 'items.product']);
+        
+        return response()->json([
+            'hasOrder' => true,
+            'order' => $order,
+            'count' => 1 // On renvoie 1 car on a trouvé une commande
+        ]);
+    }
+    
+    return response()->json([
+        'hasOrder' => false,
+        'count' => 0
+    ]);
+}
+
+    /**
+     * Trouve la prochaine commande à traiter
+     * 
+     * @param \App\Models\Admin $admin L'administrateur actuel
+     * @param string $queue Le nom de la file (standard, dated, old)
+     * @return \App\Models\Order|null
+     */
+    private function findNextOrder($admin, $queue)
+    {
+        $query = Order::where('admin_id', $admin->id);
+        
+        // Charger les paramètres
+        $maxDailyAttempts = (int)AdminSetting::get("{$queue}_max_daily_attempts", ($queue === 'standard' ? 3 : 2));
+        $delayHours = (float)AdminSetting::get("{$queue}_delay_hours", ($queue === 'standard' ? 2.5 : ($queue === 'dated' ? 3.5 : 6)));
+        $maxTotalAttempts = (int)AdminSetting::get("{$queue}_max_total_attempts", ($queue === 'standard' ? 9 : ($queue === 'dated' ? 5 : 0)));
+        
+        // Conditions selon la file
+        if ($queue === 'standard') {
+            $query->where('status', 'nouvelle');
+            
+            if ($maxTotalAttempts > 0) {
+                $query->where('attempts_count', '<', $maxTotalAttempts);
+            }
+        } 
+        elseif ($queue === 'dated') {
+            $query->where('status', 'datée')
+                ->whereDate('scheduled_date', '<=', now());
+                
+            if ($maxTotalAttempts > 0) {
+                $query->where('attempts_count', '<', $maxTotalAttempts);
+            }
+        }
+        elseif ($queue === 'old') {
+            $standardMaxAttempts = (int)AdminSetting::get("standard_max_total_attempts", 9);
+            
+            $query->where('status', 'nouvelle')
+                ->where('attempts_count', '>=', $standardMaxAttempts);
+                
+            if ($maxTotalAttempts > 0) {
+                $query->where('attempts_count', '<', $maxTotalAttempts);
+            }
+        }
+        
+        // Conditions communes
+        $query->where(function($q) use ($maxDailyAttempts, $delayHours) {
+            $q->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->orWhere(function($q2) use ($delayHours) {
+                $q2->whereNull('last_attempt_at')
+                    ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+            });
+        });
+        
+        // Exclure les commandes suspendues
+        $query->notSuspended();
+        
+        // Tri par priorité et ancienneté
+        $query->orderByRaw("FIELD(priority, 'vip', 'urgente', 'normale')") // Trier par priorité
+            ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
+            ->orderBy('created_at', 'asc');     // Plus anciennes commandes d'abord
+        
+        return $query->first();
+    }
+    
+
+    /**
+     * Obtient les compteurs des files d'attente
+     */
+    public function getQueueCounts()
+    {
+        $admin = Auth::guard('admin')->user();
+        
+        // Paramètres pour chaque file
+        $standardMaxAttempts = (int)AdminSetting::get('standard_max_total_attempts', 9); 
+        
+        // Compteurs
+        $standard = Order::where('admin_id', $admin->id)
+            ->where('status', 'nouvelle')
+            ->where('attempts_count', '<', $standardMaxAttempts)
+            ->where(function($q) {
+                $q->where('is_suspended', false)
+                ->orWhereNull('is_suspended');
+            })
+            ->count();
+        
+        $dated = Order::where('admin_id', $admin->id)
+            ->where('status', 'datée')
+            ->whereDate('scheduled_date', '<=', now())
+            ->where(function($q) {
+                $q->where('is_suspended', false)
+                ->orWhereNull('is_suspended');
+            })
+            ->count();
+        
+        $old = Order::where('admin_id', $admin->id)
+            ->where('status', 'nouvelle')
+            ->where('attempts_count', '>=', $standardMaxAttempts)
+            ->where(function($q) {
+                $q->where('is_suspended', false)
+                ->orWhereNull('is_suspended');
+            })
+            ->count();
+        
+        return response()->json([
+            'standard' => $standard,
+            'dated' => $dated,
+            'old' => $old
+        ]);
+    }
+
     
     /**
      * Obtient la prochaine commande d'une file d'attente
@@ -29,16 +167,29 @@ class ProcessController extends Controller
         $admin = Auth::guard('admin')->user();
         $order = $this->findNextOrder($admin, $queue);
         
-        if ($order) {
+        // Si c'est une requête AJAX, retourner en JSON
+        if (request()->ajax()) {
+            if ($order) {
+                // Charger les relations nécessaires
+                $order->load(['region', 'city', 'items.product']);
+                
+                return response()->json([
+                    'hasOrder' => true,
+                    'order' => $order
+                ]);
+            }
+            
             return response()->json([
-                'hasOrder' => true,
-                'order' => $order->toArray()
+                'hasOrder' => false
             ]);
         }
         
-        return response()->json([
-            'hasOrder' => false
-        ]);
+        // Pour les requêtes non-AJAX, retourner la vue
+        if ($order) {
+            return $this->getOrderForm($queue, $order);
+        }
+        
+        return view('admin.process.no_orders');
     }
     
     /**
@@ -319,64 +470,5 @@ class ProcessController extends Controller
         $order->save();
     }
     
-    /**
-     * Trouve la prochaine commande à traiter
-     */
-    private function findNextOrder($admin, $queue)
-    {
-        $query = Order::where('admin_id', $admin->id);
-        
-        // Charger les paramètres
-        $maxDailyAttempts = (int)AdminSetting::get("{$queue}_max_daily_attempts", ($queue === 'standard' ? 3 : 2));
-        $delayHours = (float)AdminSetting::get("{$queue}_delay_hours", ($queue === 'standard' ? 2.5 : ($queue === 'dated' ? 3.5 : 6)));
-        $maxTotalAttempts = (int)AdminSetting::get("{$queue}_max_total_attempts", ($queue === 'standard' ? 9 : ($queue === 'dated' ? 5 : 0)));
-        
-        // Conditions selon la file
-        if ($queue === 'standard') {
-            $query->where('status', 'nouvelle');
-            
-            if ($maxTotalAttempts > 0) {
-                $query->where('attempts_count', '<', $maxTotalAttempts);
-            }
-        } 
-        elseif ($queue === 'dated') {
-            $query->where('status', 'datée')
-                  ->whereDate('scheduled_date', '<=', now());
-                  
-            if ($maxTotalAttempts > 0) {
-                $query->where('attempts_count', '<', $maxTotalAttempts);
-            }
-        }
-        elseif ($queue === 'old') {
-            $standardMaxAttempts = (int)AdminSetting::get("standard_max_total_attempts", 9);
-            
-            $query->where('status', 'nouvelle')
-                  ->where('attempts_count', '>=', $standardMaxAttempts);
-                  
-            if ($maxTotalAttempts > 0) {
-                $query->where('attempts_count', '<', $maxTotalAttempts);
-            }
-        }
-        
-        // Conditions communes
-        $query->where(function($q) use ($maxDailyAttempts, $delayHours) {
-            $q->where('daily_attempts_count', '<', $maxDailyAttempts)
-              ->orWhere(function($q2) use ($delayHours) {
-                  $q2->whereNull('last_attempt_at')
-                     ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
-              });
-        });
-        
-        // Exclure les commandes suspendues
-        $query->where(function($q) {
-            $q->where('is_suspended', false)
-              ->orWhereNull('is_suspended');
-        });
-        
-        // Tri par priorité et ancienneté
-        return $query->orderBy('attempts_count', 'asc')
-                    ->orderBy('created_at', 'asc')
-                    ->with(['region', 'city', 'items.product'])
-                    ->first();
-    }
+
 }

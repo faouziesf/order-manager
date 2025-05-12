@@ -27,6 +27,20 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Route pour obtenir les compteurs des files
+Route::get('admin/process/counts', [App\Http\Controllers\Admin\ProcessController::class, 'getQueueCounts'])->name('admin.process.counts');
+
+// Route pour obtenir la prochaine commande d'une file (format JSON)
+Route::get('admin/process/{queue}/next', [App\Http\Controllers\Admin\ProcessController::class, 'getNextOrderJson'])->name('admin.process.queue.next');
+
+// Route pour le chargement des tentatives d'appel
+Route::get('admin/orders/{order}/attempts', [App\Http\Controllers\Admin\OrderController::class, 'getAttempts'])->name('admin.orders.attempts');
+
+// Route pour le chargement des régions
+Route::get('admin/get-regions', [App\Http\Controllers\Admin\OrderController::class, 'getRegions'])->name('admin.orders.getRegions');
+
+
+
 // Route pour l'interface unifiée de traitement (avec onglets)
 Route::get('admin/process', [App\Http\Controllers\Admin\ProcessController::class, 'interface'])->name('admin.process.interface');
 
@@ -36,8 +50,6 @@ Route::get('admin/process/{queue}', [App\Http\Controllers\Admin\ProcessControlle
 // Route pour charger le formulaire d'une commande spécifique
 Route::get('admin/process/{queue}/{order}/form', [App\Http\Controllers\Admin\ProcessController::class, 'getOrderForm'])->name('admin.process.getForm');
 
-// Route pour l'interface unifiée de traitement
-Route::get('admin/process', [App\Http\Controllers\Admin\ProcessController::class, 'interface'])->name('admin.process.interface');
 
 // Routes AJAX pour charger les commandes
 Route::get('admin/process/{queue}/next', [App\Http\Controllers\Admin\ProcessController::class, 'getNextOrderJson'])

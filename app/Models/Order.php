@@ -333,6 +333,15 @@ class Order extends Model
         return $query->where('is_suspended', true);
     }
 
-
+    /**
+     * Scope pour les commandes non suspendues
+     */
+    public function scopeNotSuspended($query)
+    {
+        return $query->where(function($q) {
+            $q->where('is_suspended', false)
+            ->orWhereNull('is_suspended');
+        });
+    }
 
 }
