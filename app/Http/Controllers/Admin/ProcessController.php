@@ -104,8 +104,13 @@ public function getNextOrderJson($queue)
         // Exclure les commandes suspendues
         $query->notSuspended();
         
-        // Tri par priorité et ancienneté
-        $query->orderByRaw("FIELD(priority, 'vip', 'urgente', 'normale')") // Trier par priorité
+        // Tri par priorité et ancienneté (compatible avec SQLite)
+        $query->orderByRaw("CASE 
+                WHEN priority = 'vip' THEN 1 
+                WHEN priority = 'urgente' THEN 2 
+                WHEN priority = 'normale' THEN 3 
+                ELSE 4 
+            END")
             ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
             ->orderBy('created_at', 'asc');     // Plus anciennes commandes d'abord
         
