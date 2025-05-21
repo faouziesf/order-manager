@@ -223,6 +223,15 @@ class OrderController extends Controller
         // Charger les produits de la commande
         $order->load('items.product');
         
+        // Charger l'historique manuellement pour éviter les erreurs de relations
+        try {
+            $history = $order->history()->orderBy('created_at', 'desc')->get();
+            $order->setRelation('history', $history);
+        } catch (\Exception $e) {
+            // En cas d'erreur, définir un historique vide
+            $order->setRelation('history', collect([]));
+        }
+        
         return view('admin.orders.edit', compact('order', 'regions', 'products'));
     }
 
