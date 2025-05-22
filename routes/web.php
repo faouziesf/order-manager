@@ -1,5 +1,5 @@
 <?php
-
+use App\Http\Controllers\Admin\ProcessController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\OrderController;
@@ -177,7 +177,17 @@ Route::prefix('manager')->name('manager.')->group(function () {
         })->name('dashboard');
     });
 });
-
+// Add these routes to your web.php file
+Route::group(['prefix' => 'admin', 'middleware' => ['auth:admin']], function () {
+    
+    // Process routes
+    Route::get('/process', [ProcessController::class, 'interface'])->name('admin.process.interface');
+    Route::get('/process/test', [ProcessController::class, 'test'])->name('admin.process.test');
+    Route::get('/process/counts', [ProcessController::class, 'getCounts'])->name('admin.process.getCounts');
+    Route::get('/process/{queue}', [ProcessController::class, 'getQueue'])->name('admin.process.getQueue');
+    Route::post('/process/action/{order}', [ProcessController::class, 'processAction'])->name('admin.process.action');
+    
+});
 // Routes pour Employee
 Route::prefix('employee')->name('employee.')->group(function () {
     // Routes protégées par middleware
