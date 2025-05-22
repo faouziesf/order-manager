@@ -388,7 +388,6 @@
 
 @section('content')
     <div class="container-fluid px-0">
-        <!-- Header -->
         <div class="order-header">
             <div>
                 <h1 class="h3 mb-0 text-gray-800">Traitement des Commandes</h1>
@@ -406,7 +405,6 @@
             </div>
         </div>
 
-        <!-- Queue Tabs -->
         <div class="queue-tabs">
             <ul class="nav nav-tabs" id="queueTabs">
                 <li class="nav-item">
@@ -430,7 +428,6 @@
             </ul>
         </div>
 
-        <!-- Work Area -->
         <div class="work-area">
             <div id="orderContent">
                 <div class="loading-indicator">
@@ -441,15 +438,12 @@
         </div>
     </div>
 
-    <!-- Debug Console -->
     <div class="debug-console" id="debugConsole">
         <div id="debugContent"></div>
     </div>
 
-    <!-- Notifications -->
     <div id="notificationsContainer"></div>
 
-    <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
     </div>
@@ -467,10 +461,12 @@
 
             log(message, type = 'info') {
                 const timestamp = new Date().toLocaleTimeString();
-                const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+                // Ensure 'type' is a string before calling toUpperCase
+                const logType = (typeof type === 'string' && type.length > 0) ? type : 'info';
+                const logEntry = `[${timestamp}] ${logType.toUpperCase()}: ${message}`;
 
                 this.logs.push(logEntry);
-                console.log(logEntry);
+                console.log(logEntry); // Original console.log for direct browser inspection
 
                 if (this.enabled) {
                     this.updateConsole();
@@ -483,10 +479,10 @@
             },
 
             updateConsole() {
-                const console = document.getElementById('debugContent');
-                if (console) {
-                    console.innerHTML = this.logs.slice(-20).join('<br>');
-                    console.scrollTop = console.scrollHeight;
+                const consoleEl = document.getElementById('debugContent');
+                if (consoleEl) {
+                    consoleEl.innerHTML = this.logs.slice(-20).join('<br>');
+                    consoleEl.scrollTop = consoleEl.scrollHeight;
                 }
             },
 
@@ -579,7 +575,7 @@
                 </div>
                 <h4>Erreur de connexion API</h4>
                 <p class="text-muted mb-3">
-                    Impossible de se connecter au serveur. 
+                    Impossible de se connecter au serveur.
                     Vérifiez que les routes sont correctement configurées.
                 </p>
                 <div class="mb-3">
@@ -680,7 +676,9 @@
                         throw new Error(response.error);
                     }
 
-                    Debug.log(`✅ Queue data received:`, response);
+                    // CORRECTED Debug.log call
+                    Debug.log(`✅ Queue data received: ${JSON.stringify(response, null, 2)}`);
+
 
                     if (response.hasOrder && response.order) {
                         this.config.currentOrderId = response.order.id;
@@ -714,9 +712,22 @@
                     ...defaultOptions,
                     ...options
                 };
+                if (options.body && typeof options.body !== 'string') { // Ensure body is stringified if it's FormData
+                    // For FormData, Content-Type should not be set, browser will handle it.
+                    // Let's adjust if we are sending FormData (used in submitOrder)
+                    if (!(options.body instanceof FormData)) {
+                         finalOptions.body = JSON.stringify(options.body);
+                    } else {
+                        // For FormData, remove Content-Type header, browser sets it with boundary
+                        delete finalOptions.headers['Content-Type'];
+                    }
+                }
+
 
                 Debug.log(`📡 Making request to: ${url}`, 'info');
-                Debug.log(`📡 Request options:`, finalOptions);
+                // CORRECTED Debug.log call
+                Debug.log(`📡 Request options: ${JSON.stringify(finalOptions, null, 2)}`);
+
 
                 const response = await fetch(url, finalOptions);
 
@@ -725,11 +736,12 @@
                 if (!response.ok) {
                     const errorText = await response.text();
                     Debug.log(`📡 Error response: ${errorText}`, 'error');
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
                 }
 
                 const data = await response.json();
-                Debug.log(`📡 Response data:`, data);
+                // CORRECTED Debug.log call
+                Debug.log(`📡 Response data: ${JSON.stringify(data, null, 2)}`);
 
                 return data;
             },
@@ -757,7 +769,7 @@
                         </button>
                     ` : ''}
                 <button class="btn btn-outline-secondary" onclick="location.reload()">
-                    <i class="fas fa-refresh"></i> Recharger
+                    <i class="fas fa-sync-alt"></i> Recharger
                 </button>
             </div>
         `;
@@ -789,46 +801,45 @@
             generateOrderHTML(order) {
                 return `
             <div class="order-container">
-                <!-- Client Section -->
                 <div class="client-section">
                     <h4 class="section-title">Informations Client</h4>
-                    
+
                     <form id="processForm" method="POST">
                         <input type="hidden" name="_token" value="${this.config.csrfToken}">
+                        <input type="hidden" name="order_id" value="${order.id}">
                         <input type="hidden" name="queue" value="${this.config.currentQueue}">
-                        
+
                         <div class="client-form">
                             <div class="form-group">
                                 <label for="customer_phone" class="required">Téléphone</label>
-                                <input type="tel" class="form-control" id="customer_phone" name="customer_phone" 
+                                <input type="tel" class="form-control" id="customer_phone" name="customer_phone"
                                        value="${order.customer_phone || ''}" required>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="customer_name">Nom du client</label>
-                                <input type="text" class="form-control" id="customer_name" name="customer_name" 
+                                <input type="text" class="form-control" id="customer_name" name="customer_name"
                                        value="${order.customer_name || ''}">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="customer_phone_2">Téléphone 2</label>
-                                <input type="tel" class="form-control" id="customer_phone_2" name="customer_phone_2" 
+                                <input type="tel" class="form-control" id="customer_phone_2" name="customer_phone_2"
                                        value="${order.customer_phone_2 || ''}">
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="shipping_cost">Frais de livraison (DT)</label>
-                                <input type="number" class="form-control" id="shipping_cost" name="shipping_cost" 
-                                       step="0.001" value="${order.shipping_cost || 0}">
+                                <input type="number" class="form-control" id="shipping_cost" name="shipping_cost"
+                                       step="0.001" value="${parseFloat(order.shipping_cost || 0).toFixed(3)}">
                             </div>
-                            
+
                             <div class="form-group full-width">
                                 <label for="customer_address">Adresse</label>
                                 <textarea class="form-control" id="customer_address" name="customer_address" rows="2">${order.customer_address || ''}</textarea>
                             </div>
                         </div>
-                        
-                        <!-- Cart Summary -->
+
                         <div class="cart-summary">
                             <div class="cart-summary-item">
                                 <span>Sous-total:</span>
@@ -840,16 +851,15 @@
                             </div>
                             <div class="cart-summary-total">
                                 <span><strong>Total:</strong></span>
-                                <span id="totalDisplay"><strong>${this.formatPrice((order.total_price || 0) + (order.shipping_cost || 0))} DT</strong></span>
+                                <span id="totalDisplay"><strong>${this.formatPrice((parseFloat(order.total_price) || 0) + (parseFloat(order.shipping_cost) || 0))} DT</strong></span>
                             </div>
                         </div>
                     </form>
                 </div>
-                
-                <!-- Action Section -->
+
                 <div class="action-section">
                     <h4 class="section-title">Actions à effectuer</h4>
-                    
+
                     <div class="form-group">
                         <label for="actionType">Action</label>
                         <select class="form-control" id="actionType" name="action" form="processForm">
@@ -860,24 +870,23 @@
                             <option value="schedule">Dater la commande</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="notes" class="required">Notes</label>
                         <textarea class="form-control" id="notes" name="notes" form="processForm" rows="4"
                                   placeholder="Expliquez la raison de cette action..."></textarea>
                     </div>
-                    
-                    <!-- Conditional sections will be inserted here -->
+
                     <div id="conditionalSection"></div>
-                    
+
                     <div class="text-center mb-3">
                         <small class="text-muted">
-                            <i class="fas fa-phone"></i> 
+                            <i class="fas fa-phone"></i>
                             <strong>${order.attempts_count || 0}</strong> tentatives totales
                             | <strong>${order.daily_attempts_count || 0}</strong> aujourd'hui
                         </small>
                     </div>
-                    
+
                     <button type="button" class="action-button" id="submitAction">
                         Enregistrer
                     </button>
@@ -891,6 +900,7 @@
 
                 // Setup event listeners
                 this.setupFormEventListeners();
+                this.updateCartSummary(); // Initial cart summary update
 
                 Debug.log('✅ Order form initialized');
             },
@@ -920,7 +930,7 @@
                 $conditional.innerHTML = '';
 
                 // Reset button style
-                $submitBtn.style.backgroundColor = '';
+                $submitBtn.style.backgroundColor = ''; // Resets to CSS defined
                 $submitBtn.textContent = 'Enregistrer';
 
                 Debug.log(`🎛️ Action changed to: ${action}`);
@@ -954,9 +964,9 @@
                 container.innerHTML = `
             <div class="conditional-section" style="display: block;">
                 <label for="confirmed_price" class="required">Prix confirmé (DT)</label>
-                <input type="number" id="confirmed_price" name="confirmed_price" 
+                <input type="number" id="confirmed_price" name="confirmed_price"
                        class="form-control" step="0.001" form="processForm" required>
-                <small class="text-muted">Veuillez confirmer le prix total</small>
+                <small class="text-muted">Veuillez confirmer le prix total de la commande.</small>
             </div>
         `;
 
@@ -969,9 +979,9 @@
                 container.innerHTML = `
             <div class="conditional-section" style="display: block;">
                 <label for="scheduled_date" class="required">Date de livraison</label>
-                <input type="text" id="scheduled_date" name="scheduled_date" 
-                       class="form-control flatpickr" form="processForm" required>
-                <small class="text-muted">Sélectionnez la date programmée</small>
+                <input type="text" id="scheduled_date" name="scheduled_date"
+                       class="form-control flatpickr" form="processForm" required placeholder="YYYY-MM-DD">
+                <small class="text-muted">Sélectionnez la date programmée pour la livraison.</small>
             </div>
         `;
 
@@ -1005,30 +1015,38 @@
 
                     // Prepare form data
                     const formData = new FormData($form);
+                    // Add order_id explicitly if not already picked up by FormData for some reason
+                    if (!formData.has('order_id') && this.config.currentOrderId) {
+                        formData.append('order_id', this.config.currentOrderId);
+                    }
+
 
                     // Submit
                     const url = `${this.config.routes.action}/${this.config.currentOrderId}`;
                     const response = await this.makeRequest(url, {
                         method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRF-TOKEN': this.config.csrfToken,
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
+                        body: formData
+                        // Headers for FormData are set by makeRequest (removes Content-Type)
                     });
 
+
                     if (response.error) {
+                         // Check for specific validation errors
+                        if (response.errors) {
+                            let errorMessages = Object.values(response.errors).flat().join('<br>');
+                            throw new Error(errorMessages);
+                        }
                         throw new Error(response.error);
                     }
 
-                    Debug.log('✅ Order submitted successfully');
-                    this.showNotification('Commande traitée avec succès', 'success');
+
+                    Debug.log(`✅ Order submitted successfully: ${JSON.stringify(response)}`);
+                    this.showNotification(response.message || 'Commande traitée avec succès', 'success');
 
                     // Reload queue after success
-                    setTimeout(() => {
-                        this.loadQueueCounts();
-                        this.loadQueue(this.config.currentQueue);
+                    setTimeout(async () => {
+                        await this.loadQueueCounts();
+                        await this.loadQueue(this.config.currentQueue);
                     }, 1000);
 
                 } catch (error) {
@@ -1048,13 +1066,13 @@
                 const notes = document.getElementById('notes')?.value?.trim();
 
                 if (!action) {
-                    this.showNotification('Veuillez sélectionner une action', 'error');
+                    this.showNotification('Veuillez sélectionner une action', 'warning');
                     document.getElementById('actionType')?.focus();
                     return false;
                 }
 
                 if (!notes) {
-                    this.showNotification('Les notes sont obligatoires', 'error');
+                    this.showNotification('Les notes sont obligatoires', 'warning');
                     document.getElementById('notes')?.focus();
                     return false;
                 }
@@ -1062,19 +1080,22 @@
                 // Validate specific action requirements
                 if (action === 'confirm') {
                     const confirmedPrice = document.getElementById('confirmed_price')?.value;
-                    if (!confirmedPrice) {
-                        this.showNotification('Le prix confirmé est obligatoire', 'error');
+                    if (!confirmedPrice || parseFloat(confirmedPrice) < 0) {
+                        this.showNotification('Le prix confirmé est obligatoire et doit être positif.', 'warning');
                         document.getElementById('confirmed_price')?.focus();
                         return false;
                     }
 
-                    // Check required client fields for confirmation
-                    const requiredFields = ['customer_name', 'customer_phone', 'customer_address'];
-                    for (const field of requiredFields) {
-                        const element = document.getElementById(field);
+                    const requiredFields = {
+                        'customer_name': 'Nom du client',
+                        'customer_phone': 'Téléphone',
+                        'customer_address': 'Adresse'
+                    };
+                    for (const fieldId in requiredFields) {
+                        const element = document.getElementById(fieldId);
                         if (!element?.value?.trim()) {
-                            this.showNotification('Tous les champs client sont obligatoires pour une confirmation',
-                                'error');
+                            this.showNotification(`${requiredFields[fieldId]} est obligatoire pour une confirmation.`,
+                                'warning');
                             element?.focus();
                             return false;
                         }
@@ -1082,7 +1103,7 @@
                 } else if (action === 'schedule') {
                     const scheduledDate = document.getElementById('scheduled_date')?.value;
                     if (!scheduledDate) {
-                        this.showNotification('La date programmée est obligatoire', 'error');
+                        this.showNotification('La date programmée est obligatoire', 'warning');
                         document.getElementById('scheduled_date')?.focus();
                         return false;
                     }
@@ -1093,24 +1114,43 @@
 
             // ===== CART CALCULATIONS =====
             calculateTotal() {
-                const shipping = parseFloat(document.getElementById('shipping_cost')?.value) || 0;
-                const subtotal = parseFloat(document.getElementById('subtotalDisplay')?.textContent?.replace(' DT',
-                    '')) || 0;
+                const shippingEl = document.getElementById('shipping_cost');
+                const subtotalEl = document.getElementById('subtotalDisplay');
+
+                const shipping = parseFloat(shippingEl?.value) || 0;
+                const subtotalText = subtotalEl?.textContent?.replace(/[^\d.-]/g, ''); // Keep only digits, dot, and minus
+                const subtotal = parseFloat(subtotalText) || 0;
+
                 return subtotal + shipping;
             },
 
             updateCartSummary() {
-                const shipping = parseFloat(document.getElementById('shipping_cost')?.value) || 0;
-                const subtotal = parseFloat(document.getElementById('subtotalDisplay')?.textContent?.replace(' DT',
-                    '')) || 0;
-                const total = subtotal + shipping;
-
+                const shippingEl = document.getElementById('shipping_cost');
+                const subtotalEl = document.getElementById('subtotalDisplay');
                 const shippingDisplay = document.getElementById('shippingDisplay');
                 const totalDisplay = document.getElementById('totalDisplay');
 
-                if (shippingDisplay) shippingDisplay.textContent = `${this.formatPrice(shipping)} DT`;
-                if (totalDisplay) totalDisplay.textContent = `${this.formatPrice(total)} DT`;
+                if (!shippingEl || !subtotalEl || !shippingDisplay || !totalDisplay) {
+                    Debug.log("Cart summary elements not found.", "warning");
+                    return;
+                }
+
+                const shipping = parseFloat(shippingEl.value) || 0;
+                const subtotalText = subtotalEl.textContent?.replace(/[^\d.-]/g, '');
+                const subtotal = parseFloat(subtotalText) || 0;
+
+                const total = subtotal + shipping;
+
+                shippingDisplay.textContent = `${this.formatPrice(shipping)} DT`;
+                totalDisplay.innerHTML = `<strong>${this.formatPrice(total)} DT</strong>`;
+
+                // If confirming, update confirmed price field as well
+                const confirmedPriceEl = document.getElementById('confirmed_price');
+                if (confirmedPriceEl && document.getElementById('actionType')?.value === 'confirm') {
+                    confirmedPriceEl.value = this.formatPrice(total);
+                }
             },
+
 
             // ===== UI HELPERS =====
             displayNoOrders(queue) {
@@ -1118,12 +1158,12 @@
                 container.innerHTML = `
             <div class="no-orders">
                 <div class="icon">
-                    <i class="fas fa-coffee"></i>
+                    <i class="fas fa-coffee fa-3x"></i>
                 </div>
-                <h3>Aucune commande à traiter</h3>
-                <p>Il n'y a actuellement aucune commande dans la file ${queue}.</p>
+                <h3 class="mt-3">Aucune commande à traiter</h3>
+                <p class="text-muted">Il n'y a actuellement aucune commande dans la file ${queue}.</p>
                 <p>Prenez une pause café! ☕</p>
-                <button class="btn btn-outline-primary" onclick="OrderManager.loadQueue('${queue}')">
+                <button class="btn btn-outline-primary mt-3" onclick="OrderManager.loadQueue('${queue}')">
                     <i class="fas fa-redo"></i> Actualiser
                 </button>
             </div>
@@ -1141,11 +1181,11 @@
                     queueTypeDisplay.textContent = `- File ${this.config.currentQueue}`;
 
                     orderStatus.textContent = order.status || 'nouvelle';
-                    orderStatus.className = `status-badge status-${order.status || 'nouvelle'}`;
+                    orderStatus.className = `status-badge status-${(order.status || 'nouvelle').toLowerCase().replace(' ', '-')}`;
                     orderStatus.style.display = 'inline-block';
 
                     orderPriority.textContent = order.priority || 'normale';
-                    orderPriority.className = `status-badge priority-${order.priority || 'normale'}`;
+                    orderPriority.className = `status-badge priority-${(order.priority || 'normale').toLowerCase()}`;
                     orderPriority.style.display = 'inline-block';
                 } else {
                     orderIdDisplay.textContent = 'Aucune commande sélectionnée';
@@ -1160,9 +1200,10 @@
                 if (!badge) return;
 
                 badge.textContent = count;
-                badge.classList.remove('bg-primary', 'bg-warning', 'bg-danger', 'bg-secondary');
+                badge.classList.remove('bg-primary', 'bg-warning', 'bg-danger', 'bg-secondary', 'text-white'); // Reset all possible color classes
 
                 if (count > 0) {
+                    badge.classList.add('text-white'); // Ensure text is readable on colored backgrounds
                     if (queue === 'standard') {
                         badge.classList.add('bg-primary');
                     } else if (queue === 'dated') {
@@ -1172,21 +1213,29 @@
                     }
                 } else {
                     badge.classList.add('bg-secondary');
+                     badge.classList.remove('text-white'); // Default for secondary might not need white text
                 }
             },
 
             // ===== NOTIFICATIONS =====
             showNotification(message, type = 'info') {
                 const container = document.getElementById('notificationsContainer');
+                if (!container) return;
 
                 const notification = document.createElement('div');
                 notification.className = `notification ${type}`;
                 notification.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <span>${message}</span>
-                <button type="button" class="btn-close btn-close-white ms-2" onclick="this.parentElement.parentElement.remove()"></button>
+                <button type="button" class="btn-close ms-2" aria-label="Close" style="background: none; border: none; font-size: 1.2rem; color: inherit; opacity: 0.7;" onclick="this.parentElement.parentElement.remove()">×</button>
             </div>
         `;
+                // Make btn-close white if on dark backgrounds potentially
+                if (type === 'error' || type === 'success' || type === 'info' || type === 'warning') {
+                     const btnClose = notification.querySelector('.btn-close');
+                     if(btnClose) btnClose.classList.add('btn-close-white');
+                }
+
 
                 container.appendChild(notification);
 
@@ -1204,16 +1253,20 @@
 
             // ===== LOADING STATES =====
             showLoading() {
-                document.getElementById('loadingOverlay').style.display = 'flex';
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) loadingOverlay.style.display = 'flex';
             },
 
             hideLoading() {
-                document.getElementById('loadingOverlay').style.display = 'none';
+                 const loadingOverlay = document.getElementById('loadingOverlay');
+                 if (loadingOverlay) loadingOverlay.style.display = 'none';
             },
 
             // ===== UTILITIES =====
             formatPrice(price) {
-                return parseFloat(price || 0).toFixed(3);
+                const num = parseFloat(price);
+                if (isNaN(num)) return '0.000';
+                return num.toFixed(3);
             }
         };
 
@@ -1229,11 +1282,15 @@
 
         // ===== GLOBAL ERROR HANDLING =====
         window.addEventListener('error', (event) => {
-            Debug.log(`🚨 Global error: ${event.error?.message}`, 'error');
+            Debug.log(`🚨 Global JS error: ${event.message} in ${event.filename}:${event.lineno}`, 'error');
         });
 
         window.addEventListener('unhandledrejection', (event) => {
-            Debug.log(`🚨 Unhandled promise rejection: ${event.reason}`, 'error');
+            let reason = event.reason;
+            if (typeof reason === 'object' && reason !== null) {
+                reason = reason.message || JSON.stringify(reason);
+            }
+            Debug.log(`🚨 Unhandled promise rejection: ${reason}`, 'error');
         });
     </script>
 @endsection
