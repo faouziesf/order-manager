@@ -28,8 +28,20 @@ class ProcessController extends Controller
     public function getQueue($queue)
     {
         try {
+            // CORRECTION: Vérifier que $queue est une chaîne et la nettoyer
+            if (!is_string($queue)) {
+                Log::error('getQueue: paramètre queue n\'est pas une chaîne', ['queue' => $queue, 'type' => gettype($queue)]);
+                return response()->json([
+                    'error' => 'Paramètre de file d\'attente invalide (type incorrect)',
+                    'hasOrder' => false
+                ], 400);
+            }
+
+            $queue = trim(strtolower($queue));
+            
             // Valider le nom de la file
             if (!in_array($queue, ['standard', 'dated', 'old'])) {
+                Log::error('getQueue: nom de file invalide', ['queue' => $queue]);
                 return response()->json([
                     'error' => 'File d\'attente invalide',
                     'hasOrder' => false
@@ -95,7 +107,8 @@ class ProcessController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur dans getQueue: ' . $e->getMessage(), [
-                'queue' => $queue,
+                'queue' => $queue ?? 'undefined',
+                'queue_type' => isset($queue) ? gettype($queue) : 'undefined',
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -120,36 +133,10 @@ class ProcessController extends Controller
                 ], 401);
             }
             
-            // Paramètres pour chaque file
-            $standardMaxAttempts = (int)AdminSetting::get('standard_max_total_attempts', 9); 
-            
             // Compteurs avec gestion d'erreur
-            $standard = Order::where('admin_id', $admin->id)
-                ->where('status', 'nouvelle')
-                ->where('attempts_count', '<', $standardMaxAttempts)
-                ->where(function($q) {
-                    $q->where('is_suspended', false)
-                    ->orWhereNull('is_suspended');
-                })
-                ->count();
-            
-            $dated = Order::where('admin_id', $admin->id)
-                ->where('status', 'datée')
-                ->whereDate('scheduled_date', '<=', now())
-                ->where(function($q) {
-                    $q->where('is_suspended', false)
-                    ->orWhereNull('is_suspended');
-                })
-                ->count();
-            
-            $old = Order::where('admin_id', $admin->id)
-                ->where('status', 'nouvelle')
-                ->where('attempts_count', '>=', $standardMaxAttempts)
-                ->where(function($q) {
-                    $q->where('is_suspended', false)
-                    ->orWhereNull('is_suspended');
-                })
-                ->count();
+            $standard = $this->getQueueCount($admin, 'standard');
+            $dated = $this->getQueueCount($admin, 'dated');
+            $old = $this->getQueueCount($admin, 'old');
             
             return response()->json([
                 'standard' => $standard,
@@ -171,17 +158,102 @@ class ProcessController extends Controller
     }
 
     /**
+     * Helper pour obtenir le nombre de commandes dans une file
+     */
+    private function getQueueCount($admin, $queue)
+    {
+        try {
+            // CORRECTION: Validation du paramètre queue
+            if (!is_string($queue) || !in_array($queue, ['standard', 'dated', 'old'])) {
+                Log::warning("getQueueCount: paramètre queue invalide", ['queue' => $queue]);
+                return 0;
+            }
+
+            $query = Order::where('admin_id', $admin->id);
+            
+            switch ($queue) {
+                case 'standard':
+                    $maxAttempts = $this->getSetting('standard_max_total_attempts', 9);
+                    return $query->where('status', 'nouvelle')
+                        ->where('attempts_count', '<', $maxAttempts)
+                        ->where(function($q) {
+                            $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                        })
+                        ->count();
+                        
+                case 'dated':
+                    return $query->where('status', 'datée')
+                        ->whereDate('scheduled_date', '<=', now())
+                        ->where(function($q) {
+                            $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                        })
+                        ->count();
+                        
+                case 'old':
+                    $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
+                    return $query->where('status', 'nouvelle')
+                        ->where('attempts_count', '>=', $standardMaxAttempts)
+                        ->where(function($q) {
+                            $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                        })
+                        ->count();
+                        
+                default:
+                    return 0;
+            }
+        } catch (\Exception $e) {
+            Log::error("Erreur dans getQueueCount pour {$queue}: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Helper pour obtenir les paramètres avec gestion d'erreur
+     */
+    private function getSetting($key, $default)
+    {
+        try {
+            // CORRECTION: Validation du paramètre key
+            if (!is_string($key)) {
+                Log::warning("getSetting: clé invalide", ['key' => $key, 'type' => gettype($key)]);
+                return $default;
+            }
+            
+            return (int)AdminSetting::get($key, $default);
+        } catch (\Exception $e) {
+            Log::warning("Impossible de récupérer le setting {$key}, utilisation de la valeur par défaut: {$default}");
+            return $default;
+        }
+    }
+
+    /**
      * Trouve la prochaine commande à traiter
      */
     private function findNextOrder($admin, $queue)
     {
         try {
+            // CORRECTION: Validation des paramètres
+            if (!$admin || !is_string($queue)) {
+                Log::error('findNextOrder: paramètres invalides', [
+                    'admin' => $admin ? $admin->id : null,
+                    'queue' => $queue,
+                    'queue_type' => gettype($queue)
+                ]);
+                return null;
+            }
+
+            $queue = trim(strtolower($queue));
+            
+            if (!in_array($queue, ['standard', 'dated', 'old'])) {
+                Log::error('findNextOrder: queue invalide', ['queue' => $queue]);
+                return null;
+            }
+
             $query = Order::where('admin_id', $admin->id);
             
             // Charger les paramètres avec valeurs par défaut
-            $maxDailyAttempts = (int)AdminSetting::get("{$queue}_max_daily_attempts", ($queue === 'standard' ? 3 : 2));
-            $delayHours = (float)AdminSetting::get("{$queue}_delay_hours", ($queue === 'standard' ? 2.5 : ($queue === 'dated' ? 3.5 : 6)));
-            $maxTotalAttempts = (int)AdminSetting::get("{$queue}_max_total_attempts", ($queue === 'standard' ? 9 : ($queue === 'dated' ? 5 : 0)));
+            $maxDailyAttempts = $this->getSetting("{$queue}_max_daily_attempts", ($queue === 'standard' ? 3 : 2));
+            $maxTotalAttempts = $this->getSetting("{$queue}_max_total_attempts", ($queue === 'standard' ? 9 : ($queue === 'dated' ? 5 : 0)));
             
             // Conditions selon la file
             if ($queue === 'standard') {
@@ -200,7 +272,7 @@ class ProcessController extends Controller
                 }
             }
             elseif ($queue === 'old') {
-                $standardMaxAttempts = (int)AdminSetting::get("standard_max_total_attempts", 9);
+                $standardMaxAttempts = $this->getSetting("standard_max_total_attempts", 9);
                 
                 $query->where('status', 'nouvelle')
                     ->where('attempts_count', '>=', $standardMaxAttempts);
@@ -210,7 +282,7 @@ class ProcessController extends Controller
                 }
             }
             
-            // Conditions communes - simplifiées pour éviter les erreurs
+            // Conditions communes
             $query->where('daily_attempts_count', '<', $maxDailyAttempts);
             
             // Exclure les commandes suspendues
@@ -228,8 +300,8 @@ class ProcessController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur dans findNextOrder: ' . $e->getMessage(), [
-                'queue' => $queue,
-                'admin_id' => $admin->id
+                'queue' => $queue ?? 'undefined',
+                'admin_id' => $admin ? $admin->id : null
             ]);
             return null;
         }
@@ -271,7 +343,7 @@ class ProcessController extends Controller
                     $this->validateConfirmation($request);
                     $this->confirmOrder($order, $request);
                     break;
-                    
+    
                 case 'cancel':
                     $order->status = 'annulée';
                     $order->save();
@@ -428,5 +500,21 @@ class ProcessController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    // Méthodes pour les vues individuelles (si nécessaire)
+    public function standardQueue()
+    {
+        return view('admin.process.standard');
+    }
+
+    public function datedQueue()
+    {
+        return view('admin.process.dated');
+    }
+
+    public function oldQueue()
+    {
+        return view('admin.process.old');
     }
 }

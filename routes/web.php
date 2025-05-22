@@ -27,79 +27,6 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Route pour obtenir les compteurs des files
-Route::get('admin/process/counts', [App\Http\Controllers\Admin\ProcessController::class, 'getQueueCounts'])->name('admin.process.counts');
-
-// Route pour obtenir la prochaine commande d'une file (format JSON)
-Route::get('admin/process/{queue}/next', [App\Http\Controllers\Admin\ProcessController::class, 'getNextOrderJson'])->name('admin.process.queue.next');
-
-// Route pour le chargement des tentatives d'appel
-Route::get('admin/orders/{order}/attempts', [App\Http\Controllers\Admin\OrderController::class, 'getAttempts'])->name('admin.orders.attempts');
-
-// Route pour le chargement des régions
-Route::get('admin/get-regions', [App\Http\Controllers\Admin\OrderController::class, 'getRegions'])->name('admin.orders.getRegions');
-
-
-
-// Route pour l'interface unifiée de traitement (avec onglets)
-Route::get('admin/process', [App\Http\Controllers\Admin\ProcessController::class, 'interface'])->name('admin.process.interface');
-
-// Routes pour charger la prochaine commande d'une file
-Route::get('admin/process/{queue}', [App\Http\Controllers\Admin\ProcessController::class, 'getNextOrder'])->name('admin.process.getNext');
-
-// Route pour charger le formulaire d'une commande spécifique
-Route::get('admin/process/{queue}/{order}/form', [App\Http\Controllers\Admin\ProcessController::class, 'getOrderForm'])->name('admin.process.getForm');
-
-// Routes AJAX pour les villes
-Route::get('admin/get-cities', [App\Http\Controllers\Admin\OrderController::class, 'getCities'])->name('admin.orders.getCities');
-
-// Routes AJAX pour les produits
-Route::get('admin/search-products', [App\Http\Controllers\Admin\OrderController::class, 'searchProducts'])->name('admin.orders.searchProducts');
-
-// Routes AJAX pour charger les commandes
-Route::get('admin/process/{queue}/next', [App\Http\Controllers\Admin\ProcessController::class, 'getNextOrderJson'])
-    ->where('queue', 'standard|dated|old')
-    ->name('admin.process.queue.next');
-
-// Routes pour les paramètres
-Route::get('admin/settings', [App\Http\Controllers\Admin\SettingController::class, 'index'])->name('admin.settings.index');
-Route::post('admin/settings', [App\Http\Controllers\Admin\SettingController::class, 'store'])->name('admin.settings.store');
-
-// Routes pour le traitement des commandes
-Route::get('admin/process/standard', [App\Http\Controllers\Admin\ProcessController::class, 'standardQueue'])->name('admin.process.standard');
-Route::get('admin/process/dated', [App\Http\Controllers\Admin\ProcessController::class, 'datedQueue'])->name('admin.process.dated');
-Route::get('admin/process/old', [App\Http\Controllers\Admin\ProcessController::class, 'oldQueue'])->name('admin.process.old');
-Route::post('admin/process/{order}/action', [App\Http\Controllers\Admin\ProcessController::class, 'processAction'])->name('admin.process.action');
-
-
-
-// Routes pour WooCommerce
-Route::get('admin/woocommerce', [App\Http\Controllers\Admin\WooCommerceController::class, 'index'])->name('admin.woocommerce.index');
-Route::post('admin/woocommerce', [App\Http\Controllers\Admin\WooCommerceController::class, 'store'])->name('admin.woocommerce.store');
-Route::get('admin/woocommerce/sync', [App\Http\Controllers\Admin\WooCommerceController::class, 'sync'])->name('admin.woocommerce.sync');
-
-
-
-// Routes pour marquer les produits comme examinés
-Route::post('admin/products/{product}/mark-reviewed', [App\Http\Controllers\Admin\ProductController::class, 'markAsReviewed'])
-    ->name('admin.products.mark-reviewed')
-    ->middleware('auth:admin');
-
- 
-Route::post('admin/products/mark-all-reviewed', [App\Http\Controllers\Admin\ProductController::class, 'markAllAsReviewed'])
-    ->name('admin.products.mark-all-reviewed')
-    ->middleware('auth:admin');
-
-// Route pour examiner les nouveaux produits
-Route::get('admin/products/review', [App\Http\Controllers\Admin\ProductController::class, 'reviewNewProducts'])
-    ->name('admin.products.review')
-    ->middleware('auth:admin');
-
-
-Route::get('admin/products/review', [App\Http\Controllers\Admin\ProductController::class, 'reviewNewProducts'])->name('admin.products.review');
-
-
-
 // Routes d'authentification unifiées pour Admin/Manager/Employee
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('login', [LoginController::class, 'login'])->name('login.submit');
@@ -114,6 +41,11 @@ Route::post('register', [RegisterController::class, 'register'])->name('register
 Route::get('admin/import', [App\Http\Controllers\Admin\ImportController::class, 'index'])->name('admin.import.index');
 Route::post('admin/import/csv', [App\Http\Controllers\Admin\ImportController::class, 'importCsv'])->name('admin.import.csv');
 Route::post('admin/import/xml', [App\Http\Controllers\Admin\ImportController::class, 'importXml'])->name('admin.import.xml');
+
+// Routes pour WooCommerce
+Route::get('admin/woocommerce', [App\Http\Controllers\Admin\WooCommerceController::class, 'index'])->name('admin.woocommerce.index');
+Route::post('admin/woocommerce', [App\Http\Controllers\Admin\WooCommerceController::class, 'store'])->name('admin.woocommerce.store');
+Route::get('admin/woocommerce/sync', [App\Http\Controllers\Admin\WooCommerceController::class, 'sync'])->name('admin.woocommerce.sync');
 
 // Routes pour SuperAdmin (accès distinct)
 Route::prefix('super-admin')->name('super-admin.')->group(function () {
@@ -144,7 +76,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('logout', [AdminAuthController::class, 'logout'])->name('logout');
     Route::get('expired', [AdminAuthController::class, 'showExpiredPage'])->name('expired');
     
-    // Routes protégées par middleware - MODIFICATION ICI
+    // Routes protégées par middleware
     Route::middleware('auth:admin')->group(function () {
         Route::get('dashboard', function() {
             // Vérification d'expiration directement ici plutôt que via middleware
@@ -159,12 +91,48 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Routes pour les produits
         Route::resource('products', ProductController::class);
         
+        // Routes pour marquer les produits comme examinés
+        Route::post('products/{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])
+            ->name('products.mark-reviewed');
+        Route::post('products/mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])
+            ->name('products.mark-all-reviewed');
+        Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
+            ->name('products.review');
+        
         // Gestion des commandes
         Route::resource('orders', OrderController::class);
-        Route::get('/orders/{order}/history', [OrderController::class, 'showHistory'])->name('orders.history');
-        Route::post('/orders/{order}/record-attempt', [OrderController::class, 'recordAttempt'])->name('orders.recordAttempt');
-        Route::get('/get-cities', [OrderController::class, 'getCities'])->name('orders.getCities');
-        Route::get('/search-products', [OrderController::class, 'searchProducts'])->name('orders.searchProducts');
+        Route::get('orders/{order}/history', [OrderController::class, 'showHistory'])->name('orders.history');
+        Route::post('orders/{order}/record-attempt', [OrderController::class, 'recordAttempt'])->name('orders.recordAttempt');
+        Route::get('orders/{order}/attempts', [OrderController::class, 'getAttempts'])->name('orders.attempts');
+        
+        // Routes AJAX pour les données géographiques et produits
+        Route::get('get-regions', [OrderController::class, 'getRegions'])->name('orders.getRegions');
+        Route::get('get-cities', [OrderController::class, 'getCities'])->name('orders.getCities');
+        Route::get('search-products', [OrderController::class, 'searchProducts'])->name('orders.searchProducts');
+        
+        // Routes pour les paramètres
+        Route::get('settings', [App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
+        Route::post('settings', [App\Http\Controllers\Admin\SettingController::class, 'store'])->name('settings.store');
+        
+        // ===========================================
+        // ROUTES POUR LE TRAITEMENT DES COMMANDES
+        // ===========================================
+        
+        // Interface principale de traitement
+        Route::get('process', [ProcessController::class, 'interface'])->name('process.interface');
+        
+        // Routes API pour le traitement des commandes
+        Route::get('process/test', [ProcessController::class, 'test'])->name('process.test');
+        Route::get('process/counts', [ProcessController::class, 'getCounts'])->name('process.getCounts');
+        Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
+            ->where('queue', 'standard|dated|old')
+            ->name('process.getQueue');
+        Route::post('process/action/{order}', [ProcessController::class, 'processAction'])->name('process.action');
+        
+        // Routes pour les files d'attente individuelles (si nécessaire pour des vues séparées)
+        Route::get('process/standard', [ProcessController::class, 'standardQueue'])->name('process.standard');
+        Route::get('process/dated', [ProcessController::class, 'datedQueue'])->name('process.dated');
+        Route::get('process/old', [ProcessController::class, 'oldQueue'])->name('process.old');
     });
 });
 
@@ -177,17 +145,7 @@ Route::prefix('manager')->name('manager.')->group(function () {
         })->name('dashboard');
     });
 });
-// Add these routes to your web.php file
-Route::group(['prefix' => 'admin', 'middleware' => ['auth:admin']], function () {
-    
-    // Process routes
-    Route::get('/process', [ProcessController::class, 'interface'])->name('admin.process.interface');
-    Route::get('/process/test', [ProcessController::class, 'test'])->name('admin.process.test');
-    Route::get('/process/counts', [ProcessController::class, 'getCounts'])->name('admin.process.getCounts');
-    Route::get('/process/{queue}', [ProcessController::class, 'getQueue'])->name('admin.process.getQueue');
-    Route::post('/process/action/{order}', [ProcessController::class, 'processAction'])->name('admin.process.action');
-    
-});
+
 // Routes pour Employee
 Route::prefix('employee')->name('employee.')->group(function () {
     // Routes protégées par middleware
