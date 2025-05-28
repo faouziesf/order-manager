@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class ProcessController extends Controller
 {
@@ -28,7 +29,7 @@ class ProcessController extends Controller
     public function getQueue($queue)
     {
         try {
-            // CORRECTION: Vérifier que $queue est une chaîne et la nettoyer
+            // Validation du paramètre queue
             if (!is_string($queue)) {
                 Log::error('getQueue: paramètre queue n\'est pas une chaîne', ['queue' => $queue, 'type' => gettype($queue)]);
                 return response()->json([
@@ -57,6 +58,9 @@ class ProcessController extends Controller
                 ], 401);
             }
 
+            // Réinitialiser les compteurs journaliers si nécessaire
+            $this->resetDailyCountersIfNeeded($admin);
+
             $order = $this->findNextOrder($admin, $queue);
             
             if ($order) {
@@ -82,6 +86,8 @@ class ProcessController extends Controller
                         'attempts_count' => $order->attempts_count ?? 0,
                         'daily_attempts_count' => $order->daily_attempts_count ?? 0,
                         'created_at' => $order->created_at,
+                        'updated_at' => $order->updated_at,
+                        'last_attempt_at' => $order->last_attempt_at,
                         'items' => $order->items->map(function($item) {
                             return [
                                 'id' => $item->id,
@@ -133,6 +139,9 @@ class ProcessController extends Controller
                 ], 401);
             }
             
+            // Réinitialiser les compteurs journaliers si nécessaire
+            $this->resetDailyCountersIfNeeded($admin);
+            
             // Compteurs avec gestion d'erreur
             $standard = $this->getQueueCount($admin, 'standard');
             $dated = $this->getQueueCount($admin, 'dated');
@@ -163,7 +172,6 @@ class ProcessController extends Controller
     private function getQueueCount($admin, $queue)
     {
         try {
-            // CORRECTION: Validation du paramètre queue
             if (!is_string($queue) || !in_array($queue, ['standard', 'dated', 'old'])) {
                 Log::warning("getQueueCount: paramètre queue invalide", ['queue' => $queue]);
                 return 0;
@@ -173,30 +181,13 @@ class ProcessController extends Controller
             
             switch ($queue) {
                 case 'standard':
-                    $maxAttempts = $this->getSetting('standard_max_total_attempts', 9);
-                    return $query->where('status', 'nouvelle')
-                        ->where('attempts_count', '<', $maxAttempts)
-                        ->where(function($q) {
-                            $q->where('is_suspended', false)->orWhereNull('is_suspended');
-                        })
-                        ->count();
+                    return $this->getStandardQueueCount($query);
                         
                 case 'dated':
-                    return $query->where('status', 'datée')
-                        ->whereDate('scheduled_date', '<=', now())
-                        ->where(function($q) {
-                            $q->where('is_suspended', false)->orWhereNull('is_suspended');
-                        })
-                        ->count();
+                    return $this->getDatedQueueCount($query);
                         
                 case 'old':
-                    $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
-                    return $query->where('status', 'nouvelle')
-                        ->where('attempts_count', '>=', $standardMaxAttempts)
-                        ->where(function($q) {
-                            $q->where('is_suspended', false)->orWhereNull('is_suspended');
-                        })
-                        ->count();
+                    return $this->getOldQueueCount($query);
                         
                 default:
                     return 0;
@@ -208,18 +199,94 @@ class ProcessController extends Controller
     }
 
     /**
+     * Compteur pour la file standard
+     */
+    private function getStandardQueueCount($query)
+    {
+        $maxTotalAttempts = $this->getSetting('standard_max_total_attempts', 9);
+        $maxDailyAttempts = $this->getSetting('standard_max_daily_attempts', 3);
+        $delayHours = $this->getSetting('standard_delay_hours', 2.5);
+        
+        return $query->where('status', 'nouvelle')
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                // Première tentative OU délai écoulé depuis la dernière modification
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            })
+            ->count();
+    }
+
+    /**
+     * Compteur pour la file datée
+     */
+    private function getDatedQueueCount($query)
+    {
+        $maxTotalAttempts = $this->getSetting('dated_max_total_attempts', 5);
+        $maxDailyAttempts = $this->getSetting('dated_max_daily_attempts', 2);
+        $delayHours = $this->getSetting('dated_delay_hours', 3.5);
+        
+        return $query->where('status', 'datée')
+            ->whereDate('scheduled_date', '<=', now())
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                // Première tentative OU délai écoulé depuis la dernière modification
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            })
+            ->count();
+    }
+
+    /**
+     * Compteur pour la file ancienne
+     */
+    private function getOldQueueCount($query)
+    {
+        $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
+        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0); // 0 = illimité
+        $maxDailyAttempts = $this->getSetting('old_max_daily_attempts', 2);
+        $delayHours = $this->getSetting('old_delay_hours', 6);
+        
+        $baseQuery = $query->where('status', 'nouvelle')
+            ->where('attempts_count', '>=', $standardMaxAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                // Première tentative OU délai écoulé depuis la dernière modification
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            });
+            
+        // Appliquer la limite totale seulement si elle est définie (> 0)
+        if ($maxTotalAttempts > 0) {
+            $baseQuery->where('attempts_count', '<', $maxTotalAttempts);
+        }
+        
+        return $baseQuery->count();
+    }
+
+    /**
      * Helper pour obtenir les paramètres avec gestion d'erreur
      */
     private function getSetting($key, $default)
     {
         try {
-            // CORRECTION: Validation du paramètre key
             if (!is_string($key)) {
                 Log::warning("getSetting: clé invalide", ['key' => $key, 'type' => gettype($key)]);
                 return $default;
             }
             
-            return (int)AdminSetting::get($key, $default);
+            return (float)AdminSetting::get($key, $default);
         } catch (\Exception $e) {
             Log::warning("Impossible de récupérer le setting {$key}, utilisation de la valeur par défaut: {$default}");
             return $default;
@@ -232,7 +299,6 @@ class ProcessController extends Controller
     private function findNextOrder($admin, $queue)
     {
         try {
-            // CORRECTION: Validation des paramètres
             if (!$admin || !is_string($queue)) {
                 Log::error('findNextOrder: paramètres invalides', [
                     'admin' => $admin ? $admin->id : null,
@@ -251,52 +317,16 @@ class ProcessController extends Controller
 
             $query = Order::where('admin_id', $admin->id);
             
-            // Charger les paramètres avec valeurs par défaut
-            $maxDailyAttempts = $this->getSetting("{$queue}_max_daily_attempts", ($queue === 'standard' ? 3 : 2));
-            $maxTotalAttempts = $this->getSetting("{$queue}_max_total_attempts", ($queue === 'standard' ? 9 : ($queue === 'dated' ? 5 : 0)));
-            
-            // Conditions selon la file
-            if ($queue === 'standard') {
-                $query->where('status', 'nouvelle');
-                
-                if ($maxTotalAttempts > 0) {
-                    $query->where('attempts_count', '<', $maxTotalAttempts);
-                }
-            } 
-            elseif ($queue === 'dated') {
-                $query->where('status', 'datée')
-                    ->whereDate('scheduled_date', '<=', now());
-                    
-                if ($maxTotalAttempts > 0) {
-                    $query->where('attempts_count', '<', $maxTotalAttempts);
-                }
+            switch ($queue) {
+                case 'standard':
+                    return $this->findStandardOrder($query);
+                case 'dated':
+                    return $this->findDatedOrder($query);
+                case 'old':
+                    return $this->findOldOrder($query);
+                default:
+                    return null;
             }
-            elseif ($queue === 'old') {
-                $standardMaxAttempts = $this->getSetting("standard_max_total_attempts", 9);
-                
-                $query->where('status', 'nouvelle')
-                    ->where('attempts_count', '>=', $standardMaxAttempts);
-                    
-                if ($maxTotalAttempts > 0) {
-                    $query->where('attempts_count', '<', $maxTotalAttempts);
-                }
-            }
-            
-            // Conditions communes
-            $query->where('daily_attempts_count', '<', $maxDailyAttempts);
-            
-            // Exclure les commandes suspendues
-            $query->where(function($q) {
-                $q->where('is_suspended', false)
-                ->orWhereNull('is_suspended');
-            });
-            
-            // Tri simple pour éviter les erreurs SQL
-            $query->orderBy('priority', 'desc')  // VIP d'abord
-                ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
-                ->orderBy('created_at', 'asc');     // Plus anciennes commandes d'abord
-            
-            return $query->first();
 
         } catch (\Exception $e) {
             Log::error('Erreur dans findNextOrder: ' . $e->getMessage(), [
@@ -304,6 +334,120 @@ class ProcessController extends Controller
                 'admin_id' => $admin ? $admin->id : null
             ]);
             return null;
+        }
+    }
+
+    /**
+     * Trouve la prochaine commande standard
+     */
+    private function findStandardOrder($query)
+    {
+        $maxTotalAttempts = $this->getSetting('standard_max_total_attempts', 9);
+        $maxDailyAttempts = $this->getSetting('standard_max_daily_attempts', 3);
+        $delayHours = $this->getSetting('standard_delay_hours', 2.5);
+        
+        return $query->where('status', 'nouvelle')
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                // Première tentative OU délai écoulé depuis la dernière modification
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            })
+            ->orderBy('priority', 'desc')  // VIP d'abord
+            ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
+            ->orderBy('created_at', 'asc')  // Plus anciennes d'abord
+            ->first();
+    }
+
+    /**
+     * Trouve la prochaine commande datée
+     */
+    private function findDatedOrder($query)
+    {
+        $maxTotalAttempts = $this->getSetting('dated_max_total_attempts', 5);
+        $maxDailyAttempts = $this->getSetting('dated_max_daily_attempts', 2);
+        $delayHours = $this->getSetting('dated_delay_hours', 3.5);
+        
+        return $query->where('status', 'datée')
+            ->whereDate('scheduled_date', '<=', now())
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                // Première tentative OU délai écoulé depuis la dernière modification
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            })
+            ->orderBy('scheduled_date', 'asc')  // Plus anciennes dates d'abord
+            ->orderBy('priority', 'desc')  // VIP d'abord
+            ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
+            ->first();
+    }
+
+    /**
+     * Trouve la prochaine commande ancienne
+     */
+    private function findOldOrder($query)
+    {
+        $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
+        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0); // 0 = illimité
+        $maxDailyAttempts = $this->getSetting('old_max_daily_attempts', 2);
+        $delayHours = $this->getSetting('old_delay_hours', 6);
+        
+        $baseQuery = $query->where('status', 'nouvelle')
+            ->where('attempts_count', '>=', $standardMaxAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                // Première tentative OU délai écoulé depuis la dernière modification
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            });
+            
+        // Appliquer la limite totale seulement si elle est définie (> 0)
+        if ($maxTotalAttempts > 0) {
+            $baseQuery->where('attempts_count', '<', $maxTotalAttempts);
+        }
+        
+        return $baseQuery->orderBy('priority', 'desc')  // VIP d'abord
+            ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
+            ->orderBy('created_at', 'asc')  // Plus anciennes d'abord
+            ->first();
+    }
+
+    /**
+     * Réinitialise les compteurs journaliers si nécessaire
+     */
+    private function resetDailyCountersIfNeeded($admin)
+    {
+        try {
+            // Vérifier s'il faut réinitialiser les compteurs journaliers
+            $lastReset = AdminSetting::get('last_daily_reset_' . $admin->id);
+            $today = now()->format('Y-m-d');
+            
+            if ($lastReset !== $today) {
+                Log::info("Réinitialisation des compteurs journaliers pour l'admin {$admin->id}");
+                
+                // Réinitialiser tous les compteurs journaliers pour cet admin
+                Order::where('admin_id', $admin->id)
+                    ->where('daily_attempts_count', '>', 0)
+                    ->update(['daily_attempts_count' => 0]);
+                
+                // Marquer la date de dernière réinitialisation
+                AdminSetting::set('last_daily_reset_' . $admin->id, $today);
+                
+                Log::info("Compteurs journaliers réinitialisés avec succès pour l'admin {$admin->id}");
+            }
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la réinitialisation des compteurs journaliers: " . $e->getMessage());
         }
     }
 
@@ -354,8 +498,12 @@ class ProcessController extends Controller
                     $request->validate([
                         'scheduled_date' => 'required|date|after:today',
                     ]);
+                    // CORRECTION: Réinitialiser les compteurs quand on date une commande
                     $order->status = 'datée';
                     $order->scheduled_date = $request->scheduled_date;
+                    $order->attempts_count = 0; // Réinitialiser le compteur total
+                    $order->daily_attempts_count = 0; // Réinitialiser le compteur journalier
+                    $order->last_attempt_at = null; // Réinitialiser la dernière tentative
                     $order->save();
                     $order->recordHistory('datation', $notes);
                     break;
@@ -468,14 +616,19 @@ class ProcessController extends Controller
 
     /**
      * Enregistre une tentative d'appel
+     * CORRECTION: Cette méthode incrémente les compteurs de tentatives
      */
     private function recordCallAttempt(Order $order, $notes)
     {
+        // Incrémenter les compteurs
         $order->increment('attempts_count');
         $order->increment('daily_attempts_count');
-        $order->last_attempt_at = now();
-        $order->save();
         
+        // Mettre à jour la date de dernière tentative
+        $order->last_attempt_at = now();
+        $order->save(); // Le updated_at sera automatiquement mis à jour
+        
+        // Enregistrer dans l'historique
         $order->recordHistory('tentative', $notes);
     }
 

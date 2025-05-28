@@ -12,11 +12,35 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Synchroniser les commandes WooCommerce toutes les 15 minutes
-        $schedule->command('woocommerce:sync')->everyFifteenMinutes();
-        
-        // Réinitialiser les compteurs de tentatives quotidiennes à minuit
-        $schedule->command('orders:reset-daily-attempts')->dailyAt('00:00');
+        // Réinitialiser les compteurs journaliers chaque jour à minuit
+        $schedule->command('orders:reset-daily-counters')
+                 ->dailyAt('00:00')
+                 ->withoutOverlapping()
+                 ->runInBackground()
+                 ->appendOutputTo(storage_path('logs/daily-reset.log'));
+
+        // Optionnel: Nettoyer les anciens logs de réinitialisation chaque semaine
+        $schedule->call(function () {
+            $logFile = storage_path('logs/daily-reset.log');
+            if (file_exists($logFile) && filesize($logFile) > 10 * 1024 * 1024) { // 10MB
+                // Garder seulement les 1000 dernières lignes
+                $lines = file($logFile);
+                $lastLines = array_slice($lines, -1000);
+                file_put_contents($logFile, implode('', $lastLines));
+            }
+        })->weekly()->sundays()->at('02:00');
+
+        // Optionnel: Vérifier et réactiver les commandes suspendues dont le stock est redevenu disponible
+        $schedule->call(function () {
+            \App\Models\Order::suspended()
+                ->whereNotNull('suspension_reason')
+                ->where('suspension_reason', 'like', 'Rupture de stock%')
+                ->chunk(100, function ($orders) {
+                    foreach ($orders as $order) {
+                        $order->checkStockAndUpdateStatus();
+                    }
+                });
+        })->hourly();
     }
 
     /**
@@ -28,6 +52,4 @@ class Kernel extends ConsoleKernel
 
         require base_path('routes/console.php');
     }
-    
-    
 }

@@ -35,7 +35,65 @@ class ProductController extends Controller
             }
         }
         
-        $products = $query->orderBy('created_at', 'desc')->paginate(10);
+        // Filtres avancés
+        if ($request->filled('price_min')) {
+            $query->where('price', '>=', $request->price_min);
+        }
+        
+        if ($request->filled('price_max')) {
+            $query->where('price', '<=', $request->price_max);
+        }
+        
+        if ($request->filled('stock_min')) {
+            $query->where('stock', '>=', $request->stock_min);
+        }
+        
+        if ($request->filled('stock_max')) {
+            $query->where('stock', '<=', $request->stock_max);
+        }
+        
+        if ($request->filled('created_from')) {
+            $query->whereDate('created_at', '>=', $request->created_from);
+        }
+        
+        if ($request->filled('created_to')) {
+            $query->whereDate('created_at', '<=', $request->created_to);
+        }
+        
+        if ($request->filled('needs_review')) {
+            $query->where('needs_review', $request->needs_review == '1');
+        }
+        
+        // Tri
+        $sort = $request->get('sort', 'created_at_desc');
+        switch ($sort) {
+            case 'created_at_asc':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'name_asc':
+                $query->orderBy('name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('name', 'desc');
+                break;
+            case 'price_asc':
+                $query->orderBy('price', 'asc');
+                break;
+            case 'price_desc':
+                $query->orderBy('price', 'desc');
+                break;
+            case 'stock_asc':
+                $query->orderBy('stock', 'asc');
+                break;
+            case 'stock_desc':
+                $query->orderBy('stock', 'desc');
+                break;
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+        
+        $products = $query->paginate(20);
         
         return view('admin.products.index', compact('products'));
     }
@@ -146,7 +204,6 @@ class ProductController extends Controller
         return view('admin.products.review', compact('products'));
     }
 
-
     /**
      * Marquer un produit comme examiné
      */
@@ -176,5 +233,82 @@ class ProductController extends Controller
         return redirect()->route('admin.products.index')->with('success', 'Tous les produits ont été marqués comme examinés.');
     }
 
+    /**
+     * Actions groupées - Activer plusieurs produits
+     */
+    public function bulkActivate(Request $request)
+    {
+        $request->validate([
+            'product_ids' => 'required|string'
+        ]);
+        
+        $productIds = explode(',', $request->product_ids);
+        $admin = Auth::guard('admin')->user();
+        
+        $updatedCount = 0;
+        foreach ($productIds as $productId) {
+            $product = $admin->products()->find($productId);
+            if ($product && Gate::allows('update', $product)) {
+                $product->update(['is_active' => true]);
+                $updatedCount++;
+            }
+        }
+        
+        return redirect()->route('admin.products.index')
+            ->with('success', "{$updatedCount} produit(s) activé(s) avec succès.");
+    }
 
+    /**
+     * Actions groupées - Désactiver plusieurs produits
+     */
+    public function bulkDeactivate(Request $request)
+    {
+        $request->validate([
+            'product_ids' => 'required|string'
+        ]);
+        
+        $productIds = explode(',', $request->product_ids);
+        $admin = Auth::guard('admin')->user();
+        
+        $updatedCount = 0;
+        foreach ($productIds as $productId) {
+            $product = $admin->products()->find($productId);
+            if ($product && Gate::allows('update', $product)) {
+                $product->update(['is_active' => false]);
+                $updatedCount++;
+            }
+        }
+        
+        return redirect()->route('admin.products.index')
+            ->with('success', "{$updatedCount} produit(s) désactivé(s) avec succès.");
+    }
+
+    /**
+     * Actions groupées - Supprimer plusieurs produits
+     */
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'product_ids' => 'required|string'
+        ]);
+        
+        $productIds = explode(',', $request->product_ids);
+        $admin = Auth::guard('admin')->user();
+        
+        $deletedCount = 0;
+        foreach ($productIds as $productId) {
+            $product = $admin->products()->find($productId);
+            if ($product && Gate::allows('delete', $product)) {
+                // Supprimer l'image
+                if ($product->image) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                $product->delete();
+                $deletedCount++;
+            }
+        }
+        
+        return redirect()->route('admin.products.index')
+            ->with('success', "{$deletedCount} produit(s) supprimé(s) avec succès.");
+    }
 }

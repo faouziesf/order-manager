@@ -10,7 +10,6 @@ class Order extends Model
 {
     use HasFactory, SoftDeletes;
 
-    // Ajouter ces champs aux fillables
     protected $fillable = [
         'admin_id',
         'manager_id',
@@ -34,6 +33,8 @@ class Order extends Model
         'daily_attempts_count',
         'last_attempt_at',
         'is_assigned',
+        'is_suspended',
+        'suspension_reason',
         'notes',
     ];
 
@@ -44,6 +45,7 @@ class Order extends Model
         'scheduled_date' => 'date',
         'last_attempt_at' => 'datetime',
         'is_assigned' => 'boolean',
+        'is_suspended' => 'boolean',
     ];
 
     /**
@@ -127,8 +129,21 @@ class Order extends Model
         return $query->where('is_assigned', false);
     }
 
+    public function scopeNotSuspended($query)
+    {
+        return $query->where(function($q) {
+            $q->where('is_suspended', false)
+            ->orWhereNull('is_suspended');
+        });
+    }
+
+    public function scopeSuspended($query)
+    {
+        return $query->where('is_suspended', true);
+    }
+
     /**
-     * Méthodes
+     * Méthodes principales
      */
     public function assignTo($employeeId)
     {
@@ -181,74 +196,129 @@ class Order extends Model
         ]);
     }
 
-    public function incrementAttempts()
+    /**
+     * CORRECTION: Méthode pour enregistrer une tentative d'appel
+     * Cette méthode incrémente les compteurs et met à jour les timestamps
+     */
+    public function recordCallAttempt($notes = null)
     {
+        // Incrémenter les compteurs
         $this->increment('attempts_count');
         $this->increment('daily_attempts_count');
+        
+        // Mettre à jour la date de dernière tentative
         $this->last_attempt_at = now();
-        $this->save();
+        $this->save(); // updated_at sera automatiquement mis à jour
+        
+        // Enregistrer dans l'historique
+        if ($notes) {
+            $this->recordHistory('tentative', $notes);
+        }
+        
+        return $this;
     }
 
+    /**
+     * Réinitialise le compteur journalier (appelé automatiquement à minuit)
+     */
     public function resetDailyAttempts()
     {
         $this->daily_attempts_count = 0;
         $this->save();
+        return $this;
     }
 
     /**
-     * Vérifie si la commande est disponible pour traitement
+     * CORRECTION: Vérifie si la commande peut être traitée selon la nouvelle logique
      */
-
-    public function isProcessable()
+    public function canBeProcessed($queueType = null)
     {
-        // Vérifier les stocks pour les commandes nouvelles
-        if ($this->status === 'nouvelle' && $this->hasSufficientStock() === false) {
+        // Si pas de type de file spécifié, le détecter automatiquement
+        if (!$queueType) {
+            $queueType = $this->getQueueType();
+        }
+        
+        // Vérifier si la commande est suspendue
+        if ($this->is_suspended) {
             return false;
         }
         
-        // Si la commande a déjà été traitée aujourd'hui, vérifier le délai
-        if ($this->daily_attempts_count > 0 && $this->last_attempt_at) {
-            $queueType = $this->getQueueType();
-            $delayHours = Setting::get("{$queueType}_delay_hours", 2.5);
-            
-            if ($this->last_attempt_at->addHours($delayHours) > now()) {
+        // Récupérer les paramètres pour ce type de file
+        $maxDailyAttempts = (int)AdminSetting::get("{$queueType}_max_daily_attempts", 3);
+        $maxTotalAttempts = (int)AdminSetting::get("{$queueType}_max_total_attempts", 9);
+        $delayHours = (float)AdminSetting::get("{$queueType}_delay_hours", 2.5);
+        
+        // Vérifier le nombre maximum de tentatives journalières
+        if ($this->daily_attempts_count >= $maxDailyAttempts) {
+            return false;
+        }
+        
+        // Vérifier le nombre maximum de tentatives totales (sauf pour 'old' si illimité)
+        if ($maxTotalAttempts > 0 && $this->attempts_count >= $maxTotalAttempts) {
+            return false;
+        }
+        
+        // Vérifier le délai depuis la dernière modification
+        if ($this->last_attempt_at && $this->updated_at) {
+            $timeSinceLastModification = now()->diffInHours($this->updated_at);
+            if ($timeSinceLastModification < $delayHours) {
                 return false;
             }
+        }
+        
+        // Pour les commandes datées, vérifier que la date est atteinte
+        if ($queueType === 'dated' && $this->scheduled_date && $this->scheduled_date->isFuture()) {
+            return false;
         }
         
         return true;
     }
 
     /**
-     * Vérifie le stock pour tous les produits de la commande
-     */
-    public function hasSufficientStock()
-    {
-        foreach ($this->items as $item) {
-            if ($item->product && $item->product->stock < $item->quantity) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
-
-    /**
-     * Détermine le type de file pour cette commande
+     * CORRECTION: Détermine le type de file pour cette commande
      */
     public function getQueueType()
     {
+        // Commandes datées
         if ($this->status === 'datée') {
             return 'dated';
         }
         
-        $standardMaxAttempts = (int)AdminSetting::get("standard_max_total_attempts", 9);
-        
-        if ($this->status === 'nouvelle' && $this->attempts_count >= $standardMaxAttempts) {
-            return 'old';
+        // Commandes nouvelles qui ont dépassé le seuil standard
+        if ($this->status === 'nouvelle') {
+            $standardMaxAttempts = (int)AdminSetting::get("standard_max_total_attempts", 9);
+            
+            if ($this->attempts_count >= $standardMaxAttempts) {
+                return 'old';
+            }
+            
+            return 'standard';
         }
         
+        // Par défaut, retourner standard
         return 'standard';
+    }
+
+    /**
+     * CORRECTION: Transition vers une commande datée avec réinitialisation des compteurs
+     */
+    public function scheduleFor($date, $notes = null)
+    {
+        $this->status = 'datée';
+        $this->scheduled_date = $date;
+        
+        // IMPORTANT: Réinitialiser les compteurs selon les spécifications
+        $this->attempts_count = 0;
+        $this->daily_attempts_count = 0;
+        $this->last_attempt_at = null;
+        
+        $this->save();
+        
+        if ($notes) {
+            $this->recordHistory('datation', $notes);
+        }
+        
+        return $this;
     }
 
     /**
@@ -315,24 +385,74 @@ class Order extends Model
     }
 
     /**
-     * Scope pour les commandes non suspendues
+     * Vérifie le stock pour tous les produits de la commande
      */
-    public function scopeNotSuspended($query)
+    public function hasSufficientStock()
     {
-        return $query->where(function($q) {
-            $q->where('is_suspended', false)
-            ->orWhereNull('is_suspended');
-        });
+        foreach ($this->items as $item) {
+            if ($item->product && $item->product->stock < $item->quantity) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     /**
-     * Scope pour les commandes suspendues
+     * CORRECTION: Scope pour les commandes disponibles dans une file spécifique
      */
-    public function scopeSuspended($query)
+    public function scopeAvailableForQueue($query, $queueType)
     {
-        return $query->where('is_suspended', true);
+        $maxDailyAttempts = (int)AdminSetting::get("{$queueType}_max_daily_attempts", 3);
+        $maxTotalAttempts = (int)AdminSetting::get("{$queueType}_max_total_attempts", 9);
+        $delayHours = (float)AdminSetting::get("{$queueType}_delay_hours", 2.5);
+        
+        return $query->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($maxTotalAttempts) {
+                // Appliquer la limite totale seulement si elle est définie (> 0)
+                if ($maxTotalAttempts > 0) {
+                    $q->where('attempts_count', '<', $maxTotalAttempts);
+                }
+            })
+            ->where(function($q) use ($delayHours) {
+                // Première tentative OU délai écoulé depuis la dernière modification
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->notSuspended();
     }
 
+    /**
+     * CORRECTION: Scope pour la file standard
+     */
+    public function scopeStandardQueue($query)
+    {
+        $maxTotalAttempts = (int)AdminSetting::get('standard_max_total_attempts', 9);
+        
+        return $query->where('status', 'nouvelle')
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->availableForQueue('standard');
+    }
 
+    /**
+     * CORRECTION: Scope pour la file datée
+     */
+    public function scopeDatedQueue($query)
+    {
+        return $query->where('status', 'datée')
+            ->whereDate('scheduled_date', '<=', now())
+            ->availableForQueue('dated');
+    }
 
+    /**
+     * CORRECTION: Scope pour la file ancienne
+     */
+    public function scopeOldQueue($query)
+    {
+        $standardMaxAttempts = (int)AdminSetting::get('standard_max_total_attempts', 9);
+        
+        return $query->where('status', 'nouvelle')
+            ->where('attempts_count', '>=', $standardMaxAttempts)
+            ->availableForQueue('old');
+    }
 }

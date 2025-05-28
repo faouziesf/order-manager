@@ -3,6 +3,9 @@ use App\Http\Controllers\Admin\ProcessController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\ManagerController;
+use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\LoginHistoryController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\SuperAdmin\AdminController;
@@ -88,7 +91,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
             return view('admin.dashboard');
         })->name('dashboard');
         
-        // Routes pour les produits
+        // ========================================
+        // ROUTES POUR LES PRODUITS
+        // ========================================
+        
+        // Routes pour les produits (CRUD de base)
         Route::resource('products', ProductController::class);
         
         // Routes pour marquer les produits comme examinés
@@ -98,6 +105,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('products.mark-all-reviewed');
         Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
             ->name('products.review');
+        
+        // Routes pour les actions groupées sur les produits
+        Route::post('products/bulk-activate', [ProductController::class, 'bulkActivate'])
+            ->name('products.bulk-activate');
+        Route::post('products/bulk-deactivate', [ProductController::class, 'bulkDeactivate'])
+            ->name('products.bulk-deactivate');
+        Route::delete('products/bulk-delete', [ProductController::class, 'bulkDelete'])
+            ->name('products.bulk-delete');
+        
+        // ========================================
+        // ROUTES POUR LES COMMANDES
+        // ========================================
         
         // Gestion des commandes
         Route::resource('orders', OrderController::class);
@@ -109,6 +128,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('get-regions', [OrderController::class, 'getRegions'])->name('orders.getRegions');
         Route::get('get-cities', [OrderController::class, 'getCities'])->name('orders.getCities');
         Route::get('search-products', [OrderController::class, 'searchProducts'])->name('orders.searchProducts');
+        
+        // ========================================
+        // ROUTES POUR LA GESTION DES UTILISATEURS
+        // ========================================
+        
+        // Gestion des Managers
+        Route::resource('managers', ManagerController::class);
+        Route::patch('managers/{manager}/toggle-active', [ManagerController::class, 'toggleActive'])
+            ->name('managers.toggle-active');
+        Route::get('api/managers', [ManagerController::class, 'getManagersForAdmin'])
+            ->name('api.managers');
+
+        // Gestion des Employés
+        Route::resource('employees', EmployeeController::class);
+        Route::patch('employees/{employee}/toggle-active', [EmployeeController::class, 'toggleActive'])
+            ->name('employees.toggle-active');
+
+        // Historique des connexions
+        Route::get('login-history', [LoginHistoryController::class, 'index'])
+            ->name('login-history.index');
+        Route::get('login-history/{user_type}/{user_id}', [LoginHistoryController::class, 'show'])
+            ->name('login-history.show');
         
         // Routes pour les paramètres
         Route::get('settings', [App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');

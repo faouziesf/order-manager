@@ -457,6 +457,49 @@
                 </ul>
             </li>
 
+            <!-- AJOUTEZ CETTE SECTION DANS VOTRE MENU SIDEBAR APRÈS LA SECTION "Commandes" -->
+
+            <!-- Gestion des Utilisateurs -->
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') || request()->routeIs('admin.login-history*') ? 'active' : '' }}"
+                    data-target="usersSubmenu">
+                    <div class="sidebar-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <span class="sidebar-text">Gestion Utilisateurs</span>
+                </a>
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') || request()->routeIs('admin.login-history*') ? 'show' : '' }}" 
+                    id="usersSubmenu">
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.managers.index') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.managers*') ? 'active' : '' }}">
+                            <i class="fas fa-user-tie me-2"></i>
+                            Managers
+                            <span class="badge bg-primary ms-auto">
+                                {{ auth('admin')->user()->managers()->count() }}/{{ auth('admin')->user()->max_managers }}
+                            </span>
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.employees.index') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.employees*') ? 'active' : '' }}">
+                            <i class="fas fa-user-friends me-2"></i>
+                            Employés
+                            <span class="badge bg-success ms-auto">
+                                {{ auth('admin')->user()->employees()->count() }}/{{ auth('admin')->user()->max_employees }}
+                            </span>
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.login-history.index') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.login-history*') ? 'active' : '' }}">
+                            <i class="fas fa-history me-2"></i>
+                            Historique Connexions
+                        </a>
+                    </li>
+                </ul>
+            </li>            
+
             <!-- Lien vers la page des paramètres -->
             <li class="sidebar-item">
                 <a href="{{ route('admin.settings.index') }}"
