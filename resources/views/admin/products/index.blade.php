@@ -144,6 +144,23 @@
         font-weight: 600;
     }
     
+    .view-toggle .btn {
+        background: transparent;
+        border: 2px solid #4e73df;
+        color: #4e73df;
+        transition: all 0.3s ease;
+    }
+    
+    .view-toggle .btn.active {
+        background: #4e73df;
+        color: white;
+    }
+    
+    .view-toggle .btn:hover {
+        background: #4e73df;
+        color: white;
+    }
+    
     @media (max-width: 768px) {
         .product-image {
             width: 40px;
@@ -407,11 +424,11 @@
             <h5 class="mb-0">
                 <i class="fas fa-list me-2 text-primary"></i>Liste des Produits
             </h5>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-sm" onclick="toggleView('table')">
+            <div class="btn-group view-toggle" role="group">
+                <button type="button" class="btn btn-sm active" id="tableViewBtn" onclick="toggleView('table')">
                     <i class="fas fa-table me-1"></i>Table
                 </button>
-                <button class="btn btn-outline-primary btn-sm" onclick="toggleView('grid')">
+                <button type="button" class="btn btn-sm" id="gridViewBtn" onclick="toggleView('grid')">
                     <i class="fas fa-th me-1"></i>Grille
                 </button>
             </div>
@@ -783,23 +800,28 @@
 
 <script>
 $(document).ready(function() {
-    // Initialisation de DataTables
-    $('#productsTable').DataTable({
-        responsive: true,
-        pageLength: 20,
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/French.json'
-        },
-        columnDefs: [
-            { orderable: false, targets: [0, 1, 7] }, // Checkbox, Image et Actions non triables
-            { responsivePriority: 1, targets: 2 }, // Nom prioritaire
-            { responsivePriority: 2, targets: 7 }  // Actions prioritaires
-        }
-    });
+    // Désactiver DataTables pour permettre le fonctionnement normal de la pagination Laravel
+    // $('#productsTable').DataTable({
+    //     responsive: true,
+    //     pageLength: 20,
+    //     language: {
+    //         url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/French.json'
+    //     },
+    //     columnDefs: [
+    //         { orderable: false, targets: [0, 1, 7] },
+    //         { responsivePriority: 1, targets: 2 },
+    //         { responsivePriority: 2, targets: 7 }
+    //     ]
+    // });
     
-    // Auto-submit des filtres
+    // Auto-submit des filtres de base
     $('#filtersForm input, #filtersForm select').on('change', function() {
         $('#filtersForm').submit();
+    });
+    
+    // Auto-submit des filtres avancés
+    $('#advancedFiltersForm input, #advancedFiltersForm select').on('change', function() {
+        $('#advancedFiltersForm').submit();
     });
     
     // Gestion des checkboxes
@@ -817,30 +839,41 @@ $(document).ready(function() {
         const checkedCheckboxes = $('.row-checkbox:checked').length;
         $('#selectAll').prop('checked', totalCheckboxes === checkedCheckboxes);
     });
-});
-
-// Fonction pour basculer entre vue table et grille
-function toggleView(view) {
-    if (view === 'table') {
-        $('#tableView').show();
-        $('#gridView').hide();
-        localStorage.setItem('productsView', 'table');
-    } else {
-        $('#tableView').hide();
-        $('#gridView').show();
-        localStorage.setItem('productsView', 'grid');
-    }
-}
-
-// Restaurer la vue sauvegardée
-$(document).ready(function() {
+    
+    // Restaurer la vue sauvegardée au chargement
     const savedView = localStorage.getItem('productsView') || 'table';
     toggleView(savedView);
 });
 
+// Fonction pour basculer entre vue table et grille
+function toggleView(view) {
+    console.log('Basculer vers la vue:', view); // Debug
+    
+    if (view === 'table') {
+        $('#tableView').show();
+        $('#gridView').hide();
+        $('#tableViewBtn').addClass('active');
+        $('#gridViewBtn').removeClass('active');
+        localStorage.setItem('productsView', 'table');
+    } else {
+        $('#tableView').hide();
+        $('#gridView').show();
+        $('#gridViewBtn').addClass('active');
+        $('#tableViewBtn').removeClass('active');
+        localStorage.setItem('productsView', 'grid');
+    }
+}
+
 // Fonction pour afficher/masquer les filtres avancés
 function toggleAdvancedFilters() {
-    $('#advancedFilters').toggleClass('show');
+    console.log('Toggle filtres avancés'); // Debug
+    const $advancedFilters = $('#advancedFilters');
+    
+    if ($advancedFilters.hasClass('show')) {
+        $advancedFilters.removeClass('show');
+    } else {
+        $advancedFilters.addClass('show');
+    }
 }
 
 // Fonction pour mettre à jour les actions groupées
@@ -880,12 +913,14 @@ function bulkAction(action) {
             message = `Êtes-vous sûr de vouloir activer ${selectedIds.length} produit(s) ?`;
             formId = 'bulkActivateForm';
             inputId = 'activateProductIds';
+            $('#confirmBulkAction').removeClass('btn-danger').addClass('btn-primary');
             break;
         case 'deactivate':
             title = 'Désactiver les produits';
             message = `Êtes-vous sûr de vouloir désactiver ${selectedIds.length} produit(s) ?`;
             formId = 'bulkDeactivateForm';
             inputId = 'deactivateProductIds';
+            $('#confirmBulkAction').removeClass('btn-danger').addClass('btn-primary');
             break;
         case 'delete':
             title = 'Supprimer les produits';
@@ -926,6 +961,22 @@ $(document).on('keydown', function(e) {
     if (e.key === 'Escape') {
         clearSelection();
     }
+    
+    // F pour ouvrir les filtres avancés
+    if (e.key === 'f' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        toggleAdvancedFilters();
+    }
+});
+
+// Debug: Vérifier que les éléments existent
+$(document).ready(function() {
+    console.log('Elements trouvés:');
+    console.log('- tableViewBtn:', $('#tableViewBtn').length);
+    console.log('- gridViewBtn:', $('#gridViewBtn').length);
+    console.log('- advancedFilters:', $('#advancedFilters').length);
+    console.log('- tableView:', $('#tableView').length);
+    console.log('- gridView:', $('#gridView').length);
 });
 </script>
 @endsection

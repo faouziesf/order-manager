@@ -8,25 +8,28 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
+    /**
+     * Afficher la liste des produits avec filtres avancés
+     */
     public function index(Request $request)
     {
         $admin = Auth::guard('admin')->user();
         $query = $admin->products();
         
-        // Recherche par nom
+        // Filtres de base
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
         
-        // Filtre par statut
         if ($request->filled('status')) {
             $query->where('is_active', $request->status == '1');
         }
         
-        // Filtre par stock
         if ($request->filled('stock')) {
             if ($request->stock === 'in_stock') {
                 $query->where('stock', '>', 0);
@@ -98,42 +101,80 @@ class ProductController extends Controller
         return view('admin.products.index', compact('products'));
     }
 
+    /**
+     * Afficher le formulaire de création
+     */
     public function create()
     {
         return view('admin.products.create');
     }
 
+    /**
+     * Créer un nouveau produit
+     */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'description' => 'nullable|string',
+            'description' => 'nullable|string|max:2000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ], [
+            'name.required' => 'Le nom du produit est obligatoire.',
+            'name.max' => 'Le nom ne peut pas dépasser 255 caractères.',
+            'price.required' => 'Le prix est obligatoire.',
+            'price.numeric' => 'Le prix doit être un nombre.',
+            'price.min' => 'Le prix ne peut pas être négatif.',
+            'stock.required' => 'La quantité en stock est obligatoire.',
+            'stock.integer' => 'La quantité doit être un nombre entier.',
+            'stock.min' => 'La quantité ne peut pas être négative.',
+            'description.max' => 'La description ne peut pas dépasser 2000 caractères.',
+            'image.image' => 'Le fichier doit être une image.',
+            'image.mimes' => 'L\'image doit être au format: jpeg, png, jpg, gif.',
+            'image.max' => 'L\'image ne peut pas dépasser 2MB.',
         ]);
 
-        $admin = Auth::guard('admin')->user();
-        
-        $product = new Product();
-        $product->admin_id = $admin->id;
-        $product->name = $request->name;
-        $product->price = $request->price;
-        $product->stock = $request->stock;
-        $product->description = $request->description;
-        $product->is_active = $request->has('is_active');
-        
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('products', 'public');
-            $product->image = $imagePath;
+        try {
+            DB::beginTransaction();
+
+            $admin = Auth::guard('admin')->user();
+            
+            $product = new Product();
+            $product->admin_id = $admin->id;
+            $product->name = $validated['name'];
+            $product->price = $validated['price'];
+            $product->stock = $validated['stock'];
+            $product->description = $validated['description'];
+            $product->is_active = $request->has('is_active');
+            $product->needs_review = false; // Produit créé manuellement, pas besoin d'examen
+            
+            // Gestion de l'image
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('products', 'public');
+                $product->image = $imagePath;
+            }
+            
+            $product->save();
+
+            DB::commit();
+            
+            return redirect()->route('admin.products.index')
+                ->with('success', 'Produit "' . $product->name . '" créé avec succès.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la création du produit: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Une erreur est survenue lors de la création du produit.');
         }
-        
-        $product->save();
-        
-        return redirect()->route('admin.products.index')
-            ->with('success', 'Produit créé avec succès.');
     }
 
+    /**
+     * Afficher le formulaire d'édition
+     */
     public function edit(Product $product)
     {
         $this->authorize('update', $product);
@@ -141,65 +182,117 @@ class ProductController extends Controller
         return view('admin.products.edit', compact('product'));
     }
 
+    /**
+     * Mettre à jour un produit
+     */
     public function update(Request $request, Product $product)
     {
         $this->authorize('update', $product);
         
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'description' => 'nullable|string',
+            'description' => 'nullable|string|max:2000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ], [
+            'name.required' => 'Le nom du produit est obligatoire.',
+            'name.max' => 'Le nom ne peut pas dépasser 255 caractères.',
+            'price.required' => 'Le prix est obligatoire.',
+            'price.numeric' => 'Le prix doit être un nombre.',
+            'price.min' => 'Le prix ne peut pas être négatif.',
+            'stock.required' => 'La quantité en stock est obligatoire.',
+            'stock.integer' => 'La quantité doit être un nombre entier.',
+            'stock.min' => 'La quantité ne peut pas être négative.',
+            'description.max' => 'La description ne peut pas dépasser 2000 caractères.',
+            'image.image' => 'Le fichier doit être une image.',
+            'image.mimes' => 'L\'image doit être au format: jpeg, png, jpg, gif.',
+            'image.max' => 'L\'image ne peut pas dépasser 2MB.',
         ]);
-        
-        $product->name = $request->name;
-        $product->price = $request->price;
-        $product->stock = $request->stock;
-        $product->description = $request->description;
-        $product->is_active = $request->has('is_active');
-        
-        // Important: Marquer le produit comme examiné lorsqu'il est mis à jour
-        $product->needs_review = false;
-        
-        if ($request->hasFile('image')) {
-            // Supprimer l'ancienne image
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
+
+        try {
+            DB::beginTransaction();
+            
+            $product->name = $validated['name'];
+            $product->price = $validated['price'];
+            $product->stock = $validated['stock'];
+            $product->description = $validated['description'];
+            $product->is_active = $request->has('is_active');
+            
+            // Marquer le produit comme examiné lorsqu'il est mis à jour manuellement
+            $product->needs_review = false;
+            
+            // Gestion de l'image
+            if ($request->hasFile('image')) {
+                // Supprimer l'ancienne image
+                if ($product->image && Storage::disk('public')->exists($product->image)) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                
+                $imagePath = $request->file('image')->store('products', 'public');
+                $product->image = $imagePath;
             }
             
-            $imagePath = $request->file('image')->store('products', 'public');
-            $product->image = $imagePath;
+            $product->save();
+
+            DB::commit();
+            
+            return redirect()->route('admin.products.index')
+                ->with('success', 'Produit "' . $product->name . '" mis à jour avec succès.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la mise à jour du produit: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Une erreur est survenue lors de la mise à jour du produit.');
         }
-        
-        $product->save();
-        
-        return redirect()->route('admin.products.index')
-            ->with('success', 'Produit mis à jour avec succès.');
     }
 
+    /**
+     * Supprimer un produit
+     */
     public function destroy(Product $product)
     {
         $this->authorize('delete', $product);
         
-        // Supprimer l'image
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
+        try {
+            DB::beginTransaction();
+            
+            $productName = $product->name;
+            
+            // Supprimer l'image
+            if ($product->image && Storage::disk('public')->exists($product->image)) {
+                Storage::disk('public')->delete($product->image);
+            }
+            
+            $product->delete();
+
+            DB::commit();
+            
+            return redirect()->route('admin.products.index')
+                ->with('success', 'Produit "' . $productName . '" supprimé avec succès.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la suppression du produit: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la suppression du produit.');
         }
-        
-        $product->delete();
-        
-        return redirect()->route('admin.products.index')
-            ->with('success', 'Produit supprimé avec succès.');
     }
 
     /**
-     * Afficher et permettre l'examen des nouveaux produits créés automatiquement
+     * Afficher la page d'examen des nouveaux produits
      */
     public function reviewNewProducts()
     {
         $admin = Auth::guard('admin')->user();
-        $products = $admin->products()->where('needs_review', true)->paginate(10);
+        $products = $admin->products()
+            ->where('needs_review', true)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
         
         return view('admin.products.review', compact('products'));
     }
@@ -211,9 +304,18 @@ class ProductController extends Controller
     {
         $this->authorize('update', $product);
         
-        $product->markAsReviewed();
-        
-        return redirect()->back()->with('success', 'Le produit a été marqué comme examiné.');
+        try {
+            $product->markAsReviewed();
+            
+            return redirect()->back()
+                ->with('success', 'Le produit "' . $product->name . '" a été marqué comme examiné.');
+                
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du marquage comme examiné: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue.');
+        }
     }
 
     /**
@@ -221,20 +323,31 @@ class ProductController extends Controller
      */
     public function markAllAsReviewed()
     {
-        $admin = Auth::guard('admin')->user();
-        $products = $admin->products()->where('needs_review', true)->get();
-        
-        foreach ($products as $product) {
-            if (Gate::allows('update', $product)) {
-                $product->markAsReviewed();
+        try {
+            $admin = Auth::guard('admin')->user();
+            $products = $admin->products()->where('needs_review', true)->get();
+            
+            $count = 0;
+            foreach ($products as $product) {
+                if (Gate::allows('update', $product)) {
+                    $product->markAsReviewed();
+                    $count++;
+                }
             }
+            
+            return redirect()->route('admin.products.index')
+                ->with('success', $count . ' produit(s) marqué(s) comme examiné(s).');
+                
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du marquage en lot: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue.');
         }
-        
-        return redirect()->route('admin.products.index')->with('success', 'Tous les produits ont été marqués comme examinés.');
     }
 
     /**
-     * Actions groupées - Activer plusieurs produits
+     * Activer plusieurs produits (action groupée)
      */
     public function bulkActivate(Request $request)
     {
@@ -242,24 +355,42 @@ class ProductController extends Controller
             'product_ids' => 'required|string'
         ]);
         
-        $productIds = explode(',', $request->product_ids);
-        $admin = Auth::guard('admin')->user();
-        
-        $updatedCount = 0;
-        foreach ($productIds as $productId) {
-            $product = $admin->products()->find($productId);
-            if ($product && Gate::allows('update', $product)) {
-                $product->update(['is_active' => true]);
-                $updatedCount++;
+        try {
+            $productIds = array_filter(explode(',', $request->product_ids));
+            
+            if (empty($productIds)) {
+                return redirect()->back()->with('error', 'Aucun produit sélectionné.');
             }
+            
+            $admin = Auth::guard('admin')->user();
+            $updatedCount = 0;
+            
+            DB::beginTransaction();
+            
+            foreach ($productIds as $productId) {
+                $product = $admin->products()->find($productId);
+                if ($product && Gate::allows('update', $product)) {
+                    $product->update(['is_active' => true]);
+                    $updatedCount++;
+                }
+            }
+            
+            DB::commit();
+            
+            return redirect()->route('admin.products.index')
+                ->with('success', $updatedCount . ' produit(s) activé(s) avec succès.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'activation en lot: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de l\'activation des produits.');
         }
-        
-        return redirect()->route('admin.products.index')
-            ->with('success', "{$updatedCount} produit(s) activé(s) avec succès.");
     }
 
     /**
-     * Actions groupées - Désactiver plusieurs produits
+     * Désactiver plusieurs produits (action groupée)
      */
     public function bulkDeactivate(Request $request)
     {
@@ -267,24 +398,42 @@ class ProductController extends Controller
             'product_ids' => 'required|string'
         ]);
         
-        $productIds = explode(',', $request->product_ids);
-        $admin = Auth::guard('admin')->user();
-        
-        $updatedCount = 0;
-        foreach ($productIds as $productId) {
-            $product = $admin->products()->find($productId);
-            if ($product && Gate::allows('update', $product)) {
-                $product->update(['is_active' => false]);
-                $updatedCount++;
+        try {
+            $productIds = array_filter(explode(',', $request->product_ids));
+            
+            if (empty($productIds)) {
+                return redirect()->back()->with('error', 'Aucun produit sélectionné.');
             }
+            
+            $admin = Auth::guard('admin')->user();
+            $updatedCount = 0;
+            
+            DB::beginTransaction();
+            
+            foreach ($productIds as $productId) {
+                $product = $admin->products()->find($productId);
+                if ($product && Gate::allows('update', $product)) {
+                    $product->update(['is_active' => false]);
+                    $updatedCount++;
+                }
+            }
+            
+            DB::commit();
+            
+            return redirect()->route('admin.products.index')
+                ->with('success', $updatedCount . ' produit(s) désactivé(s) avec succès.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la désactivation en lot: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la désactivation des produits.');
         }
-        
-        return redirect()->route('admin.products.index')
-            ->with('success', "{$updatedCount} produit(s) désactivé(s) avec succès.");
     }
 
     /**
-     * Actions groupées - Supprimer plusieurs produits
+     * Supprimer plusieurs produits (action groupée)
      */
     public function bulkDelete(Request $request)
     {
@@ -292,23 +441,77 @@ class ProductController extends Controller
             'product_ids' => 'required|string'
         ]);
         
-        $productIds = explode(',', $request->product_ids);
-        $admin = Auth::guard('admin')->user();
-        
-        $deletedCount = 0;
-        foreach ($productIds as $productId) {
-            $product = $admin->products()->find($productId);
-            if ($product && Gate::allows('delete', $product)) {
-                // Supprimer l'image
-                if ($product->image) {
-                    Storage::disk('public')->delete($product->image);
-                }
-                $product->delete();
-                $deletedCount++;
+        try {
+            $productIds = array_filter(explode(',', $request->product_ids));
+            
+            if (empty($productIds)) {
+                return redirect()->back()->with('error', 'Aucun produit sélectionné.');
             }
+            
+            $admin = Auth::guard('admin')->user();
+            $deletedCount = 0;
+            
+            DB::beginTransaction();
+            
+            foreach ($productIds as $productId) {
+                $product = $admin->products()->find($productId);
+                if ($product && Gate::allows('delete', $product)) {
+                    // Supprimer l'image
+                    if ($product->image && Storage::disk('public')->exists($product->image)) {
+                        Storage::disk('public')->delete($product->image);
+                    }
+                    $product->delete();
+                    $deletedCount++;
+                }
+            }
+            
+            DB::commit();
+            
+            return redirect()->route('admin.products.index')
+                ->with('success', $deletedCount . ' produit(s) supprimé(s) avec succès.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la suppression en lot: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la suppression des produits.');
+        }
+    }
+
+    /**
+     * API pour la recherche de produits (utilisé par d'autres modules)
+     */
+    public function searchProducts(Request $request)
+    {
+        $admin = Auth::guard('admin')->user();
+        $query = $admin->products()->where('is_active', true);
+        
+        if ($request->filled('q')) {
+            $query->where('name', 'like', '%' . $request->q . '%');
         }
         
-        return redirect()->route('admin.products.index')
-            ->with('success', "{$deletedCount} produit(s) supprimé(s) avec succès.");
+        $products = $query->limit(10)->get(['id', 'name', 'price', 'stock']);
+        
+        return response()->json($products);
+    }
+
+    /**
+     * Obtenir les statistiques des produits
+     */
+    public function getStats()
+    {
+        $admin = Auth::guard('admin')->user();
+        
+        $stats = [
+            'total' => $admin->products()->count(),
+            'active' => $admin->products()->where('is_active', true)->count(),
+            'inactive' => $admin->products()->where('is_active', false)->count(),
+            'low_stock' => $admin->products()->where('stock', '<=', 10)->count(),
+            'out_of_stock' => $admin->products()->where('stock', '<=', 0)->count(),
+            'needs_review' => $admin->products()->where('needs_review', true)->count(),
+        ];
+        
+        return response()->json($stats);
     }
 }
