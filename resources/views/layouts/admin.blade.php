@@ -15,6 +15,7 @@
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Animate.css -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
@@ -272,6 +273,23 @@
             display: none;
         }
 
+        /* Badge dans sidebar */
+        .sidebar-badge {
+            margin-left: auto;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .sidebar-collapsed .sidebar-badge {
+            display: none;
+        }
+
         /* Submenu Section */
         .sidebar-submenu {
             list-style: none;
@@ -289,11 +307,12 @@
             padding: 8px 0;
         }
 
+        /* Submenu en mode collapsed - Hover effect */
         .sidebar-collapsed .sidebar-submenu {
             position: absolute;
-            left: var(--sidebar-collapsed-width);
+            left: 100%;
             top: 0;
-            width: 220px;
+            width: 250px;
             background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
             border-radius: 0 var(--border-radius) var(--border-radius) 0;
             display: none;
@@ -303,22 +322,15 @@
             padding: 16px 0;
             margin-top: 0;
             z-index: 1001;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.3s ease;
         }
 
         .sidebar-collapsed .sidebar-item:hover .sidebar-submenu {
             display: block;
-            animation: slideInRight 0.3s ease;
-        }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+            opacity: 1;
+            transform: translateX(0);
         }
 
         .sidebar-submenu-item {
@@ -348,6 +360,11 @@
             color: white;
             background: rgba(255, 255, 255, 0.2);
             box-shadow: var(--shadow-md);
+        }
+
+        .sidebar-submenu-link .badge {
+            margin-left: auto;
+            font-size: 0.6rem;
         }
 
         /* ===== MODERN CONTENT AREA ===== */
@@ -875,6 +892,8 @@
                 background: rgba(255, 255, 255, 0.1);
                 border-radius: var(--border-radius);
                 margin: 8px 0;
+                opacity: 1;
+                transform: none;
             }
 
             .footer-content {
@@ -1164,13 +1183,25 @@
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.orders.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
-                            <i class="fas fa-list me-2"></i>Liste des commandes
+                            <i class="fas fa-list me-2"></i>Toutes les commandes
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.orders.unassigned') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.orders.unassigned') ? 'active' : '' }}">
+                            <i class="fas fa-user-times me-2"></i>Non Assignées
+                            @php
+                                $unassignedCount = Auth::guard('admin')->user()->orders()->where('is_assigned', false)->count();
+                            @endphp
+                            @if($unassignedCount > 0)
+                                <span class="badge bg-danger ms-1">{{ $unassignedCount }}</span>
+                            @endif
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.orders.create') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.orders.create') ? 'active' : '' }}">
-                            <i class="fas fa-plus me-2"></i>Ajouter une commande
+                            <i class="fas fa-plus me-2"></i>Nouvelle commande
                         </a>
                     </li>
                 </ul>
@@ -1441,13 +1472,13 @@
     <!-- Custom JS -->
     <script>
         $(document).ready(function() {
-            // Enhanced Sidebar Management
+            // Enhanced Sidebar Management avec correction complète
             const sidebar = $('#sidebar');
             const content = $('#content');
             const sidebarToggle = $('#sidebarToggle');
             const pageLoader = $('#pageLoader');
 
-            // Loader management with enhanced UX
+            // Loader management avec UX améliorée
             let loaderTimeout;
             let isLoading = false;
 
@@ -1480,6 +1511,64 @@
             // Initialize - hide loader immediately
             hideLoader();
 
+            // Gestion avancée du sidebar avec correction des sous-menus
+            function handleSubmenuDisplay() {
+                const isCollapsed = sidebar.hasClass('sidebar-collapsed');
+                const isMobile = window.innerWidth <= 768;
+                
+                if (isCollapsed && !isMobile) {
+                    // En mode réduit desktop, configurer les sous-menus en hover
+                    $('.sidebar-item').each(function() {
+                        const item = $(this);
+                        const submenu = item.find('.sidebar-submenu');
+                        
+                        if (submenu.length > 0) {
+                            // Réinitialiser les styles
+                            submenu.removeClass('show').css({
+                                'position': 'absolute',
+                                'left': '100%',
+                                'top': '0',
+                                'width': '250px',
+                                'z-index': '1001',
+                                'display': 'none',
+                                'background': 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
+                                'border-radius': '0 12px 12px 0',
+                                'box-shadow': '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                                'backdrop-filter': 'blur(20px)',
+                                'padding': '16px 0',
+                                'margin-top': '0',
+                                'max-height': 'none',
+                                'opacity': '0',
+                                'transform': 'translateX(-10px)',
+                                'transition': 'all 0.3s ease'
+                            });
+                            
+                            // Événements hover optimisés
+                            item.off('mouseenter.collapsed mouseleave.collapsed').on({
+                                'mouseenter.collapsed': function() {
+                                    submenu.stop(true, false).css('display', 'block').animate({
+                                        opacity: 1
+                                    }, 200).css('transform', 'translateX(0)');
+                                },
+                                'mouseleave.collapsed': function() {
+                                    submenu.stop(true, false).animate({
+                                        opacity: 0
+                                    }, 150, function() {
+                                        $(this).css('display', 'none');
+                                    });
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    // Mode normal - nettoyer et remettre les styles par défaut
+                    $('.sidebar-item').off('mouseenter.collapsed mouseleave.collapsed');
+                    $('.sidebar-submenu').each(function() {
+                        $(this).attr('style', '');
+                    });
+                }
+            }
+
             // Enhanced sidebar state management
             function applySidebarState() {
                 const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
@@ -1497,30 +1586,40 @@
                         content.removeClass('content-expanded');
                     }
                 }
+                
+                // Appliquer la gestion des sous-menus après un petit délai
+                setTimeout(handleSubmenuDisplay, 100);
             }
 
             // Apply saved state on page load
             applySidebarState();
 
-            // Handle window resize
-            $(window).on('resize', debounce(applySidebarState, 250));
+            // Handle window resize avec debounce
+            $(window).on('resize', debounce(function() {
+                applySidebarState();
+            }, 250));
 
-            // Enhanced sidebar toggle with animation
+            // Enhanced sidebar toggle avec gestion complète
             sidebarToggle.on('click', function() {
                 const isMobile = window.innerWidth <= 768;
                 
                 if (isMobile) {
+                    // Mobile: simple toggle
                     sidebar.toggleClass('sidebar-collapsed');
                 } else {
+                    // Desktop: toggle avec sauvegarde
                     const isNowCollapsed = !sidebar.hasClass('sidebar-collapsed');
                     localStorage.setItem('sidebarCollapsed', isNowCollapsed.toString());
                     
                     sidebar.toggleClass('sidebar-collapsed');
                     content.toggleClass('content-expanded');
+                    
+                    // Reappliquer la gestion des sous-menus
+                    setTimeout(handleSubmenuDisplay, 100);
                 }
             });
 
-            // Enhanced menu toggle with improved UX
+            // Enhanced menu toggle avec gestion intelligente
             const menuLinks = $('[data-target]');
             menuLinks.each(function() {
                 const link = $(this);
@@ -1528,23 +1627,29 @@
                 const submenu = $('#' + targetId);
                 
                 link.on('click', function(e) {
-                    if (!sidebar.hasClass('sidebar-collapsed') || window.innerWidth <= 768) {
-                        e.preventDefault();
-                        
-                        // Close other submenus
-                        $('.sidebar-submenu.show').not(submenu).removeClass('show');
-                        
-                        // Toggle current submenu
-                        submenu.toggleClass('show');
-                        
-                        // Update aria-expanded for accessibility
-                        const isExpanded = submenu.hasClass('show');
-                        link.attr('aria-expanded', isExpanded);
+                    const isCollapsed = sidebar.hasClass('sidebar-collapsed');
+                    const isMobile = window.innerWidth <= 768;
+                    
+                    // En mode réduit desktop, laisser le hover gérer l'affichage
+                    if (isCollapsed && !isMobile) {
+                        return;
                     }
+                    
+                    e.preventDefault();
+                    
+                    // Fermer les autres sous-menus
+                    $('.sidebar-submenu.show').not(submenu).removeClass('show');
+                    
+                    // Toggle du sous-menu actuel
+                    submenu.toggleClass('show');
+                    
+                    // Update aria-expanded pour l'accessibilité
+                    const isExpanded = submenu.hasClass('show');
+                    link.attr('aria-expanded', isExpanded);
                 });
             });
 
-            // Auto-expand current submenu
+            // Auto-expand current submenu au chargement
             $('.sidebar-submenu.show').each(function() {
                 const submenu = $(this);
                 const parentLink = submenu.prev('[data-target]');
@@ -1553,7 +1658,11 @@
                 }
             });
 
-            // Enhanced loader for navigation with smart detection
+            // Appliquer immédiatement la gestion des sous-menus
+            handleSubmenuDisplay();
+
+            // Enhanced loader for navigation avec détection intelligente
+            // Enhanced loader for navigation avec détection intelligente
             $(document).on('click', 'a', function(e) {
                 const target = $(this);
                 const href = target.attr('href');
@@ -1574,7 +1683,6 @@
                     return;
                 }
                 
-                // Show loader with small delay to avoid flashing
                 showLoader(100);
                 loaderTimeout = setTimeout(hideLoader, 5000);
             });
@@ -1585,7 +1693,7 @@
                 loaderTimeout = setTimeout(hideLoader, 10000);
             });
 
-            // Auto-hide alerts with smooth animation
+            // Auto-hide alerts avec animation fluide
             setTimeout(() => {
                 $('.alert:not(.alert-warning)').each(function() {
                     const alert = $(this);
@@ -1595,7 +1703,7 @@
                 });
             }, 5000);
 
-            // Enhanced animations with Intersection Observer
+            // Enhanced animations avec Intersection Observer
             if ('IntersectionObserver' in window) {
                 const observerOptions = {
                     threshold: 0.1,
@@ -1611,7 +1719,7 @@
                     });
                 }, observerOptions);
 
-                // Observe cards and other elements
+                // Observer les cartes et autres éléments
                 $('.card, .alert, .footer').each(function() {
                     observer.observe(this);
                 });
@@ -1628,13 +1736,13 @@
 
             // Enhanced keyboard shortcuts
             $(document).on('keydown', function(e) {
-                // Ctrl/Cmd + B to toggle sidebar
+                // Ctrl/Cmd + B pour toggle sidebar
                 if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
                     e.preventDefault();
                     sidebarToggle.click();
                 }
                 
-                // Escape to close modals and dropdowns
+                // Escape pour fermer modals et dropdowns
                 if (e.key === 'Escape') {
                     $('.modal.show').modal('hide');
                     $('.dropdown-menu.show').dropdown('hide');
@@ -1648,7 +1756,7 @@
                 $(this).removeClass('active');
             });
 
-            // Add smooth scrolling to anchor links
+            // Smooth scrolling pour les liens d'ancrage
             $('a[href^="#"]').on('click', function(e) {
                 const target = $(this.getAttribute('href'));
                 if (target.length) {
@@ -1703,14 +1811,14 @@
 
         // Enhanced accessibility
         $(document).ready(function() {
-            // Add focus indicators for keyboard navigation
+            // Indicateurs de focus pour navigation clavier
             $('a, button, input, select, textarea').on('focus', function() {
                 $(this).addClass('focus-visible');
             }).on('blur', function() {
                 $(this).removeClass('focus-visible');
             });
 
-            // Announce dynamic content changes to screen readers
+            // Annonce les changements de contenu dynamique aux lecteurs d'écran
             const announcer = $('<div>', {
                 'aria-live': 'polite',
                 'aria-atomic': 'true',
@@ -1722,7 +1830,7 @@
                 setTimeout(() => announcer.empty(), 1000);
             }
 
-            // Example usage for success messages
+            // Usage pour les messages de succès
             $('.alert-success').each(function() {
                 announce('Opération réussie');
             });

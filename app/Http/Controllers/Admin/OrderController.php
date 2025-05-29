@@ -538,4 +538,279 @@ class OrderController extends Controller
         
         return response()->json($products);
     }
+
+
+
+    /**
+     * Assignation groupée des commandes
+     */
+    public function bulkAssign(Request $request)
+    {
+        $request->validate([
+            'order_ids' => 'required|array|min:1',
+            'order_ids.*' => 'required|integer|exists:orders,id',
+            'employee_id' => 'required|integer|exists:employees,id',
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+        
+        // Vérifier que l'employé appartient à cet admin
+        $employee = $admin->employees()->where('id', $request->employee_id)->first();
+        if (!$employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employé non trouvé ou non autorisé'
+            ], 403);
+        }
+
+        if (!$employee->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cet employé n\'est pas actif'
+            ], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $orders = Order::whereIn('id', $request->order_ids)
+                        ->where('admin_id', $admin->id)
+                        ->where('is_assigned', false) // Seulement les non-assignées
+                        ->get();
+
+            if ($orders->isEmpty()) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune commande éligible pour l\'assignation'
+                ], 400);
+            }
+
+            $assignedCount = 0;
+            foreach ($orders as $order) {
+                $order->update([
+                    'employee_id' => $employee->id,
+                    'is_assigned' => true
+                ]);
+
+                // Enregistrer dans l'historique
+                $order->recordHistory(
+                    'assignation', 
+                    "Commande assignée à {$employee->name}",
+                    [
+                        'employee_assigned' => [
+                            'old' => null,
+                            'new' => $employee->name
+                        ]
+                    ]
+                );
+
+                $assignedCount++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$assignedCount} commande(s) assignée(s) avec succès à {$employee->name}",
+                'assigned_count' => $assignedCount
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'assignation groupée: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'assignation des commandes'
+            ], 500);
+        }
+    }
+
+    /**
+     * Désassigner une commande
+     */
+    public function unassign(Order $order)
+    {
+        $this->authorize('update', $order);
+
+        if (!$order->is_assigned) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette commande n\'est pas assignée'
+            ], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $employeeName = $order->employee ? $order->employee->name : 'Employé inconnu';
+
+            $order->update([
+                'employee_id' => null,
+                'is_assigned' => false
+            ]);
+
+            // Enregistrer dans l'historique
+            $order->recordHistory(
+                'désassignation', 
+                "Commande désassignée de {$employeeName}",
+                [
+                    'employee_unassigned' => [
+                        'old' => $employeeName,
+                        'new' => null
+                    ]
+                ]
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Commande désassignée avec succès'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la désassignation: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la désassignation'
+            ], 500);
+        }
+    }
+
+    /**
+     * Affiche les commandes non assignées (interface dédiée)
+     */
+    public function unassigned(Request $request)
+    {
+        $admin = Auth::guard('admin')->user();
+        $query = $admin->orders()->where('is_assigned', false);
+        
+        // Filtres de recherche
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('customer_name', 'like', "%{$search}%")
+                ->orWhere('customer_phone', 'like', "%{$search}%")
+                ->orWhere('customer_address', 'like', "%{$search}%")
+                ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        // Autres filtres...
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->priority);
+        }
+
+        // Si c'est une requête AJAX pour la recherche
+        if ($request->ajax()) {
+            $orders = $query->with(['region', 'city', 'items.product'])
+                        ->orderBy('priority', 'desc')
+                        ->orderBy('created_at', 'desc')
+                        ->take(50)
+                        ->get();
+            
+            return response()->json(['orders' => $orders]);
+        }
+
+        $orders = $query->with(['region', 'city'])
+                    ->orderBy('priority', 'desc')
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(20)
+                    ->withQueryString();
+
+        // Statistiques
+        $stats = [
+            'total_unassigned' => $admin->orders()->where('is_assigned', false)->count(),
+            'new_unassigned' => $admin->orders()->where('is_assigned', false)->where('status', 'nouvelle')->count(),
+            'urgent_unassigned' => $admin->orders()->where('is_assigned', false)->where('priority', 'urgente')->count(),
+            'vip_unassigned' => $admin->orders()->where('is_assigned', false)->where('priority', 'vip')->count(),
+        ];
+
+        return view('admin.orders.unassigned', compact('orders', 'stats'));
+    }
+
+    /**
+     * Récupérer l'historique d'une commande (pour modal)
+     */
+    public function getHistory(Order $order)
+    {
+        $this->authorize('view', $order);
+        
+        $history = $order->history()
+                        ->with(['admin', 'manager', 'employee'])
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+        
+        return view('admin.orders.partials.history', compact('order', 'history'));
+    }
+
+    public function show(Order $order)
+    {
+        $this->authorize('view', $order);
+        
+        // Charger les relations nécessaires
+        $order->load([
+            'region', 
+            'city', 
+            'items.product', 
+            'employee',
+            'history' => function($query) {
+                $query->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc');
+            }
+        ]);
+        
+        return view('admin.orders.show', compact('order'));
+    }
+
+    /**
+     * Méthode pour récupérer une tentative d'appel rapidement
+     */
+    public function quickAttempt(Request $request, Order $order)
+    {
+        $this->authorize('update', $order);
+        
+        $request->validate([
+            'notes' => 'required|string|min:3|max:500',
+        ]);
+        
+        try {
+            DB::beginTransaction();
+            
+            // Enregistrer la tentative
+            $order->increment('attempts_count');
+            $order->increment('daily_attempts_count');
+            $order->last_attempt_at = now();
+            $order->save();
+            
+            // Enregistrer dans l'historique
+            $order->recordHistory('tentative', $request->notes);
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Tentative d\'appel enregistrée avec succès',
+                'attempts_count' => $order->attempts_count,
+                'daily_attempts_count' => $order->daily_attempts_count
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'enregistrement de la tentative: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'enregistrement de la tentative'
+            ], 500);
+        }
+    }
+
 }

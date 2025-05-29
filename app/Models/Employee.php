@@ -42,6 +42,18 @@ class Employee extends Authenticatable
         return $this->belongsTo(Manager::class);
     }
 
+    // AJOUT IMPORTANT : Relation avec les commandes
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    // Relation avec les commandes assignées
+    public function assignedOrders()
+    {
+        return $this->hasMany(Order::class)->where('is_assigned', true);
+    }
+
     public function loginHistory()
     {
         return $this->morphMany(LoginHistory::class, 'user');
