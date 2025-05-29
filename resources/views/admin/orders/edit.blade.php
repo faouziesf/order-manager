@@ -1,791 +1,1190 @@
 @extends('layouts.admin')
 
-@section('title', 'Modifier Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
-@section('page-title', 'Modifier Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
+@section('title', 'Modifier la Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
+@section('page-title', 'Modifier la Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
 
 @section('css')
 <style>
-    .form-container {
-        max-height: calc(100vh - 200px);
-        overflow-y: auto;
-    }
-    
-    .split-layout {
-        display: grid;
-        grid-template-columns: 1fr 400px;
-        gap: 24px;
-        height: calc(100vh - 200px);
-    }
-    
-    .left-panel {
-        background: white;
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        overflow-y: auto;
-    }
-    
-    .right-panel {
-        background: white;
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        position: sticky;
-        top: 0;
-        height: fit-content;
-        max-height: calc(100vh - 200px);
-        overflow-y: auto;
-    }
-    
-    .form-section {
-        margin-bottom: 32px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    
-    .form-section:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-    }
-    
-    .section-title {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .section-title i {
-        color: #6366f1;
-        font-size: 1.2rem;
-    }
-    
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-    }
-    
-    .form-grid-3 {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-    }
-    
-    .form-group {
-        margin-bottom: 16px;
-    }
-    
-    .form-label {
-        font-weight: 500;
-        color: #374151;
-        margin-bottom: 6px;
-        display: block;
-    }
-    
-    .form-control {
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-size: 14px;
-        transition: all 0.3s ease;
-        background: #f9fafb;
-    }
-    
-    .form-control:focus {
-        border-color: #6366f1;
-        background: white;
-        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
-    }
-    
-    .form-select {
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-size: 14px;
-        background: #f9fafb;
-        transition: all 0.3s ease;
-    }
-    
-    .form-select:focus {
-        border-color: #6366f1;
-        background: white;
-        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        --info-gradient: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        --glass-bg: rgba(255, 255, 255, 0.95);
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --shadow-elevated: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        --border-radius-lg: 16px;
+        --border-radius-xl: 20px;
+        --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Status Badge */
-    .current-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin-bottom: 16px;
+    body {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        font-family: 'Inter', sans-serif;
     }
-    
-    .status-nouvelle { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
-    .status-confirmée { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-    .status-annulée { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-    .status-datée { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-    .status-en_route { background: rgba(6, 182, 212, 0.1); color: #06b6d4; }
-    .status-livrée { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-    
-    /* PANIER STYLES */
-    .cart-container {
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        background: #f8fafc;
-        margin-bottom: 24px;
+
+    .page-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border-radius: var(--border-radius-xl);
+        box-shadow: var(--shadow-elevated);
+        border: 1px solid var(--glass-border);
+        margin: 1rem;
+        overflow: hidden;
     }
-    
-    .cart-header {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+
+    .page-header {
+        background: var(--primary-gradient);
         color: white;
-        padding: 16px 20px;
-        border-radius: 10px 10px 0 0;
-        display: flex;
-        justify-content: between;
-        align-items: center;
-        cursor: pointer;
-        user-select: none;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
     }
-    
-    .cart-header h5 {
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 100%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        transform: rotate(15deg);
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        position: relative;
+        z-index: 2;
+    }
+
+    .page-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
         margin: 0;
         display: flex;
         align-items: center;
-        gap: 12px;
-        flex: 1;
+        gap: 1rem;
     }
-    
+
+    .order-status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+    }
+
+    .page-header .breadcrumb {
+        background: transparent;
+        margin: 0;
+        padding: 0;
+    }
+
+    .page-header .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+    }
+
+    .page-header .breadcrumb-item.active {
+        color: white;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .header-btn {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: var(--transition-smooth);
+        cursor: pointer;
+    }
+
+    .header-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-btn.btn-call {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.8) 0%, rgba(5, 150, 105, 0.8) 100%);
+    }
+
+    .header-btn.btn-history {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(124, 58, 237, 0.8) 100%);
+    }
+
+    .main-content {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 2rem;
+        padding: 2rem;
+        min-height: 70vh;
+    }
+
+    @media (max-width: 1200px) {
+        .main-content {
+            grid-template-columns: 1fr;
+        }
+        
+        .header-content {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .header-actions {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* =========================
+       SECTION CLIENT
+    ========================= */
+    .customer-section {
+        background: white;
+        border-radius: var(--border-radius-lg);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        height: fit-content;
+    }
+
+    .section-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .section-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .section-header .icon {
+        width: 40px;
+        height: 40px;
+        background: var(--primary-gradient);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.1rem;
+    }
+
+    .section-content {
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .form-label .required {
+        color: #ef4444;
+        font-size: 0.9rem;
+    }
+
+    .form-control {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 0.875rem 1rem;
+        transition: var(--transition-smooth);
+        font-size: 0.95rem;
+        background: #fafafa;
+    }
+
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
+        outline: none;
+    }
+
+    .form-control:invalid {
+        border-color: #ef4444;
+    }
+
+    .form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.75rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+    }
+
+    .input-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    /* =========================
+       SECTION PANIER
+    ========================= */
+    .cart-section {
+        background: white;
+        border-radius: var(--border-radius-lg);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        height: fit-content;
+        position: sticky;
+        top: 2rem;
+    }
+
+    .cart-header {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .cart-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
     .cart-toggle {
         background: none;
         border: none;
         color: white;
         font-size: 1.2rem;
+        transition: var(--transition-smooth);
         cursor: pointer;
-        padding: 4px;
-        border-radius: 4px;
-        transition: all 0.3s ease;
+        padding: 0.5rem;
+        border-radius: 8px;
     }
-    
+
     .cart-toggle:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.1);
     }
-    
-    .cart-summary {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
-    
+
     .cart-body {
-        padding: 20px;
-        transition: all 0.3s ease;
         max-height: 600px;
         overflow-y: auto;
+        transition: var(--transition-smooth);
     }
-    
+
     .cart-body.collapsed {
         max-height: 0;
-        padding: 0 20px;
         overflow: hidden;
     }
-    
+
     .product-search {
-        position: relative;
-        margin-bottom: 20px;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
     }
-    
-    .product-search-input {
-        width: 100%;
-        padding: 12px 16px 12px 44px;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        font-size: 14px;
+
+    .search-input-group {
+        position: relative;
+    }
+
+    .search-input-group input {
+        padding-left: 3rem;
         background: white;
     }
-    
-    .product-search-input:focus {
-        border-color: #6366f1;
-        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
-    }
-    
-    .product-search i {
+
+    .search-input-group .search-icon {
         position: absolute;
-        left: 16px;
+        left: 1rem;
         top: 50%;
         transform: translateY(-50%);
         color: #6b7280;
+        font-size: 1rem;
     }
-    
+
     .product-suggestions {
         position: absolute;
         top: 100%;
         left: 0;
         right: 0;
         background: white;
-        border: 2px solid #e5e7eb;
+        border: 1px solid #e5e7eb;
         border-top: none;
-        border-radius: 0 0 8px 8px;
+        border-radius: 0 0 12px 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
         max-height: 200px;
         overflow-y: auto;
-        z-index: 1000;
-        display: none;
     }
-    
-    .product-suggestion {
-        padding: 12px 16px;
+
+    .suggestion-item {
+        padding: 0.75rem 1rem;
         cursor: pointer;
         border-bottom: 1px solid #f3f4f6;
+        transition: var(--transition-smooth);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        transition: all 0.2s ease;
     }
-    
-    .product-suggestion:hover {
+
+    .suggestion-item:hover {
         background: #f3f4f6;
     }
-    
-    .product-suggestion:last-child {
+
+    .suggestion-item:last-child {
         border-bottom: none;
     }
-    
-    .suggestion-info h6 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 600;
-        color: #374151;
-    }
-    
-    .suggestion-info small {
-        color: #6b7280;
-        font-size: 12px;
-    }
-    
-    .suggestion-price {
-        font-weight: 600;
-        color: #10b981;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
+
     .cart-items {
-        space-y: 12px;
+        padding: 1rem 2rem;
+        min-height: 200px;
     }
-    
+
     .cart-item {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 12px;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-    
-    .cart-item:hover {
-        border-color: #6366f1;
-        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
-    }
-    
-    .cart-item-header {
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 12px;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        border: 1px solid #e5e7eb;
+        transition: var(--transition-smooth);
     }
-    
-    .cart-item-info {
+
+    .cart-item:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .item-info {
         flex: 1;
     }
-    
-    .cart-item-name {
+
+    .item-name {
         font-weight: 600;
         color: #374151;
-        margin-bottom: 4px;
-        font-size: 14px;
+        margin-bottom: 0.25rem;
     }
-    
-    .cart-item-price {
-        color: #10b981;
-        font-weight: 600;
+
+    .item-price {
+        color: #6b7280;
+        font-size: 0.9rem;
         font-family: 'JetBrains Mono', monospace;
-        font-size: 13px;
     }
-    
-    .cart-item-remove {
+
+    .quantity-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: white;
+        border-radius: 8px;
+        padding: 0.25rem;
+    }
+
+    .quantity-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #f3f4f6;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        color: #6b7280;
+    }
+
+    .quantity-btn:hover {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .quantity-input {
+        width: 60px;
+        text-align: center;
+        border: none;
+        background: transparent;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .remove-item {
+        background: #fef2f2;
+        color: #ef4444;
+        border: none;
+        border-radius: 8px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+    }
+
+    .remove-item:hover {
+        background: #fee2e2;
+        transform: scale(1.1);
+    }
+
+    .cart-empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6b7280;
+    }
+
+    .cart-empty i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* =========================
+       SECTION TOTAL & CONTRÔLES
+    ========================= */
+    .cart-summary {
+        padding: 1.5rem 2rem;
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .summary-row:last-child {
+        margin-bottom: 0;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #374151;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .summary-label {
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .summary-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .order-controls {
+        padding: 2rem;
+        background: white;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .control-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .control-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .status-badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        font-weight: 500;
+        font-size: 0.9rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .status-badge::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: currentColor;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .status-badge:hover::before {
+        opacity: 0.1;
+    }
+
+    .status-badge.active {
+        color: white;
+        transform: scale(1.05);
+    }
+
+    .status-nouvelle {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .status-nouvelle.active {
+        background: var(--primary-gradient);
+    }
+
+    .status-confirmée {
+        background: #ecfdf5;
+        color: #059669;
+    }
+
+    .status-confirmée.active {
+        background: var(--success-gradient);
+    }
+
+    .status-annulée {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .status-annulée.active {
+        background: var(--danger-gradient);
+    }
+
+    .status-datée {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .status-datée.active {
+        background: var(--warning-gradient);
+    }
+
+    .status-en_route {
+        background: #cffafe;
+        color: #0891b2;
+    }
+
+    .status-en_route.active {
+        background: var(--info-gradient);
+    }
+
+    .status-livrée {
+        background: #f3e8ff;
+        color: #8b5cf6;
+    }
+
+    .status-livrée.active {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    }
+
+    .priority-badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .priority-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .priority-badge.active {
+        color: white;
+        transform: scale(1.05);
+    }
+
+    .priority-normale {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .priority-normale.active {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    }
+
+    .priority-urgente {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .priority-urgente.active {
+        background: var(--warning-gradient);
+    }
+
+    .priority-vip {
         background: #fee2e2;
         color: #dc2626;
+    }
+
+    .priority-vip.active {
+        background: var(--danger-gradient);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-save {
+        flex: 1;
+        min-width: 160px;
+        background: var(--success-gradient);
+        color: white;
         border: none;
-        border-radius: 6px;
+        border-radius: 12px;
+        padding: 1rem 2rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-save:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #6b7280;
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 2rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-width: 140px;
+    }
+
+    .btn-secondary:hover {
+        background: #e5e7eb;
+        color: #374151;
+        transform: translateY(-2px);
+    }
+
+    /* =========================
+       MODALES
+    ========================= */
+    .modal-content {
+        border: none;
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-elevated);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        padding: 1.5rem 2rem;
+    }
+
+    .modal-header .modal-title {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .modal-header .btn-close {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        opacity: 1;
         width: 32px;
         height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 14px;
-    }
-    
-    .cart-item-remove:hover {
-        background: #fecaca;
-        transform: rotate(90deg);
-    }
-    
-    .cart-item-controls {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .quantity-control {
-        display: flex;
-        align-items: center;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        background: white;
-    }
-    
-    .quantity-btn {
-        background: none;
-        border: none;
-        padding: 8px 12px;
-        cursor: pointer;
-        font-weight: 600;
-        color: #6366f1;
-        transition: all 0.2s ease;
-        font-size: 16px;
-        line-height: 1;
-    }
-    
-    .quantity-btn:hover {
-        background: #f3f4f6;
-    }
-    
-    .quantity-btn:disabled {
-        color: #d1d5db;
-        cursor: not-allowed;
-    }
-    
-    .quantity-input {
-        border: none;
-        text-align: center;
-        width: 50px;
-        padding: 8px 4px;
-        font-weight: 600;
-        color: #374151;
-        background: transparent;
-    }
-    
-    .quantity-input:focus {
-        outline: none;
-        background: #f9fafb;
-    }
-    
-    .cart-item-total {
-        font-weight: 700;
-        color: #374151;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
-    }
-    
-    .new-product-form {
-        background: #f0f9ff;
-        border: 2px dashed #0ea5e9;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        display: none;
-    }
-    
-    .new-product-form.show {
-        display: block;
-        animation: slideDown 0.3s ease;
-    }
-    
-    .new-product-grid {
-        display: grid;
-        grid-template-columns: 1fr 120px;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-    
-    .cart-total {
-        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-        border: 1px solid #10b981;
-        border-radius: 8px;
-        padding: 16px;
-        margin-top: 16px;
-        text-align: center;
-    }
-    
-    .cart-total-label {
-        font-size: 14px;
-        color: #065f46;
-        margin-bottom: 4px;
-    }
-    
-    .cart-total-amount {
-        font-size: 24px;
-        font-weight: 700;
-        color: #047857;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .add-product-btn {
-        width: 100%;
-        padding: 12px;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        margin-bottom: 16px;
-    }
-    
-    .add-product-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    }
-    
-    .add-new-product-btn {
-        width: 100%;
-        padding: 10px;
-        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-size: 14px;
-    }
-    
-    .add-new-product-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
-    }
-    
-    .submit-buttons {
-        display: flex;
-        gap: 12px;
-        margin-top: 24px;
-        padding-top: 24px;
-        border-top: 1px solid #e5e7eb;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        font-weight: 600;
-        color: white;
-        transition: all 0.3s ease;
-        flex: 1;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    }
-    
-    .btn-secondary {
-        background: #f3f4f6;
-        border: 2px solid #e5e7eb;
-        padding: 12px 24px;
-        border-radius: 8px;
-        font-weight: 600;
-        color: #374151;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-block;
-        text-align: center;
-    }
-    
-    .btn-secondary:hover {
-        background: #e5e7eb;
-        color: #374151;
-        text-decoration: none;
     }
 
-    /* History panel */
-    .history-container {
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        background: #f8fafc;
-        margin-bottom: 24px;
+    .modal-header .btn-close:hover {
+        background: rgba(255, 255, 255, 0.3);
     }
-    
-    .history-header {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        color: white;
-        padding: 16px 20px;
-        border-radius: 10px 10px 0 0;
-        display: flex;
-        justify-content: between;
-        align-items: center;
-        cursor: pointer;
-        user-select: none;
+
+    .modal-body {
+        padding: 2rem;
     }
-    
-    .history-body {
-        padding: 20px;
+
+    .modal-footer {
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+        padding: 1.5rem 2rem;
+    }
+
+    .call-attempt-form {
+        margin: 0;
+    }
+
+    .call-attempt-form .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .call-attempt-form .form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .history-timeline {
         max-height: 400px;
         overflow-y: auto;
     }
-    
+
     .history-item {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 8px;
-        font-size: 13px;
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid #f3f4f6;
+        position: relative;
     }
-    
-    .history-meta {
+
+    .history-item:last-child {
+        border-bottom: none;
+    }
+
+    .history-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 2;
+    }
+
+    .history-icon.creation {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .history-icon.modification {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+    }
+
+    .history-icon.tentative {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .history-icon.confirmation {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .history-icon.annulation {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .history-content {
+        flex: 1;
+    }
+
+    .history-header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        color: #6b7280;
-        font-size: 12px;
+        align-items: start;
+        margin-bottom: 0.5rem;
     }
-    
+
     .history-action {
         font-weight: 600;
         color: #374151;
+        text-transform: capitalize;
     }
-    
-    .history-notes {
+
+    .history-time {
+        font-size: 0.85rem;
         color: #6b7280;
-        font-style: italic;
-        margin-top: 4px;
+        font-family: 'JetBrains Mono', monospace;
     }
-    
-    @keyframes slideDown {
+
+    .history-user {
+        font-size: 0.9rem;
+        color: #059669;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .history-notes {
+        color: #374151;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        background: #f9fafb;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #e5e7eb;
+    }
+
+    .history-changes {
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+
+    .history-timeline::before {
+        content: '';
+        position: absolute;
+        left: 20px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(to bottom, #e5e7eb 0%, transparent 100%);
+    }
+
+    /* =========================
+       ANIMATIONS
+    ========================= */
+    @keyframes slideIn {
         from {
             opacity: 0;
-            transform: translateY(-10px);
+            transform: translateY(20px);
         }
         to {
             opacity: 1;
             transform: translateY(0);
         }
     }
-    
-    .loading-overlay {
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .cart-item {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .product-suggestions {
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .history-item {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    /* =========================
+       LOADING STATES
+    ========================= */
+    .loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .loading::after {
+        content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.8);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-        z-index: 100;
-    }
-    
-    .loading-overlay.show {
-        display: flex;
-    }
-    
-    .spinner {
-        width: 32px;
-        height: 32px;
-        border: 3px solid #f3f4f6;
-        border-top: 3px solid #6366f1;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        margin: -10px 0 0 -10px;
+        border: 2px solid transparent;
+        border-top: 2px solid #667eea;
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
-    
+
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
-    
-    /* Error states */
-    .form-control.is-invalid,
-    .form-select.is-invalid {
-        border-color: #dc2626;
-        background-color: #fef2f2;
-    }
-    
-    .invalid-feedback {
-        color: #dc2626;
-        font-size: 12px;
-        margin-top: 4px;
-    }
-    
-    /* Responsive */
+
+    /* =========================
+       RESPONSIVE
+    ========================= */
     @media (max-width: 1200px) {
-        .split-layout {
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-        
-        .right-panel {
+        .cart-section {
             position: static;
-            max-height: none;
-        }
-        
-        .form-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .form-grid-3 {
-            grid-template-columns: repeat(2, 1fr);
+            margin-top: 2rem;
         }
     }
-    
+
     @media (max-width: 768px) {
-        .form-grid-3 {
+        .main-content {
+            padding: 1rem;
+            gap: 1rem;
+        }
+        
+        .page-header {
+            padding: 1.5rem;
+        }
+        
+        .section-content {
+            padding: 1.5rem;
+        }
+        
+        .input-group {
             grid-template-columns: 1fr;
         }
         
-        .split-layout {
-            height: auto;
+        .action-buttons {
+            flex-direction: column;
         }
         
-        .left-panel,
-        .right-panel {
-            height: auto;
-            max-height: none;
+        .status-badges,
+        .priority-badges {
+            justify-content: center;
+        }
+        
+        .header-actions {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .header-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
         }
     }
 </style>
 @endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <div class="mt-2">
-                <span class="current-status status-{{ $order->status }}">
-                    <i class="fas fa-circle"></i>
-                    {{ ucfirst($order->status) }}
-                </span>
+<div class="page-container">
+    <!-- En-tête de page -->
+    <div class="page-header">
+        <div class="header-content">
+            <div>
+                <h1>
+                    <i class="fas fa-edit me-3"></i>
+                    Commande #{{ str_pad($order->id, 6, '0', STR_PAD_LEFT) }}
+                    <span class="order-status-badge">
+                        @switch($order->status)
+                            @case('nouvelle')
+                                <i class="fas fa-circle"></i>Nouvelle
+                                @break
+                            @case('confirmée')
+                                <i class="fas fa-check-circle"></i>Confirmée
+                                @break
+                            @case('annulée')
+                                <i class="fas fa-times-circle"></i>Annulée
+                                @break
+                            @case('datée')
+                                <i class="fas fa-calendar-alt"></i>Datée
+                                @break
+                            @case('en_route')
+                                <i class="fas fa-shipping-fast"></i>En Route
+                                @break
+                            @case('livrée')
+                                <i class="fas fa-gift"></i>Livrée
+                                @break
+                        @endswitch
+                    </span>
+                </h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mt-2">
+                        <li class="breadcrumb-item">
+                            <a href="{{ route('admin.dashboard') }}">
+                                <i class="fas fa-home me-1"></i>Accueil
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="{{ route('admin.orders.index') }}">Commandes</a>
+                        </li>
+                        <li class="breadcrumb-item active">Modifier #{{ $order->id }}</li>
+                    </ol>
+                </nav>
             </div>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Retour à la liste
-            </a>
+
+            <div class="header-actions">
+                <button type="button" class="header-btn btn-call" data-bs-toggle="modal" data-bs-target="#callAttemptModal">
+                    <i class="fas fa-phone"></i>
+                    Tentative d'Appel
+                </button>
+                <button type="button" class="header-btn btn-history" data-bs-toggle="modal" data-bs-target="#historyModal">
+                    <i class="fas fa-history"></i>
+                    Historique
+                </button>
+            </div>
         </div>
     </div>
 
-    <form method="POST" action="{{ route('admin.orders.update', $order) }}" id="orderForm">
+    <!-- Contenu principal -->
+    <form id="orderForm" action="{{ route('admin.orders.update', $order) }}" method="POST">
         @csrf
         @method('PUT')
-        
-        <div class="split-layout">
-            <!-- Left Panel - Customer Info -->
-            <div class="left-panel">
-                <!-- Section Client -->
-                <div class="form-section">
-                    <div class="section-title">
+        <div class="main-content">
+            <!-- Section Client -->
+            <div class="customer-section">
+                <div class="section-header">
+                    <div class="icon">
                         <i class="fas fa-user"></i>
-                        Informations Client
                     </div>
-                    
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="customer_phone" class="form-label">
-                                Téléphone <span class="text-danger">*</span>
-                            </label>
-                            <input type="tel" 
-                                   class="form-control @error('customer_phone') is-invalid @enderror" 
-                                   id="customer_phone" 
-                                   name="customer_phone" 
-                                   value="{{ old('customer_phone', $order->customer_phone) }}" 
-                                   required>
-                            @error('customer_phone')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="customer_phone_2" class="form-label">Téléphone 2</label>
-                            <input type="tel" 
-                                   class="form-control @error('customer_phone_2') is-invalid @enderror" 
-                                   id="customer_phone_2" 
-                                   name="customer_phone_2" 
-                                   value="{{ old('customer_phone_2', $order->customer_phone_2) }}">
-                            @error('customer_phone_2')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-                    
+                    <h3>Informations Client</h3>
+                </div>
+                <div class="section-content">
                     <div class="form-group">
-                        <label for="customer_name" class="form-label">Nom du client</label>
+                        <label for="customer_phone" class="form-label">
+                            <i class="fas fa-phone me-1"></i>
+                            Téléphone Principal
+                            <span class="required">*</span>
+                        </label>
+                        <input type="tel" 
+                               class="form-control @error('customer_phone') is-invalid @enderror" 
+                               id="customer_phone" 
+                               name="customer_phone" 
+                               value="{{ old('customer_phone', $order->customer_phone) }}" 
+                               placeholder="Ex: +216 XX XXX XXX"
+                               required
+                               autocomplete="tel">
+                        @error('customer_phone')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customer_name" class="form-label">
+                            <i class="fas fa-user me-1"></i>
+                            Nom Complet
+                        </label>
                         <input type="text" 
                                class="form-control @error('customer_name') is-invalid @enderror" 
                                id="customer_name" 
                                name="customer_name" 
-                               value="{{ old('customer_name', $order->customer_name) }}">
+                               value="{{ old('customer_name', $order->customer_name) }}" 
+                               placeholder="Nom et prénom du client"
+                               autocomplete="name">
                         @error('customer_name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                </div>
 
-                <!-- Section Adresse -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-map-marker-alt"></i>
-                        Adresse de Livraison
+                    <div class="form-group">
+                        <label for="customer_phone_2" class="form-label">
+                            <i class="fas fa-phone-alt me-1"></i>
+                            Téléphone Secondaire
+                        </label>
+                        <input type="tel" 
+                               class="form-control @error('customer_phone_2') is-invalid @enderror" 
+                               id="customer_phone_2" 
+                               name="customer_phone_2" 
+                               value="{{ old('customer_phone_2', $order->customer_phone_2) }}" 
+                               placeholder="Téléphone alternatif (optionnel)"
+                               autocomplete="tel">
+                        @error('customer_phone_2')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
-                    
-                    <div class="form-grid">
+
+                    <div class="input-group">
                         <div class="form-group">
-                            <label for="customer_governorate" class="form-label">Gouvernorat</label>
+                            <label for="customer_governorate" class="form-label">
+                                <i class="fas fa-map-marked-alt me-1"></i>
+                                Gouvernorat
+                            </label>
                             <select class="form-select @error('customer_governorate') is-invalid @enderror" 
                                     id="customer_governorate" 
                                     name="customer_governorate">
-                                <option value="">Sélectionner un gouvernorat</option>
-                                @foreach($regions as $region)
-                                    <option value="{{ $region->id }}" 
-                                            {{ old('customer_governorate', $order->customer_governorate) == $region->id ? 'selected' : '' }}>
-                                        {{ $region->name }}
-                                    </option>
-                                @endforeach
+                                <option value="">Choisir un gouvernorat</option>
+                                @if(isset($regions))
+                                    @foreach($regions as $region)
+                                        <option value="{{ $region->id }}" 
+                                                {{ old('customer_governorate', $order->customer_governorate) == $region->id ? 'selected' : '' }}>
+                                            {{ $region->name }}
+                                        </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('customer_governorate')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+
                         <div class="form-group">
-                            <label for="customer_city" class="form-label">Ville</label>
+                            <label for="customer_city" class="form-label">
+                                <i class="fas fa-city me-1"></i>
+                                Ville
+                            </label>
                             <select class="form-select @error('customer_city') is-invalid @enderror" 
                                     id="customer_city" 
                                     name="customer_city">
-                                <option value="">Sélectionner une ville</option>
-                                @if($order->region && $order->region->cities)
-                                    @foreach($order->region->cities as $city)
+                                <option value="">Choisir une ville</option>
+                                @if(isset($cities))
+                                    @foreach($cities as $city)
                                         <option value="{{ $city->id }}" 
                                                 {{ old('customer_city', $order->customer_city) == $city->id ? 'selected' : '' }}>
                                             {{ $city->name }}
@@ -798,100 +1197,44 @@
                             @enderror
                         </div>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label for="customer_address" class="form-label">Adresse complète</label>
+                        <label for="customer_address" class="form-label">
+                            <i class="fas fa-map-marker-alt me-1"></i>
+                            Adresse Complète
+                        </label>
                         <textarea class="form-control @error('customer_address') is-invalid @enderror" 
                                   id="customer_address" 
                                   name="customer_address" 
-                                  rows="3">{{ old('customer_address', $order->customer_address) }}</textarea>
+                                  rows="3" 
+                                  placeholder="Adresse détaillée du client"
+                                  autocomplete="street-address">{{ old('customer_address', $order->customer_address) }}</textarea>
                         @error('customer_address')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                </div>
 
-                <!-- Section Commande -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-cog"></i>
-                        Paramètres de la Commande
+                    <div class="form-group">
+                        <label for="notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>
+                            Commentaires
+                        </label>
+                        <textarea class="form-control @error('notes') is-invalid @enderror" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="3" 
+                                  placeholder="Notes supplémentaires sur la commande">{{ old('notes', $order->notes) }}</textarea>
+                        @error('notes')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
-                    
-                    <div class="form-grid-3">
-                        <div class="form-group">
-                            <label for="status" class="form-label">
-                                Statut <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select @error('status') is-invalid @enderror" 
-                                    id="status" 
-                                    name="status" 
-                                    required>
-                                <option value="nouvelle" {{ old('status', $order->status) == 'nouvelle' ? 'selected' : '' }}>
-                                    Nouvelle
-                                </option>
-                                <option value="confirmée" {{ old('status', $order->status) == 'confirmée' ? 'selected' : '' }}>
-                                    Confirmée
-                                </option>
-                                <option value="annulée" {{ old('status', $order->status) == 'annulée' ? 'selected' : '' }}>
-                                    Annulée
-                                </option>
-                                <option value="datée" {{ old('status', $order->status) == 'datée' ? 'selected' : '' }}>
-                                    Datée
-                                </option>
-                                <option value="en_route" {{ old('status', $order->status) == 'en_route' ? 'selected' : '' }}>
-                                    En Route
-                                </option>
-                                <option value="livrée" {{ old('status', $order->status) == 'livrée' ? 'selected' : '' }}>
-                                    Livrée
-                                </option>
-                            </select>
-                            @error('status')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="priority" class="form-label">
-                                Priorité <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select @error('priority') is-invalid @enderror" 
-                                    id="priority" 
-                                    name="priority" 
-                                    required>
-                                <option value="normale" {{ old('priority', $order->priority) == 'normale' ? 'selected' : '' }}>
-                                    Normale
-                                </option>
-                                <option value="urgente" {{ old('priority', $order->priority) == 'urgente' ? 'selected' : '' }}>
-                                    Urgente
-                                </option>
-                                <option value="vip" {{ old('priority', $order->priority) == 'vip' ? 'selected' : '' }}>
-                                    VIP
-                                </option>
-                            </select>
-                            @error('priority')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="shipping_cost" class="form-label">Frais de Livraison (TND)</label>
-                            <input type="number" 
-                                   class="form-control @error('shipping_cost') is-invalid @enderror" 
-                                   id="shipping_cost" 
-                                   name="shipping_cost" 
-                                   value="{{ old('shipping_cost', $order->shipping_cost) }}" 
-                                   step="0.001" 
-                                   min="0">
-                            @error('shipping_cost')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-                    
-                    <!-- Champ Date de livraison (pour statut datée) -->
-                    <div class="form-group" id="scheduledDateGroup" style="display: {{ old('status', $order->status) == 'datée' ? 'block' : 'none' }};">
-                        <label for="scheduled_date" class="form-label">Date de livraison prévue</label>
+
+                    @if($order->status === 'datée')
+                    <div class="form-group">
+                        <label for="scheduled_date" class="form-label">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            Date de Livraison Prévue
+                        </label>
                         <input type="date" 
                                class="form-control @error('scheduled_date') is-invalid @enderror" 
                                id="scheduled_date" 
@@ -901,204 +1244,287 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    
-                    <!-- Champ Prix confirmé (pour statut confirmée) -->
-                    <div class="form-group" id="confirmedPriceGroup" style="display: {{ old('status', $order->status) == 'confirmée' ? 'block' : 'none' }};">
-                        <label for="confirmed_price" class="form-label">Prix confirmé (TND)</label>
+                    @endif
+
+                    @if(in_array($order->status, ['confirmée', 'datée']))
+                    <div class="form-group">
+                        <label for="confirmed_price" class="form-label">
+                            <i class="fas fa-dollar-sign me-1"></i>
+                            Prix Confirmé
+                        </label>
                         <input type="number" 
                                class="form-control @error('confirmed_price') is-invalid @enderror" 
                                id="confirmed_price" 
                                name="confirmed_price" 
+                               step="0.001"
+                               min="0"
                                value="{{ old('confirmed_price', $order->confirmed_price) }}" 
-                               step="0.001" 
-                               min="0">
+                               placeholder="Prix final confirmé avec le client">
                         @error('confirmed_price')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                </div>
-
-                <!-- Section Notes -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-sticky-note"></i>
-                        Notes
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="notes" class="form-label">Notes de la commande</label>
-                        <textarea class="form-control @error('notes') is-invalid @enderror" 
-                                  id="notes" 
-                                  name="notes" 
-                                  rows="4" 
-                                  placeholder="Notes internes, commentaires...">{{ old('notes', $order->notes) }}</textarea>
-                        @error('notes')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                    @endif
                 </div>
             </div>
 
-            <!-- Right Panel - Cart & History -->
-            <div class="right-panel">
-                <!-- Cart Container -->
-                <div class="cart-container">
-                    <div class="cart-header" onclick="toggleCart()">
-                        <h5>
-                            <i class="fas fa-shopping-cart"></i>
-                            Panier
-                        </h5>
-                        <div class="cart-summary">
-                            <span id="cartCount">{{ $order->items->count() }} produit(s)</span>
-                            <button type="button" class="cart-toggle" id="cartToggle">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="cart-body" id="cartBody">
-                        <!-- Product Search -->
-                        <div class="product-search">
-                            <i class="fas fa-search"></i>
-                            <input type="text" 
-                                   class="product-search-input" 
-                                   id="productSearch" 
-                                   placeholder="Rechercher un produit...">
-                            <div class="product-suggestions" id="productSuggestions"></div>
-                        </div>
-                        
-                        <!-- Add New Product Button -->
-                        <button type="button" class="add-new-product-btn" onclick="toggleNewProductForm()">
-                            <i class="fas fa-plus"></i>
-                            Créer un nouveau produit
-                        </button>
-                        
-                        <!-- New Product Form -->
-                        <div class="new-product-form" id="newProductForm">
-                            <div class="new-product-grid">
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="newProductName" 
-                                       placeholder="Nom du produit">
-                                <input type="number" 
-                                       class="form-control" 
-                                       id="newProductPrice" 
-                                       placeholder="Prix" 
-                                       step="0.001" 
-                                       min="0">
-                            </div>
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success btn-sm flex-1" onclick="addNewProduct()">
-                                    <i class="fas fa-check me-1"></i>Ajouter
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="cancelNewProduct()">
-                                    <i class="fas fa-times me-1"></i>Annuler
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Cart Items -->
-                        <div class="cart-items" id="cartItems">
-                            <!-- Items will be loaded by JavaScript -->
-                        </div>
-                        
-                        <!-- Cart Total -->
-                        <div class="cart-total" id="cartTotal">
-                            <div class="cart-total-label">Total HT</div>
-                            <div class="cart-total-amount">{{ number_format($order->total_price, 3) }} TND</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- History Container -->
-                <div class="history-container">
-                    <div class="history-header">
-                        <h6>
-                            <i class="fas fa-history"></i>
-                            Historique ({{ $order->history->count() }})
-                        </h6>
-                    </div>
-                    <div class="history-body">
-                        @forelse($order->history as $historyItem)
-                            <div class="history-item">
-                                <div class="history-meta">
-                                    <span class="history-action">{{ ucfirst($historyItem->action) }}</span>
-                                    <span>{{ $historyItem->created_at->format('d/m/Y H:i') }}</span>
-                                </div>
-                                @if($historyItem->notes)
-                                    <div class="history-notes">{{ $historyItem->notes }}</div>
-                                @endif
-                                @if($historyItem->user_type && $historyItem->user_id)
-                                    <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">
-                                        par {{ $historyItem->getUserName() }}
-                                    </div>
-                                @endif
-                            </div>
-                        @empty
-                            <div class="text-center text-muted py-3">
-                                <i class="fas fa-history opacity-50"></i>
-                                <p class="mb-0">Aucun historique</p>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-
-                <!-- Submit Buttons -->
-                <div class="submit-buttons">
-                    <button type="submit" class="btn btn-primary" id="submitBtn">
-                        <i class="fas fa-save me-2"></i>Sauvegarder
+            <!-- Section Panier -->
+            <div class="cart-section">
+                <div class="cart-header" onclick="toggleCart()">
+                    <h3>
+                        <i class="fas fa-shopping-cart"></i>
+                        Panier (<span id="cart-count">{{ $order->items->count() }}</span>)
+                    </h3>
+                    <button type="button" class="cart-toggle" id="cart-toggle">
+                        <i class="fas fa-chevron-up"></i>
                     </button>
                 </div>
-                <div class="mt-2">
-                    <a href="{{ route('admin.orders.index') }}" class="btn-secondary w-100">
-                        <i class="fas fa-times me-2"></i>Annuler
-                    </a>
+
+                <div class="cart-body" id="cart-body">
+                    <!-- Recherche de produits -->
+                    <div class="product-search">
+                        <div class="search-input-group">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="product-search" 
+                                   placeholder="Rechercher un produit..." 
+                                   autocomplete="off">
+                            <div class="product-suggestions" id="product-suggestions"></div>
+                        </div>
+                    </div>
+
+                    <!-- Liste des produits -->
+                    <div class="cart-items" id="cart-items">
+                        @if($order->items->count() === 0)
+                        <div class="cart-empty" id="cart-empty">
+                            <i class="fas fa-shopping-basket"></i>
+                            <h5>Panier vide</h5>
+                            <p>Recherchez et ajoutez des produits à votre commande</p>
+                        </div>
+                        @else
+                        <div class="cart-empty" id="cart-empty" style="display: none;">
+                            <i class="fas fa-shopping-basket"></i>
+                            <h5>Panier vide</h5>
+                            <p>Recherchez et ajoutez des produits à votre commande</p>
+                        </div>
+                        @endif
+                    </div>
+
+                    <!-- Résumé du panier -->
+                    <div class="cart-summary" id="cart-summary" style="{{ $order->items->count() > 0 ? '' : 'display: none;' }}">
+                        <div class="summary-row">
+                            <span class="summary-label">Sous-total:</span>
+                            <span class="summary-value" id="subtotal">{{ number_format($order->total_price, 3) }} TND</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Frais de livraison:</span>
+                            <span class="summary-value" id="shipping-cost">{{ number_format($order->shipping_cost, 3) }} TND</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Total:</span>
+                            <span class="summary-value" id="total">{{ number_format($order->total_price + $order->shipping_cost, 3) }} TND</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contrôles de commande - EN DEHORS du panier collapsible -->
+                <div class="order-controls">
+                    <div class="control-group">
+                        <label class="control-label">Statut de la commande</label>
+                        <div class="status-badges">
+                            <div class="status-badge status-nouvelle {{ $order->status === 'nouvelle' ? 'active' : '' }}" data-status="nouvelle">
+                                <i class="fas fa-circle me-1"></i>Nouvelle
+                            </div>
+                            <div class="status-badge status-confirmée {{ $order->status === 'confirmée' ? 'active' : '' }}" data-status="confirmée">
+                                <i class="fas fa-check-circle me-1"></i>Confirmée
+                            </div>
+                            <div class="status-badge status-annulée {{ $order->status === 'annulée' ? 'active' : '' }}" data-status="annulée">
+                                <i class="fas fa-times-circle me-1"></i>Annulée
+                            </div>
+                            <div class="status-badge status-datée {{ $order->status === 'datée' ? 'active' : '' }}" data-status="datée">
+                                <i class="fas fa-calendar-alt me-1"></i>Datée
+                            </div>
+                            <div class="status-badge status-en_route {{ $order->status === 'en_route' ? 'active' : '' }}" data-status="en_route">
+                                <i class="fas fa-shipping-fast me-1"></i>En Route
+                            </div>
+                            <div class="status-badge status-livrée {{ $order->status === 'livrée' ? 'active' : '' }}" data-status="livrée">
+                                <i class="fas fa-gift me-1"></i>Livrée
+                            </div>
+                        </div>
+                        <input type="hidden" name="status" id="status" value="{{ $order->status }}">
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Priorité</label>
+                        <div class="priority-badges">
+                            <div class="priority-badge priority-normale {{ $order->priority === 'normale' ? 'active' : '' }}" data-priority="normale">
+                                <i class="fas fa-minus me-1"></i>Normale
+                            </div>
+                            <div class="priority-badge priority-urgente {{ $order->priority === 'urgente' ? 'active' : '' }}" data-priority="urgente">
+                                <i class="fas fa-exclamation me-1"></i>Urgente
+                            </div>
+                            <div class="priority-badge priority-vip {{ $order->priority === 'vip' ? 'active' : '' }}" data-priority="vip">
+                                <i class="fas fa-crown me-1"></i>VIP
+                            </div>
+                        </div>
+                        <input type="hidden" name="priority" id="priority" value="{{ $order->priority }}">
+                    </div>
+
+                    <div class="control-group">
+                        <label for="employee_id" class="control-label">
+                            <i class="fas fa-user-tie me-1"></i>
+                            Assigner à un employé
+                        </label>
+                        <select class="form-select" id="employee_id" name="employee_id">
+                            <option value="">Non assigné</option>
+                            @if(Auth::guard('admin')->user()->employees()->where('is_active', true)->count() > 0)
+                                @foreach(Auth::guard('admin')->user()->employees()->where('is_active', true)->get() as $employee)
+                                    <option value="{{ $employee->id }}" {{ $order->employee_id == $employee->id ? 'selected' : '' }}>
+                                        {{ $employee->name }}
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
+                    <div class="action-buttons">
+                        <a href="{{ route('admin.orders.index') }}" class="btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Retour
+                        </a>
+                        <button type="submit" class="btn-save" id="save-btn">
+                            <i class="fas fa-save me-1"></i>Enregistrer
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Hidden Products Input -->
-        <div id="productsInputs"></div>
     </form>
 </div>
 
-<!-- Loading Overlay -->
-<div class="loading-overlay" id="pageLoader">
-    <div class="spinner"></div>
+<!-- Modal Tentative d'Appel -->
+<div class="modal fade" id="callAttemptModal" tabindex="-1" aria-labelledby="callAttemptModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="callAttemptModalLabel">
+                    <i class="fas fa-phone"></i>
+                    Nouvelle Tentative d'Appel
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="callAttemptForm" action="{{ route('admin.orders.recordAttempt', $order) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="call-attempt-form">
+                        <div class="form-group">
+                            <label for="attempt_notes" class="form-label">
+                                <i class="fas fa-sticky-note me-1"></i>
+                                Notes sur la tentative d'appel
+                                <span class="required">*</span>
+                            </label>
+                            <textarea class="form-control" 
+                                      id="attempt_notes" 
+                                      name="notes" 
+                                      placeholder="Décrivez le résultat de votre appel (répondu, occupé, boîte vocale, etc.)"
+                                      required></textarea>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Information :</strong> Cette action incrémentera automatiquement le compteur de tentatives et sera enregistrée dans l'historique de la commande.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Enregistrer la Tentative
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<!-- Modal Historique -->
+<div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="historyModalLabel">
+                    <i class="fas fa-history"></i>
+                    Historique de la Commande #{{ str_pad($order->id, 6, '0', STR_PAD_LEFT) }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="history-timeline" id="history-timeline">
+                    <!-- Contenu chargé dynamiquement -->
+                    <div class="text-center py-4">
+                        <div class="loading"></div>
+                        <p class="mt-3 text-muted">Chargement de l'historique...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden inputs for cart data -->
+<div id="cart-data" style="display: none;"></div>
 @endsection
 
 @section('scripts')
 <script>
 $(document).ready(function() {
+    // Initialisation du panier depuis la base de données
     let cart = [];
-    let productSearchTimeout;
-    let cartCollapsed = false;
     
-    // ================================
-    // INITIALISATION AVEC LES DONNÉES EXISTANTES
-    // ===================================
+    @if($order->items->count() > 0)
+        cart = [
+            @foreach($order->items as $item)
+                {
+                    id: {{ $item->product_id }},
+                    name: "{{ addslashes($item->product->name ?? 'Produit supprimé') }}",
+                    price: {{ (float) $item->unit_price }},
+                    quantity: {{ $item->quantity }},
+                    stock: {{ $item->product->stock ?? 0 }}
+                }@if(!$loop->last),@endif
+            @endforeach
+        ];
+    @endif
     
-    @foreach($order->items as $item)
-        cart.push({
-            id: {{ $item->product_id }},
-            name: '{{ addslashes($item->product->name) }}',
-            price: {{ $item->unit_price }},
-            quantity: {{ $item->quantity }},
-            is_new: false
-        });
-    @endforeach
-    
-    // ================================
+    let products = [];
+    let searchTimeout;
+    let isCartCollapsed = false;
+
+    // =========================
+    // INITIALISATION
+    // =========================
+    function initializeCart() {
+        updateCartDisplay();
+    }
+
+    // Initialiser le panier au chargement
+    initializeCart();
+
+    // =========================
     // GESTION DU PANIER
-    // ================================
-    
+    // =========================
     function toggleCart() {
-        cartCollapsed = !cartCollapsed;
-        const cartBody = $('#cartBody');
-        const cartToggle = $('#cartToggle i');
+        const cartBody = $('#cart-body');
+        const cartToggle = $('#cart-toggle i');
         
-        if (cartCollapsed) {
+        isCartCollapsed = !isCartCollapsed;
+        
+        if (isCartCollapsed) {
             cartBody.addClass('collapsed');
             cartToggle.removeClass('fa-chevron-up').addClass('fa-chevron-down');
         } else {
@@ -1106,387 +1532,377 @@ $(document).ready(function() {
             cartToggle.removeClass('fa-chevron-down').addClass('fa-chevron-up');
         }
     }
-    
-    function updateCartDisplay() {
-        const cartItems = $('#cartItems');
-        const cartTotal = $('#cartTotal');
-        const cartCount = $('#cartCount');
-        const submitBtn = $('#submitBtn');
+
+    // =========================
+    // RECHERCHE DE PRODUITS
+    // =========================
+    $('#product-search').on('input', function() {
+        const query = $(this).val().trim();
         
-        if (cart.length === 0) {
-            cartTotal.hide();
-            submitBtn.prop('disabled', true);
-            cartCount.text('0 produit(s)');
-        } else {
-            cartTotal.show();
-            submitBtn.prop('disabled', false);
-            cartCount.text(`${cart.length} produit(s)`);
-            
-            // Calculer le total
-            let total = 0;
-            cart.forEach(item => {
-                total += item.price * item.quantity;
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (query.length >= 2) {
+                searchProducts(query);
+            } else {
+                $('#product-suggestions').hide();
+            }
+        }, 300);
+    });
+
+    function searchProducts(query) {
+        $.get('/admin/orders/search-products', { search: query })
+            .done(function(data) {
+                showProductSuggestions(data);
+            })
+            .fail(function() {
+                console.error('Erreur lors de la recherche de produits');
             });
-            
-            $('#cartTotal .cart-total-amount').text(total.toFixed(3) + ' TND');
-        }
-        
-        // Mettre à jour l'affichage des items
-        renderCartItems();
-        updateHiddenInputs();
     }
-    
-    function renderCartItems() {
-        const container = $('#cartItems');
-        container.empty();
-        
-        if (cart.length === 0) {
-            container.append(`
-                <div class="text-center text-muted py-4" id="emptyCart">
-                    <i class="fas fa-shopping-cart fa-2x mb-3 opacity-50"></i>
-                    <p>Votre panier est vide</p>
-                    <small>Recherchez et ajoutez des produits</small>
-                </div>
-            `);
-            return;
-        }
-        
-        cart.forEach((item, index) => {
-            const itemHtml = `
-                <div class="cart-item" data-index="${index}">
-                    <div class="cart-item-header">
-                        <div class="cart-item-info">
-                            <div class="cart-item-name">${item.name}</div>
-                            <div class="cart-item-price">${parseFloat(item.price).toFixed(3)} TND/unité</div>
+
+    function showProductSuggestions(products) {
+        const suggestions = $('#product-suggestions');
+        suggestions.empty();
+
+        if (products.length === 0) {
+            suggestions.html('<div class="suggestion-item">Aucun produit trouvé</div>');
+        } else {
+            products.forEach(product => {
+                const item = $(`
+                    <div class="suggestion-item" data-product-id="${product.id}">
+                        <div>
+                            <strong>${product.name}</strong>
+                            <br><small class="text-muted">Stock: ${product.stock}</small>
                         </div>
-                        <button type="button" class="cart-item-remove" onclick="removeFromCart(${index})">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <div class="text-success fw-bold">${parseFloat(product.price).toFixed(3)} TND</div>
                     </div>
-                    <div class="cart-item-controls">
-                        <div class="quantity-control">
-                            <button type="button" class="quantity-btn" onclick="updateQuantity(${index}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>-</button>
-                            <input type="number" class="quantity-input" value="${item.quantity}" min="1" onchange="setQuantity(${index}, this.value)">
-                            <button type="button" class="quantity-btn" onclick="updateQuantity(${index}, 1)">+</button>
-                        </div>
-                        <div class="cart-item-total">${(item.price * item.quantity).toFixed(3)} TND</div>
-                    </div>
-                </div>
-            `;
-            container.append(itemHtml);
-        });
+                `);
+                
+                item.on('click', function() {
+                    addToCart(product);
+                    $('#product-search').val('');
+                    suggestions.hide();
+                });
+                
+                suggestions.append(item);
+            });
+        }
+
+        suggestions.show();
     }
-    
-    function updateHiddenInputs() {
-        const container = $('#productsInputs');
-        container.empty();
+
+    // Masquer suggestions en cliquant ailleurs
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.search-input-group').length) {
+            $('#product-suggestions').hide();
+        }
+    });
+
+    // =========================
+    // GESTION DU PANIER
+    // =========================
+    function addToCart(product) {
+        const existingItem = cart.find(item => item.id === product.id);
         
-        cart.forEach((item, index) => {
-            container.append(`
-                <input type="hidden" name="products[${index}][id]" value="${item.id}">
-                <input type="hidden" name="products[${index}][name]" value="${item.name}">
-                <input type="hidden" name="products[${index}][price]" value="${item.price}">
-                <input type="hidden" name="products[${index}][quantity]" value="${item.quantity}">
-                ${item.is_new ? '<input type="hidden" name="products[' + index + '][is_new]" value="1">' : ''}
-            `);
-        });
-    }
-    
-    // ================================
-    // FONCTIONS PUBLIQUES DU PANIER
-    // ================================
-    
-    window.addToCart = function(product) {
-        const existingIndex = cart.findIndex(item => item.id === product.id);
-        
-        if (existingIndex >= 0) {
-            cart[existingIndex].quantity += 1;
+        if (existingItem) {
+            existingItem.quantity += 1;
         } else {
             cart.push({
                 id: product.id,
                 name: product.name,
                 price: parseFloat(product.price),
                 quantity: 1,
-                is_new: product.is_new || false
+                stock: product.stock
             });
         }
         
         updateCartDisplay();
-        showNotification(`${product.name} ajouté au panier`, 'success');
-    };
-    
-    window.removeFromCart = function(index) {
-        if (cart.length <= 1) {
-            showNotification('Le panier doit contenir au moins un produit', 'warning');
-            return;
-        }
-        
-        const item = cart[index];
-        cart.splice(index, 1);
+    }
+
+    function removeFromCart(productId) {
+        cart = cart.filter(item => item.id !== productId);
         updateCartDisplay();
-        showNotification(`${item.name} retiré du panier`, 'info');
-    };
-    
-    window.updateQuantity = function(index, change) {
-        const newQuantity = cart[index].quantity + change;
-        if (newQuantity >= 1) {
-            cart[index].quantity = newQuantity;
+    }
+
+    function updateQuantity(productId, newQuantity) {
+        const item = cart.find(item => item.id === productId);
+        if (item) {
+            item.quantity = Math.max(1, Math.min(newQuantity, item.stock));
             updateCartDisplay();
         }
-    };
-    
-    window.setQuantity = function(index, quantity) {
-        const qty = parseInt(quantity) || 1;
-        if (qty >= 1) {
-            cart[index].quantity = qty;
-            updateCartDisplay();
+    }
+
+    function updateCartDisplay() {
+        const cartItems = $('#cart-items');
+        const cartEmpty = $('#cart-empty');
+        const cartSummary = $('#cart-summary');
+        const cartCount = $('#cart-count');
+        
+        cartCount.text(cart.length);
+        
+        if (cart.length === 0) {
+            cartEmpty.show();
+            cartSummary.hide();
+            cartItems.find('.cart-item').remove();
+        } else {
+            cartEmpty.hide();
+            cartSummary.show();
+            
+            // Supprimer les anciens items
+            cartItems.find('.cart-item').remove();
+            
+            // Ajouter les nouveaux items
+            cart.forEach(item => {
+                const cartItem = createCartItemElement(item);
+                cartItems.append(cartItem);
+            });
+            
+            updateCartSummary();
         }
-    };
-    
-    // ================================
-    // RECHERCHE DE PRODUITS
-    // ================================
-    
-    $('#productSearch').on('input', function() {
-        const query = $(this).val().trim();
         
-        clearTimeout(productSearchTimeout);
+        updateFormData();
+    }
+
+    function createCartItemElement(item) {
+        const element = $(`
+            <div class="cart-item" data-product-id="${item.id}">
+                <div class="item-info">
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-price">${item.price.toFixed(3)} TND × ${item.quantity}</div>
+                </div>
+                <div class="quantity-control">
+                    <button type="button" class="quantity-btn minus" data-action="minus">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="${item.stock}">
+                    <button type="button" class="quantity-btn plus" data-action="plus">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <button type="button" class="remove-item" data-action="remove">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `);
         
-        if (query.length < 2) {
-            $('#productSuggestions').hide().empty();
-            return;
-        }
+        // Event listeners pour les contrôles
+        element.find('.quantity-btn[data-action="minus"]').on('click', function() {
+            updateQuantity(item.id, item.quantity - 1);
+        });
         
-        productSearchTimeout = setTimeout(() => {
-            searchProducts(query);
-        }, 300);
-    });
-    
-    function searchProducts(query) {
-        $.ajax({
-            url: '{{ route("admin.orders.searchProducts") }}',
-            method: 'GET',
-            data: { search: query },
-            success: function(products) {
-                displayProductSuggestions(products);
-            },
-            error: function() {
-                showNotification('Erreur lors de la recherche', 'error');
-            }
+        element.find('.quantity-btn[data-action="plus"]').on('click', function() {
+            updateQuantity(item.id, item.quantity + 1);
+        });
+        
+        element.find('.quantity-input').on('change', function() {
+            const newQuantity = parseInt($(this).val()) || 1;
+            updateQuantity(item.id, newQuantity);
+        });
+        
+        element.find('.remove-item').on('click', function() {
+            removeFromCart(item.id);
+        });
+        
+        return element;
+    }
+
+    function updateCartSummary() {
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const shipping = {{ $order->shipping_cost }};
+        const total = subtotal + shipping;
+        
+        $('#subtotal').text(subtotal.toFixed(3) + ' TND');
+        $('#shipping-cost').text(shipping.toFixed(3) + ' TND');
+        $('#total').text(total.toFixed(3) + ' TND');
+    }
+
+    function updateFormData() {
+        const cartData = $('#cart-data');
+        cartData.empty();
+        
+        cart.forEach((item, index) => {
+            cartData.append(`
+                <input type="hidden" name="products[${index}][id]" value="${item.id}">
+                <input type="hidden" name="products[${index}][quantity]" value="${item.quantity}">
+            `);
         });
     }
-    
-    function displayProductSuggestions(products) {
-        const container = $('#productSuggestions');
-        container.empty();
+
+    // =========================
+    // GESTION DES BADGES
+    // =========================
+    $('.status-badge').on('click', function() {
+        $('.status-badge').removeClass('active');
+        $(this).addClass('active');
+        $('#status').val($(this).data('status'));
         
-        if (products.length === 0) {
-            container.html('<div class="product-suggestion"><em>Aucun produit trouvé</em></div>');
-        } else {
-            products.forEach(product => {
-                const suggestionHtml = `
-                    <div class="product-suggestion" onclick="addToCart({id: ${product.id}, name: '${product.name}', price: ${product.price}})">
-                        <div class="suggestion-info">
-                            <h6>${product.name}</h6>
-                            <small>Stock: ${product.stock}</small>
-                        </div>
-                        <div class="suggestion-price">${parseFloat(product.price).toFixed(3)} TND</div>
+        // Gestion conditionnelle des champs
+        const status = $(this).data('status');
+        const scheduledDateGroup = $('#scheduled_date').closest('.form-group');
+        const confirmedPriceGroup = $('#confirmed_price').closest('.form-group');
+        
+        if (status === 'datée') {
+            if (scheduledDateGroup.length === 0) {
+                // Ajouter le champ date si pas présent
+                const dateField = `
+                    <div class="form-group">
+                        <label for="scheduled_date" class="form-label">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            Date de Livraison Prévue
+                        </label>
+                        <input type="date" class="form-control" id="scheduled_date" name="scheduled_date">
                     </div>
                 `;
-                container.append(suggestionHtml);
-            });
+                $('#notes').closest('.form-group').after(dateField);
+            }
         }
         
-        container.show();
-    }
-    
-    // Masquer les suggestions quand on clique ailleurs
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('.product-search').length) {
-            $('#productSuggestions').hide();
+        if (status === 'confirmée' || status === 'datée') {
+            if (confirmedPriceGroup.length === 0) {
+                // Ajouter le champ prix confirmé si pas présent
+                const priceField = `
+                    <div class="form-group">
+                        <label for="confirmed_price" class="form-label">
+                            <i class="fas fa-dollar-sign me-1"></i>
+                            Prix Confirmé
+                        </label>
+                        <input type="number" class="form-control" id="confirmed_price" name="confirmed_price" step="0.001" min="0" placeholder="Prix final confirmé avec le client">
+                    </div>
+                `;
+                $('#notes').closest('.form-group').after(priceField);
+            }
         }
     });
-    
-    // ================================
-    // NOUVEAU PRODUIT
-    // ================================
-    
-    window.toggleNewProductForm = function() {
-        $('#newProductForm').toggleClass('show');
-        if ($('#newProductForm').hasClass('show')) {
-            $('#newProductName').focus();
-        }
-    };
-    
-    window.addNewProduct = function() {
-        const name = $('#newProductName').val().trim();
-        const price = parseFloat($('#newProductPrice').val()) || 0;
-        
-        if (!name) {
-            showNotification('Veuillez saisir un nom de produit', 'warning');
-            return;
-        }
-        
-        if (price <= 0) {
-            showNotification('Veuillez saisir un prix valide', 'warning');
-            return;
-        }
-        
-        const newProduct = {
-            id: 'new_' + Date.now(),
-            name: name,
-            price: price,
-            is_new: true
-        };
-        
-        addToCart(newProduct);
-        cancelNewProduct();
-    };
-    
-    window.cancelNewProduct = function() {
-        $('#newProductForm').removeClass('show');
-        $('#newProductName, #newProductPrice').val('');
-    };
-    
-    // ================================
-    // GESTION DES ADRESSES
-    // ================================
-    
+
+    $('.priority-badge').on('click', function() {
+        $('.priority-badge').removeClass('active');
+        $(this).addClass('active');
+        $('#priority').val($(this).data('priority'));
+    });
+
+    // =========================
+    // GESTION GÉOGRAPHIQUE
+    // =========================
     $('#customer_governorate').on('change', function() {
         const regionId = $(this).val();
         const citySelect = $('#customer_city');
         
-        citySelect.empty().append('<option value="">Chargement...</option>').prop('disabled', true);
+        citySelect.html('<option value="">Chargement...</option>').prop('disabled', true);
         
-        if (!regionId) {
-            citySelect.empty().append('<option value="">Sélectionner une ville</option>');
+        if (regionId) {
+            $.get('/admin/orders/get-cities', { region_id: regionId })
+                .done(function(cities) {
+                    citySelect.html('<option value="">Choisir une ville</option>');
+                    cities.forEach(city => {
+                        const selected = city.id == {{ $order->customer_city ?? 'null' }} ? 'selected' : '';
+                        citySelect.append(`<option value="${city.id}" ${selected}>${city.name}</option>`);
+                    });
+                })
+                .fail(function() {
+                    citySelect.html('<option value="">Erreur de chargement</option>');
+                })
+                .always(function() {
+                    citySelect.prop('disabled', false);
+                });
+        } else {
+            citySelect.html('<option value="">Choisir une ville</option>').prop('disabled', false);
+        }
+    });
+
+    // =========================
+    // GESTION DES MODALES
+    // =========================
+    
+    // Modal Historique
+    $('#historyModal').on('show.bs.modal', function() {
+        loadOrderHistory();
+    });
+
+    function loadOrderHistory() {
+        const timeline = $('#history-timeline');
+        
+        $.get('{{ route("admin.orders.history-modal", $order) }}')
+            .done(function(response) {
+                timeline.html(response);
+            })
+            .fail(function() {
+                timeline.html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur lors du chargement de l'historique
+                    </div>
+                `);
+            });
+    }
+
+    // Modal Tentative d'Appel
+    $('#callAttemptForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const form = $(this);
+        const notes = $('#attempt_notes').val().trim();
+        
+        if (!notes) {
+            alert('Veuillez saisir des notes sur la tentative d\'appel.');
             return;
         }
         
-        $.ajax({
-            url: '{{ route("admin.orders.getCities") }}',
-            method: 'GET',
-            data: { region_id: regionId },
-            success: function(cities) {
-                citySelect.empty().append('<option value="">Sélectionner une ville</option>');
+        $.post(form.attr('action'), form.serialize())
+            .done(function(response) {
+                $('#callAttemptModal').modal('hide');
+                form[0].reset();
                 
-                cities.forEach(city => {
-                    citySelect.append(`<option value="${city.id}">${city.name}</option>`);
-                });
+                // Afficher un message de succès
+                const alert = $(`
+                    <div class="alert alert-success alert-dismissible fade show">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Tentative d'appel enregistrée avec succès
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `);
+                $('.main-content').prepend(alert);
                 
-                citySelect.prop('disabled', false);
-            },
-            error: function() {
-                citySelect.empty().append('<option value="">Erreur de chargement</option>');
-                showNotification('Erreur lors du chargement des villes', 'error');
-            }
-        });
+                // Masquer automatiquement après 5 secondes
+                setTimeout(() => alert.fadeOut(), 5000);
+            })
+            .fail(function(xhr) {
+                const error = xhr.responseJSON?.message || 'Erreur lors de l\'enregistrement';
+                alert('Erreur: ' + error);
+            });
     });
-    
-    // ================================
-    // GESTION DU STATUT
-    // ================================
-    
-    $('#status').on('change', function() {
-        const status = $(this).val();
-        const scheduledDateGroup = $('#scheduledDateGroup');
-        const confirmedPriceGroup = $('#confirmedPriceGroup');
-        
-        // Afficher/masquer les champs selon le statut
-        if (status === 'datée') {
-            scheduledDateGroup.show();
-        } else {
-            scheduledDateGroup.hide();
-        }
-        
-        if (status === 'confirmée') {
-            confirmedPriceGroup.show();
-        } else {
-            confirmedPriceGroup.hide();
-        }
-    });
-    
-    // ================================
+
+    // =========================
     // VALIDATION DU FORMULAIRE
-    // ================================
-    
+    // =========================
     $('#orderForm').on('submit', function(e) {
         if (cart.length === 0) {
             e.preventDefault();
-            showNotification('Le panier ne peut pas être vide', 'warning');
+            alert('Veuillez ajouter au moins un produit à la commande.');
             return false;
         }
         
-        const status = $('#status').val();
-        if (status === 'confirmée') {
-            const requiredFields = ['customer_name', 'customer_governorate', 'customer_city', 'customer_address'];
-            let hasError = false;
-            
-            requiredFields.forEach(field => {
-                const input = $(`#${field}`);
-                if (!input.val().trim()) {
-                    input.addClass('is-invalid');
-                    hasError = true;
-                } else {
-                    input.removeClass('is-invalid');
-                }
-            });
-            
-            if (hasError) {
-                e.preventDefault();
-                showNotification('Tous les champs client sont obligatoires pour une commande confirmée', 'warning');
-                return false;
-            }
-            
-            // Vérifier le prix confirmé
-            if (!$('#confirmed_price').val()) {
-                e.preventDefault();
-                $('#confirmed_price').addClass('is-invalid');
-                showNotification('Le prix confirmé est obligatoire pour une commande confirmée', 'warning');
-                return false;
-            }
-        }
-        
-        if (status === 'datée' && !$('#scheduled_date').val()) {
+        const phone = $('#customer_phone').val().trim();
+        if (!phone) {
             e.preventDefault();
-            $('#scheduled_date').addClass('is-invalid');
-            showNotification('La date de livraison est obligatoire pour une commande datée', 'warning');
+            alert('Le numéro de téléphone principal est obligatoire.');
+            $('#customer_phone').focus();
             return false;
         }
         
-        // Montrer le loader
-        $('#pageLoader').addClass('show');
+        // Désactiver le bouton pour éviter les double soumissions
+        $('#save-btn').prop('disabled', true).addClass('loading');
     });
-    
-    // ================================
-    // UTILITAIRES
-    // ================================
-    
-    function showNotification(message, type = 'info') {
-        const alertClass = {
-            'success': 'alert-success',
-            'error': 'alert-danger', 
-            'warning': 'alert-warning',
-            'info': 'alert-info'
-        }[type] || 'alert-info';
 
-        const notification = $(`
-            <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
-                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
-                <strong>${message}</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `);
-
-        $('body').append(notification);
-        
-        setTimeout(() => {
-            notification.alert('close');
-        }, 5000);
+    // =========================
+    // FONCTIONS GLOBALES
+    // =========================
+    
+    // Rendre la fonction toggleCart globale
+    window.toggleCart = toggleCart;
+    
+    // Charger les villes si un gouvernorat est sélectionné
+    if ($('#customer_governorate').val()) {
+        $('#customer_governorate').trigger('change');
     }
-    
-    // Initialiser l'affichage
-    updateCartDisplay();
 });
 </script>
 @endsection

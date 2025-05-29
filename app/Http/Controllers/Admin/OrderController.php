@@ -8,11 +8,11 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Region;
 use App\Models\City;
-use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; // AJOUT MANQUANT
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -151,6 +151,16 @@ class OrderController extends Controller
             $order->status = $request->status;
             $order->priority = $request->priority;
             $order->notes = $request->notes;
+            
+            // Gérer l'assignation
+            if ($request->filled('employee_id')) {
+                $employee = $admin->employees()->where('id', $request->employee_id)->first();
+                if ($employee && $employee->is_active) {
+                    $order->employee_id = $employee->id;
+                    $order->is_assigned = true;
+                }
+            }
+            
             $order->save();
             
             // Ajouter les produits à la commande
@@ -205,6 +215,7 @@ class OrderController extends Controller
                 ->with('success', 'Commande créée avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Erreur lors de la création de la commande: ' . $e->getMessage());
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Erreur lors de la création de la commande: ' . $e->getMessage());
@@ -212,7 +223,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Affiche une commande
+     * Affiche une commande spécifique
      */
     public function show(Order $order)
     {
@@ -339,6 +350,31 @@ class OrderController extends Controller
             $order->confirmed_price = $request->confirmed_price;
             $order->scheduled_date = $request->scheduled_date;
             
+            // Gérer l'assignation
+            if ($request->filled('employee_id')) {
+                $admin = Auth::guard('admin')->user();
+                $employee = $admin->employees()->where('id', $request->employee_id)->first();
+                if ($employee && $employee->is_active) {
+                    if ($order->employee_id !== $employee->id) {
+                        $changes['employee'] = [
+                            'old' => $order->employee ? $order->employee->name : null,
+                            'new' => $employee->name
+                        ];
+                        $order->employee_id = $employee->id;
+                        $order->is_assigned = true;
+                    }
+                }
+            } else {
+                if ($order->is_assigned) {
+                    $changes['employee'] = [
+                        'old' => $order->employee ? $order->employee->name : null,
+                        'new' => null
+                    ];
+                    $order->employee_id = null;
+                    $order->is_assigned = false;
+                }
+            }
+            
             // Si le statut change, enregistrer l'action spécifique
             $statusAction = 'modification';
             if ($statusBefore !== $request->status) {
@@ -463,6 +499,7 @@ class OrderController extends Controller
                 ->with('success', 'Commande mise à jour avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Erreur lors de la mise à jour de la commande: ' . $e->getMessage());
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Erreur lors de la mise à jour de la commande: ' . $e->getMessage());
@@ -495,68 +532,65 @@ class OrderController extends Controller
                 ->with('success', 'Commande supprimée avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Erreur lors de la suppression de la commande: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Erreur lors de la suppression de la commande: ' . $e->getMessage());
         }
     }
 
     /**
-     * Affiche l'historique d'une commande
-     */
-    public function showHistory(Order $order)
-    {
-        $this->authorize('view', $order);
-        
-        $history = $order->history()->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc')->get();
-        
-        return view('admin.orders.history', compact('order', 'history'));
-    }
-
-    /**
-     * Récupérer l'historique d'une commande (pour modal) - VERSION CORRIGÉE
+     * Récupérer l'historique d'une commande pour la modal
      */
     public function getHistory(Order $order)
     {
         $this->authorize('view', $order);
         
         try {
-            $history = $order->history()
-                            ->with(['admin', 'manager', 'employee'])
-                            ->orderBy('created_at', 'desc')
-                            ->get();
+            // Charger l'historique avec les relations
+            $order->load(['history' => function($query) {
+                $query->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc');
+            }]);
             
-            return view('admin.orders.partials.history', compact('order', 'history'));
+            return view('admin.orders.partials.history', compact('order'));
+            
         } catch (\Exception $e) {
             Log::error('Erreur lors du chargement de l\'historique: ' . $e->getMessage());
             
-            return response()->view('admin.orders.partials.history-error', compact('order'), 500);
+            return response()->view('admin.orders.partials.history-error', [], 500);
         }
     }
 
     /**
-     * Ajoute une tentative d'appel à l'historique
+     * Enregistrer une tentative d'appel
      */
     public function recordAttempt(Request $request, Order $order)
     {
         $this->authorize('update', $order);
         
         $request->validate([
-            'notes' => 'required|string|min:3',
+            'notes' => 'required|string|min:3|max:1000',
+        ], [
+            'notes.required' => 'Les notes sur la tentative sont obligatoires',
+            'notes.min' => 'Les notes doivent contenir au moins 3 caractères',
+            'notes.max' => 'Les notes ne peuvent pas dépasser 1000 caractères',
         ]);
         
         try {
             DB::beginTransaction();
             
+            // Incrémenter les compteurs de tentatives
             $order->increment('attempts_count');
             $order->increment('daily_attempts_count');
             $order->last_attempt_at = now();
             $order->save();
             
+            // Enregistrer dans l'historique
             $order->recordHistory('tentative', $request->notes);
             
             DB::commit();
             
-            return redirect()->back()->with('success', 'Tentative enregistrée avec succès.');
+            return redirect()->back()->with('success', 'Tentative d\'appel enregistrée avec succès.');
+            
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de l\'enregistrement de la tentative: ' . $e->getMessage());
@@ -566,82 +600,103 @@ class OrderController extends Controller
     }
 
     /**
-     * Obtient les régions (pour AJAX)
-     */
-    public function getRegions()
-    {
-        $regions = Region::orderBy('name')->get(['id', 'name']);
-        return response()->json($regions);
-    }
-
-    /**
-     * Obtient les villes pour un gouvernorat spécifique (pour AJAX)
+     * Obtenir les villes pour un gouvernorat spécifique (pour AJAX)
      */
     public function getCities(Request $request)
     {
-        $request->validate([
-            'region_id' => 'required|exists:regions,id',
-        ]);
-        
-        $cities = City::where('region_id', $request->region_id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'shipping_cost']);
-        
-        return response()->json($cities);
+        try {
+            $request->validate([
+                'region_id' => 'required|exists:regions,id',
+            ]);
+            
+            $cities = City::where('region_id', $request->region_id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'shipping_cost']);
+            
+            return response()->json($cities);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du chargement des villes: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Erreur lors du chargement des villes'
+            ], 500);
+        }
     }
 
     /**
-     * Recherche de produits (pour AJAX)
+     * Recherche de produits pour l'AJAX
      */
     public function searchProducts(Request $request)
     {
-        $admin = Auth::guard('admin')->user();
-        
-        $query = $admin->products();
-        
-        if ($request->filled('search')) {
-            $query->where('name', 'like', "%{$request->search}%");
+        try {
+            $admin = Auth::guard('admin')->user();
+            
+            $query = $admin->products()->where('is_active', true);
+            
+            if ($request->filled('search')) {
+                $searchTerm = $request->search;
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('name', 'like', "%{$searchTerm}%")
+                      ->orWhere('description', 'like', "%{$searchTerm}%");
+                });
+            }
+            
+            $products = $query->orderBy('name')
+                             ->take(10)
+                             ->get(['id', 'name', 'price', 'stock']);
+            
+            return response()->json($products);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la recherche de produits: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Erreur lors de la recherche de produits'
+            ], 500);
         }
-        
-        $query->where('is_active', true)->orderBy('name');
-        
-        $products = $query->take(10)->get(['id', 'name', 'price', 'stock']);
-        
-        return response()->json($products);
     }
 
     /**
-     * Assignation groupée des commandes - VERSION CORRIGÉE
+     * Assignation groupée des commandes
      */
     public function bulkAssign(Request $request)
     {
-        $request->validate([
-            'order_ids' => 'required|array|min:1',
-            'order_ids.*' => 'required|integer|exists:orders,id',
-            'employee_id' => 'required|integer|exists:employees,id',
-        ]);
-
-        $admin = Auth::guard('admin')->user();
-        
-        // Vérifier que l'employé appartient à cet admin
-        $employee = $admin->employees()->where('id', $request->employee_id)->first();
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employé non trouvé ou non autorisé'
-            ], 403);
-        }
-
-        if (!$employee->is_active) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cet employé n\'est pas actif'
-            ], 400);
-        }
-
         try {
+            $request->validate([
+                'order_ids' => 'required|array|min:1',
+                'order_ids.*' => 'required|integer|exists:orders,id',
+                'employee_id' => 'required|integer|exists:employees,id',
+            ], [
+                'order_ids.required' => 'Veuillez sélectionner au moins une commande',
+                'order_ids.array' => 'Format de données invalide',
+                'order_ids.min' => 'Veuillez sélectionner au moins une commande',
+                'order_ids.*.exists' => 'Une ou plusieurs commandes sélectionnées n\'existent pas',
+                'employee_id.required' => 'Veuillez sélectionner un employé',
+                'employee_id.exists' => 'L\'employé sélectionné n\'existe pas',
+            ]);
+
+            $admin = Auth::guard('admin')->user();
+            
+            // Vérifier que l'employé appartient à cet admin
+            $employee = $admin->employees()->where('id', $request->employee_id)->first();
+            if (!$employee) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employé non trouvé ou non autorisé'
+                ], 403);
+            }
+
+            if (!$employee->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cet employé n\'est pas actif'
+                ], 400);
+            }
+
             DB::beginTransaction();
 
+            // Récupérer les commandes éligibles
             $orders = Order::whereIn('id', $request->order_ids)
                         ->where('admin_id', $admin->id)
                         ->where('is_assigned', false) // Seulement les non-assignées
@@ -685,13 +740,23 @@ class OrderController extends Controller
                 'assigned_count' => $assignedCount
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur de validation',
+                'errors' => $e->errors()
+            ], 422);
+            
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de l\'assignation groupée: ' . $e->getMessage());
+            Log::error('Erreur lors de l\'assignation groupée: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'assignation des commandes'
+                'message' => 'Erreur lors de l\'assignation des commandes: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -751,7 +816,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Affiche les commandes non assignées (interface dédiée)
+     * Affiche les commandes non assignées
      */
     public function unassigned(Request $request)
     {
@@ -763,30 +828,18 @@ class OrderController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('customer_name', 'like', "%{$search}%")
-                ->orWhere('customer_phone', 'like', "%{$search}%")
-                ->orWhere('customer_address', 'like', "%{$search}%")
-                ->orWhere('id', 'like', "%{$search}%");
+                  ->orWhere('customer_phone', 'like', "%{$search}%")
+                  ->orWhere('customer_address', 'like', "%{$search}%")
+                  ->orWhere('id', 'like', "%{$search}%");
             });
         }
 
-        // Autres filtres...
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
         if ($request->filled('priority')) {
             $query->where('priority', $request->priority);
-        }
-
-        // Si c'est une requête AJAX pour la recherche
-        if ($request->ajax()) {
-            $orders = $query->with(['region', 'city', 'items.product'])
-                        ->orderBy('priority', 'desc')
-                        ->orderBy('created_at', 'desc')
-                        ->take(50)
-                        ->get();
-            
-            return response()->json(['orders' => $orders]);
         }
 
         $orders = $query->with(['region', 'city'])
@@ -804,6 +857,18 @@ class OrderController extends Controller
         ];
 
         return view('admin.orders.unassigned', compact('orders', 'stats'));
+    }
+
+    /**
+     * Affiche l'historique d'une commande
+     */
+    public function showHistory(Order $order)
+    {
+        $this->authorize('view', $order);
+        
+        $history = $order->history()->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc')->get();
+        
+        return view('admin.orders.history', compact('order', 'history'));
     }
 
     /**

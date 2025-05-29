@@ -1,4 +1,5 @@
 <?php
+
 use App\Http\Controllers\Admin\ProcessController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\ProductController;
@@ -16,12 +17,7 @@ use App\Http\Controllers\SuperAdmin\AuthController as SuperAdminAuthController;
 use App\Http\Controllers\SuperAdmin\DashboardController;
 use App\Http\Controllers\SuperAdmin\SettingController;
 use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-*/
+use Illuminate\Support\Facades\Schema;
 
 // Route d'accueil
 Route::get('/', function () {
@@ -76,7 +72,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     
     // Routes protégées Admin
     Route::middleware('auth:admin')->group(function () {
-        // Dashboard avec vérification d'expiration
+        // Dashboard
         Route::get('dashboard', function() {
             $admin = auth('admin')->user();
             if (!$admin->is_active || ($admin->expiry_date && $admin->expiry_date->isPast())) {
@@ -89,40 +85,32 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // GESTION DES PRODUITS
         // ========================================
         Route::resource('products', ProductController::class);
-        
-        // Actions spéciales produits
         Route::post('products/{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])
             ->name('products.mark-reviewed');
         Route::post('products/mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])
             ->name('products.mark-all-reviewed');
         Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
             ->name('products.review');
-        
-        // Actions groupées produits
         Route::post('products/bulk-activate', [ProductController::class, 'bulkActivate'])
             ->name('products.bulk-activate');
         Route::post('products/bulk-deactivate', [ProductController::class, 'bulkDeactivate'])
             ->name('products.bulk-deactivate');
         Route::delete('products/bulk-delete', [ProductController::class, 'bulkDelete'])
             ->name('products.bulk-delete');
+        Route::get('products/search', [ProductController::class, 'searchProducts'])
+            ->name('products.search');
         
         // ========================================
-        // GESTION DES COMMANDES - ROUTES SPÉCIALES EN PREMIER
+        // GESTION DES COMMANDES
         // ========================================
         
-        // IMPORTANT: Routes spéciales AVANT le resource pour éviter les conflits
-        
-        // Commandes non assignées
-        Route::get('orders/unassigned', [OrderController::class, 'unassigned'])
-            ->name('orders.unassigned');
-        
-        // Assignation et désassignation
+        // Routes spéciales AVANT le resource - IMPORTANT: ordre critique
         Route::post('orders/bulk-assign', [OrderController::class, 'bulkAssign'])
             ->name('orders.bulk-assign');
         Route::post('orders/{order}/unassign', [OrderController::class, 'unassign'])
             ->name('orders.unassign');
-        
-        // Historique et tentatives
+        Route::get('orders/unassigned', [OrderController::class, 'unassigned'])
+            ->name('orders.unassigned');
         Route::get('orders/{order}/history', [OrderController::class, 'showHistory'])
             ->name('orders.history');
         Route::get('orders/{order}/history-modal', [OrderController::class, 'getHistory'])
@@ -131,8 +119,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('orders.recordAttempt');
         Route::post('orders/{order}/quick-attempt', [OrderController::class, 'quickAttempt'])
             ->name('orders.quick-attempt');
-        
-        // Routes AJAX pour données géographiques et produits
         Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
             ->name('orders.getRegions');
         Route::get('orders/get-cities', [OrderController::class, 'getCities'])
@@ -146,20 +132,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ========================================
         // GESTION DES UTILISATEURS
         // ========================================
-        
-        // Managers
         Route::resource('managers', ManagerController::class);
         Route::patch('managers/{manager}/toggle-active', [ManagerController::class, 'toggleActive'])
             ->name('managers.toggle-active');
         Route::get('api/managers', [ManagerController::class, 'getManagersForAdmin'])
             ->name('api.managers');
 
-        // Employés
         Route::resource('employees', EmployeeController::class);
         Route::patch('employees/{employee}/toggle-active', [EmployeeController::class, 'toggleActive'])
             ->name('employees.toggle-active');
 
-        // Historique des connexions
         Route::get('login-history', [LoginHistoryController::class, 'index'])
             ->name('login-history.index');
         Route::get('login-history/{user_type}/{user_id}', [LoginHistoryController::class, 'show'])
@@ -168,13 +150,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ========================================
         // IMPORTATION ET INTÉGRATIONS
         // ========================================
-        
-        // Import CSV/Excel
         Route::get('import', [ImportController::class, 'index'])->name('import.index');
         Route::post('import/csv', [ImportController::class, 'importCsv'])->name('import.csv');
         Route::post('import/xml', [ImportController::class, 'importXml'])->name('import.xml');
 
-        // WooCommerce
         Route::get('woocommerce', [WooCommerceController::class, 'index'])
             ->name('woocommerce.index');
         Route::post('woocommerce', [WooCommerceController::class, 'store'])
@@ -185,12 +164,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ========================================
         // TRAITEMENT DES COMMANDES
         // ========================================
-        
-        // Interface principale de traitement
         Route::get('process', [ProcessController::class, 'interface'])
             ->name('process.interface');
-        
-        // Routes API pour le traitement
         Route::get('process/test', [ProcessController::class, 'test'])
             ->name('process.test');
         Route::get('process/counts', [ProcessController::class, 'getCounts'])
@@ -200,8 +175,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('process.getQueue');
         Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
             ->name('process.action');
-        
-        // Files d'attente individuelles (optionnel)
         Route::get('process/standard', [ProcessController::class, 'standardQueue'])
             ->name('process.standard');
         Route::get('process/dated', [ProcessController::class, 'datedQueue'])
@@ -216,6 +189,110 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('settings.index');
         Route::post('settings', [AdminSettingController::class, 'store'])
             ->name('settings.store');
+            
+        // ========================================
+        // ROUTE DE DEBUG TEMPORAIRE (À SUPPRIMER EN PRODUCTION)
+        // ========================================
+        Route::get('debug-assignment', function() {
+            if (!auth('admin')->check()) {
+                return 'Veuillez vous connecter en tant qu\'admin';
+            }
+            
+            $admin = auth('admin')->user();
+            $debug = [];
+            
+            // 1. Vérifier les données de base
+            $debug['admin'] = [
+                'id' => $admin->id,
+                'name' => $admin->name,
+                'is_active' => $admin->is_active,
+            ];
+            
+            // 2. Vérifier les employés
+            $employees = $admin->employees()->where('is_active', true)->get();
+            $debug['employees'] = [
+                'count' => $employees->count(),
+                'list' => $employees->map(function($emp) {
+                    return [
+                        'id' => $emp->id,
+                        'name' => $emp->name,
+                        'is_active' => $emp->is_active,
+                    ];
+                })
+            ];
+            
+            // 3. Vérifier les commandes non assignées
+            $unassignedOrders = $admin->orders()->where('is_assigned', false)->get();
+            $debug['unassigned_orders'] = [
+                'count' => $unassignedOrders->count(),
+                'sample' => $unassignedOrders->take(3)->map(function($order) {
+                    return [
+                        'id' => $order->id,
+                        'customer_phone' => $order->customer_phone,
+                        'status' => $order->status,
+                        'created_at' => $order->created_at->format('Y-m-d H:i:s'),
+                    ];
+                })
+            ];
+            
+            // 4. Tester une assignation fictive
+            if ($employees->count() > 0 && $unassignedOrders->count() > 0) {
+                $testEmployee = $employees->first();
+                $testOrder = $unassignedOrders->first();
+                
+                try {
+                    $debug['assignment_test'] = [
+                        'employee_id' => $testEmployee->id,
+                        'employee_name' => $testEmployee->name,
+                        'order_id' => $testOrder->id,
+                        'can_assign' => true,
+                        'message' => 'Test d\'assignation réussi (simulation)'
+                    ];
+                } catch (\Exception $e) {
+                    $debug['assignment_test'] = [
+                        'error' => $e->getMessage(),
+                        'can_assign' => false
+                    ];
+                }
+            }
+            
+            // 5. Vérifier la structure de la base de données
+            try {
+                $debug['database_structure'] = [
+                    'orders_table_exists' => Schema::hasTable('orders'),
+                    'employees_table_exists' => Schema::hasTable('employees'),
+                    'order_has_employee_id' => Schema::hasColumn('orders', 'employee_id'),
+                    'order_has_is_assigned' => Schema::hasColumn('orders', 'is_assigned'),
+                ];
+            } catch (\Exception $e) {
+                $debug['database_structure'] = [
+                    'error' => $e->getMessage()
+                ];
+            }
+            
+            // 6. Vérifier les routes
+            $debug['routes'] = [
+                'bulk_assign_exists' => Route::has('admin.orders.bulk-assign'),
+                'unassign_exists' => Route::has('admin.orders.unassign'),
+            ];
+            
+            // 7. Vérifier les permissions
+            if ($unassignedOrders->count() > 0) {
+                $testOrder = $unassignedOrders->first();
+                try {
+                    $debug['permissions'] = [
+                        'can_view' => auth('admin')->user()->can('view', $testOrder),
+                        'can_update' => auth('admin')->user()->can('update', $testOrder),
+                    ];
+                } catch (\Exception $e) {
+                    $debug['permissions'] = [
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+            
+            return view('admin.debug.assignment', compact('debug'));
+        })->name('debug.assignment');
     });
 });
 
@@ -225,7 +302,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 Route::prefix('manager')->name('manager.')->group(function () {
     Route::middleware('auth:manager')->group(function () {
         Route::get('dashboard', function() {
-            return "Manager Dashboard"; // À développer
+            return "Manager Dashboard";
         })->name('dashboard');
     });
 });
@@ -236,7 +313,7 @@ Route::prefix('manager')->name('manager.')->group(function () {
 Route::prefix('employee')->name('employee.')->group(function () {
     Route::middleware('auth:employee')->group(function () {
         Route::get('dashboard', function() {
-            return "Employee Dashboard"; // À développer
+            return "Employee Dashboard";
         })->name('dashboard');
     });
 });
