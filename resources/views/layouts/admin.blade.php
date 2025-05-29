@@ -7,20 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title') - Order Manager</title>
 
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Animate.css -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 
-    <!-- Custom CSS -->
     <style>
         :root {
             --primary-color: #6366f1;
@@ -68,7 +63,7 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* ===== MODERN SIDEBAR ===== */
+        /* ===== MODERN SIDEBAR CORRIGÉ ===== */
         .sidebar {
             min-height: 100vh;
             background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
@@ -141,6 +136,7 @@
             box-shadow: var(--shadow-md);
             position: relative;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
         .sidebar-brand .brand-icon::before {
@@ -176,19 +172,30 @@
         }
 
         .sidebar-collapsed .logo-mini {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* Menu Section */
+        /* Menu Section CORRIGÉ */
         .sidebar-menu {
             padding: 24px 0;
             list-style: none;
             position: relative;
             z-index: 2;
-            height: calc(100vh - 140px);
+            height: calc(100vh - 140px); /* Conservé de votre code original */
             overflow-y: auto;
-            overflow-x: hidden;
+            overflow-x: hidden; /* Par défaut, pour mobile ou sidebar étendue */
         }
+
+        /* CORRECTION NÉCESSAIRE : Permettre aux sous-menus flyout de s'afficher sur desktop */
+        @media (min-width: 769px) { /* Cible les écrans de bureau */
+            .sidebar-collapsed .sidebar-menu {
+                overflow: visible; /* Permet aux sous-menus de déborder et d'être visibles */
+            }
+        }
+        /* Fin de la correction nécessaire */
+
 
         .sidebar-menu::-webkit-scrollbar {
             width: 4px;
@@ -221,6 +228,7 @@
             font-size: 0.95rem;
             position: relative;
             overflow: hidden;
+            cursor: pointer;
         }
 
         .sidebar-link::before {
@@ -256,10 +264,16 @@
 
         .sidebar-icon {
             min-width: 28px;
+            width: 28px;
+            height: 28px;
             text-align: center;
             font-size: 1.1rem;
             position: relative;
             z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
         .sidebar-text {
@@ -267,10 +281,15 @@
             font-weight: 500;
             position: relative;
             z-index: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: var(--transition);
         }
 
         .sidebar-collapsed .sidebar-text {
-            display: none;
+            width: 0;
+            margin-left: 0;
+            opacity: 0;
         }
 
         /* Badge dans sidebar */
@@ -284,53 +303,81 @@
             color: white;
             min-width: 18px;
             text-align: center;
+            flex-shrink: 0;
+            transition: var(--transition);
         }
 
         .sidebar-collapsed .sidebar-badge {
-            display: none;
+            opacity: 0;
+            width: 0;
+            margin-left: 0;
+            padding: 0;
+            overflow: hidden;
         }
 
-        /* Submenu Section */
+        /* Submenu Section ENTIÈREMENT CORRIGÉ */
         .sidebar-submenu {
             list-style: none;
             padding-left: 0;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             margin-top: 8px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 0;
+            opacity: 0;
         }
 
         .sidebar-submenu.show {
-            max-height: 400px;
+            max-height: 500px;
+            opacity: 1;
             padding: 8px 0;
         }
 
-        /* Submenu en mode collapsed - Hover effect */
+        /* Submenu en mode collapsed - CORRECTION COMPLÈTE */
+        .sidebar-collapsed .sidebar-item {
+            position: relative;
+        }
+
         .sidebar-collapsed .sidebar-submenu {
             position: absolute;
-            left: 100%;
-            top: 0;
+            left: calc(100% + 16px);
+            top: -8px; /* Tel que dans votre code original */
             width: 250px;
             background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
-            border-radius: 0 var(--border-radius) var(--border-radius) 0;
-            display: none;
-            max-height: none;
+            border-radius: var(--border-radius);
             box-shadow: var(--shadow-xl);
             backdrop-filter: blur(20px);
-            padding: 16px 0;
-            margin-top: 0;
             z-index: 1001;
+            max-height: none;
             opacity: 0;
             transform: translateX(-10px);
+            pointer-events: none;
+            visibility: hidden; /* Ajout pour robustesse, votre JS le gère aussi */
             transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px 0;
+            margin-top: 0;
         }
 
         .sidebar-collapsed .sidebar-item:hover .sidebar-submenu {
-            display: block;
             opacity: 1;
             transform: translateX(0);
+            pointer-events: all;
+            visibility: visible; /* Déjà présent dans votre code, c'est bien */
+        }
+
+        .sidebar-collapsed .sidebar-submenu::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 20px;
+            width: 0;
+            height: 0;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-right: 8px solid #667eea;
+            z-index: 1;
         }
 
         .sidebar-submenu-item {
@@ -365,6 +412,13 @@
         .sidebar-submenu-link .badge {
             margin-left: auto;
             font-size: 0.6rem;
+        }
+
+        .sidebar-submenu-link i {
+            width: 20px;
+            text-align: center;
+            margin-right: 8px;
+            flex-shrink: 0;
         }
 
         /* ===== MODERN CONTENT AREA ===== */
@@ -844,7 +898,7 @@
             }
         }
 
-        /* Responsive Design */
+        /* Responsive Design CORRIGÉ */
         @media (max-width: 768px) {
             .sidebar {
                 width: 0;
@@ -872,8 +926,18 @@
                 padding: 0 1rem;
             }
 
+            /* En mode mobile, restaurer le comportement normal des sous-menus */
             .sidebar-collapsed .sidebar-text {
-                display: inline;
+                width: auto;
+                margin-left: 14px;
+                opacity: 1;
+            }
+
+            .sidebar-collapsed .sidebar-badge {
+                opacity: 1;
+                width: auto;
+                margin-left: auto;
+                padding: 2px 6px;
             }
 
             .sidebar-collapsed .logo-mini {
@@ -887,13 +951,19 @@
             .sidebar-collapsed .sidebar-submenu {
                 position: static;
                 width: 100%;
-                display: block;
-                box-shadow: none;
                 background: rgba(255, 255, 255, 0.1);
                 border-radius: var(--border-radius);
                 margin: 8px 0;
-                opacity: 1;
+                opacity: 1; /* Doit être 1 pour que max-height fonctionne bien */
                 transform: none;
+                pointer-events: all;
+                box-shadow: none;
+                border: none;
+                visibility: visible; /* Les sous-menus sont visibles, leur affichage est contrôlé par max-height via la classe .show */
+            }
+
+            .sidebar-collapsed .sidebar-submenu::before {
+                display: none;
             }
 
             .footer-content {
@@ -1074,6 +1144,34 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Tooltip pour sidebar collapsed */
+        .sidebar-collapsed .sidebar-link {
+            position: relative;
+        }
+
+        .sidebar-collapsed .sidebar-link::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 16px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 1002;
+        }
+
+        .sidebar-collapsed .sidebar-link:hover::after {
+            opacity: 1;
+            transform: translateY(-50%) translateX(4px);
+        }
     </style>
 
     @yield('css')
@@ -1081,7 +1179,6 @@
 
 <body>
 
-    <!-- Modern Page Loader -->
     <div class="page-loader" id="pageLoader">
         <div class="loader-content">
             <div class="loader-logo">
@@ -1097,7 +1194,6 @@
         </div>
     </div>
 
-    <!-- Modern Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
             <a href="{{ route('admin.dashboard') }}" class="logo-full">
@@ -1116,7 +1212,8 @@
         <ul class="sidebar-menu">
             <li class="sidebar-item">
                 <a href="{{ route('admin.dashboard') }}"
-                    class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                    class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"
+                    data-tooltip="Tableau de bord">
                     <div class="sidebar-icon">
                         <i class="fas fa-chart-line"></i>
                     </div>
@@ -1124,10 +1221,10 @@
                 </a>
             </li>
 
-            <!-- Section Traitement -->
             <li class="sidebar-item">
                 <a href="{{ route('admin.process.interface') }}"
-                    class="sidebar-link {{ request()->routeIs('admin.process.interface') ? 'active' : '' }}">
+                    class="sidebar-link {{ request()->routeIs('admin.process.interface') ? 'active' : '' }}"
+                    data-tooltip="Traitement">
                     <div class="sidebar-icon">
                         <i class="fas fa-headset"></i>
                     </div>
@@ -1135,34 +1232,36 @@
                 </a>
             </li>
 
-            <!-- Section Produits -->
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.products*') ? 'active' : '' }}"
-                    data-target="productsSubmenu">
+                    data-target="productsSubmenu" data-tooltip="Produits">
                     <div class="sidebar-icon">
                         <i class="fas fa-box-open"></i>
                     </div>
                     <span class="sidebar-text">Produits</span>
+                    <span class="sidebar-badge">
+                        <i class="fas fa-chevron-down"></i>
+                    </span>
                 </a>
                 <ul class="sidebar-submenu {{ request()->routeIs('admin.products*') ? 'show' : '' }}"
                     id="productsSubmenu">
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.products.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.products.index') ? 'active' : '' }}">
-                            <i class="fas fa-list me-2"></i>Liste des produits
+                            <i class="fas fa-list"></i>Liste des produits
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.products.create') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.products.create') ? 'active' : '' }}">
-                            <i class="fas fa-plus me-2"></i>Ajouter un produit
+                            <i class="fas fa-plus"></i>Ajouter un produit
                         </a>
                     </li>
                     @if(auth('admin')->user()->products()->where('needs_review', true)->count() > 0)
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.products.review') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.products.review') ? 'active' : '' }}">
-                            <i class="fas fa-eye me-2"></i>Examiner 
+                            <i class="fas fa-eye"></i>Examiner 
                             <span class="badge bg-warning ms-1">{{ auth('admin')->user()->products()->where('needs_review', true)->count() }}</span>
                         </a>
                     </li>
@@ -1170,26 +1269,28 @@
                 </ul>
             </li>
 
-            <!-- Section Commandes -->
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.orders*') ? 'active' : '' }}"
-                    data-target="ordersSubmenu">
+                    data-target="ordersSubmenu" data-tooltip="Commandes">
                     <div class="sidebar-icon">
                         <i class="fas fa-shopping-basket"></i>
                     </div>
                     <span class="sidebar-text">Commandes</span>
+                    <span class="sidebar-badge">
+                        <i class="fas fa-chevron-down"></i>
+                    </span>
                 </a>
                 <ul class="sidebar-submenu {{ request()->routeIs('admin.orders*') ? 'show' : '' }}" id="ordersSubmenu">
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.orders.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
-                            <i class="fas fa-list me-2"></i>Toutes les commandes
+                            <i class="fas fa-list"></i>Toutes les commandes
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.orders.unassigned') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.orders.unassigned') ? 'active' : '' }}">
-                            <i class="fas fa-user-times me-2"></i>Non Assignées
+                            <i class="fas fa-user-times"></i>Non Assignées
                             @php
                                 $unassignedCount = Auth::guard('admin')->user()->orders()->where('is_assigned', false)->count();
                             @endphp
@@ -1201,68 +1302,72 @@
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.orders.create') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.orders.create') ? 'active' : '' }}">
-                            <i class="fas fa-plus me-2"></i>Nouvelle commande
+                            <i class="fas fa-plus"></i>Nouvelle commande
                         </a>
                     </li>
                 </ul>
             </li>
 
-            <!-- Section Utilisateurs -->
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') ? 'active' : '' }}"
-                    data-target="usersSubmenu">
+                    data-target="usersSubmenu" data-tooltip="Utilisateurs">
                     <div class="sidebar-icon">
                         <i class="fas fa-users"></i>
                     </div>
                     <span class="sidebar-text">Utilisateurs</span>
+                    <span class="sidebar-badge">
+                        <i class="fas fa-chevron-down"></i>
+                    </span>
                 </a>
                 <ul class="sidebar-submenu {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') ? 'show' : '' }}" id="usersSubmenu">
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.managers.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.managers*') ? 'active' : '' }}">
-                            <i class="fas fa-user-tie me-2"></i>Managers
+                            <i class="fas fa-user-tie"></i>Managers
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.employees.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.employees*') ? 'active' : '' }}">
-                            <i class="fas fa-user me-2"></i>Employés
+                            <i class="fas fa-user"></i>Employés
                         </a>
                     </li>
                 </ul>
             </li>
 
-            <!-- Section Importation -->
             <li class="sidebar-item">
                 <a href="#"
                     class="sidebar-link {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') ? 'active' : '' }}"
-                    data-target="importSubmenu">
+                    data-target="importSubmenu" data-tooltip="Importation">
                     <div class="sidebar-icon">
                         <i class="fas fa-cloud-download-alt"></i>
                     </div>
                     <span class="sidebar-text">Importation</span>
+                    <span class="sidebar-badge">
+                        <i class="fas fa-chevron-down"></i>
+                    </span>
                 </a>
                 <ul class="sidebar-submenu {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') ? 'show' : '' }}"
                     id="importSubmenu">
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.import.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.import.index') ? 'active' : '' }}">
-                            <i class="fas fa-file-csv me-2"></i>Import CSV/Excel
+                            <i class="fas fa-file-csv"></i>Import CSV/Excel
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.woocommerce.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.woocommerce.index') ? 'active' : '' }}">
-                            <i class="fab fa-wordpress me-2"></i>WooCommerce
+                            <i class="fab fa-wordpress"></i>WooCommerce
                         </a>
                     </li>
                 </ul>
             </li>
 
-            <!-- Section Historique -->
             <li class="sidebar-item">
                 <a href="{{ route('admin.login-history.index') }}"
-                    class="sidebar-link {{ request()->routeIs('admin.login-history*') ? 'active' : '' }}">
+                    class="sidebar-link {{ request()->routeIs('admin.login-history*') ? 'active' : '' }}"
+                    data-tooltip="Historique">
                     <div class="sidebar-icon">
                         <i class="fas fa-history"></i>
                     </div>
@@ -1270,10 +1375,10 @@
                 </a>
             </li>
 
-            <!-- Section Paramètres -->
             <li class="sidebar-item">
                 <a href="{{ route('admin.settings.index') }}"
-                    class="sidebar-link {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}">
+                    class="sidebar-link {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}"
+                    data-tooltip="Paramètres">
                     <div class="sidebar-icon">
                         <i class="fas fa-cog"></i>
                     </div>
@@ -1283,9 +1388,7 @@
         </ul>
     </div>
 
-    <!-- Main Content Area -->
     <div class="content" id="content">
-        <!-- Modern Header Navbar -->
         <nav class="navbar navbar-expand-lg navbar-light d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
                 <button class="btn me-3" id="sidebarToggle">
@@ -1298,7 +1401,6 @@
             </div>
 
             <div class="d-flex align-items-center gap-3">
-                <!-- Notifications -->
                 @php
                     $pending_products_count = Auth::guard('admin')->user()->products()->where('needs_review', true)->count();
                 @endphp
@@ -1328,7 +1430,6 @@
                 </div>
                 @endif
 
-                <!-- User Profile -->
                 <div class="dropdown">
                     <div class="user-profile" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="user-avatar">
@@ -1382,9 +1483,7 @@
             </div>
         </nav>
 
-        <!-- Main Content Container -->
         <div class="main-content animate-fade-in">
-            <!-- Global Alert for New Products -->
             @if($pending_products_count > 0)
                 <div class="alert alert-warning alert-dismissible fade show animate-slide-down" role="alert">
                     <div class="d-flex align-items-start">
@@ -1407,7 +1506,6 @@
                 </div>
             @endif
 
-            <!-- Success/Error Messages -->
             @if (session('success'))
                 <div class="alert alert-success alert-dismissible fade show animate-slide-down" role="alert">
                     <div class="d-flex align-items-center">
@@ -1444,11 +1542,9 @@
                 </div>
             @endif
 
-            <!-- Page Content -->
             @yield('content')
         </div>
 
-        <!-- Modern Footer -->
         <footer class="footer">
             <div class="footer-content">
                 <div class="footer-text">
@@ -1463,13 +1559,10 @@
         </footer>
     </div>
 
-    <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-    <!-- Custom JS -->
     <script>
         $(document).ready(function() {
             // Enhanced Sidebar Management avec correction complète
@@ -1523,39 +1616,48 @@
                         const submenu = item.find('.sidebar-submenu');
                         
                         if (submenu.length > 0) {
-                            // Réinitialiser les styles
-                            submenu.removeClass('show').css({
-                                'position': 'absolute',
-                                'left': '100%',
-                                'top': '0',
-                                'width': '250px',
-                                'z-index': '1001',
-                                'display': 'none',
-                                'background': 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
-                                'border-radius': '0 12px 12px 0',
-                                'box-shadow': '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                                'backdrop-filter': 'blur(20px)',
-                                'padding': '16px 0',
-                                'margin-top': '0',
-                                'max-height': 'none',
-                                'opacity': '0',
-                                'transform': 'translateX(-10px)',
-                                'transition': 'all 0.3s ease'
-                            });
+                            // Supprimer les anciens événements
+                            item.off('mouseenter.collapsed mouseleave.collapsed');
                             
-                            // Événements hover optimisés
-                            item.off('mouseenter.collapsed mouseleave.collapsed').on({
+                            // CORRECTION: Assurer que les sous-menus restent accessibles
+                            item.on({
                                 'mouseenter.collapsed': function() {
-                                    submenu.stop(true, false).css('display', 'block').animate({
-                                        opacity: 1
-                                    }, 200).css('transform', 'translateX(0)');
+                                    clearTimeout(item.data('hideTimeout'));
+                                    submenu.stop(true, false).css({
+                                        'opacity': '1',
+                                        'transform': 'translateX(0)',
+                                        'pointer-events': 'all',
+                                        'visibility': 'visible'
+                                    });
                                 },
                                 'mouseleave.collapsed': function() {
-                                    submenu.stop(true, false).animate({
-                                        opacity: 0
-                                    }, 150, function() {
-                                        $(this).css('display', 'none');
-                                    });
+                                    const hideTimeout = setTimeout(() => {
+                                        submenu.stop(true, false).css({
+                                            'opacity': '0',
+                                            'transform': 'translateX(-10px)',
+                                            'pointer-events': 'none'
+                                            // 'visibility': 'hidden' // Optionnel ici car opacity 0 et pointer-events none suffisent souvent
+                                        });
+                                    }, 300);
+                                    item.data('hideTimeout', hideTimeout);
+                                }
+                            });
+                            
+                            // Également gérer le hover sur le sous-menu lui-même
+                            submenu.on({
+                                'mouseenter.collapsed': function() {
+                                    clearTimeout(item.data('hideTimeout'));
+                                },
+                                'mouseleave.collapsed': function() {
+                                    const hideTimeout = setTimeout(() => {
+                                        submenu.stop(true, false).css({
+                                            'opacity': '0',
+                                            'transform': 'translateX(-10px)',
+                                            'pointer-events': 'none'
+                                            // 'visibility': 'hidden'
+                                        });
+                                    }, 300);
+                                    item.data('hideTimeout', hideTimeout);
                                 }
                             });
                         }
@@ -1563,8 +1665,15 @@
                 } else {
                     // Mode normal - nettoyer et remettre les styles par défaut
                     $('.sidebar-item').off('mouseenter.collapsed mouseleave.collapsed');
+                    $('.sidebar-submenu').off('mouseenter.collapsed mouseleave.collapsed');
                     $('.sidebar-submenu').each(function() {
-                        $(this).attr('style', '');
+                        // Réinitialiser les styles inline
+                        $(this).css({
+                            'opacity': '',
+                            'transform': '',
+                            'pointer-events': '',
+                            'visibility': ''
+                        });
                     });
                 }
             }
@@ -1625,6 +1734,7 @@
                 const link = $(this);
                 const targetId = link.attr('data-target');
                 const submenu = $('#' + targetId);
+                const chevron = link.find('.fa-chevron-down, .fa-chevron-up');
                 
                 link.on('click', function(e) {
                     const isCollapsed = sidebar.hasClass('sidebar-collapsed');
@@ -1638,10 +1748,20 @@
                     e.preventDefault();
                     
                     // Fermer les autres sous-menus
-                    $('.sidebar-submenu.show').not(submenu).removeClass('show');
+                    $('.sidebar-submenu.show').not(submenu).removeClass('show').each(function() {
+                        const otherChevron = $(this).prev('[data-target]').find('.fa-chevron-up');
+                        otherChevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                    });
                     
                     // Toggle du sous-menu actuel
                     submenu.toggleClass('show');
+                    
+                    // Mettre à jour l'icône chevron
+                    if (submenu.hasClass('show')) {
+                        chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                    } else {
+                        chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                    }
                     
                     // Update aria-expanded pour l'accessibilité
                     const isExpanded = submenu.hasClass('show');
@@ -1649,12 +1769,14 @@
                 });
             });
 
-            // Auto-expand current submenu au chargement
+            // Auto-expand current submenu au chargement et mettre à jour les chevrons
             $('.sidebar-submenu.show').each(function() {
                 const submenu = $(this);
                 const parentLink = submenu.prev('[data-target]');
                 if (parentLink.length) {
                     parentLink.addClass('active').attr('aria-expanded', 'true');
+                    const chevron = parentLink.find('.fa-chevron-down');
+                    chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
                 }
             });
 
@@ -1662,24 +1784,17 @@
             handleSubmenuDisplay();
 
             // Enhanced loader for navigation avec détection intelligente
-            // Enhanced loader for navigation avec détection intelligente
-            $(document).on('click', 'a', function(e) {
+            $(document).on('click', 'a:not([data-target]):not(.dropdown-item):not(.btn-close):not([href="#"]):not([href="javascript:void(0)"])', function(e) {
                 const target = $(this);
                 const href = target.attr('href');
                 
-                // Skip if it's not a navigation link
+                // Skip certains liens
                 if (!href || 
-                    href === '#' || 
-                    href === 'javascript:void(0)' ||
                     href.startsWith('mailto:') ||
                     href.startsWith('tel:') ||
-                    target.hasClass('btn-close') ||
+                    target.attr('target') === '_blank' ||
                     target.hasClass('alert-link') ||
-                    target.closest('.dropdown-menu').length ||
-                    target.hasClass('sidebar-link') ||
-                    target.hasClass('sidebar-submenu-link') ||
-                    target.attr('data-bs-toggle') ||
-                    target.attr('target') === '_blank') {
+                    target.closest('.dropdown-menu').length) {
                     return;
                 }
                 

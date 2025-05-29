@@ -8,9 +8,11 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Region;
 use App\Models\City;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log; // AJOUT MANQUANT
 
 class OrderController extends Controller
 {
@@ -207,6 +209,27 @@ class OrderController extends Controller
                 ->withInput()
                 ->with('error', 'Erreur lors de la création de la commande: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Affiche une commande
+     */
+    public function show(Order $order)
+    {
+        $this->authorize('view', $order);
+        
+        // Charger les relations nécessaires
+        $order->load([
+            'region', 
+            'city', 
+            'items.product', 
+            'employee',
+            'history' => function($query) {
+                $query->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc');
+            }
+        ]);
+        
+        return view('admin.orders.show', compact('order'));
     }
 
     /**
@@ -425,7 +448,10 @@ class OrderController extends Controller
             
             // Gestion des compteurs de tentatives pour l'action "appel effectué"
             if ($request->has('increment_attempts') && $request->increment_attempts) {
-                $order->incrementAttempts();
+                $order->increment('attempts_count');
+                $order->increment('daily_attempts_count');
+                $order->last_attempt_at = now();
+                $order->save();
             }
             
             // Enregistrer l'historique
@@ -487,6 +513,27 @@ class OrderController extends Controller
     }
 
     /**
+     * Récupérer l'historique d'une commande (pour modal) - VERSION CORRIGÉE
+     */
+    public function getHistory(Order $order)
+    {
+        $this->authorize('view', $order);
+        
+        try {
+            $history = $order->history()
+                            ->with(['admin', 'manager', 'employee'])
+                            ->orderBy('created_at', 'desc')
+                            ->get();
+            
+            return view('admin.orders.partials.history', compact('order', 'history'));
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du chargement de l\'historique: ' . $e->getMessage());
+            
+            return response()->view('admin.orders.partials.history-error', compact('order'), 500);
+        }
+    }
+
+    /**
      * Ajoute une tentative d'appel à l'historique
      */
     public function recordAttempt(Request $request, Order $order)
@@ -497,10 +544,34 @@ class OrderController extends Controller
             'notes' => 'required|string|min:3',
         ]);
         
-        $order->incrementAttempts();
-        $order->recordHistory('tentative', $request->notes);
-        
-        return redirect()->back()->with('success', 'Tentative enregistrée avec succès.');
+        try {
+            DB::beginTransaction();
+            
+            $order->increment('attempts_count');
+            $order->increment('daily_attempts_count');
+            $order->last_attempt_at = now();
+            $order->save();
+            
+            $order->recordHistory('tentative', $request->notes);
+            
+            DB::commit();
+            
+            return redirect()->back()->with('success', 'Tentative enregistrée avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'enregistrement de la tentative: ' . $e->getMessage());
+            
+            return redirect()->back()->with('error', 'Erreur lors de l\'enregistrement de la tentative.');
+        }
+    }
+
+    /**
+     * Obtient les régions (pour AJAX)
+     */
+    public function getRegions()
+    {
+        $regions = Region::orderBy('name')->get(['id', 'name']);
+        return response()->json($regions);
     }
 
     /**
@@ -534,15 +605,13 @@ class OrderController extends Controller
         
         $query->where('is_active', true)->orderBy('name');
         
-        $products = $query->take(10)->get();
+        $products = $query->take(10)->get(['id', 'name', 'price', 'stock']);
         
         return response()->json($products);
     }
 
-
-
     /**
-     * Assignation groupée des commandes
+     * Assignation groupée des commandes - VERSION CORRIGÉE
      */
     public function bulkAssign(Request $request)
     {
@@ -738,39 +807,6 @@ class OrderController extends Controller
     }
 
     /**
-     * Récupérer l'historique d'une commande (pour modal)
-     */
-    public function getHistory(Order $order)
-    {
-        $this->authorize('view', $order);
-        
-        $history = $order->history()
-                        ->with(['admin', 'manager', 'employee'])
-                        ->orderBy('created_at', 'desc')
-                        ->get();
-        
-        return view('admin.orders.partials.history', compact('order', 'history'));
-    }
-
-    public function show(Order $order)
-    {
-        $this->authorize('view', $order);
-        
-        // Charger les relations nécessaires
-        $order->load([
-            'region', 
-            'city', 
-            'items.product', 
-            'employee',
-            'history' => function($query) {
-                $query->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc');
-            }
-        ]);
-        
-        return view('admin.orders.show', compact('order'));
-    }
-
-    /**
      * Méthode pour récupérer une tentative d'appel rapidement
      */
     public function quickAttempt(Request $request, Order $order)
@@ -812,5 +848,4 @@ class OrderController extends Controller
             ], 500);
         }
     }
-
 }
