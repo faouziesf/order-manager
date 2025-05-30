@@ -98,7 +98,8 @@ class ProcessController extends Controller
                                 'product' => $item->product ? [
                                     'id' => $item->product->id,
                                     'name' => $item->product->name,
-                                    'price' => $item->product->price
+                                    'price' => $item->product->price,
+                                    'stock' => $item->product->stock
                                 ] : null
                             ];
                         })
@@ -477,41 +478,49 @@ class ProcessController extends Controller
             $action = $request->action;
             $notes = $request->notes;
             
+            // Enregistrer dans l'historique avec le nom de l'utilisateur
+            $historyNote = Auth::guard('admin')->user()->name . " a effectué l'action [{$action}] et a laissé une note de [{$notes}]";
+            
             // Traiter selon l'action
             switch ($action) {
                 case 'call':
-                    $this->recordCallAttempt($order, $notes);
+                    $this->recordCallAttempt($order, $historyNote);
                     break;
                     
                 case 'confirm':
                     $this->validateConfirmation($request);
-                    $this->confirmOrder($order, $request);
+                    $this->confirmOrder($order, $request, $historyNote);
+                    
+                    // Mettre à jour les items du panier si fournis
+                    if ($request->has('cart_items')) {
+                        $this->updateOrderItems($order, $request->cart_items);
+                    }
                     break;
     
                 case 'cancel':
                     $order->status = 'annulée';
                     $order->save();
-                    $order->recordHistory('annulation', $notes);
+                    $order->recordHistory('annulation', $historyNote);
                     break;
                     
                 case 'schedule':
                     $request->validate([
                         'scheduled_date' => 'required|date|after:today',
                     ]);
-                    // CORRECTION: Réinitialiser les compteurs quand on date une commande
+                    // Réinitialiser les compteurs quand on date une commande
                     $order->status = 'datée';
                     $order->scheduled_date = $request->scheduled_date;
-                    $order->attempts_count = 0; // Réinitialiser le compteur total
-                    $order->daily_attempts_count = 0; // Réinitialiser le compteur journalier
-                    $order->last_attempt_at = null; // Réinitialiser la dernière tentative
+                    $order->attempts_count = 0; 
+                    $order->daily_attempts_count = 0; 
+                    $order->last_attempt_at = null; 
                     $order->save();
-                    $order->recordHistory('datation', $notes);
+                    $order->recordHistory('datation', $historyNote);
                     break;
                     
                 default:
                     // Action générique - mise à jour des informations
                     $this->updateOrderInfo($order, $request);
-                    $order->recordHistory('modification', $notes);
+                    $order->recordHistory('modification', $historyNote);
                     break;
             }
             
@@ -551,17 +560,15 @@ class ProcessController extends Controller
     private function validateConfirmation(Request $request)
     {
         $request->validate([
-            'customer_name' => 'required|string|max:255',
-            'customer_phone' => 'required|string|max:20',
-            'customer_address' => 'required|string|max:500',
             'confirmed_price' => 'required|numeric|min:0',
+            'shipping_cost' => 'nullable|numeric|min:0',
         ]);
     }
 
     /**
      * Confirme une commande
      */
-    private function confirmOrder(Order $order, Request $request)
+    private function confirmOrder(Order $order, Request $request, $notes)
     {
         $order->update([
             'customer_name' => $request->customer_name,
@@ -574,7 +581,7 @@ class ProcessController extends Controller
             'shipping_cost' => $request->shipping_cost ?? 0,
         ]);
         
-        $order->recordHistory('confirmation', $request->notes);
+        $order->recordHistory('confirmation', $notes);
     }
 
     /**
@@ -616,7 +623,6 @@ class ProcessController extends Controller
 
     /**
      * Enregistre une tentative d'appel
-     * CORRECTION: Cette méthode incrémente les compteurs de tentatives
      */
     private function recordCallAttempt(Order $order, $notes)
     {
@@ -630,6 +636,41 @@ class ProcessController extends Controller
         
         // Enregistrer dans l'historique
         $order->recordHistory('tentative', $notes);
+        
+        // Vérifier si la commande doit passer en "ancienne"
+        $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
+        if ($order->status === 'nouvelle' && $order->attempts_count >= $standardMaxAttempts) {
+            // La commande va maintenant apparaître dans la file "ancienne"
+            Log::info("Commande {$order->id} a atteint le maximum de tentatives standard ({$standardMaxAttempts}) et va passer en file ancienne");
+        }
+    }
+
+    /**
+     * NOUVELLE MÉTHODE: Met à jour les items de la commande
+     */
+    private function updateOrderItems(Order $order, $cartItems)
+    {
+        try {
+            // Supprimer les anciens items
+            $order->items()->delete();
+            
+            // Ajouter les nouveaux items
+            foreach ($cartItems as $item) {
+                $order->items()->create([
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'total_price' => $item['total_price'],
+                ]);
+            }
+            
+            // Recalculer le total de la commande
+            $order->recalculateTotal();
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la mise à jour des items: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**

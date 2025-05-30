@@ -538,27 +538,7 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * Récupérer l'historique d'une commande pour la modal
-     */
-    public function getHistory(Order $order)
-    {
-        $this->authorize('view', $order);
-        
-        try {
-            // Charger l'historique avec les relations
-            $order->load(['history' => function($query) {
-                $query->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc');
-            }]);
-            
-            return view('admin.orders.partials.history', compact('order'));
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur lors du chargement de l\'historique: ' . $e->getMessage());
-            
-            return response()->view('admin.orders.partials.history-error', [], 500);
-        }
-    }
+
 
     /**
      * Enregistrer une tentative d'appel
@@ -599,64 +579,7 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * Obtenir les villes pour un gouvernorat spécifique (pour AJAX)
-     */
-    public function getCities(Request $request)
-    {
-        try {
-            $request->validate([
-                'region_id' => 'required|exists:regions,id',
-            ]);
-            
-            $cities = City::where('region_id', $request->region_id)
-                ->orderBy('name')
-                ->get(['id', 'name', 'shipping_cost']);
-            
-            return response()->json($cities);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur lors du chargement des villes: ' . $e->getMessage());
-            
-            return response()->json([
-                'error' => 'Erreur lors du chargement des villes'
-            ], 500);
-        }
-    }
-
-    /**
-     * Recherche de produits pour l'AJAX
-     */
-    public function searchProducts(Request $request)
-    {
-        try {
-            $admin = Auth::guard('admin')->user();
-            
-            $query = $admin->products()->where('is_active', true);
-            
-            if ($request->filled('search')) {
-                $searchTerm = $request->search;
-                $query->where(function($q) use ($searchTerm) {
-                    $q->where('name', 'like', "%{$searchTerm}%")
-                      ->orWhere('description', 'like', "%{$searchTerm}%");
-                });
-            }
-            
-            $products = $query->orderBy('name')
-                             ->take(10)
-                             ->get(['id', 'name', 'price', 'stock']);
-            
-            return response()->json($products);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la recherche de produits: ' . $e->getMessage());
-            
-            return response()->json([
-                'error' => 'Erreur lors de la recherche de produits'
-            ], 500);
-        }
-    }
-
+    
     /**
      * Assignation groupée des commandes
      */
@@ -913,4 +836,81 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Obtenir l'historique d'une commande pour les modales
+     */
+    public function getHistory(Order $order)
+    {
+        $this->authorize('view', $order);
+        
+        $history = $order->history()
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($entry) {
+                return [
+                    'id' => $entry->id,
+                    'action' => $entry->action,
+                    'action_label' => ucfirst($entry->action),
+                    'status_before' => $entry->status_before,
+                    'status_after' => $entry->status_after,
+                    'notes' => $entry->notes,
+                    'user_name' => $entry->getUserName(),
+                    'created_at' => $entry->created_at,
+                ];
+            });
+        
+        return response()->json($history);
+    }
+
+    /**
+     * Obtenir les régions (gouvernorats)
+     */
+    public function getRegions()
+    {
+        $regions = Region::orderBy('name')->get(['id', 'name']);
+        return response()->json($regions);
+    }
+
+    /**
+     * Obtenir les villes d'une région
+     */
+    public function getCities(Request $request)
+    {
+        $request->validate([
+            'region_id' => 'required|exists:regions,id'
+        ]);
+        
+        $cities = City::where('region_id', $request->region_id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'shipping_cost']);
+        
+        return response()->json($cities);
+    }
+
+    /**
+     * Rechercher des produits pour l'ajout au panier
+     */
+    public function searchProducts(Request $request)
+    {
+        $request->validate([
+            'search' => 'required|string|min:2'
+        ]);
+        
+        $search = $request->search;
+        $admin = auth('admin')->user();
+        
+        $products = $admin->products()
+            ->where('is_active', true)
+            ->where(function($query) use ($search) {
+                $query->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('description', 'LIKE', "%{$search}%");
+            })
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'name', 'price', 'stock']);
+        
+        return response()->json($products);
+    }
+
 }

@@ -119,6 +119,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('orders.recordAttempt');
         Route::post('orders/{order}/quick-attempt', [OrderController::class, 'quickAttempt'])
             ->name('orders.quick-attempt');
+        
+        // Routes pour l'interface de traitement - NOUVELLES ROUTES
         Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
             ->name('orders.getRegions');
         Route::get('orders/get-cities', [OrderController::class, 'getCities'])
@@ -128,6 +130,27 @@ Route::prefix('admin')->name('admin.')->group(function () {
         
         // CRUD de base - APRÈS les routes spéciales
         Route::resource('orders', OrderController::class);
+        
+        // ========================================
+        // TRAITEMENT DES COMMANDES - NOUVELLE SECTION
+        // ========================================
+        Route::get('process', [ProcessController::class, 'interface'])
+            ->name('process.interface');
+        Route::get('process/test', [ProcessController::class, 'test'])
+            ->name('process.test');
+        Route::get('process/counts', [ProcessController::class, 'getCounts'])
+            ->name('process.getCounts');
+        Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
+            ->where('queue', 'standard|dated|old')
+            ->name('process.getQueue');
+        Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
+            ->name('process.action');
+        Route::get('process/standard', [ProcessController::class, 'standardQueue'])
+            ->name('process.standard');
+        Route::get('process/dated', [ProcessController::class, 'datedQueue'])
+            ->name('process.dated');
+        Route::get('process/old', [ProcessController::class, 'oldQueue'])
+            ->name('process.old');
         
         // ========================================
         // GESTION DES UTILISATEURS
@@ -162,137 +185,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('woocommerce.sync');
         
         // ========================================
-        // TRAITEMENT DES COMMANDES
-        // ========================================
-        Route::get('process', [ProcessController::class, 'interface'])
-            ->name('process.interface');
-        Route::get('process/test', [ProcessController::class, 'test'])
-            ->name('process.test');
-        Route::get('process/counts', [ProcessController::class, 'getCounts'])
-            ->name('process.getCounts');
-        Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
-            ->where('queue', 'standard|dated|old')
-            ->name('process.getQueue');
-        Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
-            ->name('process.action');
-        Route::get('process/standard', [ProcessController::class, 'standardQueue'])
-            ->name('process.standard');
-        Route::get('process/dated', [ProcessController::class, 'datedQueue'])
-            ->name('process.dated');
-        Route::get('process/old', [ProcessController::class, 'oldQueue'])
-            ->name('process.old');
-        
-        // ========================================
         // PARAMÈTRES
         // ========================================
         Route::get('settings', [AdminSettingController::class, 'index'])
             ->name('settings.index');
         Route::post('settings', [AdminSettingController::class, 'store'])
             ->name('settings.store');
-            
-        // ========================================
-        // ROUTE DE DEBUG TEMPORAIRE (À SUPPRIMER EN PRODUCTION)
-        // ========================================
-        Route::get('debug-assignment', function() {
-            if (!auth('admin')->check()) {
-                return 'Veuillez vous connecter en tant qu\'admin';
-            }
-            
-            $admin = auth('admin')->user();
-            $debug = [];
-            
-            // 1. Vérifier les données de base
-            $debug['admin'] = [
-                'id' => $admin->id,
-                'name' => $admin->name,
-                'is_active' => $admin->is_active,
-            ];
-            
-            // 2. Vérifier les employés
-            $employees = $admin->employees()->where('is_active', true)->get();
-            $debug['employees'] = [
-                'count' => $employees->count(),
-                'list' => $employees->map(function($emp) {
-                    return [
-                        'id' => $emp->id,
-                        'name' => $emp->name,
-                        'is_active' => $emp->is_active,
-                    ];
-                })
-            ];
-            
-            // 3. Vérifier les commandes non assignées
-            $unassignedOrders = $admin->orders()->where('is_assigned', false)->get();
-            $debug['unassigned_orders'] = [
-                'count' => $unassignedOrders->count(),
-                'sample' => $unassignedOrders->take(3)->map(function($order) {
-                    return [
-                        'id' => $order->id,
-                        'customer_phone' => $order->customer_phone,
-                        'status' => $order->status,
-                        'created_at' => $order->created_at->format('Y-m-d H:i:s'),
-                    ];
-                })
-            ];
-            
-            // 4. Tester une assignation fictive
-            if ($employees->count() > 0 && $unassignedOrders->count() > 0) {
-                $testEmployee = $employees->first();
-                $testOrder = $unassignedOrders->first();
-                
-                try {
-                    $debug['assignment_test'] = [
-                        'employee_id' => $testEmployee->id,
-                        'employee_name' => $testEmployee->name,
-                        'order_id' => $testOrder->id,
-                        'can_assign' => true,
-                        'message' => 'Test d\'assignation réussi (simulation)'
-                    ];
-                } catch (\Exception $e) {
-                    $debug['assignment_test'] = [
-                        'error' => $e->getMessage(),
-                        'can_assign' => false
-                    ];
-                }
-            }
-            
-            // 5. Vérifier la structure de la base de données
-            try {
-                $debug['database_structure'] = [
-                    'orders_table_exists' => Schema::hasTable('orders'),
-                    'employees_table_exists' => Schema::hasTable('employees'),
-                    'order_has_employee_id' => Schema::hasColumn('orders', 'employee_id'),
-                    'order_has_is_assigned' => Schema::hasColumn('orders', 'is_assigned'),
-                ];
-            } catch (\Exception $e) {
-                $debug['database_structure'] = [
-                    'error' => $e->getMessage()
-                ];
-            }
-            
-            // 6. Vérifier les routes
-            $debug['routes'] = [
-                'bulk_assign_exists' => Route::has('admin.orders.bulk-assign'),
-                'unassign_exists' => Route::has('admin.orders.unassign'),
-            ];
-            
-            // 7. Vérifier les permissions
-            if ($unassignedOrders->count() > 0) {
-                $testOrder = $unassignedOrders->first();
-                try {
-                    $debug['permissions'] = [
-                        'can_view' => auth('admin')->user()->can('view', $testOrder),
-                        'can_update' => auth('admin')->user()->can('update', $testOrder),
-                    ];
-                } catch (\Exception $e) {
-                    $debug['permissions'] = [
-                        'error' => $e->getMessage()
-                    ];
-                }
-            }
-            
-            return view('admin.debug.assignment', compact('debug'));
-        })->name('debug.assignment');
     });
 });
 
