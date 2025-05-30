@@ -8,12 +8,9 @@
     <title>@yield('title') - Order Manager</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 
     <style>
@@ -63,7 +60,53 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* ===== MODERN SIDEBAR CORRIGÉ ===== */
+        /* ===== SOLUTION DÉFINITIVE POUR LES MODALES ===== */
+        /* Forcer les z-index corrects */
+        .modal {
+            z-index: 1055 !important;
+            padding-top: 70px;
+        }
+        
+        .modal-backdrop {
+            z-index: 1054 !important;
+        }
+
+        /* Empêcher TOUT élément de rester visible après fermeture */
+        .modal:not(.show) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        .modal-backdrop:not(.show) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
+
+        /* Forcer la suppression des backdrops orphelins */
+        body:not(.modal-open) .modal-backdrop {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
+
+        /* Restaurer l'état normal du body */
+        body:not(.modal-open) {
+            overflow: auto !important;
+            padding-right: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        /* Empêcher le page loader de s'afficher avec les modales */
+        body.modal-open .page-loader {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
+
+        /* ===== SIDEBAR MODERNE ===== */
         .sidebar {
             min-height: 100vh;
             background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
@@ -177,25 +220,22 @@
             justify-content: center;
         }
 
-        /* Menu Section CORRIGÉ */
+        /* Menu Section - SOLUTION DÉFINITIVE POUR LE CENTRAGE DES ICÔNES */
         .sidebar-menu {
             padding: 24px 0;
             list-style: none;
             position: relative;
             z-index: 2;
-            height: calc(100vh - 140px); /* Conservé de votre code original */
+            height: calc(100vh - 140px);
             overflow-y: auto;
-            overflow-x: hidden; /* Par défaut, pour mobile ou sidebar étendue */
+            overflow-x: hidden;
         }
 
-        /* CORRECTION NÉCESSAIRE : Permettre aux sous-menus flyout de s'afficher sur desktop */
-        @media (min-width: 769px) { /* Cible les écrans de bureau */
+        @media (min-width: 769px) {
             .sidebar-collapsed .sidebar-menu {
-                overflow: visible; /* Permet aux sous-menus de déborder et d'être visibles */
+                overflow: visible;
             }
         }
-        /* Fin de la correction nécessaire */
-
 
         .sidebar-menu::-webkit-scrollbar {
             width: 4px;
@@ -216,6 +256,7 @@
             padding: 0 16px;
         }
 
+        /* SOLUTION DÉFINITIVE : Styles pour les liens normaux */
         .sidebar-link {
             display: flex;
             align-items: center;
@@ -262,17 +303,17 @@
             border-left: 4px solid var(--brand-color);
         }
 
+        /* SOLUTION DÉFINITIVE : Icônes toujours centralisées */
         .sidebar-icon {
             min-width: 28px;
             width: 28px;
             height: 28px;
-            text-align: center;
-            font-size: 1.1rem;
-            position: relative;
-            z-index: 1;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 1.1rem;
+            position: relative;
+            z-index: 1;
             flex-shrink: 0;
         }
 
@@ -286,13 +327,6 @@
             transition: var(--transition);
         }
 
-        .sidebar-collapsed .sidebar-text {
-            width: 0;
-            margin-left: 0;
-            opacity: 0;
-        }
-
-        /* Badge dans sidebar */
         .sidebar-badge {
             margin-left: auto;
             padding: 2px 6px;
@@ -307,7 +341,29 @@
             transition: var(--transition);
         }
 
+        /* SOLUTION DÉFINITIVE : Mode collapsed - TOUTES les icônes centrées */
+        .sidebar-collapsed .sidebar-link {
+            padding: 16px 0;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .sidebar-collapsed .sidebar-icon {
+            min-width: 48px;
+            width: 48px;
+            height: 48px;
+            margin: 0;
+        }
+
+        .sidebar-collapsed .sidebar-text {
+            display: none;
+            width: 0;
+            margin-left: 0;
+            opacity: 0;
+        }
+
         .sidebar-collapsed .sidebar-badge {
+            display: none;
             opacity: 0;
             width: 0;
             margin-left: 0;
@@ -315,7 +371,7 @@
             overflow: hidden;
         }
 
-        /* Submenu Section ENTIÈREMENT CORRIGÉ */
+        /* Submenu Section */
         .sidebar-submenu {
             list-style: none;
             padding-left: 0;
@@ -334,7 +390,7 @@
             padding: 8px 0;
         }
 
-        /* Submenu en mode collapsed - CORRECTION COMPLÈTE */
+        /* Submenu en mode collapsed */
         .sidebar-collapsed .sidebar-item {
             position: relative;
         }
@@ -342,18 +398,18 @@
         .sidebar-collapsed .sidebar-submenu {
             position: absolute;
             left: calc(100% + 16px);
-            top: -8px; /* Tel que dans votre code original */
+            top: -8px;
             width: 250px;
             background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
             border-radius: var(--border-radius);
             box-shadow: var(--shadow-xl);
             backdrop-filter: blur(20px);
-            z-index: 1001;
+            z-index: 1051;
             max-height: none;
             opacity: 0;
             transform: translateX(-10px);
             pointer-events: none;
-            visibility: hidden; /* Ajout pour robustesse, votre JS le gère aussi */
+            visibility: hidden;
             transition: all 0.3s ease;
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 16px 0;
@@ -364,7 +420,7 @@
             opacity: 1;
             transform: translateX(0);
             pointer-events: all;
-            visibility: visible; /* Déjà présent dans votre code, c'est bien */
+            visibility: visible;
         }
 
         .sidebar-collapsed .sidebar-submenu::before {
@@ -421,7 +477,7 @@
             flex-shrink: 0;
         }
 
-        /* ===== MODERN CONTENT AREA ===== */
+        /* ===== CONTENT AREA ===== */
         .content {
             margin-left: var(--sidebar-width);
             padding: 0;
@@ -461,7 +517,7 @@
             border: none;
             border-bottom: 1px solid var(--card-border);
             position: relative;
-            z-index: 100;
+            z-index: 1040;
         }
 
         .navbar .btn {
@@ -767,7 +823,7 @@
             background: rgba(102, 126, 234, 0.1);
         }
 
-        /* Modern Page Loader */
+        /* Page Loader - Simplifié */
         .page-loader {
             position: fixed;
             top: 0;
@@ -898,7 +954,7 @@
             }
         }
 
-        /* Responsive Design CORRIGÉ */
+        /* Responsive Design */
         @media (max-width: 768px) {
             .sidebar {
                 width: 0;
@@ -926,18 +982,32 @@
                 padding: 0 1rem;
             }
 
-            /* En mode mobile, restaurer le comportement normal des sous-menus */
+            /* En mode mobile, restaurer le comportement normal */
             .sidebar-collapsed .sidebar-text {
+                display: block;
                 width: auto;
                 margin-left: 14px;
                 opacity: 1;
             }
 
             .sidebar-collapsed .sidebar-badge {
+                display: block;
                 opacity: 1;
                 width: auto;
                 margin-left: auto;
                 padding: 2px 6px;
+            }
+
+            .sidebar-collapsed .sidebar-link {
+                padding: 16px 18px;
+                justify-content: flex-start;
+            }
+
+            .sidebar-collapsed .sidebar-icon {
+                min-width: 28px;
+                width: 28px;
+                height: 28px;
+                margin: 0;
             }
 
             .sidebar-collapsed .logo-mini {
@@ -954,12 +1024,13 @@
                 background: rgba(255, 255, 255, 0.1);
                 border-radius: var(--border-radius);
                 margin: 8px 0;
-                opacity: 1; /* Doit être 1 pour que max-height fonctionne bien */
+                opacity: 1;
                 transform: none;
                 pointer-events: all;
                 box-shadow: none;
                 border: none;
-                visibility: visible; /* Les sous-menus sont visibles, leur affichage est contrôlé par max-height via la classe .show */
+                visibility: visible;
+                z-index: auto;
             }
 
             .sidebar-collapsed .sidebar-submenu::before {
@@ -1146,11 +1217,11 @@
         }
 
         /* Tooltip pour sidebar collapsed */
-        .sidebar-collapsed .sidebar-link {
+        .sidebar-collapsed .sidebar-link:not(.mobile-expanded) {
             position: relative;
         }
 
-        .sidebar-collapsed .sidebar-link::after {
+        .sidebar-collapsed .sidebar-link:not(.mobile-expanded)::after {
             content: attr(data-tooltip);
             position: absolute;
             left: calc(100% + 16px);
@@ -1165,10 +1236,10 @@
             opacity: 0;
             pointer-events: none;
             transition: all 0.3s ease;
-            z-index: 1002;
+            z-index: 1052;
         }
 
-        .sidebar-collapsed .sidebar-link:hover::after {
+        .sidebar-collapsed .sidebar-link:not(.mobile-expanded):hover::after {
             opacity: 1;
             transform: translateY(-50%) translateX(4px);
         }
@@ -1285,18 +1356,6 @@
                         <a href="{{ route('admin.orders.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
                             <i class="fas fa-list"></i>Toutes les commandes
-                        </a>
-                    </li>
-                    <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.orders.unassigned') }}"
-                            class="sidebar-submenu-link {{ request()->routeIs('admin.orders.unassigned') ? 'active' : '' }}">
-                            <i class="fas fa-user-times"></i>Non Assignées
-                            @php
-                                $unassignedCount = Auth::guard('admin')->user()->orders()->where('is_assigned', false)->count();
-                            @endphp
-                            @if($unassignedCount > 0)
-                                <span class="badge bg-danger ms-1">{{ $unassignedCount }}</span>
-                            @endif
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
@@ -1560,27 +1619,88 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <script>
         $(document).ready(function() {
-            // Enhanced Sidebar Management avec correction complète
+            // ===== SOLUTION DÉFINITIVE POUR LES MODALES =====
+            
+            // Fonction de nettoyage ultra-agressive
+            function ultimateCleanup() {
+                // Supprimer TOUS les éléments de modal
+                $('.modal-backdrop').remove();
+                $('.modal').removeClass('show').hide().css('display', 'none');
+                
+                // Nettoyer le body complètement
+                $('body')
+                    .removeClass('modal-open')
+                    .css({
+                        'overflow': '',
+                        'padding-right': '',
+                        'margin-right': ''
+                    })
+                    .removeAttr('style');
+                
+                // Supprimer le page loader
+                $('#pageLoader').removeClass('show').hide();
+                
+                console.log('🧹 Nettoyage complet effectué');
+            }
+
+
+            // Nettoyage initial immédiat
+            ultimateCleanup();
+
+            // Intercepter TOUTES les ouvertures de modales
+            $(document).on('show.bs.modal', '.modal', function() {
+                $('#pageLoader').removeClass('show').hide();
+            });
+
+            // Intercepter TOUTES les fermetures de modales
+            $(document).on('hidden.bs.modal', '.modal', function() {
+                setTimeout(ultimateCleanup, 50);
+            });
+
+            // Nettoyage sur clic de fermeture
+            $(document).on('click', '[data-bs-dismiss="modal"], .modal-backdrop', function() {
+                setTimeout(ultimateCleanup, 100);
+            });
+
+            // Nettoyage sur ESC
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    setTimeout(ultimateCleanup, 100);
+                }
+            });
+
+            // Surveillance continue - nettoyage automatique
+            setInterval(function() {
+                if ($('.modal.show').length === 0 && ($('.modal-backdrop').length > 0 || $('body').hasClass('modal-open'))) {
+                    console.log('🔍 Éléments bloquants détectés - nettoyage automatique');
+                    ultimateCleanup();
+                }
+            }, 2000);
+
+            // Exposer la fonction de nettoyage
+            window.ultimateCleanup = ultimateCleanup;
+
+            // ===== SOLUTION DÉFINITIVE POUR LE SIDEBAR =====
+            
             const sidebar = $('#sidebar');
             const content = $('#content');
             const sidebarToggle = $('#sidebarToggle');
             const pageLoader = $('#pageLoader');
 
-            // Loader management avec UX améliorée
+            // Page loader - Version simplifiée
             let loaderTimeout;
             let isLoading = false;
 
             function showLoader(delay = 0) {
-                if (isLoading) return;
+                if (isLoading || $('body').hasClass('modal-open') || $('.modal.show').length > 0) return;
                 isLoading = true;
                 
                 setTimeout(() => {
-                    if (pageLoader.length && isLoading) {
+                    if (pageLoader.length && isLoading && !$('body').hasClass('modal-open')) {
                         clearTimeout(loaderTimeout);
                         pageLoader.removeClass('fade-out').addClass('show');
                     }
@@ -1601,29 +1721,26 @@
                 }
             }
 
-            // Initialize - hide loader immediately
+            // Cacher le loader immédiatement
             hideLoader();
 
-            // Gestion avancée du sidebar avec correction des sous-menus
+            // Gestion des sous-menus avec flyout en mode collapsed
             function handleSubmenuDisplay() {
                 const isCollapsed = sidebar.hasClass('sidebar-collapsed');
                 const isMobile = window.innerWidth <= 768;
                 
                 if (isCollapsed && !isMobile) {
-                    // En mode réduit desktop, configurer les sous-menus en hover
                     $('.sidebar-item').each(function() {
                         const item = $(this);
                         const submenu = item.find('.sidebar-submenu');
                         
                         if (submenu.length > 0) {
-                            // Supprimer les anciens événements
                             item.off('mouseenter.collapsed mouseleave.collapsed');
                             
-                            // CORRECTION: Assurer que les sous-menus restent accessibles
                             item.on({
                                 'mouseenter.collapsed': function() {
                                     clearTimeout(item.data('hideTimeout'));
-                                    submenu.stop(true, false).css({
+                                    submenu.css({
                                         'opacity': '1',
                                         'transform': 'translateX(0)',
                                         'pointer-events': 'all',
@@ -1632,29 +1749,26 @@
                                 },
                                 'mouseleave.collapsed': function() {
                                     const hideTimeout = setTimeout(() => {
-                                        submenu.stop(true, false).css({
+                                        submenu.css({
                                             'opacity': '0',
                                             'transform': 'translateX(-10px)',
                                             'pointer-events': 'none'
-                                            // 'visibility': 'hidden' // Optionnel ici car opacity 0 et pointer-events none suffisent souvent
                                         });
                                     }, 300);
                                     item.data('hideTimeout', hideTimeout);
                                 }
                             });
                             
-                            // Également gérer le hover sur le sous-menu lui-même
                             submenu.on({
                                 'mouseenter.collapsed': function() {
                                     clearTimeout(item.data('hideTimeout'));
                                 },
                                 'mouseleave.collapsed': function() {
                                     const hideTimeout = setTimeout(() => {
-                                        submenu.stop(true, false).css({
+                                        submenu.css({
                                             'opacity': '0',
                                             'transform': 'translateX(-10px)',
                                             'pointer-events': 'none'
-                                            // 'visibility': 'hidden'
                                         });
                                     }, 300);
                                     item.data('hideTimeout', hideTimeout);
@@ -1663,22 +1777,18 @@
                         }
                     });
                 } else {
-                    // Mode normal - nettoyer et remettre les styles par défaut
                     $('.sidebar-item').off('mouseenter.collapsed mouseleave.collapsed');
                     $('.sidebar-submenu').off('mouseenter.collapsed mouseleave.collapsed');
-                    $('.sidebar-submenu').each(function() {
-                        // Réinitialiser les styles inline
-                        $(this).css({
-                            'opacity': '',
-                            'transform': '',
-                            'pointer-events': '',
-                            'visibility': ''
-                        });
+                    $('.sidebar-submenu').css({
+                        'opacity': '',
+                        'transform': '',
+                        'pointer-events': '',
+                        'visibility': ''
                     });
                 }
             }
 
-            // Enhanced sidebar state management
+            // Gestion d'état du sidebar
             function applySidebarState() {
                 const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
                 const isMobile = window.innerWidth <= 768;
@@ -1696,39 +1806,33 @@
                     }
                 }
                 
-                // Appliquer la gestion des sous-menus après un petit délai
                 setTimeout(handleSubmenuDisplay, 100);
             }
 
-            // Apply saved state on page load
             applySidebarState();
 
-            // Handle window resize avec debounce
             $(window).on('resize', debounce(function() {
                 applySidebarState();
             }, 250));
 
-            // Enhanced sidebar toggle avec gestion complète
+            // Toggle sidebar
             sidebarToggle.on('click', function() {
                 const isMobile = window.innerWidth <= 768;
                 
                 if (isMobile) {
-                    // Mobile: simple toggle
                     sidebar.toggleClass('sidebar-collapsed');
                 } else {
-                    // Desktop: toggle avec sauvegarde
                     const isNowCollapsed = !sidebar.hasClass('sidebar-collapsed');
                     localStorage.setItem('sidebarCollapsed', isNowCollapsed.toString());
                     
                     sidebar.toggleClass('sidebar-collapsed');
                     content.toggleClass('content-expanded');
                     
-                    // Reappliquer la gestion des sous-menus
                     setTimeout(handleSubmenuDisplay, 100);
                 }
             });
 
-            // Enhanced menu toggle avec gestion intelligente
+            // Gestion des sous-menus
             const menuLinks = $('[data-target]');
             menuLinks.each(function() {
                 const link = $(this);
@@ -1740,36 +1844,31 @@
                     const isCollapsed = sidebar.hasClass('sidebar-collapsed');
                     const isMobile = window.innerWidth <= 768;
                     
-                    // En mode réduit desktop, laisser le hover gérer l'affichage
                     if (isCollapsed && !isMobile) {
                         return;
                     }
                     
                     e.preventDefault();
                     
-                    // Fermer les autres sous-menus
                     $('.sidebar-submenu.show').not(submenu).removeClass('show').each(function() {
                         const otherChevron = $(this).prev('[data-target]').find('.fa-chevron-up');
                         otherChevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
                     });
                     
-                    // Toggle du sous-menu actuel
                     submenu.toggleClass('show');
                     
-                    // Mettre à jour l'icône chevron
                     if (submenu.hasClass('show')) {
                         chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
                     } else {
                         chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
                     }
                     
-                    // Update aria-expanded pour l'accessibilité
                     const isExpanded = submenu.hasClass('show');
                     link.attr('aria-expanded', isExpanded);
                 });
             });
 
-            // Auto-expand current submenu au chargement et mettre à jour les chevrons
+            // Auto-expand current submenu
             $('.sidebar-submenu.show').each(function() {
                 const submenu = $(this);
                 const parentLink = submenu.prev('[data-target]');
@@ -1780,15 +1879,13 @@
                 }
             });
 
-            // Appliquer immédiatement la gestion des sous-menus
             handleSubmenuDisplay();
 
-            // Enhanced loader for navigation avec détection intelligente
-            $(document).on('click', 'a:not([data-target]):not(.dropdown-item):not(.btn-close):not([href="#"]):not([href="javascript:void(0)"])', function(e) {
+            // Loader pour navigation
+            $(document).on('click', 'a:not([data-target]):not(.dropdown-item):not(.btn-close):not([href="#"]):not([href="javascript:void(0)"]):not([data-bs-toggle]):not([data-bs-target])', function(e) {
                 const target = $(this);
                 const href = target.attr('href');
                 
-                // Skip certains liens
                 if (!href || 
                     href.startsWith('mailto:') ||
                     href.startsWith('tel:') ||
@@ -1802,13 +1899,17 @@
                 loaderTimeout = setTimeout(hideLoader, 5000);
             });
 
-            // Enhanced loader for forms
-            $('form:not([data-no-loader])').on('submit', function() {
+            // Loader pour formulaires
+            $('form:not([data-no-loader]):not(.modal form)').on('submit', function(e) {
+                if ($(this).closest('.modal').length > 0) {
+                    return;
+                }
+                
                 showLoader();
                 loaderTimeout = setTimeout(hideLoader, 10000);
             });
 
-            // Auto-hide alerts avec animation fluide
+            // Auto-hide alerts
             setTimeout(() => {
                 $('.alert:not(.alert-warning)').each(function() {
                     const alert = $(this);
@@ -1818,25 +1919,24 @@
                 });
             }, 5000);
 
-            // Enhanced animations avec Intersection Observer
+            // Animations avec Intersection Observer
             if ('IntersectionObserver' in window) {
                 const observerOptions = {
                     threshold: 0.1,
                     rootMargin: '0px 0px -50px 0px'
                 };
 
-                const observer = new IntersectionObserver((entries) => {
+                const animationObserver = new IntersectionObserver((entries) => {
                     entries.forEach(entry => {
                         if (entry.isIntersecting) {
                             entry.target.classList.add('animate-slide-up');
-                            observer.unobserve(entry.target);
+                            animationObserver.unobserve(entry.target);
                         }
                     });
                 }, observerOptions);
 
-                // Observer les cartes et autres éléments
                 $('.card, .alert, .footer').each(function() {
-                    observer.observe(this);
+                    animationObserver.observe(this);
                 });
             }
 
@@ -1846,21 +1946,19 @@
                 if (!document.hidden) hideLoader();
             });
 
-            // Ultimate fallback
             setTimeout(hideLoader, 3000);
 
             // Enhanced keyboard shortcuts
             $(document).on('keydown', function(e) {
-                // Ctrl/Cmd + B pour toggle sidebar
                 if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
                     e.preventDefault();
                     sidebarToggle.click();
                 }
                 
-                // Escape pour fermer modals et dropdowns
                 if (e.key === 'Escape') {
                     $('.modal.show').modal('hide');
                     $('.dropdown-menu.show').dropdown('hide');
+                    setTimeout(ultimateCleanup, 100);
                 }
             });
 
@@ -1871,7 +1969,7 @@
                 $(this).removeClass('active');
             });
 
-            // Smooth scrolling pour les liens d'ancrage
+            // Smooth scrolling
             $('a[href^="#"]').on('click', function(e) {
                 const target = $(this.getAttribute('href'));
                 if (target.length) {
@@ -1882,7 +1980,6 @@
                 }
             });
 
-            // Enhanced user experience improvements
             $('[data-bs-toggle="tooltip"]').tooltip();
             $('[data-bs-toggle="popover"]').popover();
 
@@ -1926,14 +2023,12 @@
 
         // Enhanced accessibility
         $(document).ready(function() {
-            // Indicateurs de focus pour navigation clavier
             $('a, button, input, select, textarea').on('focus', function() {
                 $(this).addClass('focus-visible');
             }).on('blur', function() {
                 $(this).removeClass('focus-visible');
             });
 
-            // Annonce les changements de contenu dynamique aux lecteurs d'écran
             const announcer = $('<div>', {
                 'aria-live': 'polite',
                 'aria-atomic': 'true',
@@ -1945,7 +2040,6 @@
                 setTimeout(() => announcer.empty(), 1000);
             }
 
-            // Usage pour les messages de succès
             $('.alert-success').each(function() {
                 announce('Opération réussie');
             });

@@ -17,6 +17,8 @@
         --priority-vip: #ef4444;
     }
 
+
+
     .search-container {
         background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
         border-radius: 16px;
