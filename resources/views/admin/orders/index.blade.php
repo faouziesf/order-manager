@@ -17,8 +17,6 @@
         --priority-vip: #ef4444;
     }
 
-
-
     .search-container {
         background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
         border-radius: 16px;
@@ -333,6 +331,193 @@
         100% { transform: rotate(360deg); }
     }
 
+    /* Modal amélioré pour l'historique */
+    .modal-content {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.12);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .modal-header .modal-title {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .modal-header .btn-close {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        opacity: 1;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-header .btn-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    /* Amélioration du Modal Historique */
+    .history-timeline {
+        position: relative;
+        padding: 0;
+    }
+
+    .history-item {
+        position: relative;
+        padding: 1.5rem 0;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .history-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .history-item:first-child {
+        padding-top: 0;
+    }
+
+    .history-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 1rem;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .history-icon.status-change {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .history-icon.call-attempt {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .history-icon.creation {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .history-icon.assignment {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    }
+
+    .history-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .history-title {
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    .history-date {
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .history-description {
+        color: #6b7280;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .history-details {
+        margin-top: 0.75rem;
+        background: #f8fafc;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border-left: 3px solid #e5e7eb;
+    }
+
+    .history-details .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .history-details .detail-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .detail-label {
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.8rem;
+    }
+
+    .detail-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    .history-empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6b7280;
+    }
+
+    .history-empty i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    /* Animations pour l'historique */
+    .history-item {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
     @media (max-width: 768px) {
         .filter-row {
             flex-direction: column;
@@ -352,6 +537,17 @@
         
         .table-responsive {
             font-size: 0.85rem;
+        }
+
+        .history-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .history-details .detail-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
         }
     }
 </style>

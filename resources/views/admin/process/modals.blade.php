@@ -234,7 +234,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="history-content" style="max-height: 500px; overflow-y: auto;">
+                <div id="history-content" >
                     <!-- L'historique sera chargé ici par JavaScript -->
                     <div class="text-center py-4">
                         <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
