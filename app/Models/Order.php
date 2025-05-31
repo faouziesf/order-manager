@@ -284,19 +284,47 @@ class Order extends Model
             return 'dated';
         }
         
-        // Commandes nouvelles qui ont dépassé le seuil standard
+        // Commandes anciennes (nouveau statut)
+        if ($this->status === 'ancienne') {
+            return 'old';
+        }
+        
+        // Commandes nouvelles standard
         if ($this->status === 'nouvelle') {
-            $standardMaxAttempts = (int)AdminSetting::get("standard_max_total_attempts", 9);
-            
-            if ($this->attempts_count >= $standardMaxAttempts) {
-                return 'old';
-            }
-            
             return 'standard';
         }
         
         // Par défaut, retourner standard
         return 'standard';
+    }
+
+    /**
+     * NOUVELLE MÉTHODE: Transition automatique vers le statut "ancienne"
+     */
+    public function transitionToOldIfNeeded()
+    {
+        if ($this->status === 'nouvelle') {
+            $standardMaxAttempts = (int)AdminSetting::get('standard_max_total_attempts', 9);
+            
+            if ($this->attempts_count >= $standardMaxAttempts) {
+                $previousStatus = $this->status;
+                $this->status = 'ancienne';
+                $this->save();
+                
+                // Enregistrer dans l'historique
+                $this->recordHistory(
+                    'changement_statut',
+                    "Commande automatiquement passée en file ancienne après {$standardMaxAttempts} tentatives",
+                    ['auto_transition' => true, 'attempts_reached' => $this->attempts_count],
+                    $previousStatus,
+                    'ancienne'
+                );
+                
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**
@@ -445,14 +473,19 @@ class Order extends Model
     }
 
     /**
-     * CORRECTION: Scope pour la file ancienne
+     * NOUVEAU: Scope pour les commandes anciennes
+     */
+    public function scopeOld($query)
+    {
+        return $query->where('status', 'ancienne');
+    }
+
+    /**
+     * CORRECTION: Scope pour la file ancienne - Utilise maintenant le statut "ancienne"
      */
     public function scopeOldQueue($query)
     {
-        $standardMaxAttempts = (int)AdminSetting::get('standard_max_total_attempts', 9);
-        
-        return $query->where('status', 'nouvelle')
-            ->where('attempts_count', '>=', $standardMaxAttempts)
+        return $query->where('status', 'ancienne')
             ->availableForQueue('old');
     }
 }

@@ -214,16 +214,15 @@ class ProcessController extends Controller
 
     /**
      * Compteur pour la file ancienne
+     * CORRECTION : Utilise maintenant le statut "ancienne" au lieu de filtrer par tentatives
      */
     private function getOldQueueCount($query)
     {
-        $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
-        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0); // 0 = illimité
         $maxDailyAttempts = $this->getSetting('old_max_daily_attempts', 2);
         $delayHours = $this->getSetting('old_delay_hours', 6);
+        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0); // 0 = illimité
         
-        $baseQuery = $query->where('status', 'nouvelle')
-            ->where('attempts_count', '>=', $standardMaxAttempts)
+        $baseQuery = $query->where('status', 'ancienne') // CORRECTION: Utilise le statut "ancienne"
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
             ->where(function($q) use ($delayHours) {
                 // Première tentative OU délai écoulé depuis la dernière modification
@@ -359,16 +358,15 @@ class ProcessController extends Controller
 
     /**
      * Trouve la prochaine commande ancienne
+     * CORRECTION : Utilise maintenant le statut "ancienne" au lieu de filtrer par tentatives
      */
     private function findOldOrder($query)
     {
-        $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
-        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0); // 0 = illimité
         $maxDailyAttempts = $this->getSetting('old_max_daily_attempts', 2);
         $delayHours = $this->getSetting('old_delay_hours', 6);
+        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0); // 0 = illimité
         
-        $baseQuery = $query->where('status', 'nouvelle')
-            ->where('attempts_count', '>=', $standardMaxAttempts)
+        $baseQuery = $query->where('status', 'ancienne') // CORRECTION: Utilise le statut "ancienne"
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
             ->where(function($q) use ($delayHours) {
                 // Première tentative OU délai écoulé depuis la dernière modification
@@ -652,6 +650,7 @@ class ProcessController extends Controller
 
     /**
      * Enregistre une tentative d'appel
+     * CORRECTION COMPLÈTE : Change maintenant le statut vers "ancienne" automatiquement
      */
     private function recordCallAttempt(Order $order, $notes)
     {
@@ -666,11 +665,35 @@ class ProcessController extends Controller
         // Enregistrer dans l'historique
         $order->recordHistory('tentative', $notes);
         
-        // Vérifier si la commande doit passer en "ancienne"
+        // CORRECTION PRINCIPALE: Vérifier si la commande doit passer en "ancienne"
         $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
         if ($order->status === 'nouvelle' && $order->attempts_count >= $standardMaxAttempts) {
-            // La commande va maintenant apparaître dans la file "ancienne"
-            Log::info("Commande {$order->id} a atteint le maximum de tentatives standard ({$standardMaxAttempts}) et va passer en file ancienne");
+            
+            // Sauvegarder le statut précédent
+            $previousStatus = $order->status;
+            
+            // Changer le statut vers "ancienne"
+            $order->status = 'ancienne';
+            $order->save();
+            
+            // Enregistrer le changement de statut dans l'historique
+            $order->recordHistory(
+                'changement_statut', 
+                "Commande automatiquement passée en file ancienne après avoir atteint {$standardMaxAttempts} tentatives standard",
+                [
+                    'status_change' => [
+                        'from' => $previousStatus, 
+                        'to' => 'ancienne'
+                    ],
+                    'attempts_count' => $order->attempts_count,
+                    'threshold_reached' => $standardMaxAttempts,
+                    'auto_transition' => true
+                ],
+                $previousStatus,
+                'ancienne'
+            );
+            
+            Log::info("Commande {$order->id} automatiquement changée au statut 'ancienne' après {$order->attempts_count} tentatives (seuil: {$standardMaxAttempts})");
         }
     }
 
