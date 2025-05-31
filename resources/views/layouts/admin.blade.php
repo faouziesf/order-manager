@@ -60,15 +60,145 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* ===== SOLUTION DÉFINITIVE POUR LES MODALES ===== */
-        /* Forcer les z-index corrects */
+        /* ===== SOLUTION ULTRA-RADICALE POUR LES MODALES ===== */
+        /* FORCER la suppression de TOUS les modal-backdrop avec CSS */
+        .modal-backdrop,
+        .modal-backdrop.fade,
+        .modal-backdrop.show,
+        .modal-backdrop.fade.show {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            position: absolute !important;
+            top: -9999px !important;
+            left: -9999px !important;
+            width: 0 !important;
+            height: 0 !important;
+            z-index: -9999 !important;
+        }
+
+        /* Empêcher la création de backdrop */
+        div[class*="backdrop"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* SOLUTION DÉFINITIVE : Modales centrées avec padding complet et largeur optimisée */
         .modal {
-            z-index: 1055 !important;
-            padding-top: 70px;
+            z-index: 99999 !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.6) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 40px 40px 40px calc(var(--sidebar-width) + 60px) !important;
+            overflow-y: auto !important;
+        }
+
+        /* Ajustement du padding selon l'état de la sidebar */
+        .content-expanded ~ .modal,
+        body:has(.sidebar-collapsed) .modal {
+            padding: 40px 40px 40px calc(var(--sidebar-collapsed-width) + 60px) !important;
+        }
+
+        .modal.fade:not(.show) {
+            display: none !important;
+        }
+
+        .modal.show {
+            display: flex !important;
         }
         
-        .modal-backdrop {
-            z-index: 1054 !important;
+        .modal-dialog {
+            z-index: 99999 !important;
+            position: relative !important;
+            margin: 0 !important;
+            max-width: 95% !important;
+            min-width: 500px !important;
+            width: auto !important;
+            max-height: calc(100vh - 80px) !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        /* Largeurs spécifiques pour différents types de modales */
+        .modal-lg .modal-dialog {
+            max-width: 90% !important;
+            min-width: 700px !important;
+        }
+
+        .modal-sm .modal-dialog {
+            max-width: 60% !important;
+            min-width: 400px !important;
+        }
+
+        .modal-content {
+            z-index: 99999 !important;
+            position: relative !important;
+            max-height: calc(100vh - 80px) !important;
+            overflow-y: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+        }
+
+        /* Tailles spécifiques pour différents types de modales */
+        .modal-dialog-centered {
+            min-height: auto !important;
+        }
+
+        /* S'assurer que le contenu de la modale ne déborde pas */
+        .modal-body {
+            overflow-y: auto !important;
+            max-height: calc(80vh - 200px) !important;
+        }
+
+        /* Responsive : ajustements pour mobile */
+        @media (max-width: 768px) {
+            .modal {
+                padding: 20px !important;
+            }
+            
+            .modal-dialog {
+                min-width: 90% !important;
+                max-width: 95% !important;
+            }
+            
+            .modal-lg .modal-dialog {
+                min-width: 90% !important;
+                max-width: 95% !important;
+            }
+            
+            .modal-sm .modal-dialog {
+                min-width: 85% !important;
+                max-width: 90% !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .modal {
+                padding: 15px !important;
+            }
+            
+            .modal-dialog {
+                min-width: 95% !important;
+                max-width: 98% !important;
+            }
+            
+            .modal-lg .modal-dialog,
+            .modal-sm .modal-dialog {
+                min-width: 95% !important;
+                max-width: 98% !important;
+            }
         }
 
         /* Empêcher TOUT élément de rester visible après fermeture */
@@ -77,26 +207,112 @@
             visibility: hidden !important;
             opacity: 0 !important;
             pointer-events: none !important;
+            background: none !important;
         }
 
-        .modal-backdrop:not(.show) {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-        }
-
-        /* Forcer la suppression des backdrops orphelins */
-        body:not(.modal-open) .modal-backdrop {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-        }
-
-        /* Restaurer l'état normal du body */
+        /* Restaurer l'état normal du body - FORCÉ */
         body:not(.modal-open) {
             overflow: auto !important;
             padding-right: 0 !important;
             margin-right: 0 !important;
+        }
+
+        /* Empêcher le scroll du body quand une modale est ouverte */
+        body.modal-open {
+            overflow: hidden !important;
+            padding-right: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        /* Page Loader - Version remise */
+        .page-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+            opacity: 0;
+        }
+
+        .page-loader.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .page-loader.fade-out {
+            opacity: 0;
+        }
+
+        .loader-content {
+            text-align: center;
+            color: white;
+        }
+
+        .loader-logo {
+            animation: float 3s ease-in-out infinite;
+            margin-bottom: 24px;
+        }
+
+        .loader-logo .brand-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--brand-color) 0%, #ff8a65 100%);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 20px;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loader-text {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .loader-subtext {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        .loader-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 24px auto 0;
+        }
+
+        .loader-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--brand-color), #ff8a65);
+            border-radius: 2px;
+            animation: loading 2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
         }
 
         /* Empêcher le page loader de s'afficher avec les modales */
@@ -560,6 +776,29 @@
             box-shadow: var(--shadow-md);
         }
 
+        /* Brand Header */
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .brand-header .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--brand-color) 0%, #ff8a65 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow-md);
+        }
+
         /* User Profile Section */
         .user-profile {
             display: flex;
@@ -824,97 +1063,6 @@
             background: rgba(102, 126, 234, 0.1);
         }
 
-        /* Page Loader - Simplifié */
-        .page-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
-            backdrop-filter: blur(20px);
-            z-index: 9999;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            transition: opacity 0.5s ease;
-            opacity: 0;
-        }
-
-        .page-loader.show {
-            display: flex;
-            opacity: 1;
-        }
-
-        .page-loader.fade-out {
-            opacity: 0;
-        }
-
-        .loader-content {
-            text-align: center;
-            color: white;
-        }
-
-        .loader-logo {
-            animation: float 3s ease-in-out infinite;
-            margin-bottom: 24px;
-        }
-
-        .loader-logo .brand-icon {
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(135deg, var(--brand-color) 0%, #ff8a65 100%);
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            margin: 0 auto 20px;
-            box-shadow: var(--shadow-xl);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .loader-text {
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            letter-spacing: -0.5px;
-        }
-
-        .loader-subtext {
-            font-size: 1.1rem;
-            opacity: 0.8;
-            font-weight: 400;
-        }
-
-        .loader-progress {
-            width: 200px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-            overflow: hidden;
-            margin: 24px auto 0;
-        }
-
-        .loader-progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--brand-color), #ff8a65);
-            border-radius: 2px;
-            animation: loading 2s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-
-        @keyframes loading {
-            0% { width: 0%; }
-            50% { width: 70%; }
-            100% { width: 100%; }
-        }
-
         /* Animation Classes */
         .animate-fade-in {
             animation: fadeIn 0.6s ease-out;
@@ -1054,6 +1202,10 @@
 
             .dropdown-menu {
                 min-width: 250px;
+            }
+
+            .brand-header {
+                font-size: 1.1rem;
             }
         }
 
@@ -1265,7 +1417,6 @@
             </div>
         </div>
     </div>
-
     <div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
             <a href="{{ route('admin.dashboard') }}" class="logo-full">
@@ -1455,8 +1606,11 @@
                     <i class="fas fa-bars"></i>
                 </button>
                 
-                <div class="d-none d-md-block">
-                    <h5 class="mb-0 text-gradient">@yield('page-title', 'Tableau de bord')</h5>
+                <div class="brand-header">
+                    <div class="brand-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <span>Order Manager</span>
                 </div>
             </div>
 
@@ -1642,19 +1796,15 @@
                     })
                     .removeAttr('style');
                 
-                // Supprimer le page loader
-                $('#pageLoader').removeClass('show').hide();
-                
                 console.log('🧹 Nettoyage complet effectué');
             }
-
 
             // Nettoyage initial immédiat
             ultimateCleanup();
 
             // Intercepter TOUTES les ouvertures de modales
             $(document).on('show.bs.modal', '.modal', function() {
-                $('#pageLoader').removeClass('show').hide();
+                // Plus de référence au page loader
             });
 
             // Intercepter TOUTES les fermetures de modales
@@ -1690,40 +1840,6 @@
             const sidebar = $('#sidebar');
             const content = $('#content');
             const sidebarToggle = $('#sidebarToggle');
-            const pageLoader = $('#pageLoader');
-
-            // Page loader - Version simplifiée
-            let loaderTimeout;
-            let isLoading = false;
-
-            function showLoader(delay = 0) {
-                if (isLoading || $('body').hasClass('modal-open') || $('.modal.show').length > 0) return;
-                isLoading = true;
-                
-                setTimeout(() => {
-                    if (pageLoader.length && isLoading && !$('body').hasClass('modal-open')) {
-                        clearTimeout(loaderTimeout);
-                        pageLoader.removeClass('fade-out').addClass('show');
-                    }
-                }, delay);
-            }
-
-            function hideLoader() {
-                if (!isLoading) return;
-                isLoading = false;
-                
-                if (pageLoader.length) {
-                    clearTimeout(loaderTimeout);
-                    pageLoader.addClass('fade-out');
-                    
-                    setTimeout(() => {
-                        pageLoader.removeClass('show').css('display', 'none');
-                    }, 500);
-                }
-            }
-
-            // Cacher le loader immédiatement
-            hideLoader();
 
             // Gestion des sous-menus avec flyout en mode collapsed
             function handleSubmenuDisplay() {
@@ -1882,34 +1998,6 @@
 
             handleSubmenuDisplay();
 
-            // Loader pour navigation
-            $(document).on('click', 'a:not([data-target]):not(.dropdown-item):not(.btn-close):not([href="#"]):not([href="javascript:void(0)"]):not([data-bs-toggle]):not([data-bs-target])', function(e) {
-                const target = $(this);
-                const href = target.attr('href');
-                
-                if (!href || 
-                    href.startsWith('mailto:') ||
-                    href.startsWith('tel:') ||
-                    target.attr('target') === '_blank' ||
-                    target.hasClass('alert-link') ||
-                    target.closest('.dropdown-menu').length) {
-                    return;
-                }
-                
-                showLoader(100);
-                loaderTimeout = setTimeout(hideLoader, 5000);
-            });
-
-            // Loader pour formulaires
-            $('form:not([data-no-loader]):not(.modal form)').on('submit', function(e) {
-                if ($(this).closest('.modal').length > 0) {
-                    return;
-                }
-                
-                showLoader();
-                loaderTimeout = setTimeout(hideLoader, 10000);
-            });
-
             // Auto-hide alerts
             setTimeout(() => {
                 $('.alert:not(.alert-warning)').each(function() {
@@ -1940,14 +2028,6 @@
                     animationObserver.observe(this);
                 });
             }
-
-            // Cleanup functions
-            $(window).on('load', hideLoader);
-            $(document).on('visibilitychange', function() {
-                if (!document.hidden) hideLoader();
-            });
-
-            setTimeout(hideLoader, 3000);
 
             // Enhanced keyboard shortcuts
             $(document).on('keydown', function(e) {
@@ -2007,15 +2087,6 @@
                 timeout = setTimeout(later, wait);
             };
         }
-
-        // Prevent flash of unstyled content
-        (function() {
-            const loader = document.getElementById('pageLoader');
-            if (loader) {
-                loader.style.display = 'none';
-                loader.style.opacity = '0';
-            }
-        })();
 
         // Enhanced error handling
         window.addEventListener('error', function(e) {

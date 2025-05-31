@@ -64,46 +64,12 @@ class ProcessController extends Controller
             $order = $this->findNextOrder($admin, $queue);
             
             if ($order) {
-                // Charger les relations nécessaires
-                $order->load(['region', 'city', 'items.product']);
+                // Charger les relations nécessaires avec vérification
+                $orderData = $this->formatOrderData($order);
                 
                 return response()->json([
                     'hasOrder' => true,
-                    'order' => [
-                        'id' => $order->id,
-                        'status' => $order->status,
-                        'priority' => $order->priority,
-                        'customer_name' => $order->customer_name,
-                        'customer_phone' => $order->customer_phone,
-                        'customer_phone_2' => $order->customer_phone_2,
-                        'customer_governorate' => $order->customer_governorate,
-                        'customer_city' => $order->customer_city,
-                        'customer_address' => $order->customer_address,
-                        'shipping_cost' => $order->shipping_cost ?? 0,
-                        'total_price' => $order->total_price ?? 0,
-                        'confirmed_price' => $order->confirmed_price,
-                        'scheduled_date' => $order->scheduled_date,
-                        'attempts_count' => $order->attempts_count ?? 0,
-                        'daily_attempts_count' => $order->daily_attempts_count ?? 0,
-                        'created_at' => $order->created_at,
-                        'updated_at' => $order->updated_at,
-                        'last_attempt_at' => $order->last_attempt_at,
-                        'items' => $order->items->map(function($item) {
-                            return [
-                                'id' => $item->id,
-                                'product_id' => $item->product_id,
-                                'quantity' => $item->quantity,
-                                'unit_price' => $item->unit_price,
-                                'total_price' => $item->total_price,
-                                'product' => $item->product ? [
-                                    'id' => $item->product->id,
-                                    'name' => $item->product->name,
-                                    'price' => $item->product->price,
-                                    'stock' => $item->product->stock
-                                ] : null
-                            ];
-                        })
-                    ]
+                    'order' => $orderData
                 ]);
             }
             
@@ -425,6 +391,56 @@ class ProcessController extends Controller
     }
 
     /**
+     * Formate les données d'une commande pour l'API
+     */
+    private function formatOrderData($order)
+    {
+        try {
+            // Charger les relations nécessaires de manière sécurisée
+            $order->load(['items.product']);
+            
+            return [
+                'id' => $order->id,
+                'status' => $order->status,
+                'priority' => $order->priority,
+                'customer_name' => $order->customer_name,
+                'customer_phone' => $order->customer_phone,
+                'customer_phone_2' => $order->customer_phone_2,
+                'customer_governorate' => $order->customer_governorate,
+                'customer_city' => $order->customer_city,
+                'customer_address' => $order->customer_address,
+                'shipping_cost' => floatval($order->shipping_cost ?? 0),
+                'total_price' => floatval($order->total_price ?? 0),
+                'confirmed_price' => $order->confirmed_price ? floatval($order->confirmed_price) : null,
+                'scheduled_date' => $order->scheduled_date ? $order->scheduled_date->format('Y-m-d') : null,
+                'attempts_count' => intval($order->attempts_count ?? 0),
+                'daily_attempts_count' => intval($order->daily_attempts_count ?? 0),
+                'created_at' => $order->created_at ? $order->created_at->toISOString() : null,
+                'updated_at' => $order->updated_at ? $order->updated_at->toISOString() : null,
+                'last_attempt_at' => $order->last_attempt_at ? $order->last_attempt_at->toISOString() : null,
+                'items' => $order->items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'quantity' => intval($item->quantity),
+                        'unit_price' => floatval($item->unit_price),
+                        'total_price' => floatval($item->total_price),
+                        'product' => $item->product ? [
+                            'id' => $item->product->id,
+                            'name' => $item->product->name,
+                            'price' => floatval($item->product->price),
+                            'stock' => intval($item->product->stock)
+                        ] : null
+                    ];
+                })->toArray()
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erreur dans formatOrderData: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Réinitialise les compteurs journaliers si nécessaire
      */
     private function resetDailyCountersIfNeeded($admin)
@@ -479,7 +495,7 @@ class ProcessController extends Controller
             $notes = $request->notes;
             
             // Enregistrer dans l'historique avec le nom de l'utilisateur
-            $historyNote = Auth::guard('admin')->user()->name . " a effectué l'action [{$action}] et a laissé une note de [{$notes}]";
+            $historyNote = $admin->name . " a effectué l'action [{$action}] : {$notes}";
             
             // Traiter selon l'action
             switch ($action) {
@@ -570,17 +586,30 @@ class ProcessController extends Controller
      */
     private function confirmOrder(Order $order, Request $request, $notes)
     {
-        $order->update([
-            'customer_name' => $request->customer_name,
-            'customer_phone_2' => $request->customer_phone_2,
-            'customer_governorate' => $request->customer_governorate,
-            'customer_city' => $request->customer_city,
-            'customer_address' => $request->customer_address,
+        $updateData = [
             'status' => 'confirmée',
             'confirmed_price' => $request->confirmed_price,
             'shipping_cost' => $request->shipping_cost ?? 0,
-        ]);
-        
+        ];
+
+        // Ajouter les champs optionnels s'ils sont fournis
+        if ($request->filled('customer_name')) {
+            $updateData['customer_name'] = $request->customer_name;
+        }
+        if ($request->filled('customer_phone_2')) {
+            $updateData['customer_phone_2'] = $request->customer_phone_2;
+        }
+        if ($request->filled('customer_governorate')) {
+            $updateData['customer_governorate'] = $request->customer_governorate;
+        }
+        if ($request->filled('customer_city')) {
+            $updateData['customer_city'] = $request->customer_city;
+        }
+        if ($request->filled('customer_address')) {
+            $updateData['customer_address'] = $request->customer_address;
+        }
+
+        $order->update($updateData);
         $order->recordHistory('confirmation', $notes);
     }
 
@@ -646,26 +675,34 @@ class ProcessController extends Controller
     }
 
     /**
-     * NOUVELLE MÉTHODE: Met à jour les items de la commande
+     * Met à jour les items de la commande
      */
     private function updateOrderItems(Order $order, $cartItems)
     {
         try {
+            if (!is_array($cartItems)) {
+                Log::warning('updateOrderItems: cartItems n\'est pas un tableau');
+                return;
+            }
+
             // Supprimer les anciens items
             $order->items()->delete();
             
             // Ajouter les nouveaux items
             foreach ($cartItems as $item) {
-                $order->items()->create([
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'total_price' => $item['total_price'],
-                ]);
+                if (isset($item['product_id'], $item['quantity'], $item['unit_price'])) {
+                    $order->items()->create([
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'total_price' => $item['quantity'] * $item['unit_price'],
+                    ]);
+                }
             }
             
             // Recalculer le total de la commande
-            $order->recalculateTotal();
+            $newTotal = $order->items()->sum('total_price');
+            $order->update(['total_price' => $newTotal]);
             
         } catch (\Exception $e) {
             Log::error('Erreur lors de la mise à jour des items: ' . $e->getMessage());
@@ -685,13 +722,20 @@ class ProcessController extends Controller
                 'success' => true,
                 'message' => 'API fonctionnelle',
                 'admin' => $admin ? $admin->name : 'Non authentifié',
-                'timestamp' => now()->toISOString()
+                'timestamp' => now()->toISOString(),
+                'debug' => [
+                    'database_connected' => DB::connection()->getPdo() ? true : false,
+                    'admin_settings_count' => AdminSetting::count(),
+                    'orders_count' => $admin ? $admin->orders()->count() : 0
+                ]
             ]);
             
         } catch (\Exception $e) {
+            Log::error('Erreur dans test(): ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'timestamp' => now()->toISOString()
             ], 500);
         }
     }

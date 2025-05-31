@@ -39,8 +39,8 @@
         border-radius: var(--border-radius-2xl);
         box-shadow: var(--shadow-elevated);
         border: 1px solid var(--glass-border);
-        margin: var(--spacing-sm);
-        min-height: calc(100vh - 140px);
+        margin: 0.5rem;
+        min-height: calc(100vh - 120px);
         overflow: hidden;
     }
 
@@ -49,9 +49,12 @@
     ========================= */
     .process-header {
         background: var(--process-primary);
-        padding: var(--spacing-lg) var(--spacing-xl);
+        padding: 1rem 1.5rem;
         position: relative;
         overflow: hidden;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-lg);
     }
 
     .process-header::before {
@@ -65,25 +68,20 @@
         transform: rotate(15deg);
     }
 
-    .process-title {
+    .process-icon {
         color: white;
         font-size: 2.5rem;
-        font-weight: 800;
-        margin: 0 0 var(--spacing-md) 0;
         position: relative;
         z-index: 2;
         display: flex;
         align-items: center;
-        gap: var(--spacing-md);
-    }
-
-    .process-subtitle {
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 1.1rem;
-        font-weight: 400;
-        position: relative;
-        z-index: 2;
-        margin-bottom: var(--spacing-lg);
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius-xl);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     /* =========================
@@ -94,7 +92,7 @@
         gap: var(--spacing-sm);
         position: relative;
         z-index: 2;
-        margin-top: var(--spacing-lg);
+        flex: 1;
     }
 
     .queue-tab {
@@ -102,7 +100,7 @@
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: var(--border-radius-xl);
-        padding: var(--spacing-md) var(--spacing-lg);
+        padding: 0.75rem 1rem;
         color: rgba(255, 255, 255, 0.8);
         cursor: pointer;
         transition: var(--transition-smooth);
@@ -110,10 +108,10 @@
         align-items: center;
         gap: var(--spacing-sm);
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 1rem;
         position: relative;
         overflow: hidden;
-        min-width: 180px;
+        min-width: 160px;
         justify-content: center;
     }
 
@@ -136,7 +134,7 @@
     }
 
     .queue-tab:hover {
-        transform: translateY(-4px);
+        transform: translateY(-3px);
         box-shadow: var(--shadow-elevated);
         color: white;
     }
@@ -150,24 +148,24 @@
     }
 
     .queue-icon {
-        font-size: 1.3rem;
-        width: 32px;
-        height: 32px;
+        font-size: 1.2rem;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
+        border-radius: 10px;
     }
 
     .queue-badge {
         background: rgba(255, 255, 255, 0.9);
         color: #4f46e5;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.9rem;
+        padding: 3px 10px;
+        border-radius: 15px;
+        font-size: 0.85rem;
         font-weight: 700;
-        min-width: 28px;
+        min-width: 24px;
         text-align: center;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
@@ -186,12 +184,11 @@
        CONTENU PRINCIPAL
     ========================= */
     .process-content {
-        padding: var(--spacing-xl);
+        padding: 1rem;
         display: grid;
-        grid-template-columns: 1fr 400px;
-        grid-template-rows: auto 1fr;
-        gap: var(--spacing-xl);
-        min-height: calc(100vh - 300px);
+        grid-template-columns: 1fr 320px;
+        gap: 1rem;
+        min-height: calc(100vh - 180px);
     }
 
     /* =========================
@@ -200,7 +197,7 @@
     .order-zone {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
+        gap: 1rem;
     }
 
     .order-card {
@@ -219,7 +216,7 @@
 
     .order-header {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        padding: var(--spacing-lg);
+        padding: 1rem 1.5rem;
         border-bottom: 1px solid #e5e7eb;
         display: flex;
         align-items: center;
@@ -227,7 +224,7 @@
     }
 
     .order-id {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         font-weight: 700;
         color: #374151;
         display: flex;
@@ -236,10 +233,10 @@
     }
 
     .order-status {
-        padding: 8px 16px;
-        border-radius: 20px;
+        padding: 6px 14px;
+        border-radius: 18px;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -251,27 +248,27 @@
 
     .order-meta {
         display: flex;
-        gap: var(--spacing-lg);
-        margin-top: var(--spacing-md);
+        gap: 1rem;
+        margin-top: 0.75rem;
         flex-wrap: wrap;
     }
 
     .meta-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         color: #6b7280;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     .meta-icon {
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: #f3f4f6;
-        border-radius: 6px;
+        border-radius: 5px;
         color: #4b5563;
     }
 
@@ -279,14 +276,14 @@
        FORMULAIRE CLIENT
     ========================= */
     .customer-form {
-        padding: var(--spacing-lg);
+        padding: 1rem 1.5rem;
     }
 
     .form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: var(--spacing-md);
-        margin-bottom: var(--spacing-lg);
+        gap: 0.75rem;
+        margin-bottom: 1rem;
     }
 
     .form-group-full {
@@ -296,24 +293,24 @@
     .form-label {
         font-weight: 600;
         color: #374151;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 0.95rem;
+        gap: 6px;
+        font-size: 0.9rem;
     }
 
     .form-label .required {
         color: #ef4444;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 
     .form-control {
         border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 12px 16px;
+        border-radius: 10px;
+        padding: 10px 14px;
         transition: var(--transition-smooth);
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         background: #fafafa;
         width: 100%;
     }
@@ -338,8 +335,7 @@
     .cart-zone {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
-        grid-row: 1 / -1;
+        position: relative;
     }
 
     .cart-card {
@@ -351,35 +347,74 @@
         flex: 1;
         display: flex;
         flex-direction: column;
+        transition: var(--transition-smooth);
+    }
+
+    .cart-card.collapsed {
+        height: 50px;
+        overflow: hidden;
+    }
+
+    .cart-card.collapsed .cart-body {
+        display: none;
     }
 
     .cart-header {
         background: var(--process-success);
         color: white;
-        padding: var(--spacing-lg);
+        padding: 0.75rem 1rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        cursor: pointer;
+        position: relative;
+        z-index: 1;
     }
 
     .cart-title {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
         font-weight: 700;
         display: flex;
         align-items: center;
-        gap: var(--spacing-sm);
+        gap: 0.5rem;
     }
 
     .cart-count {
         background: rgba(255, 255, 255, 0.2);
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.9rem;
+        padding: 3px 10px;
+        border-radius: 15px;
+        font-size: 0.8rem;
         font-weight: 600;
     }
 
+    .cart-toggle {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+    }
+
+    .cart-toggle:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.1);
+    }
+
+    .cart-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
     .product-search {
-        padding: var(--spacing-lg);
+        padding: 0.75rem;
         border-bottom: 1px solid #e5e7eb;
         background: #f9fafb;
     }
@@ -390,11 +425,11 @@
 
     .search-input {
         width: 100%;
-        padding: 12px 16px 12px 48px;
+        padding: 10px 14px 10px 40px;
         border: 2px solid #e5e7eb;
-        border-radius: 12px;
+        border-radius: 10px;
         background: white;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         transition: var(--transition-smooth);
     }
 
@@ -406,11 +441,11 @@
 
     .search-icon {
         position: absolute;
-        left: 16px;
+        left: 14px;
         top: 50%;
         transform: translateY(-50%);
         color: #6b7280;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .search-suggestions {
@@ -421,16 +456,16 @@
         background: white;
         border: 1px solid #e5e7eb;
         border-top: none;
-        border-radius: 0 0 12px 12px;
+        border-radius: 0 0 10px 10px;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         z-index: 100;
-        max-height: 250px;
+        max-height: 200px;
         overflow-y: auto;
         display: none;
     }
 
     .suggestion-item {
-        padding: 12px 16px;
+        padding: 10px 14px;
         cursor: pointer;
         border-bottom: 1px solid #f3f4f6;
         transition: var(--transition-smooth);
@@ -441,7 +476,7 @@
 
     .suggestion-item:hover {
         background: #f3f4f6;
-        transform: translateX(4px);
+        transform: translateX(3px);
     }
 
     .suggestion-item:last-child {
@@ -453,19 +488,19 @@
     ========================= */
     .cart-items {
         flex: 1;
-        padding: var(--spacing-lg);
+        padding: 0.75rem;
         overflow-y: auto;
-        max-height: 400px;
+        max-height: 250px;
     }
 
     .cart-item {
         display: flex;
         align-items: center;
-        gap: var(--spacing-md);
-        padding: var(--spacing-md);
+        gap: 0.75rem;
+        padding: 0.75rem;
         background: #f9fafb;
-        border-radius: 12px;
-        margin-bottom: var(--spacing-sm);
+        border-radius: 10px;
+        margin-bottom: 0.5rem;
         border: 1px solid #e5e7eb;
         transition: var(--transition-smooth);
         animation: slideInRight 0.3s ease-out;
@@ -473,14 +508,14 @@
 
     .cart-item:hover {
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
+        transform: translateY(-1px);
         background: white;
     }
 
     @keyframes slideInRight {
         from {
             opacity: 0;
-            transform: translateX(20px);
+            transform: translateX(15px);
         }
         to {
             opacity: 1;
@@ -495,32 +530,32 @@
     .item-name {
         font-weight: 600;
         color: #374151;
-        margin-bottom: 4px;
-        font-size: 0.95rem;
+        margin-bottom: 3px;
+        font-size: 0.9rem;
     }
 
     .item-price {
         color: #6b7280;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         font-family: 'JetBrains Mono', monospace;
     }
 
     .quantity-controls {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         background: white;
-        border-radius: 8px;
-        padding: 4px;
+        border-radius: 6px;
+        padding: 3px;
         border: 1px solid #e5e7eb;
     }
 
     .qty-btn {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border: none;
         background: #f3f4f6;
-        border-radius: 6px;
+        border-radius: 5px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -532,26 +567,26 @@
     .qty-btn:hover {
         background: #e5e7eb;
         color: #374151;
-        transform: scale(1.1);
+        transform: scale(1.05);
     }
 
     .qty-input {
-        width: 50px;
+        width: 45px;
         text-align: center;
         border: none;
         background: transparent;
         font-weight: 600;
         color: #374151;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 
     .remove-btn {
         background: #fef2f2;
         color: #ef4444;
         border: none;
-        border-radius: 8px;
-        width: 36px;
-        height: 36px;
+        border-radius: 6px;
+        width: 32px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -561,18 +596,18 @@
 
     .remove-btn:hover {
         background: #fee2e2;
-        transform: scale(1.1);
+        transform: scale(1.05);
     }
 
     .cart-empty {
         text-align: center;
-        padding: var(--spacing-xl);
+        padding: 1.5rem;
         color: #6b7280;
     }
 
     .cart-empty i {
-        font-size: 3rem;
-        margin-bottom: var(--spacing-md);
+        font-size: 2.5rem;
+        margin-bottom: 0.75rem;
         opacity: 0.5;
     }
 
@@ -580,7 +615,7 @@
        RÉSUMÉ PANIER
     ========================= */
     .cart-summary {
-        padding: var(--spacing-lg);
+        padding: 0.75rem;
         background: #f9fafb;
         border-top: 1px solid #e5e7eb;
     }
@@ -589,16 +624,16 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: var(--spacing-sm);
-        font-size: 0.95rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
     }
 
     .summary-row:last-child {
         margin-bottom: 0;
         font-weight: 700;
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: #374151;
-        padding-top: var(--spacing-sm);
+        padding-top: 0.5rem;
         border-top: 1px solid #e5e7eb;
     }
 
@@ -622,33 +657,34 @@
         border-radius: var(--border-radius-xl);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         border: 1px solid #e5e7eb;
-        padding: var(--spacing-xl);
+        padding: 1rem;
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
-        gap: var(--spacing-xl);
+        margin-top: 0.5rem;
     }
 
     .action-buttons {
         display: flex;
-        gap: var(--spacing-md);
+        gap: 0.75rem;
         flex-wrap: wrap;
+        justify-content: center;
     }
 
     .action-btn {
-        padding: 14px 24px;
+        padding: 10px 18px;
         border: none;
-        border-radius: 12px;
+        border-radius: 10px;
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         cursor: pointer;
         transition: var(--transition-smooth);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         position: relative;
         overflow: hidden;
-        min-width: 140px;
+        min-width: 120px;
         justify-content: center;
     }
 
@@ -670,8 +706,8 @@
     }
 
     .action-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     }
 
     .action-btn span {
@@ -687,78 +723,76 @@
 
     .no-order {
         text-align: center;
-        padding: var(--spacing-xl) * 2;
+        padding: 3rem;
         color: #6b7280;
         grid-column: 1 / -1;
     }
 
     .no-order i {
-        font-size: 4rem;
-        margin-bottom: var(--spacing-lg);
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
         opacity: 0.5;
     }
 
     .no-order h3 {
-        font-size: 1.5rem;
-        margin-bottom: var(--spacing-sm);
+        font-size: 1.4rem;
+        margin-bottom: 0.5rem;
         color: #374151;
-    }
-
-    /* Debug info */
-    .debug-info {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        background: rgba(0,0,0,0.8);
-        color: white;
-        padding: 10px;
-        border-radius: 5px;
-        font-size: 12px;
-        z-index: 10000;
-        max-width: 300px;
-        font-family: monospace;
     }
 
     /* =========================
        RESPONSIVE
     ========================= */
-    @media (max-width: 1400px) {
-        .process-content {
-            grid-template-columns: 1fr 350px;
-            gap: var(--spacing-lg);
-        }
-    }
-
     @media (max-width: 1200px) {
         .process-content {
             grid-template-columns: 1fr;
-            grid-template-rows: auto auto auto;
+            grid-template-rows: auto auto;
         }
         
         .cart-zone {
             grid-row: auto;
-            flex-direction: row;
         }
         
         .cart-card {
-            flex: 1;
-            max-height: 400px;
+            max-height: 350px;
         }
     }
 
     @media (max-width: 768px) {
+        .process-header {
+            flex-direction: column;
+            gap: 0.75rem;
+            text-align: center;
+            padding: 0.75rem 1rem;
+        }
+
+        .process-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 2rem;
+        }
+
         .process-content {
-            padding: var(--spacing-md);
-            gap: var(--spacing-md);
+            padding: 0.75rem;
+            gap: 0.75rem;
         }
         
         .queue-tabs {
             flex-direction: column;
-            gap: var(--spacing-xs);
+            gap: 0.5rem;
+            width: 100%;
         }
         
         .queue-tab {
             min-width: auto;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.9rem;
+        }
+
+        .queue-icon {
+            width: 24px;
+            height: 24px;
+            font-size: 1.1rem;
         }
         
         .form-grid {
@@ -766,13 +800,32 @@
         }
         
         .actions-zone {
-            flex-direction: column;
-            gap: var(--spacing-lg);
+            padding: 0.75rem;
         }
         
         .action-buttons {
             width: 100%;
             justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            min-width: 100px;
+            padding: 8px 14px;
+            font-size: 0.85rem;
+        }
+
+        .cart-header {
+            padding: 0.6rem 0.8rem;
+        }
+
+        .cart-title {
+            font-size: 1rem;
+        }
+
+        .cart-count {
+            font-size: 0.75rem;
+            padding: 2px 8px;
         }
     }
 
@@ -858,13 +911,9 @@
 <div class="process-container">
     <!-- Header avec onglets -->
     <div class="process-header">
-        <h1 class="process-title">
+        <div class="process-icon">
             <i class="fas fa-headset"></i>
-            Interface de Traitement
-        </h1>
-        <p class="process-subtitle">
-            Gérez efficacement vos commandes avec une interface optimisée pour le contact client
-        </p>
+        </div>
         
         <div class="queue-tabs">
             <div class="queue-tab active" data-queue="standard">
@@ -919,186 +968,180 @@
         </div>
 
         <!-- Zone principale (visible quand une commande est chargée) -->
-        <div id="main-content" style="display: none;">
-            <!-- Zone de la commande (gauche) -->
-            <div class="order-zone">
-                <!-- Carte informations commande -->
-                <div class="order-card slide-up">
-                    <div class="order-header">
-                        <div>
-                            <div class="order-id">
-                                <i class="fas fa-shopping-basket"></i>
-                                Commande #<span id="order-number">-</span>
+        <div id="main-content" style="display: none; grid-column: 1 / -1;">
+            <div class="process-content">
+                <!-- Zone de la commande (gauche) -->
+                <div class="order-zone">
+                    <!-- Carte informations commande -->
+                    <div class="order-card slide-up">
+                        <div class="order-header">
+                            <div>
+                                <div class="order-id">
+                                    <i class="fas fa-shopping-basket"></i>
+                                    Commande #<span id="order-number">-</span>
+                                </div>
+                                <div class="order-meta">
+                                    <div class="meta-item">
+                                        <div class="meta-icon"><i class="fas fa-calendar"></i></div>
+                                        <span id="order-date">-</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <div class="meta-icon"><i class="fas fa-redo"></i></div>
+                                        <span id="order-attempts">0 tentative(s)</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <div class="meta-icon"><i class="fas fa-clock"></i></div>
+                                        <span id="order-last-attempt">Jamais</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="order-meta">
-                                <div class="meta-item">
-                                    <div class="meta-icon"><i class="fas fa-calendar"></i></div>
-                                    <span id="order-date">-</span>
-                                </div>
-                                <div class="meta-item">
-                                    <div class="meta-icon"><i class="fas fa-redo"></i></div>
-                                    <span id="order-attempts">0 tentative(s)</span>
-                                </div>
-                                <div class="meta-item">
-                                    <div class="meta-icon"><i class="fas fa-clock"></i></div>
-                                    <span id="order-last-attempt">Jamais</span>
-                                </div>
-                            </div>
+                            <div class="order-status" id="order-status">Nouvelle</div>
                         </div>
-                        <div class="order-status" id="order-status">Nouvelle</div>
-                    </div>
 
-                    <!-- Formulaire client -->
-                    <div class="customer-form">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-user"></i>
-                                    Nom complet
-                                </label>
-                                <input type="text" class="form-control" id="customer_name" placeholder="Nom et prénom">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-phone"></i>
-                                    Téléphone principal <span class="required">*</span>
-                                </label>
-                                <input type="tel" class="form-control" id="customer_phone" placeholder="+216 XX XXX XXX" disabled>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-phone-alt"></i>
-                                    Téléphone secondaire
-                                </label>
-                                <input type="tel" class="form-control" id="customer_phone_2" placeholder="Numéro alternatif">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-map-marked-alt"></i>
-                                    Gouvernorat
-                                </label>
-                                <select class="form-control" id="customer_governorate">
-                                    <option value="">Sélectionner un gouvernorat</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-city"></i>
-                                    Ville
-                                </label>
-                                <select class="form-control" id="customer_city">
-                                    <option value="">Sélectionner une ville</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group form-group-full">
-                                <label class="form-label">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    Adresse complète
-                                </label>
-                                <textarea class="form-control" id="customer_address" rows="3" placeholder="Adresse détaillée"></textarea>
+                        <!-- Formulaire client -->
+                        <div class="customer-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-user"></i>
+                                        Nom complet
+                                    </label>
+                                    <input type="text" class="form-control" id="customer_name" placeholder="Nom et prénom">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-phone"></i>
+                                        Téléphone principal <span class="required">*</span>
+                                    </label>
+                                    <input type="tel" class="form-control" id="customer_phone" placeholder="+216 XX XXX XXX" disabled>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-phone-alt"></i>
+                                        Téléphone secondaire
+                                    </label>
+                                    <input type="tel" class="form-control" id="customer_phone_2" placeholder="Numéro alternatif">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt"></i>
+                                        Gouvernorat
+                                    </label>
+                                    <select class="form-control" id="customer_governorate">
+                                        <option value="">Sélectionner un gouvernorat</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-city"></i>
+                                        Ville
+                                    </label>
+                                    <select class="form-control" id="customer_city">
+                                        <option value="">Sélectionner une ville</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group form-group-full">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        Adresse complète
+                                    </label>
+                                    <textarea class="form-control" id="customer_address" rows="3" placeholder="Adresse détaillée"></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Zone panier (droite) -->
-            <div class="cart-zone">
-                <div class="cart-card slide-up">
-                    <div class="cart-header">
-                        <div class="cart-title">
-                            <i class="fas fa-shopping-cart"></i>
-                            Panier
+                <!-- Zone panier (droite) -->
+                <div class="cart-zone">
+                    <div class="cart-card slide-up">
+                        <div class="cart-header" onclick="toggleCart()">
+                            <div class="cart-title">
+                                <i class="fas fa-shopping-cart"></i>
+                                Panier
+                            </div>
+                            <div class="cart-count" id="cart-item-count">0 article(s)</div>
+                            <button class="cart-toggle" id="cart-toggle">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
                         </div>
-                        <div class="cart-count" id="cart-item-count">0 article(s)</div>
-                    </div>
 
-                    <!-- Recherche de produits -->
-                    <div class="product-search">
-                        <div class="search-wrapper">
-                            <i class="fas fa-search search-icon"></i>
-                            <input type="text" class="search-input" id="product-search" 
-                                   placeholder="Rechercher un produit à ajouter..." autocomplete="off">
-                            <div class="search-suggestions" id="search-suggestions"></div>
-                        </div>
-                    </div>
+                        <div class="cart-body">
+                            <!-- Recherche de produits -->
+                            <div class="product-search">
+                                <div class="search-wrapper">
+                                    <i class="fas fa-search search-icon"></i>
+                                    <input type="text" class="search-input" id="product-search" 
+                                           placeholder="Rechercher un produit à ajouter..." autocomplete="off">
+                                    <div class="search-suggestions" id="search-suggestions"></div>
+                                </div>
+                            </div>
 
-                    <!-- Produits du panier -->
-                    <div class="cart-items" id="cart-items">
-                        <div class="cart-empty" id="cart-empty">
-                            <i class="fas fa-shopping-basket"></i>
-                            <h4>Panier vide</h4>
-                            <p>Les produits de la commande apparaîtront ici</p>
-                        </div>
-                    </div>
+                            <!-- Produits du panier -->
+                            <div class="cart-items" id="cart-items">
+                                <div class="cart-empty" id="cart-empty">
+                                    <i class="fas fa-shopping-basket"></i>
+                                    <h4>Panier vide</h4>
+                                    <p>Les produits de la commande apparaîtront ici</p>
+                                </div>
+                            </div>
 
-                    <!-- Résumé du panier -->
-                    <div class="cart-summary" id="cart-summary" style="display: none;">
-                        <div class="summary-row">
-                            <span class="summary-label">Sous-total:</span>
-                            <span class="summary-value" id="cart-subtotal">0.000 TND</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-label">Livraison:</span>
-                            <span class="summary-value" id="cart-shipping">0.000 TND</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-label">Total:</span>
-                            <span class="summary-value" id="cart-total">0.000 TND</span>
+                            <!-- Résumé du panier -->
+                            <div class="cart-summary" id="cart-summary" style="display: none;">
+                                <div class="summary-row">
+                                    <span class="summary-label">Sous-total:</span>
+                                    <span class="summary-value" id="cart-subtotal">0.000 TND</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span class="summary-label">Livraison:</span>
+                                    <span class="summary-value" id="cart-shipping">0.000 TND</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span class="summary-label">Total:</span>
+                                    <span class="summary-value" id="cart-total">0.000 TND</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Zone d'actions -->
-            <div class="actions-zone slide-up">
-                <div>
-                    <h4 style="margin: 0; color: #374151; font-weight: 700;">Actions de traitement</h4>
-                    <p style="margin: 8px 0 0 0; color: #6b7280;">Choisissez l'action appropriée selon la réponse du client</p>
-                </div>
-                
-                <div class="action-buttons">
-                    <button class="action-btn btn-call" id="btn-call">
-                        <i class="fas fa-phone-slash"></i>
-                        <span>Ne répond pas</span>
-                    </button>
-                    
-                    <button class="action-btn btn-confirm" id="btn-confirm">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Confirmer</span>
-                    </button>
-                    
-                    <button class="action-btn btn-cancel" id="btn-cancel">
-                        <i class="fas fa-times-circle"></i>
-                        <span>Annuler</span>
-                    </button>
-                    
-                    <button class="action-btn btn-schedule" id="btn-schedule">
-                        <i class="fas fa-calendar-plus"></i>
-                        <span>Dater</span>
-                    </button>
-                    
-                    <button class="action-btn btn-history" id="btn-history">
-                        <i class="fas fa-history"></i>
-                        <span>Historique</span>
-                    </button>
+                <!-- Zone d'actions -->
+                <div class="actions-zone slide-up">
+                    <div class="action-buttons">
+                        <button class="action-btn btn-call" id="btn-call">
+                            <i class="fas fa-phone-slash"></i>
+                            <span>Ne répond pas</span>
+                        </button>
+                        
+                        <button class="action-btn btn-confirm" id="btn-confirm">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Confirmer</span>
+                        </button>
+                        
+                        <button class="action-btn btn-cancel" id="btn-cancel">
+                            <i class="fas fa-times-circle"></i>
+                            <span>Annuler</span>
+                        </button>
+                        
+                        <button class="action-btn btn-schedule" id="btn-schedule">
+                            <i class="fas fa-calendar-plus"></i>
+                            <span>Dater</span>
+                        </button>
+                        
+                        <button class="action-btn btn-history" id="btn-history">
+                            <i class="fas fa-history"></i>
+                            <span>Historique</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
-<!-- Debug Info -->
-<div id="debug-info" class="debug-info" style="display: none;">
-    <div>Status: <span id="debug-status">Initializing...</span></div>
-    <div>Current Queue: <span id="debug-queue">-</span></div>
-    <div>Last Request: <span id="debug-request">-</span></div>
-    <div>Last Response: <span id="debug-response">-</span></div>
 </div>
 
 <!-- Modales -->
@@ -1113,47 +1156,23 @@ $(document).ready(function() {
     let currentOrder = null;
     let cartItems = [];
     let searchTimeout;
-    let debugMode = true; // Activer le mode debug
-    
-    // =========================
-    // FONCTIONS DE DEBUG
-    // =========================
-    
-    function debug(message, data = null) {
-        if (debugMode) {
-            console.log('🔍 DEBUG:', message, data || '');
-            updateDebugInfo('status', message);
-        }
-    }
-    
-    function updateDebugInfo(key, value) {
-        if (debugMode) {
-            $(`#debug-${key}`).text(value);
-            $('#debug-info').show();
-        }
-    }
     
     // =========================
     // INITIALISATION
     // =========================
     
     function initialize() {
-        debug('Initialisation de l\'interface de traitement');
-        
         // Vérifier jQuery et CSRF token
         if (typeof $ === 'undefined') {
-            debug('ERREUR: jQuery non chargé!');
+            console.error('jQuery non chargé!');
             return;
         }
         
         const csrfToken = $('meta[name="csrf-token"]').attr('content');
         if (!csrfToken) {
-            debug('ERREUR: Token CSRF non trouvé!');
+            console.error('Token CSRF non trouvé!');
             return;
         }
-        
-        debug('jQuery et CSRF OK');
-        updateDebugInfo('queue', currentQueue);
         
         // Configuration AJAX globale
         $.ajaxSetup({
@@ -1171,12 +1190,9 @@ $(document).ready(function() {
     }
     
     function setupEventListeners() {
-        debug('Configuration des event listeners');
-        
         // Onglets de files
         $('.queue-tab').on('click', function() {
             const queue = $(this).data('queue');
-            debug(`Clic sur onglet: ${queue}`);
             if (queue !== currentQueue) {
                 switchQueue(queue);
             }
@@ -1213,8 +1229,6 @@ $(document).ready(function() {
             const regionId = $(this).val();
             loadCities(regionId);
         });
-        
-        debug('Event listeners configurés');
     }
     
     // =========================
@@ -1222,41 +1236,24 @@ $(document).ready(function() {
     // =========================
     
     function loadQueueCounts() {
-        debug('Chargement des compteurs de files');
-        updateDebugInfo('request', 'GET /admin/process/counts');
-        
         $.get('/admin/process/counts')
             .done(function(data) {
-                debug('Compteurs chargés avec succès', data);
-                updateDebugInfo('response', 'Compteurs OK');
-                
                 $('#standard-count').text(data.standard || 0);
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
             })
             .fail(function(xhr, status, error) {
-                debug('ERREUR lors du chargement des compteurs', {
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                    responseText: xhr.responseText,
-                    error: error
-                });
-                updateDebugInfo('response', `ERREUR ${xhr.status}: ${xhr.statusText}`);
                 showNotification('Erreur lors du chargement des compteurs', 'error');
             });
     }
     
     function switchQueue(queue) {
-        debug(`Changement de file: ${currentQueue} -> ${queue}`);
-        
         // Mettre à jour l'UI
         $('.queue-tab').removeClass('active');
         $(`.queue-tab[data-queue="${queue}"]`).addClass('active');
         
         currentQueue = queue;
         currentOrder = null;
-        
-        updateDebugInfo('queue', queue);
         
         // Réinitialiser l'affichage
         showLoading();
@@ -1266,14 +1263,8 @@ $(document).ready(function() {
     }
     
     function loadCurrentQueue() {
-        debug(`Chargement de la file: ${currentQueue}`);
-        updateDebugInfo('request', `GET /admin/process/${currentQueue}`);
-        
         $.get(`/admin/process/${currentQueue}`)
             .done(function(data) {
-                debug('Réponse de la file reçue', data);
-                updateDebugInfo('response', data.hasOrder ? 'Commande trouvée' : 'Aucune commande');
-                
                 if (data.hasOrder) {
                     currentOrder = data.order;
                     displayOrder(data.order);
@@ -1283,13 +1274,6 @@ $(document).ready(function() {
                 }
             })
             .fail(function(xhr, status, error) {
-                debug('ERREUR lors du chargement de la file', {
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                    responseText: xhr.responseText,
-                    error: error
-                });
-                updateDebugInfo('response', `ERREUR ${xhr.status}: ${xhr.statusText}`);
                 showNotification('Erreur lors du chargement de la commande', 'error');
                 showNoOrderMessage();
             });
@@ -1300,8 +1284,6 @@ $(document).ready(function() {
     // =========================
     
     function displayOrder(order) {
-        debug('Affichage de la commande', order.id);
-        
         // Informations de base
         $('#order-number').text(order.id);
         $('#order-date').text(formatDate(order.created_at));
@@ -1326,28 +1308,38 @@ $(document).ready(function() {
         }
         
         // Panier
-        cartItems = order.items || [];
-        updateCartDisplay();
+        cartItems = [];
+        if (order.items && Array.isArray(order.items)) {
+            cartItems = order.items.map(item => ({
+                product_id: item.product_id,
+                quantity: parseFloat(item.quantity) || 0,
+                unit_price: parseFloat(item.unit_price) || 0,
+                total_price: parseFloat(item.total_price) || 0,
+                product: item.product ? {
+                    id: item.product.id,
+                    name: item.product.name,
+                    price: parseFloat(item.product.price) || 0,
+                    stock: parseInt(item.product.stock) || 0
+                } : null
+            }));
+        }
         
-        debug('Commande affichée avec succès');
+        updateCartDisplay();
     }
     
     function showMainContent() {
-        debug('Affichage du contenu principal');
         $('#loading-message').hide();
         $('#no-order-message').hide();
         $('#main-content').show().addClass('fade-in');
     }
     
     function showNoOrderMessage() {
-        debug('Affichage du message "aucune commande"');
         $('#loading-message').hide();
         $('#main-content').hide();
         $('#no-order-message').show().addClass('fade-in');
     }
     
     function showLoading() {
-        debug('Affichage du chargement');
         $('#main-content').hide();
         $('#no-order-message').hide();
         $('#loading-message').show().addClass('fade-in');
@@ -1358,8 +1350,6 @@ $(document).ready(function() {
     // =========================
     
     function updateCartDisplay() {
-        debug('Mise à jour de l\'affichage du panier', `${cartItems.length} items`);
-        
         const cartItemsContainer = $('#cart-items');
         const cartEmpty = $('#cart-empty');
         const cartSummary = $('#cart-summary');
@@ -1392,7 +1382,7 @@ $(document).ready(function() {
             <div class="cart-item" data-product-id="${item.product_id}">
                 <div class="item-info">
                     <div class="item-name">${item.product?.name || 'Produit inconnu'}</div>
-                    <div class="item-price">${parseFloat(item.unit_price).toFixed(3)} TND × ${item.quantity}</div>
+                    <div class="item-price">${parseFloat(item.unit_price || 0).toFixed(3)} TND × ${item.quantity}</div>
                 </div>
                 <div class="quantity-controls">
                     <button type="button" class="qty-btn" data-action="decrease">
@@ -1474,8 +1464,16 @@ $(document).ready(function() {
     }
     
     function updateCartSummary() {
-        const subtotal = cartItems.reduce((sum, item) => sum + item.total_price, 0);
-        const shipping = 0; // À calculer selon la logique métier
+        let subtotal = 0;
+        
+        if (cartItems && Array.isArray(cartItems)) {
+            subtotal = cartItems.reduce((sum, item) => {
+                const itemTotal = parseFloat(item.total_price) || 0;
+                return sum + itemTotal;
+            }, 0);
+        }
+        
+        const shipping = parseFloat(currentOrder?.shipping_cost) || 0;
         const total = subtotal + shipping;
         
         $('#cart-subtotal').text(subtotal.toFixed(3) + ' TND');
@@ -1484,22 +1482,33 @@ $(document).ready(function() {
     }
     
     // =========================
+    // TOGGLE PANIER
+    // =========================
+    
+    window.toggleCart = function() {
+        const cartCard = $('.cart-card');
+        const cartToggle = $('#cart-toggle i');
+        
+        cartCard.toggleClass('collapsed');
+        
+        if (cartCard.hasClass('collapsed')) {
+            cartToggle.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        } else {
+            cartToggle.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        }
+    }
+    
+    // =========================
     // RECHERCHE DE PRODUITS
     // =========================
     
     function searchProducts(query) {
-        debug(`Recherche de produits: "${query}"`);
-        updateDebugInfo('request', `GET /admin/orders/search-products?search=${query}`);
-        
         $.get('/admin/orders/search-products', { search: query })
             .done(function(products) {
-                debug('Produits trouvés', products.length);
-                updateDebugInfo('response', `${products.length} produits`);
                 showSearchSuggestions(products);
             })
             .fail(function(xhr) {
-                debug('Erreur lors de la recherche de produits', xhr);
-                updateDebugInfo('response', `ERREUR ${xhr.status}`);
+                console.error('Erreur lors de la recherche de produits');
             });
     }
     
@@ -1541,14 +1550,8 @@ $(document).ready(function() {
     // =========================
     
     function loadRegions() {
-        debug('Chargement des régions');
-        updateDebugInfo('request', 'GET /admin/orders/get-regions');
-        
         $.get('/admin/orders/get-regions')
             .done(function(regions) {
-                debug('Régions chargées', regions.length);
-                updateDebugInfo('response', `${regions.length} régions`);
-                
                 const select = $('#customer_governorate');
                 select.html('<option value="">Sélectionner un gouvernorat</option>');
                 
@@ -1557,8 +1560,7 @@ $(document).ready(function() {
                 });
             })
             .fail(function(xhr) {
-                debug('Erreur lors du chargement des régions', xhr);
-                updateDebugInfo('response', `ERREUR ${xhr.status}`);
+                console.error('Erreur lors du chargement des régions');
             });
     }
     
@@ -1568,14 +1570,8 @@ $(document).ready(function() {
             return;
         }
         
-        debug(`Chargement des villes pour région ${regionId}`);
-        updateDebugInfo('request', `GET /admin/orders/get-cities?region_id=${regionId}`);
-        
         $.get('/admin/orders/get-cities', { region_id: regionId })
             .done(function(cities) {
-                debug('Villes chargées', cities.length);
-                updateDebugInfo('response', `${cities.length} villes`);
-                
                 const select = $('#customer_city');
                 select.html('<option value="">Sélectionner une ville</option>');
                 
@@ -1585,8 +1581,7 @@ $(document).ready(function() {
                 });
             })
             .fail(function(xhr) {
-                debug('Erreur lors du chargement des villes', xhr);
-                updateDebugInfo('response', `ERREUR ${xhr.status}`);
+                console.error('Erreur lors du chargement des villes');
             });
     }
     
@@ -1600,9 +1595,6 @@ $(document).ready(function() {
             return;
         }
         
-        debug(`Ouverture du modal d'action: ${action}`);
-        
-        // Préparer les données selon l'action
         switch (action) {
             case 'call':
                 showCallModal();
@@ -1650,7 +1642,7 @@ $(document).ready(function() {
         }
         
         // Calculer le prix total
-        const subtotal = cartItems.reduce((sum, item) => sum + item.total_price, 0);
+        const subtotal = cartItems.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0);
         $('#confirm-price').val(subtotal.toFixed(3));
         $('#confirm-notes').val('');
         
@@ -1683,138 +1675,15 @@ $(document).ready(function() {
             return;
         }
         
-        debug(`Ouverture de l'historique pour la commande ${currentOrder.id}`);
-        updateDebugInfo('request', `GET /admin/orders/${currentOrder.id}/history-modal`);
-        
         // Charger l'historique
         $.get(`/admin/orders/${currentOrder.id}/history-modal`)
             .done(function(history) {
-                debug('Historique chargé', history.length);
-                updateDebugInfo('response', `${history.length} entrées`);
-                displayOrderHistory(history);
+                $('#history-content').html(history);
                 $('#historyModal').modal('show');
             })
             .fail(function(xhr) {
-                debug('Erreur lors du chargement de l\'historique', xhr);
-                updateDebugInfo('response', `ERREUR ${xhr.status}`);
                 showNotification('Erreur lors du chargement de l\'historique', 'error');
             });
-    }
-    
-    function displayOrderHistory(history) {
-        const container = $('#history-content');
-        container.empty();
-        
-        if (history.length === 0) {
-            container.html(`
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-history fa-2x mb-3 opacity-50"></i>
-                    <p>Aucun historique disponible pour cette commande</p>
-                </div>
-            `);
-            return;
-        }
-        
-        history.forEach(entry => {
-            const entryElement = $(`
-                <div class="history-entry border-start border-3 border-primary ps-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="mb-0 fw-bold text-primary">${entry.action_label}</h6>
-                        <small class="text-muted">${formatDate(entry.created_at)}</small>
-                    </div>
-                    <div class="mb-2">
-                        <small class="text-muted">
-                            Par ${entry.user_name || 'Système'} 
-                            ${entry.status_before ? `• ${entry.status_before} → ${entry.status_after}` : ''}
-                        </small>
-                    </div>
-                    ${entry.notes ? `<div class="bg-light p-2 rounded"><small>${entry.notes}</small></div>` : ''}
-                </div>
-            `);
-            
-            container.append(entryElement);
-        });
-    }
-    
-    // =========================
-    // TRAITEMENT DES ACTIONS
-    // =========================
-    
-    function processAction(action, formData) {
-        if (!currentOrder) {
-            showNotification('Aucune commande sélectionnée', 'error');
-            return;
-        }
-        
-        debug(`Traitement de l'action: ${action}`, formData);
-        
-        // Préparation des données
-        const requestData = {
-            action: action,
-            queue: currentQueue,
-            ...formData
-        };
-        
-        // Ajouter les données du panier si nécessaire
-        if (action === 'confirm') {
-            requestData.cart_items = cartItems;
-            
-            // Données client
-            requestData.customer_name = $('#customer_name').val();
-            requestData.customer_phone_2 = $('#customer_phone_2').val();
-            requestData.customer_governorate = $('#customer_governorate').val();
-            requestData.customer_city = $('#customer_city').val();
-            requestData.customer_address = $('#customer_address').val();
-        }
-        
-        updateDebugInfo('request', `POST /admin/process/action/${currentOrder.id}`);
-        
-        // Désactiver les boutons
-        $('.action-btn').prop('disabled', true).addClass('loading');
-        
-        // Envoyer la requête
-        $.ajax({
-            url: `/admin/process/action/${currentOrder.id}`,
-            method: 'POST',
-            data: requestData,
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        })
-        .done(function(response) {
-            debug('Action traitée avec succès', response);
-            updateDebugInfo('response', 'Action OK');
-            showNotification('Action traitée avec succès!', 'success');
-            
-            // Fermer les modales
-            $('.modal').modal('hide');
-            
-            // Recharger les données
-            setTimeout(() => {
-                loadQueueCounts();
-                loadCurrentQueue();
-            }, 1000);
-        })
-        .fail(function(xhr, status, error) {
-            debug('Erreur lors du traitement', {
-                status: xhr.status,
-                statusText: xhr.statusText,
-                responseText: xhr.responseText,
-                error: error
-            });
-            updateDebugInfo('response', `ERREUR ${xhr.status}`);
-            
-            let errorMessage = 'Erreur lors du traitement de l\'action';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMessage = xhr.responseJSON.error;
-            }
-            
-            showNotification(errorMessage, 'error');
-        })
-        .always(function() {
-            // Réactiver les boutons
-            $('.action-btn').prop('disabled', false).removeClass('loading');
-        });
     }
     
     // =========================
@@ -1855,9 +1724,6 @@ $(document).ready(function() {
     }
     
     function showNotification(message, type = 'info') {
-        debug(`Notification: ${type} - ${message}`);
-        
-        // Utiliser les alertes Bootstrap ou un système de notification personnalisé
         const alertClass = {
             'success': 'alert-success',
             'error': 'alert-danger',
@@ -1876,7 +1742,6 @@ $(document).ready(function() {
         
         $('body').append(alert);
         
-        // Auto-hide après 5 secondes
         setTimeout(() => {
             alert.fadeOut(() => alert.remove());
         }, 5000);
@@ -1893,19 +1758,66 @@ $(document).ready(function() {
     setInterval(loadQueueCounts, 30000);
     
     // Exposer les fonctions pour les modales
-    window.processAction = processAction;
-    
-    // Tests de connectivité au démarrage
-    setTimeout(() => {
-        debug('Test de connectivité API');
-        $.get('/admin/process/test')
-            .done(function(data) {
-                debug('Test API réussi', data);
-            })
-            .fail(function(xhr) {
-                debug('Test API échoué', xhr.status);
-            });
-    }, 2000);
+    window.processAction = function(action, formData) {
+        if (!currentOrder) {
+            showNotification('Aucune commande sélectionnée', 'error');
+            return;
+        }
+        
+        // Préparation des données
+        const requestData = {
+            action: action,
+            queue: currentQueue,
+            ...formData
+        };
+        
+        // Ajouter les données du panier si nécessaire
+        if (action === 'confirm') {
+            requestData.cart_items = cartItems;
+            
+            // Données client
+            requestData.customer_name = $('#customer_name').val();
+            requestData.customer_phone_2 = $('#customer_phone_2').val();
+            requestData.customer_governorate = $('#customer_governorate').val();
+            requestData.customer_city = $('#customer_city').val();
+            requestData.customer_address = $('#customer_address').val();
+        }
+        
+        // Désactiver les boutons
+        $('.action-btn').prop('disabled', true).addClass('loading');
+        
+        // Envoyer la requête
+        $.ajax({
+            url: `/admin/process/action/${currentOrder.id}`,
+            method: 'POST',
+            data: requestData,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        })
+        .done(function(response) {
+            showNotification('Action traitée avec succès!', 'success');
+            
+            // Fermer les modales
+            $('.modal').modal('hide');
+            
+            // Recharger la page immédiatement pour rafraîchir complètement l'interface
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        })
+        .fail(function(xhr, status, error) {
+            let errorMessage = 'Erreur lors du traitement de l\'action';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMessage = xhr.responseJSON.error;
+            }
+            
+            showNotification(errorMessage, 'error');
+            
+            // Réactiver les boutons en cas d'erreur
+            $('.action-btn').prop('disabled', false).removeClass('loading');
+        });
+    };
 });
 </script>
 @endsection

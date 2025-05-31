@@ -1490,437 +1490,470 @@
 @endsection
 
 @section('scripts')
+// Remplacez la section JavaScript dans resources/views/admin/orders/edit.blade.php
+
     <script>
-        $(document).ready(function() {
-            // Initialisation du panier depuis la base de données
-            let cart = [];
+    $(document).ready(function() {
+        // Initialisation du panier depuis la base de données
+        let cart = [];
 
-            @if ($order->items->count() > 0)
-                cart = [
-                    @foreach ($order->items as $item)
-                        {
-                            id: {{ $item->product_id }},
-                            name: "{{ addslashes($item->product->name ?? 'Produit supprimé') }}",
-                            price: {{ (float) $item->unit_price }},
-                            quantity: {{ $item->quantity }},
-                            stock: {{ $item->product->stock ?? 0 }}
-                        }
-                        @if (!$loop->last)
-                            ,
-                        @endif
-                    @endforeach
-                ];
-            @endif
-
-            let products = [];
-            let searchTimeout;
-            let isCartCollapsed = false;
-
-            // =========================
-            // INITIALISATION
-            // =========================
-            function initializeCart() {
-                updateCartDisplay();
-            }
-
-            // Initialiser le panier au chargement
-            initializeCart();
-
-            // =========================
-            // GESTION DU PANIER
-            // =========================
-            function toggleCart() {
-                const cartBody = $('#cart-body');
-                const cartToggle = $('#cart-toggle i');
-
-                isCartCollapsed = !isCartCollapsed;
-
-                if (isCartCollapsed) {
-                    cartBody.addClass('collapsed');
-                    cartToggle.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                } else {
-                    cartBody.removeClass('collapsed');
-                    cartToggle.removeClass('fa-chevron-down').addClass('fa-chevron-up');
-                }
-            }
-
-            // =========================
-            // RECHERCHE DE PRODUITS
-            // =========================
-            $('#product-search').on('input', function() {
-                const query = $(this).val().trim();
-
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    if (query.length >= 2) {
-                        searchProducts(query);
-                    } else {
-                        $('#product-suggestions').hide();
+        @if ($order->items->count() > 0)
+            cart = [
+                @foreach ($order->items as $item)
+                    {
+                        id: {{ $item->product_id }},
+                        name: "{{ addslashes($item->product->name ?? 'Produit supprimé') }}",
+                        price: {{ (float) $item->unit_price }},
+                        quantity: {{ $item->quantity }},
+                        stock: {{ $item->product->stock ?? 0 }}
                     }
-                }, 300);
-            });
+                    @if (!$loop->last)
+                        ,
+                    @endif
+                @endforeach
+            ];
+        @endif
 
-            function searchProducts(query) {
-                $.get('/admin/orders/search-products', {
-                        search: query
-                    })
-                    .done(function(data) {
-                        showProductSuggestions(data);
-                    })
-                    .fail(function() {
-                        console.error('Erreur lors de la recherche de produits');
-                    });
+        let products = [];
+        let searchTimeout;
+        let isCartCollapsed = false;
+
+        // =========================
+        // INITIALISATION
+        // =========================
+        function initializeCart() {
+            updateCartDisplay();
+        }
+
+        // Initialiser le panier au chargement
+        initializeCart();
+
+        // =========================
+        // GESTION DU PANIER
+        // =========================
+        function toggleCart() {
+            const cartBody = $('#cart-body');
+            const cartToggle = $('#cart-toggle i');
+
+            isCartCollapsed = !isCartCollapsed;
+
+            if (isCartCollapsed) {
+                cartBody.addClass('collapsed');
+                cartToggle.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+            } else {
+                cartBody.removeClass('collapsed');
+                cartToggle.removeClass('fa-chevron-down').addClass('fa-chevron-up');
             }
+        }
 
-            function showProductSuggestions(products) {
-                const suggestions = $('#product-suggestions');
-                suggestions.empty();
+        // =========================
+        // RECHERCHE DE PRODUITS
+        // =========================
+        $('#product-search').on('input', function() {
+            const query = $(this).val().trim();
 
-                if (products.length === 0) {
-                    suggestions.html('<div class="suggestion-item">Aucun produit trouvé</div>');
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (query.length >= 2) {
+                    searchProducts(query);
                 } else {
-                    products.forEach(product => {
-                        const item = $(`
-                    <div class="suggestion-item" data-product-id="${product.id}">
-                        <div>
-                            <strong>${product.name}</strong>
-                            <br><small class="text-muted">Stock: ${product.stock}</small>
-                        </div>
-                        <div class="text-success fw-bold">${parseFloat(product.price).toFixed(3)} TND</div>
-                    </div>
-                `);
-
-                        item.on('click', function() {
-                            addToCart(product);
-                            $('#product-search').val('');
-                            suggestions.hide();
-                        });
-
-                        suggestions.append(item);
-                    });
-                }
-
-                suggestions.show();
-            }
-
-            // Masquer suggestions en cliquant ailleurs
-            $(document).on('click', function(e) {
-                if (!$(e.target).closest('.search-input-group').length) {
                     $('#product-suggestions').hide();
                 }
-            });
+            }, 300);
+        });
 
-            // =========================
-            // GESTION DU PANIER
-            // =========================
-            function addToCart(product) {
-                const existingItem = cart.find(item => item.id === product.id);
+        function searchProducts(query) {
+            $.get('/admin/orders/search-products', {
+                    search: query
+                })
+                .done(function(data) {
+                    showProductSuggestions(data);
+                })
+                .fail(function() {
+                    console.error('Erreur lors de la recherche de produits');
+                });
+        }
 
-                if (existingItem) {
-                    existingItem.quantity += 1;
-                } else {
-                    cart.push({
-                        id: product.id,
-                        name: product.name,
-                        price: parseFloat(product.price),
-                        quantity: 1,
-                        stock: product.stock
-                    });
-                }
+        function showProductSuggestions(products) {
+            const suggestions = $('#product-suggestions');
+            suggestions.empty();
 
-                updateCartDisplay();
-            }
+            if (products.length === 0) {
+                suggestions.html('<div class="suggestion-item">Aucun produit trouvé</div>');
+            } else {
+                products.forEach(product => {
+                    const item = $(`
+                        <div class="suggestion-item" data-product-id="${product.id}">
+                            <div>
+                                <strong>${product.name}</strong>
+                                <br><small class="text-muted">Stock: ${product.stock}</small>
+                            </div>
+                            <div class="text-success fw-bold">${parseFloat(product.price).toFixed(3)} TND</div>
+                        </div>
+                    `);
 
-            function removeFromCart(productId) {
-                cart = cart.filter(item => item.id !== productId);
-                updateCartDisplay();
-            }
-
-            function updateQuantity(productId, newQuantity) {
-                const item = cart.find(item => item.id === productId);
-                if (item) {
-                    item.quantity = Math.max(1, Math.min(newQuantity, item.stock));
-                    updateCartDisplay();
-                }
-            }
-
-            function updateCartDisplay() {
-                const cartItems = $('#cart-items');
-                const cartEmpty = $('#cart-empty');
-                const cartSummary = $('#cart-summary');
-                const cartCount = $('#cart-count');
-
-                cartCount.text(cart.length);
-
-                if (cart.length === 0) {
-                    cartEmpty.show();
-                    cartSummary.hide();
-                    cartItems.find('.cart-item').remove();
-                } else {
-                    cartEmpty.hide();
-                    cartSummary.show();
-
-                    // Supprimer les anciens items
-                    cartItems.find('.cart-item').remove();
-
-                    // Ajouter les nouveaux items
-                    cart.forEach(item => {
-                        const cartItem = createCartItemElement(item);
-                        cartItems.append(cartItem);
+                    item.on('click', function() {
+                        addToCart(product);
+                        $('#product-search').val('');
+                        suggestions.hide();
                     });
 
-                    updateCartSummary();
-                }
-
-                updateFormData();
-            }
-
-            function createCartItemElement(item) {
-                const element = $(`
-            <div class="cart-item" data-product-id="${item.id}">
-                <div class="item-info">
-                    <div class="item-name">${item.name}</div>
-                    <div class="item-price">${item.price.toFixed(3)} TND × ${item.quantity}</div>
-                </div>
-                <div class="quantity-control">
-                    <button type="button" class="quantity-btn minus" data-action="minus">
-                        <i class="fas fa-minus"></i>
-                    </button>
-                    <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="${item.stock}">
-                    <button type="button" class="quantity-btn plus" data-action="plus">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                </div>
-                <button type="button" class="remove-item" data-action="remove">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `);
-
-                // Event listeners pour les contrôles
-                element.find('.quantity-btn[data-action="minus"]').on('click', function() {
-                    updateQuantity(item.id, item.quantity - 1);
-                });
-
-                element.find('.quantity-btn[data-action="plus"]').on('click', function() {
-                    updateQuantity(item.id, item.quantity + 1);
-                });
-
-                element.find('.quantity-input').on('change', function() {
-                    const newQuantity = parseInt($(this).val()) || 1;
-                    updateQuantity(item.id, newQuantity);
-                });
-
-                element.find('.remove-item').on('click', function() {
-                    removeFromCart(item.id);
-                });
-
-                return element;
-            }
-
-            function updateCartSummary() {
-                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                const shipping = {{ $order->shipping_cost }};
-                const total = subtotal + shipping;
-
-                $('#subtotal').text(subtotal.toFixed(3) + ' TND');
-                $('#shipping-cost').text(shipping.toFixed(3) + ' TND');
-                $('#total').text(total.toFixed(3) + ' TND');
-            }
-
-            function updateFormData() {
-                const cartData = $('#cart-data');
-                cartData.empty();
-
-                cart.forEach((item, index) => {
-                    cartData.append(`
-                <input type="hidden" name="products[${index}][id]" value="${item.id}">
-                <input type="hidden" name="products[${index}][quantity]" value="${item.quantity}">
-            `);
+                    suggestions.append(item);
                 });
             }
 
-            // =========================
-            // GESTION DES BADGES
-            // =========================
-            $('.status-badge').on('click', function() {
-                $('.status-badge').removeClass('active');
-                $(this).addClass('active');
-                $('#status').val($(this).data('status'));
+            suggestions.show();
+        }
 
-                // Gestion conditionnelle des champs
-                const status = $(this).data('status');
-                const scheduledDateGroup = $('#scheduled_date').closest('.form-group');
-                const confirmedPriceGroup = $('#confirmed_price').closest('.form-group');
-
-                if (status === 'datée') {
-                    if (scheduledDateGroup.length === 0) {
-                        // Ajouter le champ date si pas présent
-                        const dateField = `
-                    <div class="form-group">
-                        <label for="scheduled_date" class="form-label">
-                            <i class="fas fa-calendar-alt me-1"></i>
-                            Date de Livraison Prévue
-                        </label>
-                        <input type="date" class="form-control" id="scheduled_date" name="scheduled_date">
-                    </div>
-                `;
-                        $('#notes').closest('.form-group').after(dateField);
-                    }
-                }
-
-                if (status === 'confirmée' || status === 'datée') {
-                    if (confirmedPriceGroup.length === 0) {
-                        // Ajouter le champ prix confirmé si pas présent
-                        const priceField = `
-                    <div class="form-group">
-                        <label for="confirmed_price" class="form-label">
-                            <i class="fas fa-dollar-sign me-1"></i>
-                            Prix Confirmé
-                        </label>
-                        <input type="number" class="form-control" id="confirmed_price" name="confirmed_price" step="0.001" min="0" placeholder="Prix final confirmé avec le client">
-                    </div>
-                `;
-                        $('#notes').closest('.form-group').after(priceField);
-                    }
-                }
-            });
-
-            $('.priority-badge').on('click', function() {
-                $('.priority-badge').removeClass('active');
-                $(this).addClass('active');
-                $('#priority').val($(this).data('priority'));
-            });
-
-            // =========================
-            // GESTION GÉOGRAPHIQUE
-            // =========================
-            $('#customer_governorate').on('change', function() {
-                const regionId = $(this).val();
-                const citySelect = $('#customer_city');
-
-                citySelect.html('<option value="">Chargement...</option>').prop('disabled', true);
-
-                if (regionId) {
-                    $.get('/admin/orders/get-cities', {
-                            region_id: regionId
-                        })
-                        .done(function(cities) {
-                            citySelect.html('<option value="">Choisir une ville</option>');
-                            cities.forEach(city => {
-                                const selected = city.id ==
-                                    {{ $order->customer_city ?? 'null' }} ? 'selected' : '';
-                                citySelect.append(
-                                    `<option value="${city.id}" ${selected}>${city.name}</option>`
-                                );
-                            });
-                        })
-                        .fail(function() {
-                            citySelect.html('<option value="">Erreur de chargement</option>');
-                        })
-                        .always(function() {
-                            citySelect.prop('disabled', false);
-                        });
-                } else {
-                    citySelect.html('<option value="">Choisir une ville</option>').prop('disabled', false);
-                }
-            });
-
-            // =========================
-            // GESTION DES MODALES
-            // =========================
-
-            // Modal Historique
-            $('#historyModal').on('show.bs.modal', function() {
-                loadOrderHistory();
-            });
-
-            function loadOrderHistory() {
-                const timeline = $('#history-timeline');
-
-                $.get('{{ route('admin.orders.history-modal', $order) }}')
-                    .done(function(response) {
-                        timeline.html(response);
-                    })
-                    .fail(function() {
-                        timeline.html(`
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Erreur lors du chargement de l'historique
-                    </div>
-                `);
-                    });
-            }
-
-            // Modal Tentative d'Appel
-            $('#callAttemptForm').on('submit', function(e) {
-                e.preventDefault();
-
-                const form = $(this);
-                const notes = $('#attempt_notes').val().trim();
-
-                if (!notes) {
-                    alert('Veuillez saisir des notes sur la tentative d\'appel.');
-                    return;
-                }
-
-                $.post(form.attr('action'), form.serialize())
-                    .done(function(response) {
-                        $('#callAttemptModal').modal('hide');
-                        form[0].reset();
-
-                        // Afficher un message de succès
-                        const alert = $(`
-                    <div class="alert alert-success alert-dismissible fade show">
-                        <i class="fas fa-check-circle me-2"></i>
-                        Tentative d'appel enregistrée avec succès
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                `);
-                        $('.main-content').prepend(alert);
-
-                        // Masquer automatiquement après 5 secondes
-                        setTimeout(() => alert.fadeOut(), 5000);
-                    })
-                    .fail(function(xhr) {
-                        const error = xhr.responseJSON?.message || 'Erreur lors de l\'enregistrement';
-                        alert('Erreur: ' + error);
-                    });
-            });
-
-            // =========================
-            // VALIDATION DU FORMULAIRE
-            // =========================
-            $('#orderForm').on('submit', function(e) {
-                if (cart.length === 0) {
-                    e.preventDefault();
-                    alert('Veuillez ajouter au moins un produit à la commande.');
-                    return false;
-                }
-
-                const phone = $('#customer_phone').val().trim();
-                if (!phone) {
-                    e.preventDefault();
-                    alert('Le numéro de téléphone principal est obligatoire.');
-                    $('#customer_phone').focus();
-                    return false;
-                }
-
-                // Désactiver le bouton pour éviter les double soumissions
-                $('#save-btn').prop('disabled', true).addClass('loading');
-            });
-
-            // =========================
-            // FONCTIONS GLOBALES
-            // =========================
-
-            // Rendre la fonction toggleCart globale
-            window.toggleCart = toggleCart;
-
-            // Charger les villes si un gouvernorat est sélectionné
-            if ($('#customer_governorate').val()) {
-                $('#customer_governorate').trigger('change');
+        // Masquer suggestions en cliquant ailleurs
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.search-input-group').length) {
+                $('#product-suggestions').hide();
             }
         });
+
+        // =========================
+        // GESTION DU PANIER
+        // =========================
+        function addToCart(product) {
+            const existingItem = cart.find(item => item.id === product.id);
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: parseFloat(product.price),
+                    quantity: 1,
+                    stock: product.stock
+                });
+            }
+
+            updateCartDisplay();
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartDisplay();
+        }
+
+        function updateQuantity(productId, newQuantity) {
+            const item = cart.find(item => item.id === productId);
+            if (item) {
+                item.quantity = Math.max(1, Math.min(newQuantity, item.stock));
+                updateCartDisplay();
+            }
+        }
+
+        function updateCartDisplay() {
+            const cartItems = $('#cart-items');
+            const cartEmpty = $('#cart-empty');
+            const cartSummary = $('#cart-summary');
+            const cartCount = $('#cart-count');
+
+            cartCount.text(cart.length);
+
+            if (cart.length === 0) {
+                cartEmpty.show();
+                cartSummary.hide();
+                cartItems.find('.cart-item').remove();
+            } else {
+                cartEmpty.hide();
+                cartSummary.show();
+
+                // Supprimer les anciens items
+                cartItems.find('.cart-item').remove();
+
+                // Ajouter les nouveaux items
+                cart.forEach(item => {
+                    const cartItem = createCartItemElement(item);
+                    cartItems.append(cartItem);
+                });
+
+                updateCartSummary();
+            }
+
+            updateFormData();
+        }
+
+        function createCartItemElement(item) {
+            const element = $(`
+                <div class="cart-item" data-product-id="${item.id}">
+                    <div class="item-info">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-price">${item.price.toFixed(3)} TND × ${item.quantity}</div>
+                    </div>
+                    <div class="quantity-control">
+                        <button type="button" class="quantity-btn minus" data-action="minus">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="${item.stock}">
+                        <button type="button" class="quantity-btn plus" data-action="plus">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="remove-item" data-action="remove">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `);
+
+            // Event listeners pour les contrôles
+            element.find('.quantity-btn[data-action="minus"]').on('click', function() {
+                updateQuantity(item.id, item.quantity - 1);
+            });
+
+            element.find('.quantity-btn[data-action="plus"]').on('click', function() {
+                updateQuantity(item.id, item.quantity + 1);
+            });
+
+            element.find('.quantity-input').on('change', function() {
+                const newQuantity = parseInt($(this).val()) || 1;
+                updateQuantity(item.id, newQuantity);
+            });
+
+            element.find('.remove-item').on('click', function() {
+                removeFromCart(item.id);
+            });
+
+            return element;
+        }
+
+        function updateCartSummary() {
+            // CORRECTION: S'assurer que les valeurs sont des nombres
+            const subtotal = cart.reduce((sum, item) => {
+                const itemTotal = (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0);
+                return sum + itemTotal;
+            }, 0);
+            
+            const shipping = {{ $order->shipping_cost ?? 0 }};
+            const total = subtotal + shipping;
+
+            $('#subtotal').text(subtotal.toFixed(3) + ' TND');
+            $('#shipping-cost').text(shipping.toFixed(3) + ' TND');
+            $('#total').text(total.toFixed(3) + ' TND');
+        }
+
+        function updateFormData() {
+            const cartData = $('#cart-data');
+            cartData.empty();
+
+            cart.forEach((item, index) => {
+                cartData.append(`
+                    <input type="hidden" name="products[${index}][id]" value="${item.id}">
+                    <input type="hidden" name="products[${index}][quantity]" value="${item.quantity}">
+                `);
+            });
+        }
+
+        // =========================
+        // GESTION DES BADGES
+        // =========================
+        $('.status-badge').on('click', function() {
+            $('.status-badge').removeClass('active');
+            $(this).addClass('active');
+            $('#status').val($(this).data('status'));
+
+            // Gestion conditionnelle des champs
+            const status = $(this).data('status');
+            const scheduledDateGroup = $('#scheduled_date').closest('.form-group');
+            const confirmedPriceGroup = $('#confirmed_price').closest('.form-group');
+
+            if (status === 'datée') {
+                if (scheduledDateGroup.length === 0) {
+                    // Ajouter le champ date si pas présent
+                    const dateField = `
+                        <div class="form-group">
+                            <label for="scheduled_date" class="form-label">
+                                <i class="fas fa-calendar-alt me-1"></i>
+                                Date de Livraison Prévue
+                            </label>
+                            <input type="date" class="form-control" id="scheduled_date" name="scheduled_date">
+                        </div>
+                    `;
+                    $('#notes').closest('.form-group').after(dateField);
+                }
+            }
+
+            if (status === 'confirmée' || status === 'datée') {
+                if (confirmedPriceGroup.length === 0) {
+                    // Ajouter le champ prix confirmé si pas présent
+                    const priceField = `
+                        <div class="form-group">
+                            <label for="confirmed_price" class="form-label">
+                                <i class="fas fa-dollar-sign me-1"></i>
+                                Prix Confirmé
+                            </label>
+                            <input type="number" class="form-control" id="confirmed_price" name="confirmed_price" step="0.001" min="0" placeholder="Prix final confirmé avec le client">
+                        </div>
+                    `;
+                    $('#notes').closest('.form-group').after(priceField);
+                }
+            }
+        });
+
+        $('.priority-badge').on('click', function() {
+            $('.priority-badge').removeClass('active');
+            $(this).addClass('active');
+            $('#priority').val($(this).data('priority'));
+        });
+
+        // =========================
+        // GESTION GÉOGRAPHIQUE - CORRECTION ICI
+        // =========================
+        $('#customer_governorate').on('change', function() {
+            const regionId = $(this).val();
+            const citySelect = $('#customer_city');
+
+            citySelect.html('<option value="">Chargement...</option>').prop('disabled', true);
+
+            if (regionId) {
+                $.get('/admin/orders/get-cities', {
+                        region_id: regionId
+                    })
+                    .done(function(cities) {
+                        citySelect.html('<option value="">Choisir une ville</option>');
+                        cities.forEach(city => {
+                            const selected = city.id == {{ $order->customer_city ?? 'null' }} ? 'selected' : '';
+                            citySelect.append(
+                                `<option value="${city.id}" ${selected}>${city.name}</option>`
+                            );
+                        });
+                    })
+                    .fail(function(xhr) {
+                        console.error('Erreur lors du chargement des villes:', xhr);
+                        citySelect.html('<option value="">Erreur de chargement</option>');
+                    })
+                    .always(function() {
+                        citySelect.prop('disabled', false);
+                    });
+            } else {
+                citySelect.html('<option value="">Choisir une ville</option>').prop('disabled', false);
+            }
+        });
+
+        // =========================
+        // GESTION DES MODALES
+        // =========================
+
+        // Modal Historique
+        $('#historyModal').on('show.bs.modal', function() {
+            loadOrderHistory();
+        });
+
+        function loadOrderHistory() {
+            const timeline = $('#history-timeline');
+
+            $.get('{{ route('admin.orders.history-modal', $order) }}')
+                .done(function(response) {
+                    timeline.html(response);
+                })
+                .fail(function() {
+                    timeline.html(`
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Erreur lors du chargement de l'historique
+                        </div>
+                    `);
+                });
+        }
+
+        // Modal Tentative d'Appel
+        $('#callAttemptForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const form = $(this);
+            const notes = $('#attempt_notes').val().trim();
+
+            if (!notes) {
+                alert('Veuillez saisir des notes sur la tentative d\'appel.');
+                return;
+            }
+
+            // Désactiver le bouton de soumission
+            const submitBtn = form.find('button[type="submit"]');
+            const originalText = submitBtn.html();
+            submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...');
+
+            $.post(form.attr('action'), form.serialize())
+                .done(function(response) {
+                    $('#callAttemptModal').modal('hide');
+                    form[0].reset();
+
+                    // Afficher un message de succès
+                    const alert = $(`
+                        <div class="alert alert-success alert-dismissible fade show">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Tentative d'appel enregistrée avec succès
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `);
+                    $('.main-content').prepend(alert);
+
+                    // Masquer automatiquement après 5 secondes
+                    setTimeout(() => alert.fadeOut(), 5000);
+
+                    // Recharger la page pour mettre à jour les compteurs
+                    setTimeout(() => location.reload(), 2000);
+                })
+                .fail(function(xhr) {
+                    let errorMessage = 'Erreur lors de l\'enregistrement';
+                    
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        errorMessage = Object.values(xhr.responseJSON.errors).flat().join(', ');
+                    }
+                    
+                    alert('Erreur: ' + errorMessage);
+                })
+                .always(function() {
+                    // Réactiver le bouton
+                    submitBtn.prop('disabled', false).html(originalText);
+                });
+        });
+
+        // =========================
+        // VALIDATION DU FORMULAIRE
+        // =========================
+        $('#orderForm').on('submit', function(e) {
+            if (cart.length === 0) {
+                e.preventDefault();
+                alert('Veuillez ajouter au moins un produit à la commande.');
+                return false;
+            }
+
+            const phone = $('#customer_phone').val().trim();
+            if (!phone) {
+                e.preventDefault();
+                alert('Le numéro de téléphone principal est obligatoire.');
+                $('#customer_phone').focus();
+                return false;
+            }
+
+            // Désactiver le bouton pour éviter les double soumissions
+            const submitBtn = $('#save-btn');
+            const originalText = submitBtn.html();
+            submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...');
+            
+            // Réactiver le bouton après 5 secondes au cas où
+            setTimeout(() => {
+                submitBtn.prop('disabled', false).html(originalText);
+            }, 5000);
+        });
+
+        // =========================
+        // FONCTIONS GLOBALES
+        // =========================
+
+        // Rendre la fonction toggleCart globale
+        window.toggleCart = toggleCart;
+
+        // Charger les villes si un gouvernorat est sélectionné au chargement de la page
+        if ($('#customer_governorate').val()) {
+            $('#customer_governorate').trigger('change');
+        }
+    });
     </script>
 @endsection

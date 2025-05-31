@@ -4,682 +4,623 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Region;
 use App\Models\City;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
     /**
-     * Affiche la liste des commandes
+     * Afficher la liste des commandes
      */
     public function index(Request $request)
     {
-        $admin = Auth::guard('admin')->user();
-        $query = $admin->orders();
-        
-        // Si la requête est AJAX (pour la recherche en temps réel)
-        if ($request->ajax() && $request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('customer_name', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%")
-                  ->orWhere('customer_address', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%");
-            });
+        try {
+            $admin = Auth::guard('admin')->user();
             
-            $orders = $query->take(10)->get();
-            return response()->json(['orders' => $orders]);
+            // Construire la query de base
+            $query = $admin->orders()->with(['items.product', 'employee']);
+            
+            // Appliquer les filtres
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('id', 'like', "%{$search}%")
+                      ->orWhere('customer_name', 'like', "%{$search}%")
+                      ->orWhere('customer_phone', 'like', "%{$search}%")
+                      ->orWhere('customer_phone_2', 'like', "%{$search}%")
+                      ->orWhere('customer_address', 'like', "%{$search}%");
+                });
+            }
+            
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+            
+            if ($request->filled('priority')) {
+                $query->where('priority', $request->priority);
+            }
+            
+            if ($request->filled('date_from')) {
+                $query->whereDate('created_at', '>=', $request->date_from);
+            }
+            
+            if ($request->filled('date_to')) {
+                $query->whereDate('created_at', '<=', $request->date_to);
+            }
+            
+            if ($request->filled('assigned')) {
+                if ($request->assigned === 'yes') {
+                    $query->where('is_assigned', true);
+                } elseif ($request->assigned === 'no') {
+                    $query->where('is_assigned', false);
+                }
+            }
+            
+            // Tri
+            $sortField = $request->get('sort', 'created_at');
+            $sortOrder = $request->get('order', 'desc');
+            
+            $allowedSortFields = ['id', 'created_at', 'customer_name', 'status', 'priority'];
+            if (in_array($sortField, $allowedSortFields)) {
+                $query->orderBy($sortField, $sortOrder);
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
+            
+            // Pagination
+            $orders = $query->paginate(20);
+            
+            // Statistiques rapides
+            $totalOrders = $admin->orders()->count();
+            $newOrders = $admin->orders()->where('status', 'nouvelle')->count();
+            $confirmedOrders = $admin->orders()->where('status', 'confirmée')->count();
+            $scheduledOrders = $admin->orders()->where('status', 'datée')->count();
+            
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax()) {
+                return response()->json([
+                    'orders' => $orders,
+                    'stats' => [
+                        'total' => $totalOrders,
+                        'new' => $newOrders,
+                        'confirmed' => $confirmedOrders,
+                        'scheduled' => $scheduledOrders
+                    ]
+                ]);
+            }
+            
+            return view('admin.orders.index', compact(
+                'orders', 
+                'totalOrders', 
+                'newOrders', 
+                'confirmedOrders', 
+                'scheduledOrders'
+            ));
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur dans OrderController@index: ' . $e->getMessage());
+            
+            if ($request->ajax()) {
+                return response()->json(['error' => 'Erreur lors du chargement des commandes'], 500);
+            }
+            
+            return redirect()->back()->with('error', 'Erreur lors du chargement des commandes');
         }
-        
-        // Filtres de recherche standard
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('customer_name', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%")
-                  ->orWhere('customer_address', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%");
-            });
-        }
-        
-        // Filtre par statut
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        
-        // Filtre par date
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-        
-        // Filtre par assignation
-        if ($request->filled('assigned')) {
-            $query->where('is_assigned', $request->assigned == 'yes');
-        }
-        
-        // Tri
-        $sortField = $request->input('sort', 'created_at');
-        $sortOrder = $request->input('order', 'desc');
-        $query->orderBy($sortField, $sortOrder);
-        
-        $orders = $query->with(['region', 'city'])->paginate(10)->withQueryString();
-        
-        // Statistiques
-        $totalOrders = $admin->orders()->count();
-        $newOrders = $admin->orders()->where('status', 'nouvelle')->count();
-        $confirmedOrders = $admin->orders()->where('status', 'confirmée')->count();
-        $scheduledOrders = $admin->orders()->where('status', 'datée')->count();
-        
-        return view('admin.orders.index', compact(
-            'orders', 
-            'totalOrders', 
-            'newOrders', 
-            'confirmedOrders', 
-            'scheduledOrders'
-        ));
     }
 
     /**
-     * Affiche le formulaire de création de commande
+     * Afficher le formulaire de création
      */
     public function create()
     {
-        $admin = Auth::guard('admin')->user();
-        $regions = Region::with('cities')->orderBy('name')->get();
-        $products = $admin->products()->where('is_active', true)->orderBy('name')->get();
-        
-        return view('admin.orders.create', compact('regions', 'products'));
+        try {
+            $regions = Region::all();
+            return view('admin.orders.create', compact('regions'));
+        } catch (\Exception $e) {
+            Log::error('Erreur dans OrderController@create: ' . $e->getMessage());
+            return redirect()->route('admin.orders.index')->with('error', 'Erreur lors du chargement du formulaire');
+        }
     }
 
     /**
-     * Enregistre une nouvelle commande
+     * Créer une nouvelle commande
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'customer_phone' => 'required|string|max:20',
-            'customer_name' => 'nullable|string|max:255',
-            'customer_phone_2' => 'nullable|string|max:20',
-            'customer_governorate' => 'nullable|exists:regions,id',
-            'customer_city' => 'nullable|exists:cities,id',
-            'customer_address' => 'nullable|string',
-            'shipping_cost' => 'nullable|numeric|min:0',
-            'status' => 'required|in:nouvelle,confirmée',
-            'priority' => 'required|in:normale,urgente,vip',
-            'notes' => 'nullable|string',
-            'products' => 'required|array|min:1',
-            'products.*.id' => 'required',
-            'products.*.quantity' => 'required|integer|min:1',
-        ]);
-        
-        $admin = Auth::guard('admin')->user();
-        
-        // Validation supplémentaire si le statut est "confirmée"
-        if ($request->status === 'confirmée') {
-            if (empty($request->customer_name) || empty($request->customer_governorate) || 
-                empty($request->customer_city) || empty($request->customer_address)) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Tous les champs client sont obligatoires pour une commande confirmée.');
-            }
-        }
-        
         try {
+            $validated = $request->validate([
+                'customer_phone' => 'required|string|max:20',
+                'customer_name' => 'nullable|string|max:255',
+                'customer_phone_2' => 'nullable|string|max:20',
+                'customer_governorate' => 'nullable|exists:regions,id',
+                'customer_city' => 'nullable|exists:cities,id',
+                'customer_address' => 'nullable|string|max:500',
+                'notes' => 'nullable|string|max:1000',
+                'status' => 'required|in:nouvelle,confirmée',
+                'priority' => 'required|in:normale,urgente,vip',
+                'employee_id' => 'nullable|exists:employees,id',
+                'products' => 'required|array|min:1',
+                'products.*.id' => 'required|exists:products,id',
+                'products.*.quantity' => 'required|integer|min:1',
+            ], [
+                'customer_phone.required' => 'Le numéro de téléphone est obligatoire',
+                'products.required' => 'Veuillez ajouter au moins un produit',
+                'products.min' => 'Veuillez ajouter au moins un produit',
+            ]);
+
             DB::beginTransaction();
-            
+
+            $admin = Auth::guard('admin')->user();
+
             // Créer la commande
             $order = new Order();
             $order->admin_id = $admin->id;
-            $order->customer_phone = $request->customer_phone;
-            $order->customer_name = $request->customer_name;
-            $order->customer_phone_2 = $request->customer_phone_2;
-            $order->customer_governorate = $request->customer_governorate;
-            $order->customer_city = $request->customer_city;
-            $order->customer_address = $request->customer_address;
-            $order->shipping_cost = $request->shipping_cost ?? 0;
-            $order->status = $request->status;
-            $order->priority = $request->priority;
-            $order->notes = $request->notes;
+            $order->customer_phone = $validated['customer_phone'];
+            $order->customer_name = $validated['customer_name'];
+            $order->customer_phone_2 = $validated['customer_phone_2'];
+            $order->customer_governorate = $validated['customer_governorate'];
+            $order->customer_city = $validated['customer_city'];
+            $order->customer_address = $validated['customer_address'];
+            $order->notes = $validated['notes'];
+            $order->status = $validated['status'];
+            $order->priority = $validated['priority'];
+            $order->attempts_count = 0;
+            $order->daily_attempts_count = 0;
             
-            // Gérer l'assignation
-            if ($request->filled('employee_id')) {
-                $employee = $admin->employees()->where('id', $request->employee_id)->first();
-                if ($employee && $employee->is_active) {
-                    $order->employee_id = $employee->id;
-                    $order->is_assigned = true;
-                }
+            // Assigner à un employé si spécifié
+            if ($validated['employee_id']) {
+                $order->employee_id = $validated['employee_id'];
+                $order->is_assigned = true;
             }
-            
+
             $order->save();
-            
-            // Ajouter les produits à la commande
+
+            // Ajouter les produits
             $totalPrice = 0;
-            foreach ($request->products as $productData) {
-                $product = null;
+            foreach ($validated['products'] as $productData) {
+                $product = Product::find($productData['id']);
                 
-                // Vérifier si c'est un produit existant ou un nouveau produit
-                if (isset($productData['id']) && is_numeric($productData['id']) && $productData['id'] > 0) {
-                    $product = Product::find($productData['id']);
-                } else if (isset($productData['name']) && isset($productData['price'])) {
-                    // Création d'un nouveau produit à la volée
-                    $product = new Product([
-                        'admin_id' => $admin->id,
-                        'name' => $productData['name'],
-                        'price' => $productData['price'],
-                        'stock' => 1000000, // Stock énorme par défaut
-                        'is_active' => true,
-                    ]);
-                    $product->save();
-                }
-                
-                if ($product) {
-                    $orderItem = new OrderItem([
-                        'order_id' => $order->id,
+                if ($product && $product->admin_id === $admin->id) {
+                    $quantity = $productData['quantity'];
+                    $unitPrice = $product->price;
+                    $totalPrice += $quantity * $unitPrice;
+                    
+                    $order->items()->create([
                         'product_id' => $product->id,
-                        'quantity' => $productData['quantity'],
-                        'unit_price' => $product->price,
-                        'total_price' => $product->price * $productData['quantity'],
+                        'quantity' => $quantity,
+                        'unit_price' => $unitPrice,
+                        'total_price' => $quantity * $unitPrice,
                     ]);
-                    $orderItem->save();
-                    
-                    $totalPrice += $orderItem->total_price;
-                    
-                    // Décrémenter le stock si la commande est confirmée
-                    if ($request->status === 'confirmée') {
-                        $product->decrementStock($productData['quantity']);
-                    }
                 }
             }
-            
-            // Mettre à jour le prix total de la commande
+
+            // Mettre à jour le prix total
             $order->total_price = $totalPrice;
             $order->save();
-            
-            // Enregistrer l'historique
-            $order->recordHistory('création', $request->notes);
-            
+
+            // Enregistrer dans l'historique
+            $order->recordHistory('création', 'Commande créée par ' . $admin->name);
+
             DB::commit();
-            
-            return redirect()->route('admin.orders.index')
-                ->with('success', 'Commande créée avec succès.');
+
+            return redirect()->route('admin.orders.index')->with('success', 'Commande créée avec succès');
+
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de la création de la commande: ' . $e->getMessage());
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Erreur lors de la création de la commande: ' . $e->getMessage());
+            Log::error('Erreur dans OrderController@store: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la création de la commande')->withInput();
         }
     }
 
     /**
-     * Affiche une commande spécifique
+     * Afficher une commande
      */
     public function show(Order $order)
     {
         $this->authorize('view', $order);
         
-        // Charger les relations nécessaires
-        $order->load([
-            'region', 
-            'city', 
-            'items.product', 
-            'employee',
-            'history' => function($query) {
-                $query->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc');
-            }
-        ]);
+        $order->load(['items.product', 'history', 'employee']);
         
         return view('admin.orders.show', compact('order'));
     }
 
     /**
-     * Affiche le formulaire de modification d'une commande
+     * Afficher le formulaire d'édition
      */
     public function edit(Order $order)
     {
-        $this->authorize('update', $order);
-        
-        $admin = Auth::guard('admin')->user();
-        $regions = Region::with('cities')->orderBy('name')->get();
-        $products = $admin->products()->where('is_active', true)->orderBy('name')->get();
-        
-        // Charger les produits de la commande
-        $order->load('items.product');
-        
-        // Charger l'historique manuellement pour éviter les erreurs de relations
         try {
-            $history = $order->history()->orderBy('created_at', 'desc')->get();
-            $order->setRelation('history', $history);
+            $this->authorize('update', $order);
+            
+            $order->load(['items.product']);
+            $regions = Region::all();
+            $cities = [];
+            
+            if ($order->customer_governorate) {
+                $cities = City::where('region_id', $order->customer_governorate)->get();
+            }
+            
+            return view('admin.orders.edit', compact('order', 'regions', 'cities'));
         } catch (\Exception $e) {
-            // En cas d'erreur, définir un historique vide
-            $order->setRelation('history', collect([]));
+            Log::error('Erreur dans OrderController@edit: ' . $e->getMessage());
+            return redirect()->route('admin.orders.index')->with('error', 'Erreur lors du chargement de la commande');
         }
-        
-        return view('admin.orders.edit', compact('order', 'regions', 'products'));
     }
 
     /**
-     * Met à jour une commande existante
+     * Mettre à jour une commande
      */
     public function update(Request $request, Order $order)
     {
-        $this->authorize('update', $order);
-        
-        $request->validate([
-            'customer_phone' => 'required|string|max:20',
-            'customer_name' => 'nullable|string|max:255',
-            'customer_phone_2' => 'nullable|string|max:20',
-            'customer_governorate' => 'nullable|exists:regions,id',
-            'customer_city' => 'nullable|exists:cities,id',
-            'customer_address' => 'nullable|string',
-            'shipping_cost' => 'nullable|numeric|min:0',
-            'status' => 'required|in:nouvelle,confirmée,annulée,datée,en_route,livrée',
-            'priority' => 'required|in:normale,urgente,vip',
-            'notes' => 'nullable|string',
-            'products' => 'required|array|min:1',
-            'products.*.id' => 'required_without:products.*.is_new',
-            'products.*.quantity' => 'required|integer|min:1',
-            'products.*.name' => 'required_if:products.*.is_new,1',
-            'products.*.price' => 'required_if:products.*.is_new,1|numeric|min:0',
-            'confirmed_price' => 'nullable|numeric|min:0',
-            'scheduled_date' => 'nullable|date|required_if:status,datée',
-        ]);
-        
-        // Validation supplémentaire si le statut est "confirmée"
-        if ($request->status === 'confirmée') {
-            if (empty($request->customer_name) || empty($request->customer_governorate) || 
-                empty($request->customer_city) || empty($request->customer_address)) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Tous les champs client sont obligatoires pour une commande confirmée.');
-            }
-            
-            // Pour les commandes confirmées, le prix confirmé est obligatoire
-            if (empty($request->confirmed_price)) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Le prix confirmé est obligatoire pour une commande confirmée.');
-            }
-        }
-        
-        // Validation supplémentaire si le statut est "datée"
-        if ($request->status === 'datée' && empty($request->scheduled_date)) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'La date de livraison est obligatoire pour une commande datée.');
-        }
-        
         try {
+            $this->authorize('update', $order);
+
+            $validated = $request->validate([
+                'customer_phone' => 'required|string|max:20',
+                'customer_name' => 'nullable|string|max:255',
+                'customer_phone_2' => 'nullable|string|max:20',
+                'customer_governorate' => 'nullable|exists:regions,id',
+                'customer_city' => 'nullable|exists:cities,id',
+                'customer_address' => 'nullable|string|max:500',
+                'notes' => 'nullable|string|max:1000',
+                'status' => 'required|in:nouvelle,confirmée,annulée,datée,en_route,livrée',
+                'priority' => 'required|in:normale,urgente,vip',
+                'employee_id' => 'nullable|exists:employees,id',
+                'scheduled_date' => 'nullable|date|after:today',
+                'confirmed_price' => 'nullable|numeric|min:0',
+                'products' => 'required|array|min:1',
+                'products.*.id' => 'required|exists:products,id',
+                'products.*.quantity' => 'required|integer|min:1',
+            ]);
+
             DB::beginTransaction();
+
+            $oldStatus = $order->status;
+
+            // Mettre à jour les informations de base
+            $order->fill($validated);
             
-            // Enregistrer l'état précédent pour l'historique
-            $statusBefore = $order->status;
-            $changes = [];
-            
-            // Mettre à jour les informations de la commande
-            if ($order->customer_name !== $request->customer_name) $changes['customer_name'] = ['old' => $order->customer_name, 'new' => $request->customer_name];
-            if ($order->customer_phone !== $request->customer_phone) $changes['customer_phone'] = ['old' => $order->customer_phone, 'new' => $request->customer_phone];
-            if ($order->customer_phone_2 !== $request->customer_phone_2) $changes['customer_phone_2'] = ['old' => $order->customer_phone_2, 'new' => $request->customer_phone_2];
-            if ($order->customer_governorate != $request->customer_governorate) $changes['customer_governorate'] = ['old' => $order->customer_governorate, 'new' => $request->customer_governorate];
-            if ($order->customer_city != $request->customer_city) $changes['customer_city'] = ['old' => $order->customer_city, 'new' => $request->customer_city];
-            if ($order->customer_address !== $request->customer_address) $changes['customer_address'] = ['old' => $order->customer_address, 'new' => $request->customer_address];
-            if ($order->shipping_cost != $request->shipping_cost) $changes['shipping_cost'] = ['old' => $order->shipping_cost, 'new' => $request->shipping_cost];
-            if ($order->priority !== $request->priority) $changes['priority'] = ['old' => $order->priority, 'new' => $request->priority];
-            if ($order->confirmed_price != $request->confirmed_price) $changes['confirmed_price'] = ['old' => $order->confirmed_price, 'new' => $request->confirmed_price];
-            if ($order->scheduled_date != $request->scheduled_date) $changes['scheduled_date'] = ['old' => $order->scheduled_date, 'new' => $request->scheduled_date];
-            
-            $order->customer_name = $request->customer_name;
-            $order->customer_phone = $request->customer_phone;
-            $order->customer_phone_2 = $request->customer_phone_2;
-            $order->customer_governorate = $request->customer_governorate;
-            $order->customer_city = $request->customer_city;
-            $order->customer_address = $request->customer_address;
-            $order->shipping_cost = $request->shipping_cost ?? 0;
-            $order->priority = $request->priority;
-            $order->confirmed_price = $request->confirmed_price;
-            $order->scheduled_date = $request->scheduled_date;
-            
-            // Gérer l'assignation
-            if ($request->filled('employee_id')) {
-                $admin = Auth::guard('admin')->user();
-                $employee = $admin->employees()->where('id', $request->employee_id)->first();
-                if ($employee && $employee->is_active) {
-                    if ($order->employee_id !== $employee->id) {
-                        $changes['employee'] = [
-                            'old' => $order->employee ? $order->employee->name : null,
-                            'new' => $employee->name
-                        ];
-                        $order->employee_id = $employee->id;
-                        $order->is_assigned = true;
-                    }
-                }
+            // Gestion de l'assignation
+            if ($validated['employee_id']) {
+                $order->employee_id = $validated['employee_id'];
+                $order->is_assigned = true;
             } else {
-                if ($order->is_assigned) {
-                    $changes['employee'] = [
-                        'old' => $order->employee ? $order->employee->name : null,
-                        'new' => null
-                    ];
-                    $order->employee_id = null;
-                    $order->is_assigned = false;
-                }
+                $order->employee_id = null;
+                $order->is_assigned = false;
             }
-            
-            // Si le statut change, enregistrer l'action spécifique
-            $statusAction = 'modification';
-            if ($statusBefore !== $request->status) {
-                $changes['status'] = ['old' => $statusBefore, 'new' => $request->status];
-                
-                switch ($request->status) {
-                    case 'confirmée':
-                        $statusAction = 'confirmation';
-                        break;
-                    case 'annulée':
-                        $statusAction = 'annulation';
-                        break;
-                    case 'datée':
-                        $statusAction = 'datation';
-                        break;
-                    case 'en_route':
-                        $statusAction = 'en_route';
-                        break;
-                    case 'livrée':
-                        $statusAction = 'livraison';
-                        break;
-                }
-            }
-            
-            $order->status = $request->status;
+
             $order->save();
-            
-            // Gérer les produits
-            
-            // 1. Supprimer tous les produits actuels et réaffecter les stocks
-            if ($statusBefore === 'confirmée') {
-                foreach ($order->items as $item) {
-                    $item->product->incrementStock($item->quantity);
-                }
-            }
-            
-            // 2. Supprimer les anciens produits
-            $order->items()->delete();
-            
-            // 3. Ajouter les nouveaux produits
-            $totalPrice = 0;
-            foreach ($request->products as $productData) {
-                // Ignorer les lignes vides
-                if (empty($productData['id']) && empty($productData['is_new'])) {
-                    continue;
-                }
+
+            // Mettre à jour les produits
+            if ($request->has('products')) {
+                $order->items()->delete();
                 
-                $product = null;
-                
-                // Vérifier si c'est un nouveau produit ou un produit existant
-                if (!empty($productData['is_new']) && !empty($productData['name']) && isset($productData['price'])) {
-                    // Création d'un nouveau produit
-                    $product = new Product([
-                        'admin_id' => $order->admin_id,
-                        'name' => $productData['name'],
-                        'price' => $productData['price'],
-                        'stock' => 1000000, // Stock énorme par défaut
-                        'is_active' => true,
-                    ]);
-                    $product->save();
-                } 
-                elseif (!empty($productData['id'])) {
-                    // Si l'ID commence par "new:", c'est un nouveau produit déjà traité par le formulaire
-                    if (is_string($productData['id']) && strpos($productData['id'], 'new:') === 0) {
-                        $parts = explode(':', $productData['id']);
-                        if (count($parts) >= 3) {
-                            $productName = $parts[1];
-                            $productPrice = $parts[2];
-                            
-                            $product = new Product([
-                                'admin_id' => $order->admin_id,
-                                'name' => $productName,
-                                'price' => $productPrice,
-                                'stock' => 1000000,
-                                'is_active' => true,
-                            ]);
-                            $product->save();
-                        }
-                    } else {
-                        // Produit existant
-                        $product = Product::find($productData['id']);
+                $totalPrice = 0;
+                foreach ($validated['products'] as $productData) {
+                    $product = Product::find($productData['id']);
+                    
+                    if ($product && $product->admin_id === $order->admin_id) {
+                        $quantity = $productData['quantity'];
+                        $unitPrice = $product->price;
+                        $totalPrice += $quantity * $unitPrice;
+                        
+                        $order->items()->create([
+                            'product_id' => $product->id,
+                            'quantity' => $quantity,
+                            'unit_price' => $unitPrice,
+                            'total_price' => $quantity * $unitPrice,
+                        ]);
                     }
                 }
                 
-                if ($product) {
-                    $orderItem = new OrderItem([
-                        'order_id' => $order->id,
-                        'product_id' => $product->id,
-                        'quantity' => $productData['quantity'],
-                        'unit_price' => $product->price,
-                        'total_price' => $product->price * $productData['quantity'],
-                    ]);
-                    $orderItem->save();
-                    
-                    $totalPrice += $orderItem->total_price;
-                    
-                    // Décrémenter le stock si la commande est confirmée
-                    if ($request->status === 'confirmée') {
-                        $product->decrementStock($productData['quantity']);
-                    }
-                }
-            }
-            
-            // Mettre à jour le prix total de la commande
-            $order->total_price = $totalPrice;
-            $order->save();
-            
-            // Gestion des compteurs de tentatives pour l'action "appel effectué"
-            if ($request->has('increment_attempts') && $request->increment_attempts) {
-                $order->increment('attempts_count');
-                $order->increment('daily_attempts_count');
-                $order->last_attempt_at = now();
+                $order->total_price = $totalPrice;
                 $order->save();
             }
-            
-            // Enregistrer l'historique
-            $order->recordHistory($statusAction, $request->notes, $changes, $statusBefore, $request->status);
-            
+
+            // Enregistrer dans l'historique si le statut a changé
+            if ($oldStatus !== $order->status) {
+                $order->recordHistory(
+                    'modification', 
+                    'Statut modifié de "' . $oldStatus . '" vers "' . $order->status . '" par ' . Auth::guard('admin')->user()->name,
+                    null,
+                    $oldStatus,
+                    $order->status
+                );
+            }
+
             DB::commit();
-            
-            return redirect()->route('admin.orders.index')
-                ->with('success', 'Commande mise à jour avec succès.');
+
+            return redirect()->route('admin.orders.index')->with('success', 'Commande mise à jour avec succès');
+
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de la mise à jour de la commande: ' . $e->getMessage());
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Erreur lors de la mise à jour de la commande: ' . $e->getMessage());
+            Log::error('Erreur dans OrderController@update: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la mise à jour')->withInput();
         }
     }
 
     /**
-     * Supprime une commande
+     * Supprimer une commande
      */
     public function destroy(Order $order)
     {
-        $this->authorize('delete', $order);
-        
         try {
+            $this->authorize('delete', $order);
+
             DB::beginTransaction();
+
+            $orderId = $order->id;
             
-            // Si la commande était confirmée, restaurer les stocks
-            if ($order->status === 'confirmée') {
-                foreach ($order->items as $item) {
-                    $item->product->incrementStock($item->quantity);
-                }
-            }
+            // Supprimer les items et l'historique
+            $order->items()->delete();
+            $order->history()->delete();
             
             // Supprimer la commande
             $order->delete();
-            
+
             DB::commit();
-            
-            return redirect()->route('admin.orders.index')
-                ->with('success', 'Commande supprimée avec succès.');
+
+            return redirect()->route('admin.orders.index')->with('success', "Commande #{$orderId} supprimée avec succès");
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de la suppression de la commande: ' . $e->getMessage());
-            return redirect()->back()
-                ->with('error', 'Erreur lors de la suppression de la commande: ' . $e->getMessage());
+            Log::error('Erreur dans OrderController@destroy: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la suppression');
         }
     }
 
+    /**
+     * NOUVELLES MÉTHODES POUR L'INTERFACE DE TRAITEMENT
+     */
 
+    /**
+     * Rechercher des produits pour l'interface de traitement
+     */
+    public function searchProducts(Request $request)
+    {
+        try {
+            $admin = Auth::guard('admin')->user();
+            $search = $request->get('search', '');
+
+            if (strlen($search) < 2) {
+                return response()->json([]);
+            }
+
+            $products = $admin->products()
+                ->where('is_active', true)
+                ->where('name', 'like', "%{$search}%")
+                ->limit(10)
+                ->get(['id', 'name', 'price', 'stock']);
+
+            return response()->json($products);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans searchProducts: ' . $e->getMessage());
+            return response()->json([], 500);
+        }
+    }
+
+    /**
+     * Obtenir les régions
+     */
+    public function getRegions(Request $request)
+    {
+        try {
+            $regions = Region::orderBy('name')->get(['id', 'name']);
+            return response()->json($regions);
+        } catch (\Exception $e) {
+            Log::error('Erreur dans getRegions: ' . $e->getMessage());
+            return response()->json([], 500);
+        }
+    }
+
+    /**
+     * Obtenir les villes d'une région
+     */
+    public function getCities(Request $request)
+    {
+        try {
+            $regionId = $request->get('region_id');
+            
+            if (!$regionId) {
+                return response()->json([]);
+            }
+
+            $cities = City::where('region_id', $regionId)
+                ->orderBy('name')
+                ->get(['id', 'name', 'shipping_cost']);
+
+            return response()->json($cities);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans getCities: ' . $e->getMessage());
+            return response()->json([], 500);
+        }
+    }
 
     /**
      * Enregistrer une tentative d'appel
      */
     public function recordAttempt(Request $request, Order $order)
     {
-        $this->authorize('update', $order);
-        
-        $request->validate([
-            'notes' => 'required|string|min:3|max:1000',
-        ], [
-            'notes.required' => 'Les notes sur la tentative sont obligatoires',
-            'notes.min' => 'Les notes doivent contenir au moins 3 caractères',
-            'notes.max' => 'Les notes ne peuvent pas dépasser 1000 caractères',
-        ]);
-        
         try {
+            $this->authorize('update', $order);
+
+            $validated = $request->validate([
+                'notes' => 'required|string|min:3|max:1000'
+            ]);
+
             DB::beginTransaction();
-            
-            // Incrémenter les compteurs de tentatives
+
+            // Incrémenter les compteurs
             $order->increment('attempts_count');
             $order->increment('daily_attempts_count');
             $order->last_attempt_at = now();
             $order->save();
-            
+
             // Enregistrer dans l'historique
-            $order->recordHistory('tentative', $request->notes);
-            
+            $order->recordHistory('tentative', $validated['notes']);
+
             DB::commit();
-            
-            return redirect()->back()->with('success', 'Tentative d\'appel enregistrée avec succès.');
-            
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tentative d\'appel enregistrée avec succès',
+                'attempts_count' => $order->attempts_count,
+                'daily_attempts_count' => $order->daily_attempts_count
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de l\'enregistrement de la tentative: ' . $e->getMessage());
-            
-            return redirect()->back()->with('error', 'Erreur lors de l\'enregistrement de la tentative.');
+            Log::error('Erreur dans recordAttempt: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'enregistrement'
+            ], 500);
         }
     }
 
-    
     /**
-     * Assignation groupée des commandes
+     * Afficher l'historique d'une commande
+     */
+    public function showHistory(Order $order)
+    {
+        $this->authorize('view', $order);
+        
+        $history = $order->history()
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        return view('admin.orders.history', compact('order', 'history'));
+    }
+
+    /**
+     * Obtenir l'historique pour modal
+     */
+    public function getHistory(Order $order)
+    {
+        try {
+            $this->authorize('view', $order);
+            
+            $history = $order->history()
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            $html = '';
+            
+            foreach ($history as $entry) {
+                $actionIcon = $this->getActionIcon($entry->action);
+                $actionClass = $this->getActionClass($entry->action);
+                
+                $html .= '<div class="history-item">';
+                $html .= '<div class="history-icon ' . $actionClass . '">';
+                $html .= '<i class="' . $actionIcon . '"></i>';
+                $html .= '</div>';
+                $html .= '<div class="history-content">';
+                $html .= '<div class="history-header">';
+                $html .= '<div class="history-action">' . ucfirst($entry->action) . '</div>';
+                $html .= '<div class="history-time">' . $entry->created_at->format('d/m/Y H:i') . '</div>';
+                $html .= '</div>';
+                $html .= '<div class="history-user">Par ' . ($entry->getUserName() ?: 'Système') . '</div>';
+                if ($entry->notes) {
+                    $html .= '<div class="history-notes">' . e($entry->notes) . '</div>';
+                }
+                $html .= '</div>';
+                $html .= '</div>';
+            }
+            
+            if (empty($html)) {
+                $html = '<div class="text-center text-muted py-4">';
+                $html .= '<i class="fas fa-history fa-3x mb-3 opacity-50"></i>';
+                $html .= '<h5>Aucun historique</h5>';
+                $html .= '<p>Cette commande n\'a pas encore d\'historique.</p>';
+                $html .= '</div>';
+            }
+            
+            return response($html);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur dans getHistory: ' . $e->getMessage());
+            return response('<div class="alert alert-danger">Erreur lors du chargement de l\'historique</div>', 500);
+        }
+    }
+
+    /**
+     * Assignation en lot
      */
     public function bulkAssign(Request $request)
     {
         try {
-            $request->validate([
-                'order_ids' => 'required|array|min:1',
-                'order_ids.*' => 'required|integer|exists:orders,id',
-                'employee_id' => 'required|integer|exists:employees,id',
-            ], [
-                'order_ids.required' => 'Veuillez sélectionner au moins une commande',
-                'order_ids.array' => 'Format de données invalide',
-                'order_ids.min' => 'Veuillez sélectionner au moins une commande',
-                'order_ids.*.exists' => 'Une ou plusieurs commandes sélectionnées n\'existent pas',
-                'employee_id.required' => 'Veuillez sélectionner un employé',
-                'employee_id.exists' => 'L\'employé sélectionné n\'existe pas',
+            $validated = $request->validate([
+                'order_ids' => 'required|array',
+                'order_ids.*' => 'exists:orders,id',
+                'employee_id' => 'required|exists:employees,id'
             ]);
 
             $admin = Auth::guard('admin')->user();
-            
-            // Vérifier que l'employé appartient à cet admin
-            $employee = $admin->employees()->where('id', $request->employee_id)->first();
+            $employee = Employee::where('id', $validated['employee_id'])
+                ->where('admin_id', $admin->id)
+                ->where('is_active', true)
+                ->first();
+
             if (!$employee) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Employé non trouvé ou non autorisé'
-                ], 403);
-            }
-
-            if (!$employee->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cet employé n\'est pas actif'
-                ], 400);
+                    'message' => 'Employé non trouvé ou inactif'
+                ], 404);
             }
 
             DB::beginTransaction();
 
-            // Récupérer les commandes éligibles
-            $orders = Order::whereIn('id', $request->order_ids)
-                        ->where('admin_id', $admin->id)
-                        ->where('is_assigned', false) // Seulement les non-assignées
-                        ->get();
-
-            if ($orders->isEmpty()) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Aucune commande éligible pour l\'assignation'
-                ], 400);
-            }
-
-            $assignedCount = 0;
-            foreach ($orders as $order) {
-                $order->update([
-                    'employee_id' => $employee->id,
-                    'is_assigned' => true
-                ]);
-
-                // Enregistrer dans l'historique
-                $order->recordHistory(
-                    'assignation', 
-                    "Commande assignée à {$employee->name}",
-                    [
-                        'employee_assigned' => [
-                            'old' => null,
-                            'new' => $employee->name
-                        ]
-                    ]
-                );
-
-                $assignedCount++;
+            $updatedCount = 0;
+            foreach ($validated['order_ids'] as $orderId) {
+                $order = $admin->orders()->find($orderId);
+                if ($order && !$order->is_assigned) {
+                    $order->employee_id = $employee->id;
+                    $order->is_assigned = true;
+                    $order->save();
+                    
+                    $order->recordHistory('assignation', "Commande assignée à {$employee->name} par {$admin->name}");
+                    $updatedCount++;
+                }
             }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => "{$assignedCount} commande(s) assignée(s) avec succès à {$employee->name}",
-                'assigned_count' => $assignedCount
+                'message' => "{$updatedCount} commande(s) assignée(s) à {$employee->name}"
             ]);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur de validation',
                 'errors' => $e->errors()
             ], 422);
-            
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de l\'assignation groupée: ' . $e->getMessage(), [
-                'request_data' => $request->all(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
+            Log::error('Erreur dans bulkAssign: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'assignation des commandes: ' . $e->getMessage()
+                'message' => 'Erreur lors de l\'assignation'
             ], 500);
         }
     }
@@ -689,38 +630,16 @@ class OrderController extends Controller
      */
     public function unassign(Order $order)
     {
-        $this->authorize('update', $order);
-
-        if (!$order->is_assigned) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cette commande n\'est pas assignée'
-            ], 400);
-        }
-
         try {
-            DB::beginTransaction();
+            $this->authorize('update', $order);
 
             $employeeName = $order->employee ? $order->employee->name : 'Employé inconnu';
+            
+            $order->employee_id = null;
+            $order->is_assigned = false;
+            $order->save();
 
-            $order->update([
-                'employee_id' => null,
-                'is_assigned' => false
-            ]);
-
-            // Enregistrer dans l'historique
-            $order->recordHistory(
-                'désassignation', 
-                "Commande désassignée de {$employeeName}",
-                [
-                    'employee_unassigned' => [
-                        'old' => $employeeName,
-                        'new' => null
-                    ]
-                ]
-            );
-
-            DB::commit();
+            $order->recordHistory('désassignation', "Commande désassignée de {$employeeName} par " . Auth::guard('admin')->user()->name);
 
             return response()->json([
                 'success' => true,
@@ -728,9 +647,7 @@ class OrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de la désassignation: ' . $e->getMessage());
-            
+            Log::error('Erreur dans unassign: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la désassignation'
@@ -739,178 +656,67 @@ class OrderController extends Controller
     }
 
     /**
-     * Affiche les commandes non assignées
+     * Lister les commandes non assignées
      */
     public function unassigned(Request $request)
     {
-        $admin = Auth::guard('admin')->user();
-        $query = $admin->orders()->where('is_assigned', false);
-        
-        // Filtres de recherche
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('customer_name', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%")
-                  ->orWhere('customer_address', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%");
-            });
+        try {
+            $admin = Auth::guard('admin')->user();
+            
+            $orders = $admin->orders()
+                ->where('is_assigned', false)
+                ->where('status', '!=', 'annulée')
+                ->where('status', '!=', 'livrée')
+                ->with(['items.product'])
+                ->orderBy('priority', 'desc')
+                ->orderBy('created_at', 'asc')
+                ->paginate(20);
+
+            return view('admin.orders.unassigned', compact('orders'));
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans unassigned: ' . $e->getMessage());
+            return redirect()->route('admin.orders.index')->with('error', 'Erreur lors du chargement');
         }
+    }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+    /**
+     * MÉTHODES UTILITAIRES
+     */
 
-        if ($request->filled('priority')) {
-            $query->where('priority', $request->priority);
-        }
-
-        $orders = $query->with(['region', 'city'])
-                    ->orderBy('priority', 'desc')
-                    ->orderBy('created_at', 'desc')
-                    ->paginate(20)
-                    ->withQueryString();
-
-        // Statistiques
-        $stats = [
-            'total_unassigned' => $admin->orders()->where('is_assigned', false)->count(),
-            'new_unassigned' => $admin->orders()->where('is_assigned', false)->where('status', 'nouvelle')->count(),
-            'urgent_unassigned' => $admin->orders()->where('is_assigned', false)->where('priority', 'urgente')->count(),
-            'vip_unassigned' => $admin->orders()->where('is_assigned', false)->where('priority', 'vip')->count(),
+    private function getActionIcon($action)
+    {
+        $icons = [
+            'création' => 'fas fa-plus-circle',
+            'modification' => 'fas fa-edit',
+            'tentative' => 'fas fa-phone',
+            'confirmation' => 'fas fa-check-circle',
+            'annulation' => 'fas fa-times-circle',
+            'datation' => 'fas fa-calendar-alt',
+            'assignation' => 'fas fa-user-plus',
+            'désassignation' => 'fas fa-user-minus',
+            'suspension' => 'fas fa-pause-circle',
+            'réactivation' => 'fas fa-play-circle',
         ];
 
-        return view('admin.orders.unassigned', compact('orders', 'stats'));
+        return $icons[$action] ?? 'fas fa-circle';
     }
 
-    /**
-     * Affiche l'historique d'une commande
-     */
-    public function showHistory(Order $order)
+    private function getActionClass($action)
     {
-        $this->authorize('view', $order);
-        
-        $history = $order->history()->with(['admin', 'manager', 'employee'])->orderBy('created_at', 'desc')->get();
-        
-        return view('admin.orders.history', compact('order', 'history'));
-    }
+        $classes = [
+            'création' => 'creation',
+            'modification' => 'modification',
+            'tentative' => 'tentative',
+            'confirmation' => 'confirmation',
+            'annulation' => 'annulation',
+            'datation' => 'tentative',
+            'assignation' => 'confirmation',
+            'désassignation' => 'annulation',
+            'suspension' => 'annulation',
+            'réactivation' => 'confirmation',
+        ];
 
-    /**
-     * Méthode pour récupérer une tentative d'appel rapidement
-     */
-    public function quickAttempt(Request $request, Order $order)
-    {
-        $this->authorize('update', $order);
-        
-        $request->validate([
-            'notes' => 'required|string|min:3|max:500',
-        ]);
-        
-        try {
-            DB::beginTransaction();
-            
-            // Enregistrer la tentative
-            $order->increment('attempts_count');
-            $order->increment('daily_attempts_count');
-            $order->last_attempt_at = now();
-            $order->save();
-            
-            // Enregistrer dans l'historique
-            $order->recordHistory('tentative', $request->notes);
-            
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Tentative d\'appel enregistrée avec succès',
-                'attempts_count' => $order->attempts_count,
-                'daily_attempts_count' => $order->daily_attempts_count
-            ]);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de l\'enregistrement de la tentative: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'enregistrement de la tentative'
-            ], 500);
-        }
+        return $classes[$action] ?? 'modification';
     }
-
-    /**
-     * Obtenir l'historique d'une commande pour les modales
-     */
-    public function getHistory(Order $order)
-    {
-        $this->authorize('view', $order);
-        
-        $history = $order->history()
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function($entry) {
-                return [
-                    'id' => $entry->id,
-                    'action' => $entry->action,
-                    'action_label' => ucfirst($entry->action),
-                    'status_before' => $entry->status_before,
-                    'status_after' => $entry->status_after,
-                    'notes' => $entry->notes,
-                    'user_name' => $entry->getUserName(),
-                    'created_at' => $entry->created_at,
-                ];
-            });
-        
-        return response()->json($history);
-    }
-
-    /**
-     * Obtenir les régions (gouvernorats)
-     */
-    public function getRegions()
-    {
-        $regions = Region::orderBy('name')->get(['id', 'name']);
-        return response()->json($regions);
-    }
-
-    /**
-     * Obtenir les villes d'une région
-     */
-    public function getCities(Request $request)
-    {
-        $request->validate([
-            'region_id' => 'required|exists:regions,id'
-        ]);
-        
-        $cities = City::where('region_id', $request->region_id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'shipping_cost']);
-        
-        return response()->json($cities);
-    }
-
-    /**
-     * Rechercher des produits pour l'ajout au panier
-     */
-    public function searchProducts(Request $request)
-    {
-        $request->validate([
-            'search' => 'required|string|min:2'
-        ]);
-        
-        $search = $request->search;
-        $admin = auth('admin')->user();
-        
-        $products = $admin->products()
-            ->where('is_active', true)
-            ->where(function($query) use ($search) {
-                $query->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('description', 'LIKE', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->limit(10)
-            ->get(['id', 'name', 'price', 'stock']);
-        
-        return response()->json($products);
-    }
-
 }
