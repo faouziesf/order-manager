@@ -443,7 +443,7 @@
             list-style: none;
             position: relative;
             z-index: 2;
-            height: calc(100vh - 140px);
+            height: auto;
             overflow-y: auto;
             overflow-x: hidden;
         }
@@ -915,13 +915,13 @@
 
         .notification-badge .badge {
             position: absolute;
-            top: -8px;
-            right: -8px;
+            
+            right: -0px;
             background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%);
             color: white;
             border-radius: 50%;
             padding: 4px 6px;
-            font-size: 0.7rem;
+            font-size: 0.5rem;
             font-weight: 600;
             min-width: 20px;
             height: 20px;

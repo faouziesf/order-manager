@@ -20,10 +20,6 @@ class WooCommerceSetting extends Model
         'sync_status',
         'sync_error',
         'last_sync_at',
-        'default_status',
-        'default_priority',
-        'default_governorate_id',
-        'default_city_id',
     ];
 
     protected $casts = [
@@ -37,16 +33,6 @@ class WooCommerceSetting extends Model
         return $this->belongsTo(Admin::class);
     }
 
-    public function defaultGovernorate()
-    {
-        return $this->belongsTo(Region::class, 'default_governorate_id');
-    }
-
-    public function defaultCity()
-    {
-        return $this->belongsTo(City::class, 'default_city_id');
-    }
-
     // Méthodes utilitaires
     public function getClient()
     {
@@ -54,16 +40,22 @@ class WooCommerceSetting extends Model
             return null;
         }
 
-        return new \Automattic\WooCommerce\Client(
-            $this->store_url,
-            $this->consumer_key,
-            $this->consumer_secret,
-            [
-                'wp_api' => true,
-                'version' => 'wc/v3',
-                'timeout' => 60,
-            ]
-        );
+        try {
+            return new \Automattic\WooCommerce\Client(
+                $this->store_url,
+                $this->consumer_key,
+                $this->consumer_secret,
+                [
+                    'wp_api' => true,
+                    'version' => 'wc/v3',
+                    'timeout' => 60,
+                    'verify_ssl' => true,
+                ]
+            );
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la création du client WooCommerce: ' . $e->getMessage());
+            return null;
+        }
     }
 
     public function testConnection()
@@ -82,7 +74,11 @@ class WooCommerceSetting extends Model
             
             return [
                 'success' => true,
-                'message' => 'Connexion établie avec succès'
+                'message' => 'Connexion établie avec succès',
+                'store_info' => [
+                    'name' => $response->name ?? 'Boutique WooCommerce',
+                    'version' => $response->version ?? 'Non spécifiée'
+                ]
             ];
         } catch (\Exception $e) {
             return [

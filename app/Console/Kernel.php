@@ -12,35 +12,37 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Réinitialiser les compteurs journaliers chaque jour à minuit
-        $schedule->command('orders:reset-daily-counters')
-                 ->dailyAt('00:00')
-                 ->withoutOverlapping()
-                 ->runInBackground()
-                 ->appendOutputTo(storage_path('logs/daily-reset.log'));
-
-        // Optionnel: Nettoyer les anciens logs de réinitialisation chaque semaine
+        // Synchronisation WooCommerce toutes les 3 minutes
+        $schedule->command('woocommerce:sync')
+            ->everyThreeMinutes()
+            ->withoutOverlapping(10) // Timeout après 10 minutes si bloqué
+            ->runInBackground()
+            ->onSuccess(function () {
+                \Log::info('WooCommerce sync completed successfully via scheduler');
+            })
+            ->onFailure(function () {
+                \Log::error('WooCommerce sync failed via scheduler');
+            });
+        
+        // Réinitialisation des tentatives journalières à minuit
         $schedule->call(function () {
-            $logFile = storage_path('logs/daily-reset.log');
-            if (file_exists($logFile) && filesize($logFile) > 10 * 1024 * 1024) { // 10MB
-                // Garder seulement les 1000 dernières lignes
-                $lines = file($logFile);
-                $lastLines = array_slice($lines, -1000);
-                file_put_contents($logFile, implode('', $lastLines));
+            \App\Models\Order::query()->update(['daily_attempts_count' => 0]);
+            \Log::info('Daily attempts count reset completed');
+        })->dailyAt('00:00')->name('reset-daily-attempts');
+        
+        // Nettoyage des anciens logs WooCommerce (optionnel, hebdomadaire)
+        $schedule->call(function () {
+            $logPath = storage_path('logs');
+            $files = glob($logPath . '/laravel-*.log');
+            
+            foreach ($files as $file) {
+                if (filemtime($file) < strtotime('-30 days')) {
+                    unlink($file);
+                }
             }
-        })->weekly()->sundays()->at('02:00');
-
-        // Optionnel: Vérifier et réactiver les commandes suspendues dont le stock est redevenu disponible
-        $schedule->call(function () {
-            \App\Models\Order::suspended()
-                ->whereNotNull('suspension_reason')
-                ->where('suspension_reason', 'like', 'Rupture de stock%')
-                ->chunk(100, function ($orders) {
-                    foreach ($orders as $order) {
-                        $order->checkStockAndUpdateStatus();
-                    }
-                });
-        })->hourly();
+            
+            \Log::info('Old log files cleaned up');
+        })->weekly()->sundays()->at('02:00')->name('cleanup-logs');
     }
 
     /**

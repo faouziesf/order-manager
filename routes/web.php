@@ -169,20 +169,30 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('login-history.index');
         Route::get('login-history/{user_type}/{user_id}', [LoginHistoryController::class, 'show'])
             ->name('login-history.show');
-        
+
+
         // ========================================
-        // IMPORTATION ET INTÉGRATIONS
+        // IMPORTATION ET INTÉGRATIONS - Version corrigée
         // ========================================
         Route::get('import', [ImportController::class, 'index'])->name('import.index');
         Route::post('import/csv', [ImportController::class, 'importCsv'])->name('import.csv');
         Route::post('import/xml', [ImportController::class, 'importXml'])->name('import.xml');
 
-        Route::get('woocommerce', [WooCommerceController::class, 'index'])
-            ->name('woocommerce.index');
-        Route::post('woocommerce', [WooCommerceController::class, 'store'])
-            ->name('woocommerce.store');
-        Route::get('woocommerce/sync', [WooCommerceController::class, 'sync'])
-            ->name('woocommerce.sync');
+        // Routes WooCommerce avec support multi-intégrations
+        Route::prefix('woocommerce')->name('woocommerce.')->group(function () {
+            Route::get('/', [WooCommerceController::class, 'index'])->name('index');
+            Route::post('/', [WooCommerceController::class, 'store'])->name('store');
+            Route::get('/sync', [WooCommerceController::class, 'sync'])->name('sync');
+            Route::post('/test-connection', [WooCommerceController::class, 'testConnection'])->name('test-connection');
+            Route::get('/stats', [WooCommerceController::class, 'syncStats'])->name('stats');
+            
+            // Nouvelles routes pour multi-intégrations
+            Route::post('/toggle/{id}', [WooCommerceController::class, 'toggleIntegration'])->name('toggle');
+            Route::get('/delete/{id}', [WooCommerceController::class, 'deleteIntegration'])->name('delete');
+        });
+
+        // Route pour récupérer les villes (AJAX) - NOUVELLE ROUTE MANQUANTE
+        Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');
         
         // ========================================
         // PARAMÈTRES

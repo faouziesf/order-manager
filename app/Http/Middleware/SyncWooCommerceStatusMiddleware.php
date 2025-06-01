@@ -26,11 +26,12 @@ class SyncWooCommerceStatusMiddleware
     {
         // Vérifier si nous sommes sur une page de mise à jour d'une commande
         if ($request->isMethod('post') && $request->route() && 
-            strpos($request->route()->getName(), 'admin.orders.update') === 0) {
+            (strpos($request->route()->getName(), 'admin.orders.update') === 0 ||
+             strpos($request->route()->getName(), 'admin.process.action') === 0)) {
                 
             try {
                 // Récupérer l'ID de la commande depuis la route
-                $orderId = $request->route('order');
+                $orderId = $request->route('order') ?? $request->route('id');
                 
                 if (!$orderId) return;
                 
@@ -50,45 +51,135 @@ class SyncWooCommerceStatusMiddleware
                     return;
                 }
                 
-                // Se connecter à l'API WooCommerce
-                $client = $settings->getClient();
+                // Effectuer la mise à jour
+                $this->performStatusUpdate($order, $settings);
                 
-                if (!$client) {
-                    return;
-                }
-                
-                // Mapper le statut de la commande dans Order Manager vers WooCommerce
-                $wooStatus = $this->mapOrderStatusToWooCommerce($order->status);
-                
-                if (!$wooStatus) {
-                    return;
-                }
-                
-                // Mettre à jour la commande dans WooCommerce
-                $client->put('orders/' . $order->external_id, [
-                    'status' => $wooStatus,
-                    'customer_note' => "Statut mis à jour depuis Order Manager: {$order->status}"
-                ]);
-                
-                Log::info("WooCommerce order #{$order->external_id} status updated to {$wooStatus}");
             } catch (\Exception $e) {
-                Log::error('Error updating WooCommerce order status: ' . $e->getMessage());
+                Log::error('Erreur dans SyncWooCommerceStatusMiddleware: ' . $e->getMessage());
             }
         }
     }
     
-    private function mapOrderStatusToWooCommerce($status)
+    /**
+     * Effectue la mise à jour du statut
+     */
+    private function performStatusUpdate($order, $settings)
     {
-        // Mapper les statuts Order Manager vers WooCommerce
+        try {
+            $client = $settings->getClient();
+            
+            if (!$client) {
+                Log::warning('Client WooCommerce non disponible pour la commande #' . $order->id);
+                return;
+            }
+            
+            // Mapper le statut de la commande vers WooCommerce
+            $wooStatus = $this->mapOrderManagerStatusToWooCommerce($order->status);
+            
+            if (!$wooStatus) {
+                Log::info("Aucun mappage WooCommerce nécessaire pour le statut: {$order->status}");
+                return;
+            }
+            
+            // Préparer les données de mise à jour
+            $updateData = [
+                'status' => $wooStatus
+            ];
+            
+            // Ajouter une note client si nécessaire
+            $customerNote = $this->generateCustomerNote($order);
+            if ($customerNote) {
+                $updateData['customer_note'] = $customerNote;
+            }
+            
+            // Mettre à jour la commande dans WooCommerce
+            $response = $client->put("orders/{$order->external_id}", $updateData);
+            
+            Log::info("Statut WooCommerce mis à jour pour la commande #{$order->external_id}: {$order->status} → {$wooStatus}");
+            
+            // Enregistrer dans l'historique de la commande
+            $order->recordHistory(
+                'modification',
+                "Statut synchronisé vers WooCommerce: {$wooStatus}",
+                [
+                    'woocommerce_status' => $wooStatus,
+                    'order_manager_status' => $order->status,
+                    'sync_timestamp' => now()->toISOString()
+                ]
+            );
+            
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la mise à jour du statut WooCommerce pour la commande #{$order->id}: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Mappe les statuts Order Manager vers WooCommerce (seulement si modifiés manuellement)
+     */
+    private function mapOrderManagerStatusToWooCommerce($status)
+    {
+        // Si c'est déjà un statut WooCommerce, ne pas le mapper
+        if (in_array($status, ['pending', 'processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed'])) {
+            return null; // Pas de mapping nécessaire
+        }
+        
+        // Mapper seulement les statuts Order Manager vers WooCommerce
         $statusMap = [
             'nouvelle' => 'pending',
             'confirmée' => 'processing',
             'annulée' => 'cancelled',
             'datée' => 'on-hold',
+            'ancienne' => 'on-hold',
             'en_route' => 'processing',
             'livrée' => 'completed'
         ];
         
         return $statusMap[$status] ?? null;
+    }
+    
+    /**
+     * Génère une note client appropriée selon le statut
+     */
+    private function generateCustomerNote($order)
+    {
+        $notes = [];
+        
+        switch ($order->status) {
+            case 'confirmée':
+            case 'processing':
+                $notes[] = "Votre commande a été confirmée et est en cours de préparation.";
+                if ($order->confirmed_price && $order->confirmed_price != $order->total_price) {
+                    $notes[] = "Prix confirmé: {$order->confirmed_price} DT";
+                }
+                break;
+                
+            case 'en_route':
+                $notes[] = "Votre commande est en route vers vous !";
+                break;
+                
+            case 'livrée':
+            case 'completed':
+                $notes[] = "Votre commande a été livrée avec succès. Merci pour votre confiance !";
+                break;
+                
+            case 'annulée':
+            case 'cancelled':
+                $notes[] = "Votre commande a été annulée.";
+                if ($order->notes) {
+                    $notes[] = "Raison: " . substr($order->notes, 0, 100);
+                }
+                break;
+                
+            case 'datée':
+            case 'on-hold':
+                if ($order->scheduled_date) {
+                    $notes[] = "Votre commande est programmée pour le " . $order->scheduled_date->format('d/m/Y');
+                } else {
+                    $notes[] = "Votre commande est temporairement en attente.";
+                }
+                break;
+        }
+        
+        return implode(' ', $notes);
     }
 }
