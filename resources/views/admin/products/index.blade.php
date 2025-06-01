@@ -160,6 +160,89 @@
         background: #4e73df;
         color: white;
     }
+
+    /* Styles pour la pagination moderne */
+    .pagination-modern {
+        --bs-pagination-padding-x: 0.75rem;
+        --bs-pagination-padding-y: 0.5rem;
+        --bs-pagination-font-size: 0.875rem;
+        --bs-pagination-color: #4e73df;
+        --bs-pagination-bg: #fff;
+        --bs-pagination-border-width: 1px;
+        --bs-pagination-border-color: #dee2e6;
+        --bs-pagination-border-radius: 8px;
+        --bs-pagination-hover-color: #224abe;
+        --bs-pagination-hover-bg: #f8f9fc;
+        --bs-pagination-hover-border-color: #dee2e6;
+        --bs-pagination-focus-color: #224abe;
+        --bs-pagination-focus-bg: #f8f9fc;
+        --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
+        --bs-pagination-active-color: #fff;
+        --bs-pagination-active-bg: #4e73df;
+        --bs-pagination-active-border-color: #4e73df;
+        --bs-pagination-disabled-color: #6c757d;
+        --bs-pagination-disabled-bg: #fff;
+        --bs-pagination-disabled-border-color: #dee2e6;
+    }
+
+    .pagination-modern .page-link {
+        transition: all 0.3s ease;
+        font-weight: 500;
+        border-radius: 6px;
+        margin: 0 2px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .pagination-modern .page-link:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .pagination-modern .page-item.active .page-link {
+        background: linear-gradient(45deg, #4e73df, #224abe);
+        border-color: #4e73df;
+        box-shadow: 0 3px 6px rgba(78, 115, 223, 0.3);
+    }
+
+    .pagination-modern .page-item.disabled .page-link {
+        opacity: 0.5;
+        box-shadow: none;
+    }
+
+    .pagination-info {
+        background: linear-gradient(135deg, #f8f9fc 0%, #e9ecef 100%);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #4e73df;
+    }
+
+    /* Animation pour les changements de page */
+    .page-transition {
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Style pour les sélecteurs */
+    .form-select-sm {
+        border-radius: 6px;
+        border-color: #dee2e6;
+        transition: all 0.3s ease;
+    }
+
+    .form-select-sm:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
+    }
     
     @media (max-width: 768px) {
         .product-image {
@@ -169,6 +252,36 @@
         
         .stats-card .h4 {
             font-size: 1.2rem;
+        }
+
+        .pagination-modern {
+            font-size: 0.75rem;
+        }
+        
+        .pagination-modern .page-link {
+            padding: 0.375rem 0.5rem;
+            margin: 0 1px;
+        }
+        
+        /* Masquer les numéros de page sur mobile, garder seulement prev/next */
+        .pagination-modern .page-item:not(.page-item:has(.fa-chevron-left)):not(.page-item:has(.fa-chevron-right)):not(.page-item:has(.fa-angle-double-left)):not(.page-item:has(.fa-angle-double-right)):not(.active) {
+            display: none;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .pagination-info {
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .col-md-6 {
+            text-align: center;
+        }
+        
+        /* Réorganiser sur très petits écrans */
+        .pagination-modern .page-item:not(.page-item:has(.fa-chevron-left)):not(.page-item:has(.fa-chevron-right)):not(.active) {
+            display: none;
         }
     }
 </style>
@@ -645,10 +758,165 @@
     </div>
 </div>
 
-<!-- Pagination -->
+<!-- Pagination améliorée -->
 @if($products->hasPages())
-    <div class="d-flex justify-content-center mt-4">
-        {{ $products->appends(request()->query())->links() }}
+    <div class="row mt-4">
+        <div class="col-md-6 d-flex align-items-center">
+            <div class="pagination-info">
+                <span class="text-muted">
+                    Affichage de {{ $products->firstItem() ?? 0 }} à {{ $products->lastItem() ?? 0 }} 
+                    sur {{ $products->total() }} produits
+                </span>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <nav aria-label="Navigation des pages">
+                <div class="d-flex justify-content-end align-items-center">
+                    <!-- Informations de page -->
+                    <div class="me-3">
+                        <span class="text-muted small">
+                            Page {{ $products->currentPage() }} sur {{ $products->lastPage() }}
+                        </span>
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <ul class="pagination pagination-modern mb-0">
+                        {{-- Bouton Première page --}}
+                        @if ($products->onFirstPage())
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </span>
+                            </li>
+                        @else
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $products->appends(request()->query())->url(1) }}" title="Première page">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            </li>
+                        @endif
+
+                        {{-- Bouton Précédent --}}
+                        @if ($products->onFirstPage())
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="fas fa-chevron-left me-1"></i>Précédent
+                                </span>
+                            </li>
+                        @else
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $products->appends(request()->query())->previousPageUrl() }}">
+                                    <i class="fas fa-chevron-left me-1"></i>Précédent
+                                </a>
+                            </li>
+                        @endif
+
+                        {{-- Numéros de pages --}}
+                        @php
+                            $start = max($products->currentPage() - 2, 1);
+                            $end = min($start + 4, $products->lastPage());
+                            $start = max($end - 4, 1);
+                        @endphp
+
+                        @if($start > 1)
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $products->appends(request()->query())->url(1) }}">1</a>
+                            </li>
+                            @if($start > 2)
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            @endif
+                        @endif
+
+                        @for ($page = $start; $page <= $end; $page++)
+                            @if ($page == $products->currentPage())
+                                <li class="page-item active">
+                                    <span class="page-link">{{ $page }}</span>
+                                </li>
+                            @else
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ $products->appends(request()->query())->url($page) }}">{{ $page }}</a>
+                                </li>
+                            @endif
+                        @endfor
+
+                        @if($end < $products->lastPage())
+                            @if($end < $products->lastPage() - 1)
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            @endif
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $products->appends(request()->query())->url($products->lastPage()) }}">{{ $products->lastPage() }}</a>
+                            </li>
+                        @endif
+
+                        {{-- Bouton Suivant --}}
+                        @if ($products->hasMorePages())
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $products->appends(request()->query())->nextPageUrl() }}">
+                                    Suivant<i class="fas fa-chevron-right ms-1"></i>
+                                </a>
+                            </li>
+                        @else
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    Suivant<i class="fas fa-chevron-right ms-1"></i>
+                                </span>
+                            </li>
+                        @endif
+
+                        {{-- Bouton Dernière page --}}
+                        @if ($products->hasMorePages())
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $products->appends(request()->query())->url($products->lastPage()) }}" title="Dernière page">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                        @else
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </span>
+                            </li>
+                        @endif
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Navigation rapide -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-center align-items-center flex-wrap gap-2">
+                <!-- Sélecteur de page rapide -->
+                <div class="d-flex align-items-center me-3">
+                    <label for="pageSelect" class="form-label me-2 mb-0 text-muted small">Aller à la page:</label>
+                    <select class="form-select form-select-sm" id="pageSelect" style="width: auto;" onchange="goToPage(this.value)">
+                        @for($i = 1; $i <= $products->lastPage(); $i++)
+                            <option value="{{ $i }}" {{ $i == $products->currentPage() ? 'selected' : '' }}>
+                                {{ $i }}
+                            </option>
+                        @endfor
+                    </select>
+                </div>
+
+                <!-- Sélecteur de nombre d'éléments par page -->
+                <div class="d-flex align-items-center">
+                    <label for="perPageSelect" class="form-label me-2 mb-0 text-muted small">Éléments par page:</label>
+                    <select class="form-select form-select-sm" id="perPageSelect" style="width: auto;" onchange="changePerPage(this.value)">
+                        @foreach([10, 20, 50, 100] as $perPage)
+                            <option value="{{ $perPage }}" {{ request('per_page', 20) == $perPage ? 'selected' : '' }}>
+                                {{ $perPage }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
 @endif
 
@@ -843,6 +1111,13 @@ $(document).ready(function() {
     // Restaurer la vue sauvegardée au chargement
     const savedView = localStorage.getItem('productsView') || 'table';
     toggleView(savedView);
+
+    // Ajouter une animation de transition lors du changement de page
+    const tableView = document.getElementById('tableView');
+    const gridView = document.getElementById('gridView');
+    
+    if (tableView) tableView.classList.add('page-transition');
+    if (gridView) gridView.classList.add('page-transition');
 });
 
 // Fonction pour basculer entre vue table et grille
@@ -949,6 +1224,23 @@ function confirmDelete(productId, productName) {
     $('#deleteModal').modal('show');
 }
 
+// Fonction pour aller à une page spécifique
+function goToPage(page) {
+    if (page && page !== '{{ $products->currentPage() }}') {
+        const url = new URL(window.location);
+        url.searchParams.set('page', page);
+        window.location.href = url.toString();
+    }
+}
+
+// Fonction pour changer le nombre d'éléments par page
+function changePerPage(perPage) {
+    const url = new URL(window.location);
+    url.searchParams.set('per_page', perPage);
+    url.searchParams.delete('page'); // Reset à la première page
+    window.location.href = url.toString();
+}
+
 // Raccourcis clavier
 $(document).on('keydown', function(e) {
     // Ctrl + A pour sélectionner tout
@@ -967,6 +1259,43 @@ $(document).on('keydown', function(e) {
         e.preventDefault();
         toggleAdvancedFilters();
     }
+
+    // Navigation par clavier pour la pagination
+    // Flèche gauche pour page précédente
+    if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const prevLink = document.querySelector('.pagination-modern .page-item a[href*="page={{ $products->currentPage() - 1 }}"]');
+        if (prevLink) {
+            window.location.href = prevLink.href;
+        }
+    }
+    
+    // Flèche droite pour page suivante
+    if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        const nextLink = document.querySelector('.pagination-modern .page-item a[href*="page={{ $products->currentPage() + 1 }}"]');
+        if (nextLink) {
+            window.location.href = nextLink.href;
+        }
+    }
+    
+    // Home pour première page
+    if (e.altKey && e.key === 'Home') {
+        e.preventDefault();
+        const firstLink = document.querySelector('.pagination-modern .page-item a[href*="page=1"]');
+        if (firstLink) {
+            window.location.href = firstLink.href;
+        }
+    }
+    
+    // End pour dernière page
+    if (e.altKey && e.key === 'End') {
+        e.preventDefault();
+        const lastLink = document.querySelector('.pagination-modern .page-item a[href*="page={{ $products->lastPage() }}"]');
+        if (lastLink) {
+            window.location.href = lastLink.href;
+        }
+    }
 });
 
 // Debug: Vérifier que les éléments existent
@@ -977,6 +1306,16 @@ $(document).ready(function() {
     console.log('- advancedFilters:', $('#advancedFilters').length);
     console.log('- tableView:', $('#tableView').length);
     console.log('- gridView:', $('#gridView').length);
+
+    // Afficher les raccourcis clavier dans la console (pour les développeurs)
+    console.log('Raccourcis clavier disponibles:');
+    console.log('Ctrl + A : Sélectionner tous les produits');
+    console.log('Escape : Annuler la sélection');
+    console.log('F : Ouvrir/fermer filtres avancés');
+    console.log('Alt + ← : Page précédente');
+    console.log('Alt + → : Page suivante');
+    console.log('Alt + Home : Première page');
+    console.log('Alt + End : Dernière page');
 });
 </script>
 @endsection

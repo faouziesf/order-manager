@@ -82,23 +82,37 @@ Route::prefix('admin')->name('admin.')->group(function () {
         })->name('dashboard');
         
         // ========================================
-        // GESTION DES PRODUITS
+        // GESTION DES PRODUITS - VERSION COMPLÈTE
         // ========================================
-        Route::resource('products', ProductController::class);
+        
+        // Routes spéciales AVANT le resource controller
+        Route::get('products/kanban', [ProductController::class, 'kanban'])
+            ->name('products.kanban');
+        Route::get('products/realtime-stats', [ProductController::class, 'getRealtimeStats'])
+            ->name('products.realtime-stats');
+        Route::get('products/live-search', [ProductController::class, 'liveSearch'])
+            ->name('products.live-search');
+        Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
+            ->name('products.review');
+        Route::get('products/search', [ProductController::class, 'searchProducts'])
+            ->name('products.search');
+        
+        // Actions de marquage et validation
         Route::post('products/{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])
             ->name('products.mark-reviewed');
         Route::post('products/mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])
             ->name('products.mark-all-reviewed');
-        Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
-            ->name('products.review');
+        
+        // Actions groupées - CORRIGÉES
         Route::post('products/bulk-activate', [ProductController::class, 'bulkActivate'])
             ->name('products.bulk-activate');
         Route::post('products/bulk-deactivate', [ProductController::class, 'bulkDeactivate'])
             ->name('products.bulk-deactivate');
         Route::delete('products/bulk-delete', [ProductController::class, 'bulkDelete'])
             ->name('products.bulk-delete');
-        Route::get('products/search', [ProductController::class, 'searchProducts'])
-            ->name('products.search');
+        
+        // CRUD de base - APRÈS les routes spéciales
+        Route::resource('products', ProductController::class);
         
         // ========================================
         // GESTION DES COMMANDES
@@ -169,7 +183,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('login-history.index');
         Route::get('login-history/{user_type}/{user_id}', [LoginHistoryController::class, 'show'])
             ->name('login-history.show');
-
 
         // ========================================
         // IMPORTATION ET INTÉGRATIONS - Version corrigée
