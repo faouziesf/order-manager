@@ -24,6 +24,463 @@ class ProcessController extends Controller
     }
 
     /**
+     * NOUVELLE MÉTHODE: Interface d'examen des commandes avec problèmes de stock
+     */
+    public function examination()
+    {
+        return view('admin.process.examination');
+    }
+
+    /**
+     * NOUVELLE MÉTHODE: Obtenir les commandes pour l'interface d'examen
+     */
+    public function getExaminationOrders(Request $request)
+    {
+        try {
+            $admin = Auth::guard('admin')->user();
+            
+            if (!$admin) {
+                return response()->json([
+                    'error' => 'Non authentifié',
+                    'hasOrders' => false
+                ], 401);
+            }
+
+            // Obtenir les commandes avec problèmes de stock
+            $orders = $this->findOrdersWithStockIssues($admin);
+            
+            if ($orders->count() > 0) {
+                // CORRECTION: Filtrer les nulls et convertir en array
+                $ordersData = $orders->map(function($order) {
+                    return $this->formatOrderDataForExamination($order);
+                })->filter(function($orderData) {
+                    return $orderData !== null; // Filtrer les données nulles
+                })->values()->toArray(); // Convertir en array avec réindexation
+                
+                return response()->json([
+                    'hasOrders' => true,
+                    'orders' => $ordersData,
+                    'total' => count($ordersData)
+                ]);
+            }
+            
+            return response()->json([
+                'hasOrders' => false,
+                'message' => 'Aucune commande avec problème de stock trouvée'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans getExaminationOrders: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Erreur interne du serveur: ' . $e->getMessage(),
+                'hasOrders' => false
+            ], 500);
+        }
+    }
+
+    /**
+     * NOUVELLE MÉTHODE: Compter les commandes avec problèmes de stock
+     */
+    public function getExaminationCount()
+    {
+        try {
+            $admin = Auth::guard('admin')->user();
+            
+            if (!$admin) {
+                return response()->json(['error' => 'Non authentifié'], 401);
+            }
+            
+            $count = $this->countOrdersWithStockIssues($admin);
+            
+            return response()->json([
+                'count' => $count,
+                'timestamp' => now()->toISOString()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans getExaminationCount: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Erreur lors du chargement du compteur',
+                'count' => 0
+            ], 500);
+        }
+    }
+
+    /**
+     * NOUVELLE MÉTHODE: Diviser une commande en retirant les produits problématiques
+     */
+    public function splitOrder(Request $request, Order $order)
+    {
+        try {
+            $this->authorize('update', $order);
+
+            $validated = $request->validate([
+                'notes' => 'required|string|min:3|max:1000'
+            ]);
+
+            DB::beginTransaction();
+
+            $admin = Auth::guard('admin')->user();
+            $notes = $validated['notes'];
+
+            // Vérifier que la commande a des problèmes de stock
+            $stockIssues = $this->analyzeOrderStockIssues($order);
+            
+            if (!$stockIssues['hasIssues'] || $stockIssues['availableItems']->count() === 0) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cette commande ne peut pas être divisée (aucun produit disponible ou pas de problème de stock)'
+                ], 400);
+            }
+
+            // Créer la nouvelle commande avec les produits disponibles
+            $newOrder = $order->replicate();
+            $newOrder->status = 'nouvelle';
+            $newOrder->attempts_count = 0;
+            $newOrder->daily_attempts_count = 0;
+            $newOrder->last_attempt_at = null;
+            $newOrder->is_suspended = false;
+            $newOrder->suspension_reason = null;
+            $newOrder->save();
+
+            // Ajouter les produits disponibles à la nouvelle commande
+            $newTotalPrice = 0;
+            foreach ($stockIssues['availableItems'] as $item) {
+                $newOrder->items()->create([
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'total_price' => $item->total_price,
+                ]);
+                $newTotalPrice += $item->total_price;
+            }
+            
+            $newOrder->total_price = $newTotalPrice;
+            $newOrder->save();
+
+            // Supprimer les produits disponibles de la commande originale
+            foreach ($stockIssues['availableItems'] as $item) {
+                $item->delete();
+            }
+
+            // Recalculer le prix de la commande originale
+            $originalTotalPrice = $stockIssues['unavailableItems']->sum('total_price');
+            $order->total_price = $originalTotalPrice;
+            $order->is_suspended = true;
+            $order->suspension_reason = 'Produits en rupture de stock ou inactifs';
+            $order->save();
+
+            // Enregistrer dans l'historique
+            $order->recordHistory(
+                'division',
+                "Commande divisée par {$admin->name}. Nouvelle commande #{$newOrder->id} créée avec les produits disponibles. Raison: {$notes}",
+                [
+                    'new_order_id' => $newOrder->id,
+                    'available_items_count' => $stockIssues['availableItems']->count(),
+                    'unavailable_items_count' => $stockIssues['unavailableItems']->count(),
+                    'division_reason' => $notes
+                ]
+            );
+
+            $newOrder->recordHistory(
+                'création',
+                "Commande créée suite à la division de la commande #{$order->id} par {$admin->name}. Contient uniquement les produits disponibles.",
+                [
+                    'original_order_id' => $order->id,
+                    'items_count' => $stockIssues['availableItems']->count(),
+                    'created_from_division' => true
+                ]
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Commande divisée avec succès. Nouvelle commande #{$newOrder->id} créée avec les produits disponibles.",
+                'newOrderId' => $newOrder->id,
+                'originalOrderId' => $order->id
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur dans splitOrder: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la division: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * NOUVELLE MÉTHODE: Action d'examen (annuler, modifier, etc.)
+     */
+    public function examinationAction(Request $request, Order $order)
+    {
+        try {
+            $this->authorize('update', $order);
+
+            $validated = $request->validate([
+                'action' => 'required|in:cancel,suspend,reactivate',
+                'notes' => 'required|string|min:3|max:1000'
+            ]);
+
+            DB::beginTransaction();
+
+            $admin = Auth::guard('admin')->user();
+            $action = $validated['action'];
+            $notes = $validated['notes'];
+
+            switch ($action) {
+                case 'cancel':
+                    $order->status = 'annulée';
+                    $order->is_suspended = false;
+                    $order->suspension_reason = null;
+                    $order->save();
+                    
+                    $order->recordHistory(
+                        'annulation',
+                        "Commande annulée depuis l'interface d'examen par {$admin->name}. Raison: {$notes}",
+                        ['cancelled_from_examination' => true]
+                    );
+                    break;
+
+                case 'suspend':
+                    $order->is_suspended = true;
+                    $order->suspension_reason = $notes;
+                    $order->save();
+                    
+                    $order->recordHistory(
+                        'suspension',
+                        "Commande suspendue depuis l'interface d'examen par {$admin->name}. Raison: {$notes}",
+                        ['suspended_from_examination' => true]
+                    );
+                    break;
+
+                case 'reactivate':
+                    // Vérifier d'abord que les stocks sont OK
+                    $stockIssues = $this->analyzeOrderStockIssues($order);
+                    
+                    if ($stockIssues['hasIssues']) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Impossible de réactiver: certains produits sont toujours en rupture de stock ou inactifs'
+                        ], 400);
+                    }
+                    
+                    $order->is_suspended = false;
+                    $order->suspension_reason = null;
+                    $order->save();
+                    
+                    $order->recordHistory(
+                        'réactivation',
+                        "Commande réactivée depuis l'interface d'examen par {$admin->name}. Raison: {$notes}",
+                        ['reactivated_from_examination' => true]
+                    );
+                    break;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Action effectuée avec succès',
+                'order_id' => $order->id,
+                'action' => $action
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur dans examinationAction: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'action' => $request->action,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'action: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper: Trouver les commandes avec problèmes de stock
+     */
+    private function findOrdersWithStockIssues($admin)
+    {
+        return $admin->orders()
+            ->with(['items.product'])
+            ->whereIn('status', ['nouvelle', 'confirmée', 'datée']) // Exclure les annulées et livrées
+            ->get()
+            ->filter(function($order) {
+                return $this->orderHasStockIssues($order);
+            });
+    }
+
+    /**
+     * Helper: Compter les commandes avec problèmes de stock
+     */
+    private function countOrdersWithStockIssues($admin)
+    {
+        $orders = $admin->orders()
+            ->with(['items.product'])
+            ->whereIn('status', ['nouvelle', 'confirmée', 'datée'])
+            ->get();
+
+        return $orders->filter(function($order) {
+            return $this->orderHasStockIssues($order);
+        })->count();
+    }
+
+    /**
+     * Helper: Vérifier si une commande a des problèmes de stock
+     */
+    private function orderHasStockIssues($order)
+    {
+        foreach ($order->items as $item) {
+            if (!$item->product) {
+                return true; // Produit supprimé
+            }
+            
+            if (!$item->product->is_active) {
+                return true; // Produit inactif
+            }
+            
+            if ($item->product->stock < $item->quantity) {
+                return true; // Stock insuffisant
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Helper: Analyser les problèmes de stock d'une commande
+     */
+    private function analyzeOrderStockIssues($order)
+    {
+        $availableItems = collect();
+        $unavailableItems = collect();
+        $issues = [];
+
+        foreach ($order->items as $item) {
+            $hasIssue = false;
+            $issueReasons = [];
+
+            if (!$item->product) {
+                $hasIssue = true;
+                $issueReasons[] = 'Produit supprimé';
+            } else {
+                if (!$item->product->is_active) {
+                    $hasIssue = true;
+                    $issueReasons[] = 'Produit inactif';
+                }
+                
+                if ($item->product->stock < $item->quantity) {
+                    $hasIssue = true;
+                    $issueReasons[] = "Stock insuffisant ({$item->product->stock} disponible, {$item->quantity} demandé)";
+                }
+            }
+
+            if ($hasIssue) {
+                $unavailableItems->push($item);
+                $issues[] = [
+                    'item_id' => $item->id,
+                    'product_name' => $item->product ? $item->product->name : 'Produit supprimé',
+                    'reasons' => $issueReasons
+                ];
+            } else {
+                $availableItems->push($item);
+            }
+        }
+
+        return [
+            'hasIssues' => $unavailableItems->count() > 0,
+            'availableItems' => $availableItems,
+            'unavailableItems' => $unavailableItems,
+            'issues' => $issues
+        ];
+    }
+
+    /**
+     * Helper: Formater les données d'une commande pour l'examen
+     */
+    private function formatOrderDataForExamination($order)
+    {
+        try {
+            // Vérifier que l'ordre est valide
+            if (!$order || !$order->id) {
+                Log::warning('formatOrderDataForExamination: order invalide');
+                return null;
+            }
+
+            // Charger les relations si nécessaire
+            if (!$order->relationLoaded('items')) {
+                $order->load(['items.product']);
+            }
+            
+            $stockAnalysis = $this->analyzeOrderStockIssues($order);
+            
+            return [
+                'id' => $order->id,
+                'status' => $order->status ?? 'nouvelle',
+                'priority' => $order->priority ?? 'normale',
+                'customer_name' => $order->customer_name ?? '',
+                'customer_phone' => $order->customer_phone ?? '',
+                'customer_phone_2' => $order->customer_phone_2 ?? '',
+                'customer_governorate' => $order->customer_governorate ?? '',
+                'customer_city' => $order->customer_city ?? '',
+                'customer_address' => $order->customer_address ?? '',
+                'total_price' => floatval($order->total_price ?? 0),
+                'created_at' => $order->created_at ? $order->created_at->toISOString() : now()->toISOString(),
+                'is_suspended' => $order->is_suspended ?? false,
+                'suspension_reason' => $order->suspension_reason ?? '',
+                'items' => $order->items ? $order->items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'quantity' => intval($item->quantity ?? 0),
+                        'unit_price' => floatval($item->unit_price ?? 0),
+                        'total_price' => floatval($item->total_price ?? 0),
+                        'product' => $item->product ? [
+                            'id' => $item->product->id,
+                            'name' => $item->product->name ?? 'Produit sans nom',
+                            'price' => floatval($item->product->price ?? 0),
+                            'stock' => intval($item->product->stock ?? 0),
+                            'is_active' => $item->product->is_active ?? false
+                        ] : [
+                            'id' => null,
+                            'name' => 'Produit supprimé',
+                            'price' => 0,
+                            'stock' => 0,
+                            'is_active' => false
+                        ]
+                    ];
+                })->toArray() : [],
+                'stock_analysis' => $stockAnalysis
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erreur dans formatOrderDataForExamination: ' . $e->getMessage(), [
+                'order_id' => $order->id ?? 'unknown',
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
+    }
+
+    // ... (garder toutes les autres méthodes existantes de ProcessController)
+
+    /**
      * Route unifiée pour obtenir les données d'une file d'attente
      */
     public function getQueue($queue)
@@ -61,7 +518,8 @@ class ProcessController extends Controller
             // Réinitialiser les compteurs journaliers si nécessaire
             $this->resetDailyCountersIfNeeded($admin);
 
-            $order = $this->findNextOrder($admin, $queue);
+            // MODIFICATION: Exclure les commandes avec problèmes de stock de l'interface normale
+            $order = $this->findNextOrderExcludingStockIssues($admin, $queue);
             
             if ($order) {
                 // Charger les relations nécessaires avec vérification
@@ -93,6 +551,140 @@ class ProcessController extends Controller
     }
 
     /**
+     * MODIFICATION: Trouver la prochaine commande en excluant celles avec problèmes de stock
+     */
+    private function findNextOrderExcludingStockIssues($admin, $queue)
+    {
+        try {
+            if (!$admin || !is_string($queue)) {
+                Log::error('findNextOrderExcludingStockIssues: paramètres invalides', [
+                    'admin' => $admin ? $admin->id : null,
+                    'queue' => $queue,
+                    'queue_type' => gettype($queue)
+                ]);
+                return null;
+            }
+
+            $queue = trim(strtolower($queue));
+            
+            if (!in_array($queue, ['standard', 'dated', 'old'])) {
+                Log::error('findNextOrderExcludingStockIssues: queue invalide', ['queue' => $queue]);
+                return null;
+            }
+
+            $query = Order::where('admin_id', $admin->id)
+                ->with(['items.product']);
+            
+            switch ($queue) {
+                case 'standard':
+                    $orders = $this->findStandardOrdersExcludingStockIssues($query);
+                    break;
+                case 'dated':
+                    $orders = $this->findDatedOrdersExcludingStockIssues($query);
+                    break;
+                case 'old':
+                    $orders = $this->findOldOrdersExcludingStockIssues($query);
+                    break;
+                default:
+                    return null;
+            }
+
+            // Filtrer les commandes pour exclure celles avec problèmes de stock
+            $filteredOrders = $orders->get()->filter(function($order) {
+                return !$this->orderHasStockIssues($order);
+            });
+
+            return $filteredOrders->first();
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans findNextOrderExcludingStockIssues: ' . $e->getMessage(), [
+                'queue' => $queue ?? 'undefined',
+                'admin_id' => $admin ? $admin->id : null
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Helper modifié: Commandes standard sans problèmes de stock
+     */
+    private function findStandardOrdersExcludingStockIssues($query)
+    {
+        $maxTotalAttempts = $this->getSetting('standard_max_total_attempts', 9);
+        $maxDailyAttempts = $this->getSetting('standard_max_daily_attempts', 3);
+        $delayHours = $this->getSetting('standard_delay_hours', 2.5);
+        
+        return $query->where('status', 'nouvelle')
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            })
+            ->orderBy('priority', 'desc')
+            ->orderBy('attempts_count', 'asc')
+            ->orderBy('created_at', 'asc');
+    }
+
+    /**
+     * Helper modifié: Commandes datées sans problèmes de stock
+     */
+    private function findDatedOrdersExcludingStockIssues($query)
+    {
+        $maxTotalAttempts = $this->getSetting('dated_max_total_attempts', 5);
+        $maxDailyAttempts = $this->getSetting('dated_max_daily_attempts', 2);
+        $delayHours = $this->getSetting('dated_delay_hours', 3.5);
+        
+        return $query->where('status', 'datée')
+            ->whereDate('scheduled_date', '<=', now())
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            })
+            ->orderBy('scheduled_date', 'asc')
+            ->orderBy('priority', 'desc')
+            ->orderBy('attempts_count', 'asc');
+    }
+
+    /**
+     * Helper modifié: Commandes anciennes sans problèmes de stock
+     */
+    private function findOldOrdersExcludingStockIssues($query)
+    {
+        $maxDailyAttempts = $this->getSetting('old_max_daily_attempts', 2);
+        $delayHours = $this->getSetting('old_delay_hours', 6);
+        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0);
+        
+        $baseQuery = $query->where('status', 'ancienne')
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
+            })
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            });
+            
+        if ($maxTotalAttempts > 0) {
+            $baseQuery->where('attempts_count', '<', $maxTotalAttempts);
+        }
+        
+        return $baseQuery->orderBy('priority', 'desc')
+            ->orderBy('attempts_count', 'asc')
+            ->orderBy('created_at', 'asc');
+    }
+
+    // ... (garder toutes les autres méthodes existantes)
+
+    /**
      * Obtient les compteurs des files d'attente
      */
     public function getCounts()
@@ -109,15 +701,17 @@ class ProcessController extends Controller
             // Réinitialiser les compteurs journaliers si nécessaire
             $this->resetDailyCountersIfNeeded($admin);
             
-            // Compteurs avec gestion d'erreur
-            $standard = $this->getQueueCount($admin, 'standard');
-            $dated = $this->getQueueCount($admin, 'dated');
-            $old = $this->getQueueCount($admin, 'old');
+            // Compteurs avec gestion d'erreur - MODIFICATION: exclure les commandes avec problèmes de stock
+            $standard = $this->getQueueCountExcludingStockIssues($admin, 'standard');
+            $dated = $this->getQueueCountExcludingStockIssues($admin, 'dated');
+            $old = $this->getQueueCountExcludingStockIssues($admin, 'old');
+            $examination = $this->countOrdersWithStockIssues($admin);
             
             return response()->json([
                 'standard' => $standard,
                 'dated' => $dated,
                 'old' => $old,
+                'examination' => $examination,
                 'timestamp' => now()->toISOString()
             ]);
 
@@ -128,118 +722,53 @@ class ProcessController extends Controller
                 'error' => 'Erreur lors du chargement des compteurs',
                 'standard' => 0,
                 'dated' => 0,
-                'old' => 0
+                'old' => 0,
+                'examination' => 0
             ], 500);
         }
     }
 
     /**
-     * Helper pour obtenir le nombre de commandes dans une file
+     * Helper modifié: Compter les commandes sans problèmes de stock
      */
-    private function getQueueCount($admin, $queue)
+    private function getQueueCountExcludingStockIssues($admin, $queue)
     {
         try {
             if (!is_string($queue) || !in_array($queue, ['standard', 'dated', 'old'])) {
-                Log::warning("getQueueCount: paramètre queue invalide", ['queue' => $queue]);
+                Log::warning("getQueueCountExcludingStockIssues: paramètre queue invalide", ['queue' => $queue]);
                 return 0;
             }
 
-            $query = Order::where('admin_id', $admin->id);
+            $query = Order::where('admin_id', $admin->id)->with(['items.product']);
             
             switch ($queue) {
                 case 'standard':
-                    return $this->getStandardQueueCount($query);
-                        
+                    $orders = $this->findStandardOrdersExcludingStockIssues($query);
+                    break;
                 case 'dated':
-                    return $this->getDatedQueueCount($query);
-                        
+                    $orders = $this->findDatedOrdersExcludingStockIssues($query);
+                    break;
                 case 'old':
-                    return $this->getOldQueueCount($query);
-                        
+                    $orders = $this->findOldOrdersExcludingStockIssues($query);
+                    break;
                 default:
                     return 0;
             }
+
+            // Filtrer pour exclure les commandes avec problèmes de stock
+            $filteredOrders = $orders->get()->filter(function($order) {
+                return !$this->orderHasStockIssues($order);
+            });
+
+            return $filteredOrders->count();
+
         } catch (\Exception $e) {
-            Log::error("Erreur dans getQueueCount pour {$queue}: " . $e->getMessage());
+            Log::error("Erreur dans getQueueCountExcludingStockIssues pour {$queue}: " . $e->getMessage());
             return 0;
         }
     }
 
-    /**
-     * Compteur pour la file standard
-     */
-    private function getStandardQueueCount($query)
-    {
-        $maxTotalAttempts = $this->getSetting('standard_max_total_attempts', 9);
-        $maxDailyAttempts = $this->getSetting('standard_max_daily_attempts', 3);
-        $delayHours = $this->getSetting('standard_delay_hours', 2.5);
-        
-        return $query->where('status', 'nouvelle')
-            ->where('attempts_count', '<', $maxTotalAttempts)
-            ->where('daily_attempts_count', '<', $maxDailyAttempts)
-            ->where(function($q) use ($delayHours) {
-                // Première tentative OU délai écoulé depuis la dernière modification
-                $q->whereNull('last_attempt_at')
-                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
-            })
-            ->where(function($q) {
-                $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            })
-            ->count();
-    }
-
-    /**
-     * Compteur pour la file datée
-     */
-    private function getDatedQueueCount($query)
-    {
-        $maxTotalAttempts = $this->getSetting('dated_max_total_attempts', 5);
-        $maxDailyAttempts = $this->getSetting('dated_max_daily_attempts', 2);
-        $delayHours = $this->getSetting('dated_delay_hours', 3.5);
-        
-        return $query->where('status', 'datée')
-            ->whereDate('scheduled_date', '<=', now())
-            ->where('attempts_count', '<', $maxTotalAttempts)
-            ->where('daily_attempts_count', '<', $maxDailyAttempts)
-            ->where(function($q) use ($delayHours) {
-                // Première tentative OU délai écoulé depuis la dernière modification
-                $q->whereNull('last_attempt_at')
-                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
-            })
-            ->where(function($q) {
-                $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            })
-            ->count();
-    }
-
-    /**
-     * Compteur pour la file ancienne
-     * CORRECTION : Utilise maintenant le statut "ancienne" au lieu de filtrer par tentatives
-     */
-    private function getOldQueueCount($query)
-    {
-        $maxDailyAttempts = $this->getSetting('old_max_daily_attempts', 2);
-        $delayHours = $this->getSetting('old_delay_hours', 6);
-        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0); // 0 = illimité
-        
-        $baseQuery = $query->where('status', 'ancienne') // CORRECTION: Utilise le statut "ancienne"
-            ->where('daily_attempts_count', '<', $maxDailyAttempts)
-            ->where(function($q) use ($delayHours) {
-                // Première tentative OU délai écoulé depuis la dernière modification
-                $q->whereNull('last_attempt_at')
-                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
-            })
-            ->where(function($q) {
-                $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            });
-            
-        // Appliquer la limite totale seulement si elle est définie (> 0)
-        if ($maxTotalAttempts > 0) {
-            $baseQuery->where('attempts_count', '<', $maxTotalAttempts);
-        }
-        
-        return $baseQuery->count();
-    }
+    // ... (garder toutes les autres méthodes existantes)
 
     /**
      * Helper pour obtenir les paramètres avec gestion d'erreur
@@ -257,135 +786,6 @@ class ProcessController extends Controller
             Log::warning("Impossible de récupérer le setting {$key}, utilisation de la valeur par défaut: {$default}");
             return $default;
         }
-    }
-
-    /**
-     * Trouve la prochaine commande à traiter
-     */
-    private function findNextOrder($admin, $queue)
-    {
-        try {
-            if (!$admin || !is_string($queue)) {
-                Log::error('findNextOrder: paramètres invalides', [
-                    'admin' => $admin ? $admin->id : null,
-                    'queue' => $queue,
-                    'queue_type' => gettype($queue)
-                ]);
-                return null;
-            }
-
-            $queue = trim(strtolower($queue));
-            
-            if (!in_array($queue, ['standard', 'dated', 'old'])) {
-                Log::error('findNextOrder: queue invalide', ['queue' => $queue]);
-                return null;
-            }
-
-            $query = Order::where('admin_id', $admin->id);
-            
-            switch ($queue) {
-                case 'standard':
-                    return $this->findStandardOrder($query);
-                case 'dated':
-                    return $this->findDatedOrder($query);
-                case 'old':
-                    return $this->findOldOrder($query);
-                default:
-                    return null;
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans findNextOrder: ' . $e->getMessage(), [
-                'queue' => $queue ?? 'undefined',
-                'admin_id' => $admin ? $admin->id : null
-            ]);
-            return null;
-        }
-    }
-
-    /**
-     * Trouve la prochaine commande standard
-     */
-    private function findStandardOrder($query)
-    {
-        $maxTotalAttempts = $this->getSetting('standard_max_total_attempts', 9);
-        $maxDailyAttempts = $this->getSetting('standard_max_daily_attempts', 3);
-        $delayHours = $this->getSetting('standard_delay_hours', 2.5);
-        
-        return $query->where('status', 'nouvelle')
-            ->where('attempts_count', '<', $maxTotalAttempts)
-            ->where('daily_attempts_count', '<', $maxDailyAttempts)
-            ->where(function($q) use ($delayHours) {
-                // Première tentative OU délai écoulé depuis la dernière modification
-                $q->whereNull('last_attempt_at')
-                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
-            })
-            ->where(function($q) {
-                $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            })
-            ->orderBy('priority', 'desc')  // VIP d'abord
-            ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
-            ->orderBy('created_at', 'asc')  // Plus anciennes d'abord
-            ->first();
-    }
-
-    /**
-     * Trouve la prochaine commande datée
-     */
-    private function findDatedOrder($query)
-    {
-        $maxTotalAttempts = $this->getSetting('dated_max_total_attempts', 5);
-        $maxDailyAttempts = $this->getSetting('dated_max_daily_attempts', 2);
-        $delayHours = $this->getSetting('dated_delay_hours', 3.5);
-        
-        return $query->where('status', 'datée')
-            ->whereDate('scheduled_date', '<=', now())
-            ->where('attempts_count', '<', $maxTotalAttempts)
-            ->where('daily_attempts_count', '<', $maxDailyAttempts)
-            ->where(function($q) use ($delayHours) {
-                // Première tentative OU délai écoulé depuis la dernière modification
-                $q->whereNull('last_attempt_at')
-                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
-            })
-            ->where(function($q) {
-                $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            })
-            ->orderBy('scheduled_date', 'asc')  // Plus anciennes dates d'abord
-            ->orderBy('priority', 'desc')  // VIP d'abord
-            ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
-            ->first();
-    }
-
-    /**
-     * Trouve la prochaine commande ancienne
-     * CORRECTION : Utilise maintenant le statut "ancienne" au lieu de filtrer par tentatives
-     */
-    private function findOldOrder($query)
-    {
-        $maxDailyAttempts = $this->getSetting('old_max_daily_attempts', 2);
-        $delayHours = $this->getSetting('old_delay_hours', 6);
-        $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0); // 0 = illimité
-        
-        $baseQuery = $query->where('status', 'ancienne') // CORRECTION: Utilise le statut "ancienne"
-            ->where('daily_attempts_count', '<', $maxDailyAttempts)
-            ->where(function($q) use ($delayHours) {
-                // Première tentative OU délai écoulé depuis la dernière modification
-                $q->whereNull('last_attempt_at')
-                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
-            })
-            ->where(function($q) {
-                $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            });
-            
-        // Appliquer la limite totale seulement si elle est définie (> 0)
-        if ($maxTotalAttempts > 0) {
-            $baseQuery->where('attempts_count', '<', $maxTotalAttempts);
-        }
-        
-        return $baseQuery->orderBy('priority', 'desc')  // VIP d'abord
-            ->orderBy('attempts_count', 'asc')  // Moins de tentatives d'abord
-            ->orderBy('created_at', 'asc')  // Plus anciennes d'abord
-            ->first();
     }
 
     /**
@@ -650,7 +1050,6 @@ class ProcessController extends Controller
 
     /**
      * Enregistre une tentative d'appel
-     * CORRECTION COMPLÈTE : Change maintenant le statut vers "ancienne" automatiquement
      */
     private function recordCallAttempt(Order $order, $notes)
     {
@@ -665,7 +1064,7 @@ class ProcessController extends Controller
         // Enregistrer dans l'historique
         $order->recordHistory('tentative', $notes);
         
-        // CORRECTION PRINCIPALE: Vérifier si la commande doit passer en "ancienne"
+        // Vérifier si la commande doit passer en "ancienne"
         $standardMaxAttempts = $this->getSetting('standard_max_total_attempts', 9);
         if ($order->status === 'nouvelle' && $order->attempts_count >= $standardMaxAttempts) {
             

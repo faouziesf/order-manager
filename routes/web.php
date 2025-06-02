@@ -82,37 +82,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
         })->name('dashboard');
         
         // ========================================
-        // GESTION DES PRODUITS - VERSION COMPLÈTE
+        // GESTION DES PRODUITS
         // ========================================
-        
-        // Routes spéciales AVANT le resource controller
-        Route::get('products/kanban', [ProductController::class, 'kanban'])
-            ->name('products.kanban');
-        Route::get('products/realtime-stats', [ProductController::class, 'getRealtimeStats'])
-            ->name('products.realtime-stats');
-        Route::get('products/live-search', [ProductController::class, 'liveSearch'])
-            ->name('products.live-search');
-        Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
-            ->name('products.review');
-        Route::get('products/search', [ProductController::class, 'searchProducts'])
-            ->name('products.search');
-        
-        // Actions de marquage et validation
+        Route::resource('products', ProductController::class);
         Route::post('products/{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])
             ->name('products.mark-reviewed');
         Route::post('products/mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])
             ->name('products.mark-all-reviewed');
-        
-        // Actions groupées - CORRIGÉES
+        Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
+            ->name('products.review');
         Route::post('products/bulk-activate', [ProductController::class, 'bulkActivate'])
             ->name('products.bulk-activate');
         Route::post('products/bulk-deactivate', [ProductController::class, 'bulkDeactivate'])
             ->name('products.bulk-deactivate');
         Route::delete('products/bulk-delete', [ProductController::class, 'bulkDelete'])
             ->name('products.bulk-delete');
-        
-        // CRUD de base - APRÈS les routes spéciales
-        Route::resource('products', ProductController::class);
+        Route::get('products/search', [ProductController::class, 'searchProducts'])
+            ->name('products.search');
         
         // ========================================
         // GESTION DES COMMANDES
@@ -146,10 +132,26 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('orders', OrderController::class);
         
         // ========================================
-        // TRAITEMENT DES COMMANDES - NOUVELLE SECTION
+        // TRAITEMENT DES COMMANDES - SECTION ÉTENDUE
         // ========================================
+        
+        // Interface de traitement principal
         Route::get('process', [ProcessController::class, 'interface'])
             ->name('process.interface');
+            
+        // NOUVELLE SECTION: Interface d'examen des commandes avec problèmes de stock
+        Route::get('process/examination', [ProcessController::class, 'examination'])
+            ->name('process.examination');
+        Route::get('process/examination/orders', [ProcessController::class, 'getExaminationOrders'])
+            ->name('process.examination.orders');
+        Route::get('process/examination/count', [ProcessController::class, 'getExaminationCount'])
+            ->name('process.examination.count');
+        Route::post('process/examination/split/{order}', [ProcessController::class, 'splitOrder'])
+            ->name('process.examination.split');
+        Route::post('process/examination/action/{order}', [ProcessController::class, 'examinationAction'])
+            ->name('process.examination.action');
+        
+        // Routes existantes de traitement
         Route::get('process/test', [ProcessController::class, 'test'])
             ->name('process.test');
         Route::get('process/counts', [ProcessController::class, 'getCounts'])

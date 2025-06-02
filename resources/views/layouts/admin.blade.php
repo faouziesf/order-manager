@@ -1444,15 +1444,33 @@
                 </a>
             </li>
 
+            <!-- NOUVEAU MENU TRAITEMENT AVEC SOUS-MENUS -->
             <li class="sidebar-item">
-                <a href="{{ route('admin.process.interface') }}"
-                    class="sidebar-link {{ request()->routeIs('admin.process.interface') ? 'active' : '' }}"
-                    data-tooltip="Traitement">
+                <a href="#" class="sidebar-link {{ request()->routeIs('admin.process*') ? 'active' : '' }}"
+                    data-target="processSubmenu" data-tooltip="Traitement">
                     <div class="sidebar-icon">
                         <i class="fas fa-headset"></i>
                     </div>
                     <span class="sidebar-text">Traitement</span>
+                    <span class="sidebar-badge">
+                        <i class="fas fa-chevron-down"></i>
+                    </span>
                 </a>
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.process*') ? 'show' : '' }}" id="processSubmenu">
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.process.interface') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.interface') ? 'active' : '' }}">
+                            <i class="fas fa-phone"></i>Interface principale
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.process.examination') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.examination') ? 'active' : '' }}">
+                            <i class="fas fa-exclamation-triangle"></i>Examen stock
+                            <span class="badge bg-warning ms-1" id="examination-count-badge" style="display: none;"></span>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
             <li class="sidebar-item">
@@ -2116,6 +2134,33 @@
                 announce('Opération réussie');
             });
         });
+
+        $(document).ready(function() {
+            // Fonction pour charger le compteur d'examen
+            function loadExaminationCount() {
+                $.get('/admin/process/examination/count')
+                    .done(function(data) {
+                        const count = data.count || 0;
+                        const badge = $('#examination-count-badge');
+                        
+                        if (count > 0) {
+                            badge.text(count).show();
+                        } else {
+                            badge.hide();
+                        }
+                    })
+                    .fail(function() {
+                        $('#examination-count-badge').hide();
+                    });
+            }
+            
+            // Charger le compteur au démarrage
+            loadExaminationCount();
+            
+            // Actualiser le compteur toutes les 30 secondes
+            setInterval(loadExaminationCount, 30000);
+        });
+        
     </script>
 
     @yield('scripts')
