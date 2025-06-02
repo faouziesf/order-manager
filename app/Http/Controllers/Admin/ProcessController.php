@@ -1467,7 +1467,155 @@ class ProcessController extends Controller
         }
     }
 
-    // ... (garder toutes les autres méthodes existantes)
+    /**
+     * NOUVELLE: Actions groupées pour commandes suspendues - Réactivation
+     */
+    public function bulkReactivateSuspended(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'order_ids' => 'required|array',
+                'order_ids.*' => 'exists:orders,id',
+                'notes' => 'required|string|min:3|max:1000'
+            ]);
+
+            $admin = Auth::guard('admin')->user();
+            $notes = $validated['notes'];
+
+            DB::beginTransaction();
+
+            $successCount = 0;
+            $errorCount = 0;
+            $errors = [];
+
+            foreach ($validated['order_ids'] as $orderId) {
+                $order = $admin->orders()->find($orderId);
+                
+                if (!$order || !$order->is_suspended) {
+                    $errorCount++;
+                    $errors[] = "Commande #{$orderId} non trouvée ou non suspendue";
+                    continue;
+                }
+
+                // Vérifier que les stocks sont OK
+                if ($this->orderHasStockIssues($order)) {
+                    $errorCount++;
+                    $errors[] = "Commande #{$orderId} a encore des problèmes de stock";
+                    continue;
+                }
+
+                $order->is_suspended = false;
+                $order->suspension_reason = null;
+                $order->save();
+
+                $order->recordHistory(
+                    'réactivation',
+                    "Commande réactivée par réactivation groupée par {$admin->name}. Raison: {$notes}",
+                    ['bulk_reactivation' => true]
+                );
+
+                $successCount++;
+            }
+
+            DB::commit();
+
+            $message = "Réactivation groupée terminée : {$successCount} réussie(s)";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} échec(s)";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'details' => [
+                    'success_count' => $successCount,
+                    'error_count' => $errorCount,
+                    'errors' => $errors
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur dans bulkReactivateSuspended: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la réactivation groupée: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * NOUVELLE: Actions groupées pour commandes suspendues - Annulation
+     */
+    public function bulkCancelSuspended(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'order_ids' => 'required|array',
+                'order_ids.*' => 'exists:orders,id',
+                'notes' => 'required|string|min:3|max:1000'
+            ]);
+
+            $admin = Auth::guard('admin')->user();
+            $notes = $validated['notes'];
+
+            DB::beginTransaction();
+
+            $successCount = 0;
+            $errorCount = 0;
+            $errors = [];
+
+            foreach ($validated['order_ids'] as $orderId) {
+                $order = $admin->orders()->find($orderId);
+                
+                if (!$order || !$order->is_suspended) {
+                    $errorCount++;
+                    $errors[] = "Commande #{$orderId} non trouvée ou non suspendue";
+                    continue;
+                }
+
+                $order->status = 'annulée';
+                $order->is_suspended = false;
+                $order->suspension_reason = null;
+                $order->save();
+
+                $order->recordHistory(
+                    'annulation',
+                    "Commande annulée par annulation groupée par {$admin->name}. Raison: {$notes}",
+                    ['bulk_cancellation' => true]
+                );
+
+                $successCount++;
+            }
+
+            DB::commit();
+
+            $message = "Annulation groupée terminée : {$successCount} réussie(s)";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} échec(s)";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'details' => [
+                    'success_count' => $successCount,
+                    'error_count' => $errorCount,
+                    'errors' => $errors
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur dans bulkCancelSuspended: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'annulation groupée: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     /**
      * Valide les données pour une confirmation
