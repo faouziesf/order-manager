@@ -82,23 +82,39 @@ Route::prefix('admin')->name('admin.')->group(function () {
         })->name('dashboard');
         
         // ========================================
-        // GESTION DES PRODUITS
+        // GESTION DES PRODUITS - ORDRE CRITIQUE CORRIGÉ
         // ========================================
-        Route::resource('products', ProductController::class);
-        Route::post('products/{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])
-            ->name('products.mark-reviewed');
-        Route::post('products/mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])
-            ->name('products.mark-all-reviewed');
+        
+        // Routes spéciales AVANT la route resource (ORDRE CRITIQUE)
         Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
             ->name('products.review');
+        Route::get('products/kanban', [ProductController::class, 'kanban'])
+            ->name('products.kanban');
+        Route::get('products/live-search', [ProductController::class, 'liveSearch'])
+            ->name('products.live-search');
+        Route::get('products/stats', [ProductController::class, 'getStats'])
+            ->name('products.stats');
+        Route::get('products/realtime-stats', [ProductController::class, 'getRealtimeStats'])
+            ->name('products.realtime-stats');
+        Route::get('products/search', [ProductController::class, 'searchProducts'])
+            ->name('products.search');
+        
+        // Actions groupées AVANT resource - TRÈS IMPORTANT
+        Route::post('products/mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])
+            ->name('products.mark-all-reviewed');
         Route::post('products/bulk-activate', [ProductController::class, 'bulkActivate'])
             ->name('products.bulk-activate');
         Route::post('products/bulk-deactivate', [ProductController::class, 'bulkDeactivate'])
             ->name('products.bulk-deactivate');
         Route::delete('products/bulk-delete', [ProductController::class, 'bulkDelete'])
             ->name('products.bulk-delete');
-        Route::get('products/search', [ProductController::class, 'searchProducts'])
-            ->name('products.search');
+        
+        // Actions sur des produits spécifiques AVANT resource
+        Route::post('products/{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])
+            ->name('products.mark-reviewed');
+        
+        // Route resource APRÈS toutes les routes spéciales
+        Route::resource('products', ProductController::class);
         
         // ========================================
         // GESTION DES COMMANDES
@@ -179,7 +195,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('process/counts', [ProcessController::class, 'getCounts'])
             ->name('process.getCounts');
         Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
-            ->where('queue', 'standard|dated|old|restock')  // MISE À JOUR: ajout de restock
+            ->where('queue', 'standard|dated|old|restock')
             ->name('process.getQueue');
         Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
             ->name('process.action');
@@ -228,7 +244,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/delete/{id}', [WooCommerceController::class, 'deleteIntegration'])->name('delete');
         });
 
-        // Route pour récupérer les villes (AJAX) - NOUVELLE ROUTE MANQUANTE
+        // Route pour récupérer les villes (AJAX)
         Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');
         
         // ========================================

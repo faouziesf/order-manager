@@ -950,9 +950,6 @@ class ProcessController extends Controller
 
     // ... (continuer avec les autres méthodes existantes)
 
-    /**
-     * Route unifiée pour obtenir les données d'une file d'attente
-     */
     public function getQueue($queue)
     {
         try {
@@ -985,6 +982,7 @@ class ProcessController extends Controller
 
             $this->resetDailyCountersIfNeeded($admin);
 
+            // CORRECTION: Gestion spéciale pour restock
             if ($queue === 'restock') {
                 $order = $this->findNextRestockOrder($admin);
             } else {
@@ -1020,22 +1018,59 @@ class ProcessController extends Controller
     }
 
     /**
-     * NOUVELLE: Trouver la prochaine commande pour le retour en stock
+     * CORRECTION: Trouver la prochaine commande pour le retour en stock avec logging amélioré
      */
     private function findNextRestockOrder($admin)
     {
         try {
-            $suspendedOrders = $admin->orders()
+            Log::info("findNextRestockOrder: Début de la recherche pour admin {$admin->id}");
+            
+            // Paramètres spécifiques pour les commandes retour en stock
+            $maxTotalAttempts = $this->getSetting('restock_max_total_attempts', 10); // Augmenté
+            $maxDailyAttempts = $this->getSetting('restock_max_daily_attempts', 5);  // Augmenté
+            $delayHours = $this->getSetting('restock_delay_hours', 0.5); // Réduit
+
+            Log::info("findNextRestockOrder: Paramètres - max_total: {$maxTotalAttempts}, max_daily: {$maxDailyAttempts}, delay: {$delayHours}h");
+
+            // Chercher les commandes suspendues avec statut nouvelle ou datée
+            $query = Order::where('admin_id', $admin->id)
                 ->with(['items.product'])
                 ->where('is_suspended', true)
-                ->whereNotIn('status', ['annulée', 'livrée'])
+                ->whereIn('status', ['nouvelle', 'datée'])
+                ->whereNotIn('status', ['annulée', 'livrée']) // Exclure explicitement
+                ->where('attempts_count', '<', $maxTotalAttempts)
+                ->where('daily_attempts_count', '<', $maxDailyAttempts)
+                ->where(function($q) use ($delayHours) {
+                    $q->whereNull('last_attempt_at')
+                    ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+                })
                 ->orderBy('priority', 'desc')
-                ->orderBy('created_at', 'asc')
-                ->get();
+                ->orderBy('created_at', 'asc');
 
-            return $suspendedOrders->filter(function($order) {
-                return $this->orderCanBeReactivated($order);
-            })->first();
+            $orders = $query->get();
+            Log::info("findNextRestockOrder: {$orders->count()} commandes suspendues trouvées");
+
+            // Filtrer les commandes qui peuvent maintenant être traitées
+            $eligibleOrders = collect();
+            
+            foreach ($orders as $order) {
+                $canReactivate = $this->orderCanBeReactivatedDebug($order);
+                Log::info("findNextRestockOrder: Commande {$order->id} - peut être réactivée: " . ($canReactivate ? 'OUI' : 'NON'));
+                
+                if ($canReactivate) {
+                    $eligibleOrders->push($order);
+                }
+            }
+
+            $selectedOrder = $eligibleOrders->first();
+            
+            if ($selectedOrder) {
+                Log::info("findNextRestockOrder: Commande sélectionnée: {$selectedOrder->id}");
+            } else {
+                Log::info("findNextRestockOrder: Aucune commande éligible trouvée");
+            }
+
+            return $selectedOrder;
 
         } catch (\Exception $e) {
             Log::error('Erreur dans findNextRestockOrder: ' . $e->getMessage());
@@ -1170,7 +1205,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Obtient les compteurs des files d'attente
+     * MISE À JOUR: Corriger getCounts pour inclure restock
      */
     public function getCounts()
     {
@@ -1188,9 +1223,11 @@ class ProcessController extends Controller
             $standard = $this->getQueueCountExcludingStockIssues($admin, 'standard');
             $dated = $this->getQueueCountExcludingStockIssues($admin, 'dated');
             $old = $this->getQueueCountExcludingStockIssues($admin, 'old');
-            $examination = $this->countOrdersWithStockIssues($admin, false); // false = ne pas inclure les suspendues
+            $examination = $this->countOrdersWithStockIssues($admin, false);
             $suspended = $admin->orders()->where('is_suspended', true)->whereNotIn('status', ['annulée', 'livrée'])->count();
-            $restock = $this->getRestockCount()->getData()->count ?? 0;
+            
+            // NOUVEAU: Compter les commandes restock
+            $restock = $this->getRestockCountForInterface($admin);
             
             return response()->json([
                 'standard' => $standard,
@@ -1471,6 +1508,42 @@ class ProcessController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * NOUVELLE: Compter les commandes pour l'interface restock
+     */
+    private function getRestockCountForInterface($admin)
+    {
+        try {
+            $maxTotalAttempts = $this->getSetting('restock_max_total_attempts', 5);
+            $maxDailyAttempts = $this->getSetting('restock_max_daily_attempts', 2);
+            $delayHours = $this->getSetting('restock_delay_hours', 1);
+
+            $query = Order::where('admin_id', $admin->id)
+                ->with(['items.product'])
+                ->where('is_suspended', true)
+                ->whereIn('status', ['nouvelle', 'datée'])
+                ->where('attempts_count', '<', $maxTotalAttempts)
+                ->where('daily_attempts_count', '<', $maxDailyAttempts)
+                ->where(function($q) use ($delayHours) {
+                    $q->whereNull('last_attempt_at')
+                    ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+                });
+
+            $orders = $query->get();
+
+            $count = $orders->filter(function($order) {
+                return $this->orderCanBeReactivated($order);
+            })->count();
+
+            return $count;
+
+        } catch (\Exception $e) {
+            Log::error("Erreur dans getRestockCountForInterface: " . $e->getMessage());
+            return 0;
+        }
+    }    
+
 
     /**
      * NOUVELLE: Actions groupées pour commandes suspendues - Réactivation

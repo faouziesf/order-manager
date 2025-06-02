@@ -177,6 +177,17 @@
         animation: pulse 2s infinite;
     }
 
+    /* Badge spécial pour restock */
+    .queue-tab[data-queue="restock"] .queue-badge {
+        background: rgba(16, 185, 129, 0.9);
+        color: white;
+    }
+
+    .queue-tab[data-queue="restock"].active .queue-badge {
+        background: #10b981;
+        color: white;
+    }
+
     @keyframes pulse {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.05); }
@@ -977,7 +988,7 @@
                 <div class="queue-badge" id="old-count">0</div>
             </div>
             
-            <!-- NOUVEL ONGLET RETOUR EN STOCK -->
+            <!-- ONGLET RETOUR EN STOCK CORRIGÉ -->
             <div class="queue-tab" data-queue="restock">
                 <div class="queue-icon">
                     <i class="fas fa-box-open"></i>
@@ -1041,7 +1052,7 @@
                         <div class="restock-info" id="restock-info" style="display: none;">
                             <div class="restock-header">
                                 <i class="fas fa-check-circle"></i>
-                                <span>Commande prête pour réactivation</span>
+                                <span>Commande suspendue - Retour en stock</span>
                             </div>
                             <div class="restock-message">
                                 Cette commande était suspendue mais tous ses produits sont maintenant disponibles en stock. 
@@ -1280,7 +1291,7 @@ $(document).ready(function() {
         $('#btn-confirm').on('click', () => showActionModal('confirm'));
         $('#btn-cancel').on('click', () => showActionModal('cancel'));
         $('#btn-schedule').on('click', () => showActionModal('schedule'));
-        $('#btn-reactivate').on('click', () => showActionModal('reactivate')); // NOUVEAU
+        $('#btn-reactivate').on('click', () => showActionModal('reactivate'));
         $('#btn-history').on('click', () => showHistoryModal());
         
         // Changement de gouvernorat
@@ -1300,14 +1311,17 @@ $(document).ready(function() {
                 $('#standard-count').text(data.standard || 0);
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
-                $('#restock-count').text(data.restock || 0); // NOUVEAU
+                $('#restock-count').text(data.restock || 0);
             })
             .fail(function(xhr, status, error) {
                 showNotification('Erreur lors du chargement des compteurs', 'error');
+                console.error('Erreur compteurs:', error);
             });
     }
     
     function switchQueue(queue) {
+        console.log('Changement de file vers:', queue);
+        
         // Mettre à jour l'UI
         $('.queue-tab').removeClass('active');
         $(`.queue-tab[data-queue="${queue}"]`).addClass('active');
@@ -1323,17 +1337,24 @@ $(document).ready(function() {
     }
     
     function loadCurrentQueue() {
+        console.log('Chargement de la file:', currentQueue);
+        
         $.get(`/admin/process/${currentQueue}`)
             .done(function(data) {
-                if (data.hasOrder) {
+                console.log('Données reçues pour', currentQueue, ':', data);
+                
+                if (data.hasOrder && data.order) {
                     currentOrder = data.order;
                     displayOrder(data.order);
                     showMainContent();
                 } else {
+                    console.log('Aucune commande disponible pour', currentQueue);
                     showNoOrderMessage();
                 }
             })
             .fail(function(xhr, status, error) {
+                console.error('Erreur lors du chargement de', currentQueue, ':', error);
+                console.error('Réponse:', xhr.responseText);
                 showNotification('Erreur lors du chargement de la commande', 'error');
                 showNoOrderMessage();
             });
@@ -1344,10 +1365,12 @@ $(document).ready(function() {
     // =========================
     
     function displayOrder(order) {
+        console.log('Affichage de la commande:', order);
+        
         // Informations de base
         $('#order-number').text(order.id);
         $('#order-date').text(formatDate(order.created_at));
-        $('#order-attempts').text(`${order.attempts_count} tentative(s)`);
+        $('#order-attempts').text(`${order.attempts_count || 0} tentative(s)`);
         $('#order-last-attempt').text(order.last_attempt_at ? formatDate(order.last_attempt_at) : 'Jamais');
         
         // Statut
@@ -1355,12 +1378,13 @@ $(document).ready(function() {
         statusElement.removeClass().addClass('order-status').addClass(`status-${order.status}`);
         statusElement.text(capitalizeFirst(order.status));
         
-        // NOUVEAU: Affichage spécial pour retour en stock
+        // Affichage spécial pour retour en stock
         if (currentQueue === 'restock') {
             $('#restock-info').show();
             $('#btn-reactivate').show();
-            // Modifier le message no répond pas pour retour en stock
+            // Modifier le message pour retour en stock
             $('#btn-call span').text('Reporter');
+            console.log('Interface restock activée');
         } else {
             $('#restock-info').hide();
             $('#btn-reactivate').hide();
@@ -1680,7 +1704,7 @@ $(document).ready(function() {
             case 'schedule':
                 showScheduleModal();
                 break;
-            case 'reactivate': // NOUVEAU
+            case 'reactivate':
                 showReactivateModal();
                 break;
         }
@@ -1744,7 +1768,6 @@ $(document).ready(function() {
         modal.modal('show');
     }
     
-    // NOUVELLE FONCTION
     function showReactivateModal() {
         if (currentQueue !== 'restock') {
             showNotification('Cette action n\'est disponible que dans la file retour en stock', 'error');
@@ -1851,6 +1874,8 @@ $(document).ready(function() {
             return;
         }
         
+        console.log('Traitement action:', action, 'pour queue:', currentQueue);
+        
         // Préparation des données
         const requestData = {
             action: action,
@@ -1883,17 +1908,22 @@ $(document).ready(function() {
             }
         })
         .done(function(response) {
+            console.log('Action réussie:', response);
             showNotification('Action traitée avec succès!', 'success');
             
             // Fermer les modales
             $('.modal').modal('hide');
             
-            // Recharger la page immédiatement pour rafraîchir complètement l'interface
+            // Recharger la file et les compteurs
             setTimeout(() => {
-                window.location.reload();
+                loadQueueCounts();
+                loadCurrentQueue();
             }, 500);
         })
         .fail(function(xhr, status, error) {
+            console.error('Erreur action:', error);
+            console.error('Réponse:', xhr.responseText);
+            
             let errorMessage = 'Erreur lors du traitement de l\'action';
             if (xhr.responseJSON && xhr.responseJSON.error) {
                 errorMessage = xhr.responseJSON.error;

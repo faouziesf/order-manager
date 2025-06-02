@@ -1,26 +1,26 @@
 {{-- resources/views/admin/process/suspended-modals.blade.php --}}
 
-<!-- Modal Réactiver la Commande -->
+<!-- Modal Réactivation de Commande Suspendue -->
 <div class="modal fade" id="reactivateModal" tabindex="-1" aria-labelledby="reactivateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="reactivateModalLabel">
                     <i class="fas fa-play-circle"></i>
-                    Réactiver la commande
+                    Réactiver la commande suspendue
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-success">
-                    <i class="fas fa-play-circle me-2"></i>
-                    Cette action va réactiver la commande #<span id="reactivate-order-number">0</span> et la remettre 
-                    dans le circuit de traitement normal.
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Réactivation de la commande #<span id="reactivate-order-number">0</span></strong><br>
+                    Cette action va réactiver la commande et la remettre dans le circuit normal de traitement.
                 </div>
                 
                 <div class="alert alert-info">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <strong>Vérification effectuée :</strong> Tous les produits de cette commande sont maintenant disponibles en stock et actifs.
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Vérification importante :</strong> Assurez-vous que tous les problèmes ayant causé la suspension ont été résolus avant de réactiver cette commande.
                 </div>
                 
                 <div class="form-group">
@@ -29,10 +29,10 @@
                         Notes de réactivation <span class="text-danger">*</span>
                     </label>
                     <textarea class="form-control" id="reactivate-notes" rows="4" 
-                              placeholder="Expliquez pourquoi vous réactivez cette commande (ex: Stock reconstitué, problème résolu, validation client obtenue, etc.)" 
+                              placeholder="Confirmez que les problèmes sont résolus (ex: Stock reconstitué, produits réactivés, problème technique résolu, etc.)" 
                               required></textarea>
                     <small class="form-text text-muted">
-                        Ces notes confirmeront que les problèmes ont été résolus.
+                        Cette commande sera remise dans la file standard après réactivation et pourra être traitée normalement.
                     </small>
                 </div>
                 
@@ -43,29 +43,34 @@
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
                 <button type="button" class="btn btn-success" onclick="submitReactivate()">
-                    <i class="fas fa-play-circle me-2"></i>Réactiver la commande
+                    <i class="fas fa-play-circle me-2"></i>Réactiver maintenant
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Annuler la Commande -->
+<!-- Modal Annulation de Commande Suspendue -->
 <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="cancelModalLabel">
                     <i class="fas fa-times-circle"></i>
-                    Annuler la commande
+                    Annuler la commande suspendue
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Attention !</strong> Cette action va définitivement annuler la commande #<span id="cancel-order-number">0</span>. 
+                    <strong>Attention !</strong> Cette action va définitivement annuler la commande suspendue #<span id="cancel-order-number">0</span>. 
                     Cette action ne peut pas être annulée.
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Commande suspendue :</strong> Cette commande était déjà suspendue. L'annulation la retirera définitivement du système.
                 </div>
                 
                 <div class="form-group">
@@ -74,7 +79,7 @@
                         Raison de l'annulation <span class="text-danger">*</span>
                     </label>
                     <textarea class="form-control" id="cancel-notes" rows="4" 
-                              placeholder="Expliquez pourquoi vous annulez cette commande (ex: Produits définitivement en rupture, client a changé d'avis, problème de livraison, etc.)" 
+                              placeholder="Expliquez pourquoi cette commande suspendue est définitivement annulée (ex: Problème irrésoluble, client injoignable, commande obsolète, etc.)" 
                               required></textarea>
                     <small class="form-text text-muted">
                         Ces informations seront utiles pour les statistiques et l'amélioration du service.
@@ -95,30 +100,31 @@
     </div>
 </div>
 
-<!-- Modal Modifier la Raison de Suspension -->
+<!-- Modal Modification de la Raison de Suspension -->
 <div class="modal fade" id="modifySuspensionModal" tabindex="-1" aria-labelledby="modifySuspensionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modifySuspensionModalLabel">
-                    <i class="fas fa-pen"></i>
+                    <i class="fas fa-edit"></i>
                     Modifier la raison de suspension
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="alert alert-warning">
-                    <i class="fas fa-pen me-2"></i>
-                    Modification de la raison de suspension pour la commande #<span id="modify-order-number">0</span>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Modification de la suspension de la commande #<span id="modify-order-number">0</span></strong><br>
+                    Cette action vous permet de mettre à jour la raison de suspension sans modifier le statut de la commande.
                 </div>
                 
                 <div class="form-group mb-3">
                     <label class="form-label fw-bold">
-                        <i class="fas fa-history me-2"></i>
-                        Raison actuelle
+                        <i class="fas fa-eye me-2"></i>
+                        Raison actuelle de suspension
                     </label>
-                    <div class="alert alert-light border">
-                        <span id="modify-current-reason">-</span>
+                    <div class="p-3 bg-light border rounded">
+                        <em id="modify-current-reason">Chargement...</em>
                     </div>
                 </div>
                 
@@ -130,6 +136,9 @@
                     <textarea class="form-control" id="modify-new-reason" rows="3" 
                               placeholder="Saisissez la nouvelle raison de suspension..." 
                               required></textarea>
+                    <small class="form-text text-muted">
+                        Cette nouvelle raison remplacera l'ancienne dans l'affichage de la commande.
+                    </small>
                 </div>
                 
                 <div class="form-group">
@@ -141,7 +150,7 @@
                               placeholder="Expliquez pourquoi vous modifiez la raison de suspension..." 
                               required></textarea>
                     <small class="form-text text-muted">
-                        Ces notes seront ajoutées à l'historique de la commande.
+                        Cette note sera ajoutée à l'historique de la commande pour traçabilité.
                     </small>
                 </div>
                 
@@ -151,35 +160,41 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
-                <button type="button" class="btn btn-warning" onclick="submitModifySuspension()">
-                    <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                <button type="button" class="btn btn-primary" onclick="submitModifySuspension()">
+                    <i class="fas fa-save me-2"></i>Sauvegarder les modifications
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Actions Groupées - Réactivation -->
+<!-- Modal Réactivation Groupée des Commandes Suspendues -->
 <div class="modal fade" id="bulkReactivateModal" tabindex="-1" aria-labelledby="bulkReactivateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="bulkReactivateModalLabel">
                     <i class="fas fa-play-circle"></i>
-                    Réactivation groupée
+                    Réactivation groupée des commandes suspendues
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-success">
-                    <i class="fas fa-play-circle me-2"></i>
-                    Vous êtes sur le point de réactiver <strong><span id="bulk-reactivate-count">0</span></strong> commande(s).
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Réactivation groupée</strong><br>
+                    Cette action va réactiver <span class="fw-bold" id="bulk-reactivate-count">0</span> commandes suspendues sélectionnées
+                    et les remettre dans le circuit normal de traitement.
                 </div>
                 
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
-                    <strong>Important :</strong> Seules les commandes sans problème de stock peuvent être réactivées. 
-                    Le système a vérifié que tous les produits sont disponibles.
+                    <strong>Vérification importante :</strong> Assurez-vous que tous les problèmes ayant causé la suspension ont été résolus pour toutes les commandes sélectionnées.
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Seules les commandes sans problème de stock</strong> peuvent être réactivées. Les autres seront automatiquement exclues du traitement.
                 </div>
                 
                 <div class="form-group">
@@ -188,8 +203,11 @@
                         Notes de réactivation groupée <span class="text-danger">*</span>
                     </label>
                     <textarea class="form-control" id="bulk-reactivate-notes" rows="4" 
-                              placeholder="Expliquez la raison de cette réactivation groupée (ex: Réapprovisionnement massif, résolution d'un problème technique, etc.)" 
+                              placeholder="Confirmez que les problèmes sont résolus (ex: Stock reconstitué globalement, maintenance terminée, problèmes techniques résolus, etc.)" 
                               required></textarea>
+                    <small class="form-text text-muted">
+                        Ces commandes seront remises dans les files standard après réactivation et pourront être traitées normalement.
+                    </small>
                 </div>
                 
                 <input type="hidden" id="bulk-reactivate-orders" value="">
@@ -206,22 +224,28 @@
     </div>
 </div>
 
-<!-- Modal Actions Groupées - Annulation -->
+<!-- Modal Annulation Groupée des Commandes Suspendues -->
 <div class="modal fade" id="bulkCancelModal" tabindex="-1" aria-labelledby="bulkCancelModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="bulkCancelModalLabel">
                     <i class="fas fa-times-circle"></i>
-                    Annulation groupée
+                    Annulation groupée des commandes suspendues
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Attention !</strong> Vous êtes sur le point d'annuler définitivement <strong><span id="bulk-cancel-count">0</span></strong> commande(s). 
+                    <strong>Attention !</strong> Cette action va définitivement annuler 
+                    <span class="fw-bold" id="bulk-cancel-count">0</span> commandes suspendues sélectionnées.
                     Cette action ne peut pas être annulée.
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-clock me-2"></i>
+                    <strong>Commandes suspendues :</strong> Ces commandes étaient déjà suspendues. L'annulation les retirera définitivement du système.
                 </div>
                 
                 <div class="form-group">
@@ -230,13 +254,11 @@
                         Raison de l'annulation groupée <span class="text-danger">*</span>
                     </label>
                     <textarea class="form-control" id="bulk-cancel-notes" rows="4" 
-                              placeholder="Expliquez pourquoi vous annulez ces commandes (ex: Arrêt définitif de produits, changement de stratégie, etc.)" 
+                              placeholder="Expliquez pourquoi ces commandes suspendues sont définitivement annulées (ex: Nettoyage de base, commandes obsolètes, problèmes irrésolus, etc.)" 
                               required></textarea>
-                </div>
-                
-                <div class="alert alert-warning mt-3">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Rappel :</strong> Cette action affectera toutes les commandes sélectionnées et sera enregistrée dans l'historique de chaque commande.
+                    <small class="form-text text-muted">
+                        Ces informations seront utiles pour les statistiques et l'amélioration du service.
+                    </small>
                 </div>
                 
                 <input type="hidden" id="bulk-cancel-orders" value="">
@@ -246,7 +268,7 @@
                     <i class="fas fa-arrow-left me-2"></i>Retour
                 </button>
                 <button type="button" class="btn btn-danger" onclick="submitBulkCancel()">
-                    <i class="fas fa-times-circle me-2"></i>Confirmer les annulations
+                    <i class="fas fa-times-circle me-2"></i>Confirmer l'annulation groupée
                 </button>
             </div>
         </div>
@@ -254,7 +276,7 @@
 </div>
 
 <style>
-/* Styles spécifiques aux modales suspendues */
+/* Styles spécifiques aux modales de commandes suspendues */
 .modal-content {
     border: none;
     border-radius: 20px;
@@ -339,10 +361,10 @@
     border-left: 4px solid currentColor;
 }
 
-.alert-warning {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
-    color: #92400e;
-    border-left-color: #f59e0b;
+.alert-info {
+    background: linear-gradient(135deg, #cffafe 0%, #67e8f9 100%);
+    color: #0c4a6e;
+    border-left-color: #06b6d4;
 }
 
 .alert-success {
@@ -357,16 +379,10 @@
     border-left-color: #ef4444;
 }
 
-.alert-info {
-    background: linear-gradient(135deg, #cffafe 0%, #67e8f9 100%);
-    color: #0c4a6e;
-    border-left-color: #06b6d4;
-}
-
-.alert-light {
-    background: #f8f9fa;
-    color: #6c757d;
-    border-left-color: #dee2e6;
+.alert-warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
+    color: #92400e;
+    border-left-color: #f59e0b;
 }
 
 .btn {
@@ -383,6 +399,11 @@
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
 }
 
 .btn-success {
@@ -405,6 +426,11 @@
     color: white;
 }
 
+.bg-light {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+    border: 1px solid #e5e7eb !important;
+}
+
 /* Animation pour les modales */
 .modal.fade .modal-dialog {
     transform: scale(0.8) translateY(-50px);
@@ -414,57 +440,68 @@
 .modal.show .modal-dialog {
     transform: scale(1) translateY(0);
 }
-
-/* Responsive */
-@media (max-width: 768px) {
-    .modal-body {
-        padding: 1.5rem;
-    }
-    
-    .modal-footer {
-        padding: 1.25rem 1.5rem;
-    }
-}
 </style>
 
 <script>
-// Fonctions pour traiter les actions des modales suspendues
+// Fonctions pour les modales des commandes suspendues
+
+window.submitReactivate = function() {
+    const orderId = $('#reactivateOrderId').val();
+    const notes = $('#reactivate-notes').val().trim();
+    
+    if (!notes) {
+        showNotification('Veuillez saisir une raison pour la réactivation', 'error');
+        return;
+    }
+    
+    processSuspendedAction(orderId, 'reactivate', notes, '#reactivateModal');
+};
+
+window.submitCancel = function() {
+    const orderId = $('#cancelOrderId').val();
+    const notes = $('#cancel-notes').val().trim();
+    
+    if (!notes) {
+        showNotification('Veuillez saisir une raison pour l\'annulation', 'error');
+        return;
+    }
+    
+    processSuspendedAction(orderId, 'cancel', notes, '#cancelModal');
+};
+
+window.submitModifySuspension = function() {
+    const orderId = $('#modifyOrderId').val();
+    const newReason = $('#modify-new-reason').val().trim();
+    const notes = $('#modify-notes').val().trim();
+    
+    if (!newReason || !notes) {
+        showNotification('Veuillez remplir tous les champs', 'error');
+        return;
+    }
+    
+    processSuspendedAction(orderId, 'edit_suspension', notes, '#modifySuspensionModal', {
+        new_suspension_reason: newReason
+    });
+};
 
 window.submitBulkReactivate = function() {
     const orders = $('#bulk-reactivate-orders').val();
     const notes = $('#bulk-reactivate-notes').val().trim();
     
     if (!notes) {
-        showNotification('Veuillez saisir des notes pour cette réactivation groupée', 'error');
+        showNotification('Veuillez saisir une raison pour la réactivation groupée', 'error');
         return;
     }
     
-    const submitBtn = $('#bulkReactivateModal .btn-success');
-    const originalText = submitBtn.html();
-    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Réactivation...');
+    if (!orders) {
+        showNotification('Aucune commande sélectionnée', 'error');
+        return;
+    }
     
-    $.post('/admin/process/suspended/bulk-reactivate', {
+    processBulkSuspendedAction('/admin/process/suspended/bulk-reactivate', {
         order_ids: orders.split(','),
         notes: notes
-    })
-    .done(function(response) {
-        $('#bulkReactivateModal').modal('hide');
-        showNotification(response.message, 'success');
-        
-        setTimeout(() => {
-            refreshOrders();
-        }, 1000);
-    })
-    .fail(function(xhr) {
-        let errorMessage = 'Erreur lors de la réactivation groupée';
-        if (xhr.responseJSON && xhr.responseJSON.message) {
-            errorMessage = xhr.responseJSON.message;
-        }
-        showNotification(errorMessage, 'error');
-    })
-    .always(function() {
-        submitBtn.prop('disabled', false).html(originalText);
-    });
+    }, '#bulkReactivateModal');
 };
 
 window.submitBulkCancel = function() {
@@ -472,33 +509,47 @@ window.submitBulkCancel = function() {
     const notes = $('#bulk-cancel-notes').val().trim();
     
     if (!notes) {
-        showNotification('Veuillez saisir une raison pour cette annulation groupée', 'error');
+        showNotification('Veuillez saisir une raison pour l\'annulation groupée', 'error');
         return;
     }
     
-    // Demander confirmation
-    if (!confirm('Êtes-vous sûr de vouloir annuler définitivement ces commandes ?')) {
+    if (!orders) {
+        showNotification('Aucune commande sélectionnée', 'error');
         return;
     }
     
-    const submitBtn = $('#bulkCancelModal .btn-danger');
-    const originalText = submitBtn.html();
-    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Annulation...');
-    
-    $.post('/admin/process/suspended/bulk-cancel', {
+    processBulkSuspendedAction('/admin/process/suspended/bulk-cancel', {
         order_ids: orders.split(','),
         notes: notes
-    })
+    }, '#bulkCancelModal');
+};
+
+function processSuspendedAction(orderId, action, notes, modalSelector, extraData = {}) {
+    const submitBtn = $(modalSelector + ' .btn-primary, ' + modalSelector + ' .btn-success, ' + modalSelector + ' .btn-danger');
+    const originalText = submitBtn.html();
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Traitement...');
+    
+    const data = {
+        action: action,
+        notes: notes,
+        ...extraData
+    };
+    
+    $.post(`/admin/process/suspended/action/${orderId}`, data)
     .done(function(response) {
-        $('#bulkCancelModal').modal('hide');
+        $(modalSelector).modal('hide');
         showNotification(response.message, 'success');
         
         setTimeout(() => {
-            refreshOrders();
+            if (typeof refreshOrders === 'function') {
+                refreshOrders();
+            } else {
+                window.location.reload();
+            }
         }, 1000);
     })
     .fail(function(xhr) {
-        let errorMessage = 'Erreur lors de l\'annulation groupée';
+        let errorMessage = 'Erreur lors du traitement';
         if (xhr.responseJSON && xhr.responseJSON.message) {
             errorMessage = xhr.responseJSON.message;
         }
@@ -507,5 +558,69 @@ window.submitBulkCancel = function() {
     .always(function() {
         submitBtn.prop('disabled', false).html(originalText);
     });
-};
+}
+
+function processBulkSuspendedAction(url, data, modalSelector) {
+    // Masquer la modal actuelle et afficher la modal de progression si elle existe
+    $(modalSelector).modal('hide');
+    
+    if ($('#bulkProgressModal').length) {
+        showProgressModal(data.order_ids.length);
+    }
+    
+    const submitBtn = $(modalSelector + ' .btn-primary, ' + modalSelector + ' .btn-success, ' + modalSelector + ' .btn-danger');
+    const originalText = submitBtn.html();
+    submitBtn.prop('disabled', true);
+    
+    $.ajax({
+        url: url,
+        method: 'POST',
+        data: data,
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    })
+    .done(function(response) {
+        if ($('#bulkProgressModal').length) {
+            updateProgressModal(response);
+            
+            setTimeout(() => {
+                $('#bulkProgressModal').modal('hide');
+                showNotification(response.message, 'success');
+                
+                setTimeout(() => {
+                    if (typeof refreshOrders === 'function') {
+                        refreshOrders();
+                    } else {
+                        window.location.reload();
+                    }
+                }, 1000);
+            }, 2000);
+        } else {
+            showNotification(response.message, 'success');
+            
+            setTimeout(() => {
+                if (typeof refreshOrders === 'function') {
+                    refreshOrders();
+                } else {
+                    window.location.reload();
+                }
+            }, 1000);
+        }
+    })
+    .fail(function(xhr) {
+        if ($('#bulkProgressModal').length) {
+            $('#bulkProgressModal').modal('hide');
+        }
+        
+        let errorMessage = 'Erreur lors du traitement groupé';
+        if (xhr.responseJSON && xhr.responseJSON.message) {
+            errorMessage = xhr.responseJSON.message;
+        }
+        showNotification(errorMessage, 'error');
+    })
+    .always(function() {
+        submitBtn.prop('disabled', false).html(originalText);
+    });
+}
 </script>
