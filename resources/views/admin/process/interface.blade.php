@@ -11,6 +11,7 @@
         --process-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         --process-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         --process-info: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        --process-restock: linear-gradient(135deg, #10b981 0%, #059669 100%);
         --glass-bg: rgba(255, 255, 255, 0.95);
         --glass-border: rgba(255, 255, 255, 0.2);
         --shadow-elevated: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -93,6 +94,7 @@
         position: relative;
         z-index: 2;
         flex: 1;
+        flex-wrap: wrap;
     }
 
     .queue-tab {
@@ -108,10 +110,10 @@
         align-items: center;
         gap: var(--spacing-sm);
         font-weight: 600;
-        font-size: 1rem;
+        font-size: 0.95rem;
         position: relative;
         overflow: hidden;
-        min-width: 160px;
+        min-width: 140px;
         justify-content: center;
     }
 
@@ -124,7 +126,7 @@
         bottom: 0;
         background: rgba(255, 255, 255, 0.1);
         transform: translateX(-100%);
-        transition: transform 0.4s ease;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: -1;
     }
 
@@ -134,14 +136,14 @@
     }
 
     .queue-tab:hover {
+        color: white;
         transform: translateY(-3px);
         box-shadow: var(--shadow-elevated);
-        color: white;
     }
 
     .queue-tab.active {
-        background: rgba(255, 255, 255, 0.25);
         color: white;
+        background: rgba(255, 255, 255, 0.25);
         border-color: rgba(255, 255, 255, 0.4);
         transform: translateY(-2px);
         box-shadow: var(--shadow-elevated);
@@ -270,6 +272,34 @@
         background: #f3f4f6;
         border-radius: 5px;
         color: #4b5563;
+    }
+
+    /* Section spéciale pour les commandes de retour en stock */
+    .restock-info {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        border: 1px solid #86efac;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .restock-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #065f46;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+    }
+
+    .restock-message {
+        background: white;
+        padding: 0.75rem;
+        border-radius: 8px;
+        color: #374151;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        border-left: 4px solid #10b981;
     }
 
     /* =========================
@@ -720,6 +750,7 @@
     .btn-cancel { background: var(--process-danger); color: white; }
     .btn-schedule { background: var(--process-info); color: white; }
     .btn-history { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; }
+    .btn-reactivate { background: var(--process-restock); color: white; }
 
     .no-order {
         text-align: center;
@@ -922,7 +953,6 @@
                 </div>
                 <div>
                     <div>File Standard</div>
-                    <small>Nouvelles commandes</small>
                 </div>
                 <div class="queue-badge" id="standard-count">0</div>
             </div>
@@ -933,7 +963,6 @@
                 </div>
                 <div>
                     <div>File Datée</div>
-                    <small>Rappels programmés</small>
                 </div>
                 <div class="queue-badge" id="dated-count">0</div>
             </div>
@@ -944,9 +973,19 @@
                 </div>
                 <div>
                     <div>File Ancienne</div>
-                    <small>Commandes anciennes</small>
                 </div>
                 <div class="queue-badge" id="old-count">0</div>
+            </div>
+            
+            <!-- NOUVEL ONGLET RETOUR EN STOCK -->
+            <div class="queue-tab" data-queue="restock">
+                <div class="queue-icon">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <div>
+                    <div>Retour en Stock</div>
+                </div>
+                <div class="queue-badge" id="restock-count">0</div>
             </div>
         </div>
     </div>
@@ -996,6 +1035,18 @@
                                 </div>
                             </div>
                             <div class="order-status" id="order-status">Nouvelle</div>
+                        </div>
+
+                        <!-- Section spéciale pour retour en stock -->
+                        <div class="restock-info" id="restock-info" style="display: none;">
+                            <div class="restock-header">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Commande prête pour réactivation</span>
+                            </div>
+                            <div class="restock-message">
+                                Cette commande était suspendue mais tous ses produits sont maintenant disponibles en stock. 
+                                Elle peut être traitée normalement ou réactivée définitivement.
+                            </div>
                         </div>
 
                         <!-- Formulaire client -->
@@ -1112,7 +1163,8 @@
 
                 <!-- Zone d'actions -->
                 <div class="actions-zone slide-up">
-                    <div class="action-buttons">
+                    <div class="action-buttons" id="action-buttons">
+                        <!-- Boutons standard -->
                         <button class="action-btn btn-call" id="btn-call">
                             <i class="fas fa-phone-slash"></i>
                             <span>Ne répond pas</span>
@@ -1131,6 +1183,12 @@
                         <button class="action-btn btn-schedule" id="btn-schedule">
                             <i class="fas fa-calendar-plus"></i>
                             <span>Dater</span>
+                        </button>
+                        
+                        <!-- Bouton spécial pour retour en stock -->
+                        <button class="action-btn btn-reactivate" id="btn-reactivate" style="display: none;">
+                            <i class="fas fa-play-circle"></i>
+                            <span>Réactiver définitivement</span>
                         </button>
                         
                         <button class="action-btn btn-history" id="btn-history">
@@ -1222,6 +1280,7 @@ $(document).ready(function() {
         $('#btn-confirm').on('click', () => showActionModal('confirm'));
         $('#btn-cancel').on('click', () => showActionModal('cancel'));
         $('#btn-schedule').on('click', () => showActionModal('schedule'));
+        $('#btn-reactivate').on('click', () => showActionModal('reactivate')); // NOUVEAU
         $('#btn-history').on('click', () => showHistoryModal());
         
         // Changement de gouvernorat
@@ -1241,6 +1300,7 @@ $(document).ready(function() {
                 $('#standard-count').text(data.standard || 0);
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
+                $('#restock-count').text(data.restock || 0); // NOUVEAU
             })
             .fail(function(xhr, status, error) {
                 showNotification('Erreur lors du chargement des compteurs', 'error');
@@ -1294,6 +1354,18 @@ $(document).ready(function() {
         const statusElement = $('#order-status');
         statusElement.removeClass().addClass('order-status').addClass(`status-${order.status}`);
         statusElement.text(capitalizeFirst(order.status));
+        
+        // NOUVEAU: Affichage spécial pour retour en stock
+        if (currentQueue === 'restock') {
+            $('#restock-info').show();
+            $('#btn-reactivate').show();
+            // Modifier le message no répond pas pour retour en stock
+            $('#btn-call span').text('Reporter');
+        } else {
+            $('#restock-info').hide();
+            $('#btn-reactivate').hide();
+            $('#btn-call span').text('Ne répond pas');
+        }
         
         // Formulaire client
         $('#customer_name').val(order.customer_name || '');
@@ -1608,6 +1680,9 @@ $(document).ready(function() {
             case 'schedule':
                 showScheduleModal();
                 break;
+            case 'reactivate': // NOUVEAU
+                showReactivateModal();
+                break;
         }
     }
     
@@ -1666,6 +1741,18 @@ $(document).ready(function() {
         $('#schedule-date').attr('min', tomorrow.toISOString().split('T')[0]);
         
         const modal = $('#scheduleModal');
+        modal.modal('show');
+    }
+    
+    // NOUVELLE FONCTION
+    function showReactivateModal() {
+        if (currentQueue !== 'restock') {
+            showNotification('Cette action n\'est disponible que dans la file retour en stock', 'error');
+            return;
+        }
+        
+        $('#reactivate-notes').val('');
+        const modal = $('#reactivateModal');
         modal.modal('show');
     }
     

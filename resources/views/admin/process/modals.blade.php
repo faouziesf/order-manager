@@ -251,6 +251,53 @@
     </div>
 </div>
 
+<!-- Modal Réactiver (pour retour en stock) -->
+<div class="modal fade" id="reactivateModal" tabindex="-1" aria-labelledby="reactivateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reactivateModalLabel">
+                    <i class="fas fa-play-circle"></i>
+                    Réactiver définitivement
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Cette action va réactiver définitivement cette commande et la remettre dans le circuit normal de traitement.
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Information :</strong> La commande ne sera plus suspendue et pourra être traitée normalement dans les autres files.
+                </div>
+                
+                <div class="form-group">
+                    <label for="reactivate-notes" class="form-label fw-bold">
+                        <i class="fas fa-comment me-2"></i>
+                        Notes de réactivation <span class="text-danger">*</span>
+                    </label>
+                    <textarea class="form-control" id="reactivate-notes" rows="4" 
+                              placeholder="Confirmez la réactivation définitive (ex: Stock vérifié, produits disponibles, prêt pour traitement normal, etc.)" 
+                              required></textarea>
+                    <small class="form-text text-muted">
+                        Cette commande sera définitivement réactivée et sortira de la file retour en stock.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-success" onclick="submitReactivateAction()">
+                    <i class="fas fa-play-circle me-2"></i>Réactiver définitivement
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 /* Styles spécifiques aux modales */
 .modal-content {
@@ -571,4 +618,19 @@ $(document).ready(function() {
         $('#confirm-summary').html(summary);
     }
 });
+// Nouvelle fonction pour la réactivation depuis retour en stock
+function submitReactivateAction() {
+    const notes = $('#reactivate-notes').val().trim();
+    
+    if (!notes) {
+        showNotification('Veuillez saisir des notes pour cette réactivation', 'error');
+        return;
+    }
+    
+    const formData = {
+        notes: notes
+    };
+    
+    processAction('reactivate', formData);
+}
 </script>

@@ -43,6 +43,12 @@
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* Badge purple pour les commandes suspendues */
+        .badge.bg-purple {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+            color: white;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -1445,6 +1451,7 @@
             </li>
 
             <!-- NOUVEAU MENU TRAITEMENT AVEC SOUS-MENUS -->
+            
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.process*') ? 'active' : '' }}"
                     data-target="processSubmenu" data-tooltip="Traitement">
@@ -1468,6 +1475,20 @@
                             class="sidebar-submenu-link {{ request()->routeIs('admin.process.examination') ? 'active' : '' }}">
                             <i class="fas fa-exclamation-triangle"></i>Examen stock
                             <span class="badge bg-warning ms-1" id="examination-count-badge" style="display: none;"></span>
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.process.suspended') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.suspended') ? 'active' : '' }}">
+                            <i class="fas fa-pause-circle"></i>Commandes suspendues
+                            <span class="badge bg-purple ms-1" id="suspended-count-badge" style="display: none;"></span>
+                        </a>
+                    </li>
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.process.restock') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.restock') ? 'active' : '' }}">
+                            <i class="fas fa-box-open"></i>Retour en stock
+                            <span class="badge bg-success ms-1" id="restock-count-badge" style="display: none;"></span>
                         </a>
                     </li>
                 </ul>
@@ -2136,8 +2157,9 @@
         });
 
         $(document).ready(function() {
-            // Fonction pour charger le compteur d'examen
-            function loadExaminationCount() {
+            // Fonction pour charger tous les compteurs de traitement
+            function loadProcessingCounts() {
+                // Compteur d'examen
                 $.get('/admin/process/examination/count')
                     .done(function(data) {
                         const count = data.count || 0;
@@ -2152,15 +2174,47 @@
                     .fail(function() {
                         $('#examination-count-badge').hide();
                     });
+                
+                // Compteur des commandes suspendues
+                $.get('/admin/process/suspended/count')
+                    .done(function(data) {
+                        const count = data.count || 0;
+                        const badge = $('#suspended-count-badge');
+                        
+                        if (count > 0) {
+                            badge.text(count).show();
+                        } else {
+                            badge.hide();
+                        }
+                    })
+                    .fail(function() {
+                        $('#suspended-count-badge').hide();
+                    });
+                
+                // Compteur de retour en stock
+                $.get('/admin/process/restock/count')
+                    .done(function(data) {
+                        const count = data.count || 0;
+                        const badge = $('#restock-count-badge');
+                        
+                        if (count > 0) {
+                            badge.text(count).show();
+                        } else {
+                            badge.hide();
+                        }
+                    })
+                    .fail(function() {
+                        $('#restock-count-badge').hide();
+                    });
             }
             
-            // Charger le compteur au démarrage
-            loadExaminationCount();
+            // Charger les compteurs au démarrage
+            loadProcessingCounts();
             
-            // Actualiser le compteur toutes les 30 secondes
-            setInterval(loadExaminationCount, 30000);
+            // Actualiser les compteurs toutes les 30 secondes
+            setInterval(loadProcessingCounts, 30000);
         });
-        
+                
     </script>
 
     @yield('scripts')

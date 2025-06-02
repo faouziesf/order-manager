@@ -1415,11 +1415,16 @@ class ProcessController extends Controller
                     $order->save();
                     $order->recordHistory('datation', $historyNote);
                     break;
-
+                
                 case 'reactivate':
                     // NOUVELLE: Action pour réactiver une commande depuis l'onglet retour en stock
+                    if ($request->queue !== 'restock') {
+                        return response()->json([
+                            'error' => 'Action de réactivation uniquement disponible dans la file retour en stock'
+                        ], 400);
+                    }
+                    
                     if ($this->orderHasStockIssues($order)) {
-                        DB::rollBack();
                         return response()->json([
                             'error' => 'Impossible de réactiver: certains produits sont toujours en rupture de stock'
                         ], 400);
@@ -1429,8 +1434,8 @@ class ProcessController extends Controller
                     $order->suspension_reason = null;
                     $order->save();
                     $order->recordHistory('réactivation', $historyNote);
-                    break;
-                    
+                    break;    
+
                 default:
                     $this->updateOrderInfo($order, $request);
                     $order->recordHistory('modification', $historyNote);
