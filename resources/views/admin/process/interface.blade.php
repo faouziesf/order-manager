@@ -1305,22 +1305,43 @@ $(document).ready(function() {
     // GESTION DES FILES
     // =========================
     
+    let isLoadingQueue = false; // Flag pour éviter les chargements multiples
+    let isLoadingCounts = false; // Flag pour éviter les compteurs multiples
+    
     function loadQueueCounts() {
+        // Éviter les appels multiples
+        if (isLoadingCounts) {
+            console.log('Chargement des compteurs déjà en cours, ignoré');
+            return;
+        }
+        
+        isLoadingCounts = true;
+        
         $.get('/admin/process/counts')
             .done(function(data) {
+                console.log('Compteurs reçus:', data);
                 $('#standard-count').text(data.standard || 0);
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
                 $('#restock-count').text(data.restock || 0);
             })
             .fail(function(xhr, status, error) {
+                console.error('Erreur compteurs:', error, xhr.responseText);
                 showNotification('Erreur lors du chargement des compteurs', 'error');
-                console.error('Erreur compteurs:', error);
+            })
+            .always(function() {
+                isLoadingCounts = false;
             });
     }
     
     function switchQueue(queue) {
         console.log('Changement de file vers:', queue);
+        
+        // Éviter les changements multiples
+        if (isLoadingQueue) {
+            console.log('Changement de file déjà en cours, ignoré');
+            return;
+        }
         
         // Mettre à jour l'UI
         $('.queue-tab').removeClass('active');
@@ -1332,12 +1353,22 @@ $(document).ready(function() {
         // Réinitialiser l'affichage
         showLoading();
         
-        // Charger la nouvelle file
-        loadCurrentQueue();
+        // Charger la nouvelle file avec délai pour éviter les conflits
+        setTimeout(() => {
+            loadCurrentQueue();
+        }, 100);
     }
     
     function loadCurrentQueue() {
         console.log('Chargement de la file:', currentQueue);
+        
+        // Éviter les chargements multiples
+        if (isLoadingQueue) {
+            console.log('Chargement déjà en cours pour', currentQueue);
+            return;
+        }
+        
+        isLoadingQueue = true;
         
         $.get(`/admin/process/${currentQueue}`)
             .done(function(data) {
@@ -1347,6 +1378,7 @@ $(document).ready(function() {
                     currentOrder = data.order;
                     displayOrder(data.order);
                     showMainContent();
+                    console.log('Commande affichée:', currentOrder.id);
                 } else {
                     console.log('Aucune commande disponible pour', currentQueue);
                     showNoOrderMessage();
@@ -1354,9 +1386,24 @@ $(document).ready(function() {
             })
             .fail(function(xhr, status, error) {
                 console.error('Erreur lors du chargement de', currentQueue, ':', error);
-                console.error('Réponse:', xhr.responseText);
-                showNotification('Erreur lors du chargement de la commande', 'error');
+                console.error('Réponse complète:', xhr.responseText);
+                
+                // Afficher l'erreur détaillée si disponible
+                let errorMsg = 'Erreur lors du chargement de la commande';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMsg = response.error;
+                    }
+                } catch (e) {
+                    // Ignorer les erreurs de parsing JSON
+                }
+                
+                showNotification(errorMsg, 'error');
                 showNoOrderMessage();
+            })
+            .always(function() {
+                isLoadingQueue = false;
             });
     }
     
@@ -1366,6 +1413,12 @@ $(document).ready(function() {
     
     function displayOrder(order) {
         console.log('Affichage de la commande:', order);
+        
+        if (!order || !order.id) {
+            console.error('Commande invalide reçue pour affichage');
+            showNoOrderMessage();
+            return;
+        }
         
         // Informations de base
         $('#order-number').text(order.id);
@@ -1384,7 +1437,7 @@ $(document).ready(function() {
             $('#btn-reactivate').show();
             // Modifier le message pour retour en stock
             $('#btn-call span').text('Reporter');
-            console.log('Interface restock activée');
+            console.log('Interface restock activée pour commande:', order.id);
         } else {
             $('#restock-info').hide();
             $('#btn-reactivate').hide();
@@ -1401,6 +1454,9 @@ $(document).ready(function() {
         if (order.customer_governorate) {
             $('#customer_governorate').val(order.customer_governorate);
             loadCities(order.customer_governorate, order.customer_city);
+        } else {
+            $('#customer_governorate').val('');
+            $('#customer_city').html('<option value="">Sélectionner une ville</option>');
         }
         
         // Panier
@@ -1421,6 +1477,7 @@ $(document).ready(function() {
         }
         
         updateCartDisplay();
+        console.log('Commande affichée avec succès:', order.id, 'Items:', cartItems.length);
     }
     
     function showMainContent() {
@@ -1864,8 +1921,22 @@ $(document).ready(function() {
     // Démarrer l'application
     initialize();
     
-    // Actualiser les compteurs toutes les 30 secondes
-    setInterval(loadQueueCounts, 30000);
+    // Actualiser les compteurs toutes les 60 secondes (réduit la fréquence)
+    setInterval(function() {
+        // Ne pas actualiser pendant les chargements
+        if (!isLoadingQueue && !isLoadingCounts) {
+            loadQueueCounts();
+        }
+    }, 60000);
+    
+    // Actualiser la file courante toutes les 2 minutes
+    setInterval(function() {
+        // Ne pas actualiser pendant les chargements ou si une modal est ouverte
+        if (!isLoadingQueue && !isLoadingCounts && $('.modal:visible').length === 0) {
+            console.log('Actualisation automatique de la file', currentQueue);
+            loadCurrentQueue();
+        }
+    }, 120000);
     
     // Exposer les fonctions pour les modales
     window.processAction = function(action, formData) {
@@ -1874,7 +1945,7 @@ $(document).ready(function() {
             return;
         }
         
-        console.log('Traitement action:', action, 'pour queue:', currentQueue);
+        console.log('Traitement action:', action, 'pour queue:', currentQueue, 'commande:', currentOrder.id);
         
         // Préparation des données
         const requestData = {
@@ -1914,19 +1985,29 @@ $(document).ready(function() {
             // Fermer les modales
             $('.modal').modal('hide');
             
-            // Recharger la file et les compteurs
+            // Attendre un peu avant de recharger pour éviter les conflits
             setTimeout(() => {
+                console.log('Rechargement après action réussie');
                 loadQueueCounts();
-                loadCurrentQueue();
-            }, 500);
+                
+                // Recharger la file après un délai supplémentaire
+                setTimeout(() => {
+                    loadCurrentQueue();
+                }, 500);
+            }, 1000);
         })
         .fail(function(xhr, status, error) {
             console.error('Erreur action:', error);
             console.error('Réponse:', xhr.responseText);
             
             let errorMessage = 'Erreur lors du traitement de l\'action';
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                errorMessage = xhr.responseJSON.error;
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    errorMessage = response.error;
+                }
+            } catch (e) {
+                // Ignorer les erreurs de parsing
             }
             
             showNotification(errorMessage, 'error');
