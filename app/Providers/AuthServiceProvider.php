@@ -12,6 +12,9 @@ use App\Models\Manager;
 use App\Policies\ManagerPolicy;
 use App\Models\Employee;
 use App\Policies\EmployeePolicy;
+use App\Models\Admin;
+use App\Policies\AdminPolicy;
+use App\Policies\ProcessPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -25,6 +28,9 @@ class AuthServiceProvider extends ServiceProvider
         Order::class => OrderPolicy::class,
         Manager::class => ManagerPolicy::class,
         Employee::class => EmployeePolicy::class,
+        Admin::class => AdminPolicy::class,
+        // Politique pour les contrôleurs de traitement
+        'process' => ProcessPolicy::class,
     ];
 
     /**
@@ -34,6 +40,29 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+        // ========================================
+        // GATES POUR LE SYSTÈME DE TRAITEMENT
+        // ========================================
+        
+        // Gates pour les interfaces de traitement
+        Gate::define('view-process-interface', [ProcessPolicy::class, 'viewProcessInterface']);
+        Gate::define('view-examination', [ProcessPolicy::class, 'viewExamination']);
+        Gate::define('view-suspended', [ProcessPolicy::class, 'viewSuspended']);
+        Gate::define('view-restock', [ProcessPolicy::class, 'viewRestock']);
+        
+        // Gates pour les actions de traitement
+        Gate::define('process-order', [ProcessPolicy::class, 'processOrder']);
+        Gate::define('split-order', [ProcessPolicy::class, 'splitOrder']);
+        Gate::define('suspend-order', [ProcessPolicy::class, 'suspendOrder']);
+        Gate::define('reactivate-order', [ProcessPolicy::class, 'reactivateOrder']);
+        Gate::define('cancel-order', [ProcessPolicy::class, 'cancelOrder']);
+        Gate::define('bulk-actions', [ProcessPolicy::class, 'bulkActions']);
+        Gate::define('view-process-stats', [ProcessPolicy::class, 'viewStats']);
+
+        // ========================================
+        // GATES POUR LES UTILISATEURS
+        // ========================================
+        
         // Gate pour vérifier l'accès à l'historique de connexion
         Gate::define('viewLoginHistory', function ($admin, $userType, $userId) {
             // Vérifier que l'utilisateur appartient à cet admin
@@ -58,12 +87,31 @@ class AuthServiceProvider extends ServiceProvider
             return $admin->employees()->count() < $admin->max_employees;
         });
 
+        // ========================================
+        // GATES POUR LES ADMINS
+        // ========================================
+        
         // Gate pour vérifier si l'admin est actif et non expiré
         Gate::define('adminActive', function ($admin) {
             return $admin->is_active && (!$admin->expiry_date || !$admin->expiry_date->isPast());
         });
 
-        // Gates supplémentaires pour les produits (actions groupées)
+        // Gate pour super admin
+        Gate::define('super-admin', function ($user) {
+            return $user instanceof Admin && $user->hasRole('super_admin');
+        });
+
+        // Gate pour admin actif
+        Gate::define('active-admin', function ($user) {
+            return $user instanceof Admin && $user->is_active && 
+                   (!$user->expiry_date || !$user->expiry_date->isPast());
+        });
+
+        // ========================================
+        // GATES POUR LES PRODUITS
+        // ========================================
+        
+        // Gates pour les actions groupées sur les produits
         Gate::define('bulkManageProducts', function ($admin) {
             return $admin->is_active && (!$admin->expiry_date || !$admin->expiry_date->isPast());
         });
@@ -84,6 +132,48 @@ class AuthServiceProvider extends ServiceProvider
         // Gate pour marquer les produits comme examinés
         Gate::define('canReviewProducts', function ($admin) {
             return $admin->is_active && (!$admin->expiry_date || !$admin->expiry_date->isPast());
+        });
+
+        // ========================================
+        // GATES POUR LES COMMANDES
+        // ========================================
+        
+        // Gate pour assigner des commandes
+        Gate::define('canAssignOrders', function ($admin) {
+            return $admin->is_active && (!$admin->expiry_date || !$admin->expiry_date->isPast());
+        });
+
+        // Gate pour voir les commandes non assignées
+        Gate::define('viewUnassignedOrders', function ($admin) {
+            return Gate::allows('canAssignOrders', $admin);
+        });
+
+        // ========================================
+        // GATES POUR LES IMPORTS ET INTÉGRATIONS
+        // ========================================
+        
+        // Gate pour les imports
+        Gate::define('canImportData', function ($admin) {
+            return $admin->is_active && (!$admin->expiry_date || !$admin->expiry_date->isPast());
+        });
+
+        // Gate pour WooCommerce
+        Gate::define('canManageWooCommerce', function ($admin) {
+            return $admin->is_active && (!$admin->expiry_date || !$admin->expiry_date->isPast());
+        });
+
+        // ========================================
+        // GATES POUR LES PARAMÈTRES
+        // ========================================
+        
+        // Gate pour les paramètres
+        Gate::define('canManageSettings', function ($admin) {
+            return $admin->is_active && (!$admin->expiry_date || !$admin->expiry_date->isPast());
+        });
+
+        // Gate pour les paramètres avancés (export/import de config)
+        Gate::define('canManageAdvancedSettings', function ($admin) {
+            return Gate::allows('canManageSettings', $admin) && $admin->hasRole('super_admin');
         });
     }
 }

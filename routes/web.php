@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\ProcessController;
+use App\Http\Controllers\Admin\ExaminationController;
+use App\Http\Controllers\Admin\SuspendedController;
+use App\Http\Controllers\Admin\RestockController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\OrderController;
@@ -136,7 +139,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('orders/{order}/quick-attempt', [OrderController::class, 'quickAttempt'])
             ->name('orders.quick-attempt');
         
-        // Routes pour l'interface de traitement - NOUVELLES ROUTES
+        // Routes pour l'interface de traitement
         Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
             ->name('orders.getRegions');
         Route::get('orders/get-cities', [OrderController::class, 'getCities'])
@@ -148,48 +151,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('orders', OrderController::class);
         
         // ========================================
-        // TRAITEMENT DES COMMANDES - SECTION ÉTENDUE ET MISE À JOUR
+        // TRAITEMENT DES COMMANDES - SECTION DIVISÉE EN CONTRÔLEURS SPÉCIALISÉS
         // ========================================
         
         // Interface de traitement principal
         Route::get('process', [ProcessController::class, 'interface'])
             ->name('process.interface');
-            
-        // Interface d'examen des commandes avec problèmes de stock
-        Route::get('process/examination', [ProcessController::class, 'examination'])
-            ->name('process.examination');
-        Route::get('process/examination/orders', [ProcessController::class, 'getExaminationOrders'])
-            ->name('process.examination.orders');
-        Route::get('process/examination/count', [ProcessController::class, 'getExaminationCount'])
-            ->name('process.examination.count');
-        Route::post('process/examination/split/{order}', [ProcessController::class, 'splitOrder'])
-            ->name('process.examination.split');
-        Route::post('process/examination/action/{order}', [ProcessController::class, 'examinationAction'])
-            ->name('process.examination.action');
-        
-        // NOUVELLE SECTION: Interface des commandes suspendues
-        Route::get('process/suspended', [ProcessController::class, 'suspended'])
-            ->name('process.suspended');
-        Route::get('process/suspended/orders', [ProcessController::class, 'getSuspendedOrders'])
-            ->name('process.suspended.orders');
-        Route::get('process/suspended/count', [ProcessController::class, 'getSuspendedCount'])
-            ->name('process.suspended.count');
-        Route::post('process/suspended/action/{order}', [ProcessController::class, 'suspendedAction'])
-            ->name('process.suspended.action');
-        Route::post('process/suspended/bulk-reactivate', [ProcessController::class, 'bulkReactivateSuspended'])
-            ->name('process.suspended.bulk-reactivate');
-        Route::post('process/suspended/bulk-cancel', [ProcessController::class, 'bulkCancelSuspended'])
-            ->name('process.suspended.bulk-cancel');
-        
-        // NOUVELLE SECTION: Interface de retour en stock
-        Route::get('process/restock', [ProcessController::class, 'restockInterface'])
-            ->name('process.restock');
-        Route::get('process/restock/orders', [ProcessController::class, 'getRestockOrders'])
-            ->name('process.restock.orders');
-        Route::get('process/restock/count', [ProcessController::class, 'getRestockCount'])
-            ->name('process.restock.count');
-        
-        // Routes existantes de traitement (mises à jour pour supporter restock)
         Route::get('process/test', [ProcessController::class, 'test'])
             ->name('process.test');
         Route::get('process/counts', [ProcessController::class, 'getCounts'])
@@ -199,12 +166,70 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('process.getQueue');
         Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
             ->name('process.action');
-        Route::get('process/standard', [ProcessController::class, 'standardQueue'])
-            ->name('process.standard');
-        Route::get('process/dated', [ProcessController::class, 'datedQueue'])
-            ->name('process.dated');
-        Route::get('process/old', [ProcessController::class, 'oldQueue'])
-            ->name('process.old');
+            
+        // ========================================
+        // INTERFACE D'EXAMEN DES COMMANDES
+        // ========================================
+        Route::prefix('process/examination')->name('process.examination.')->group(function () {
+            Route::get('/', [ExaminationController::class, 'index'])
+                ->name('index');
+            Route::get('/orders', [ExaminationController::class, 'getOrders'])
+                ->name('orders');
+            Route::get('/count', [ExaminationController::class, 'getCount'])
+                ->name('count');
+            Route::post('/split/{order}', [ExaminationController::class, 'splitOrder'])
+                ->name('split');
+            Route::post('/action/{order}', [ExaminationController::class, 'processAction'])
+                ->name('action');
+            
+            // Actions groupées
+            Route::post('/bulk-split', [ExaminationController::class, 'bulkSplit'])
+                ->name('bulk-split');
+            Route::post('/bulk-cancel', [ExaminationController::class, 'bulkCancel'])
+                ->name('bulk-cancel');
+            Route::post('/bulk-suspend', [ExaminationController::class, 'bulkSuspend'])
+                ->name('bulk-suspend');
+        });
+        
+        // ========================================
+        // INTERFACE DES COMMANDES SUSPENDUES
+        // ========================================
+        Route::prefix('process/suspended')->name('process.suspended.')->group(function () {
+            Route::get('/', [SuspendedController::class, 'index'])
+                ->name('index');
+            Route::get('/orders', [SuspendedController::class, 'getOrders'])
+                ->name('orders');
+            Route::get('/count', [SuspendedController::class, 'getCount'])
+                ->name('count');
+            Route::post('/action/{order}', [SuspendedController::class, 'processAction'])
+                ->name('action');
+            
+            // Actions groupées
+            Route::post('/bulk-reactivate', [SuspendedController::class, 'bulkReactivate'])
+                ->name('bulk-reactivate');
+            Route::post('/bulk-cancel', [SuspendedController::class, 'bulkCancel'])
+                ->name('bulk-cancel');
+        });
+        
+        // ========================================
+        // INTERFACE DE RETOUR EN STOCK
+        // ========================================
+        Route::prefix('process/restock')->name('process.restock.')->group(function () {
+            Route::get('/', [RestockController::class, 'index'])
+                ->name('index');
+            Route::get('/orders', [RestockController::class, 'getOrders'])
+                ->name('orders');
+            Route::get('/count', [RestockController::class, 'getCount'])
+                ->name('count');
+            Route::get('/stats', [RestockController::class, 'getStats'])
+                ->name('stats');
+            Route::post('/reactivate/{order}', [RestockController::class, 'reactivateOrder'])
+                ->name('reactivate');
+            
+            // Actions groupées
+            Route::post('/bulk-reactivate', [RestockController::class, 'bulkReactivate'])
+                ->name('bulk-reactivate');
+        });
         
         // ========================================
         // GESTION DES UTILISATEURS
@@ -239,7 +264,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/test-connection', [WooCommerceController::class, 'testConnection'])->name('test-connection');
             Route::get('/stats', [WooCommerceController::class, 'syncStats'])->name('stats');
             
-            // Nouvelles routes pour multi-intégrations
+            // Routes pour multi-intégrations
             Route::post('/toggle/{id}', [WooCommerceController::class, 'toggleIntegration'])->name('toggle');
             Route::get('/delete/{id}', [WooCommerceController::class, 'deleteIntegration'])->name('delete');
         });
@@ -255,7 +280,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('settings', [AdminSettingController::class, 'store'])
             ->name('settings.store');
         
-        // NOUVELLES ROUTES pour les paramètres avancés
+        // Routes pour les paramètres avancés
         Route::get('settings/reset', [AdminSettingController::class, 'reset'])
             ->name('settings.reset');
         Route::get('settings/export', [AdminSettingController::class, 'export'])

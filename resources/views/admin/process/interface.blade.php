@@ -258,6 +258,7 @@
     .status-datée { background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%); color: #92400e; }
     .status-confirmée { background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%); color: #166534; }
     .status-ancienne { background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%); color: #9b2c2c; }
+    .status-suspended { background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%); color: #92400e; }
 
     .order-meta {
         display: flex;
@@ -988,7 +989,6 @@
                 <div class="queue-badge" id="old-count">0</div>
             </div>
             
-            <!-- ONGLET RETOUR EN STOCK CORRIGÉ -->
             <div class="queue-tab" data-queue="restock">
                 <div class="queue-icon">
                     <i class="fas fa-box-open"></i>
@@ -997,6 +997,16 @@
                     <div>Retour en Stock</div>
                 </div>
                 <div class="queue-badge" id="restock-count">0</div>
+            </div>
+
+            <div class="queue-tab" data-queue="suspended">
+                <div class="queue-icon">
+                    <i class="fas fa-pause-circle"></i>
+                </div>
+                <div>
+                    <div>Suspendues</div>
+                </div>
+                <div class="queue-badge" id="suspended-count">0</div>
             </div>
         </div>
     </div>
@@ -1225,6 +1235,8 @@ $(document).ready(function() {
     let currentOrder = null;
     let cartItems = [];
     let searchTimeout;
+    let isLoadingQueue = false;
+    let isLoadingCounts = false;
     
     // =========================
     // INITIALISATION
@@ -1305,11 +1317,7 @@ $(document).ready(function() {
     // GESTION DES FILES
     // =========================
     
-    let isLoadingQueue = false; // Flag pour éviter les chargements multiples
-    let isLoadingCounts = false; // Flag pour éviter les compteurs multiples
-    
     function loadQueueCounts() {
-        // Éviter les appels multiples
         if (isLoadingCounts) {
             console.log('Chargement des compteurs déjà en cours, ignoré');
             return;
@@ -1324,6 +1332,7 @@ $(document).ready(function() {
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
                 $('#restock-count').text(data.restock || 0);
+                $('#suspended-count').text(data.suspended || 0);
             })
             .fail(function(xhr, status, error) {
                 console.error('Erreur compteurs:', error, xhr.responseText);
@@ -1337,7 +1346,6 @@ $(document).ready(function() {
     function switchQueue(queue) {
         console.log('Changement de file vers:', queue);
         
-        // Éviter les changements multiples
         if (isLoadingQueue) {
             console.log('Changement de file déjà en cours, ignoré');
             return;
@@ -1362,23 +1370,50 @@ $(document).ready(function() {
     function loadCurrentQueue() {
         console.log('Chargement de la file:', currentQueue);
         
-        // Éviter les chargements multiples
         if (isLoadingQueue) {
             console.log('Chargement déjà en cours pour', currentQueue);
             return;
         }
         
         isLoadingQueue = true;
+        showLoading();
         
-        $.get(`/admin/process/${currentQueue}`)
+        // Déterminer l'endpoint selon le type de queue
+        let endpoint;
+        switch(currentQueue) {
+            case 'suspended':
+                endpoint = '/admin/process/suspended/orders';
+                break;
+            case 'restock':
+                endpoint = '/admin/process/restock';
+                break;
+            default:
+                endpoint = `/admin/process/${currentQueue}`;
+        }
+        
+        $.get(endpoint)
             .done(function(data) {
                 console.log('Données reçues pour', currentQueue, ':', data);
                 
+                // Gérer les différents formats de réponse
                 if (data.hasOrder && data.order) {
+                    // Format standard (une seule commande)
                     currentOrder = data.order;
                     displayOrder(data.order);
                     showMainContent();
                     console.log('Commande affichée:', currentOrder.id);
+                } else if (data.hasOrders && data.orders) {
+                    // Format pour les commandes multiples (suspended)
+                    if (Array.isArray(data.orders) && data.orders.length > 0) {
+                        // Prendre la première commande
+                        currentOrder = data.orders[0];
+                        displayOrder(data.orders[0]);
+                        showMainContent();
+                        console.log('Première commande affichée:', currentOrder.id);
+                    } else {
+                        console.log('Aucune commande disponible dans', currentQueue);
+                        showNoOrderMessage();
+                    }
                 } else {
                     console.log('Aucune commande disponible pour', currentQueue);
                     showNoOrderMessage();
@@ -1388,7 +1423,6 @@ $(document).ready(function() {
                 console.error('Erreur lors du chargement de', currentQueue, ':', error);
                 console.error('Réponse complète:', xhr.responseText);
                 
-                // Afficher l'erreur détaillée si disponible
                 let errorMsg = 'Erreur lors du chargement de la commande';
                 try {
                     const response = JSON.parse(xhr.responseText);
@@ -1420,31 +1454,52 @@ $(document).ready(function() {
             return;
         }
         
-        // Informations de base
-        $('#order-number').text(order.id);
-        $('#order-date').text(formatDate(order.created_at));
-        $('#order-attempts').text(`${order.attempts_count || 0} tentative(s)`);
-        $('#order-last-attempt').text(order.last_attempt_at ? formatDate(order.last_attempt_at) : 'Jamais');
-        
-        // Statut
-        const statusElement = $('#order-status');
-        statusElement.removeClass().addClass('order-status').addClass(`status-${order.status}`);
-        statusElement.text(capitalizeFirst(order.status));
-        
-        // Affichage spécial pour retour en stock
-        if (currentQueue === 'restock') {
+        try {
+            // Informations de base avec gestion des valeurs nulles
+            $('#order-number').text(order.id || 'N/A');
+            $('#order-date').text(formatDate(order.created_at));
+            $('#order-attempts').text(`${order.attempts_count || 0} tentative(s)`);
+            $('#order-last-attempt').text(order.last_attempt_at ? formatDate(order.last_attempt_at) : 'Jamais');
+            
+            // Statut avec gestion des valeurs nulles
+            const statusElement = $('#order-status');
+            const status = order.status || 'nouvelle';
+            statusElement.removeClass().addClass('order-status').addClass(`status-${status}`);
+            statusElement.text(capitalizeFirst(status));
+            
+            // Affichage spécial selon le type de queue
+            updateQueueSpecificDisplay(order);
+            
+            // Formulaire client avec gestion des valeurs nulles
+            updateCustomerForm(order);
+            
+            // Panier avec validation
+            updateCartFromOrder(order);
+            
+            console.log('Commande affichée avec succès:', order.id, 'Items:', cartItems.length);
+            
+        } catch (error) {
+            console.error('Erreur lors de l\'affichage de la commande:', error);
+            showNotification('Erreur lors de l\'affichage de la commande', 'error');
+            showNoOrderMessage();
+        }
+    }
+    
+    function updateQueueSpecificDisplay(order) {
+        // Affichage spécial selon le type de queue
+        if (currentQueue === 'restock' || currentQueue === 'suspended') {
             $('#restock-info').show();
             $('#btn-reactivate').show();
-            // Modifier le message pour retour en stock
             $('#btn-call span').text('Reporter');
-            console.log('Interface restock activée pour commande:', order.id);
+            console.log('Interface restock/suspended activée pour commande:', order.id);
         } else {
             $('#restock-info').hide();
             $('#btn-reactivate').hide();
             $('#btn-call span').text('Ne répond pas');
         }
-        
-        // Formulaire client
+    }
+    
+    function updateCustomerForm(order) {
         $('#customer_name').val(order.customer_name || '');
         $('#customer_phone').val(order.customer_phone || '');
         $('#customer_phone_2').val(order.customer_phone_2 || '');
@@ -1458,8 +1513,9 @@ $(document).ready(function() {
             $('#customer_governorate').val('');
             $('#customer_city').html('<option value="">Sélectionner une ville</option>');
         }
-        
-        // Panier
+    }
+    
+    function updateCartFromOrder(order) {
         cartItems = [];
         if (order.items && Array.isArray(order.items)) {
             cartItems = order.items.map(item => ({
@@ -1477,7 +1533,6 @@ $(document).ready(function() {
         }
         
         updateCartDisplay();
-        console.log('Commande affichée avec succès:', order.id, 'Items:', cartItems.length);
     }
     
     function showMainContent() {
@@ -1826,8 +1881,8 @@ $(document).ready(function() {
     }
     
     function showReactivateModal() {
-        if (currentQueue !== 'restock') {
-            showNotification('Cette action n\'est disponible que dans la file retour en stock', 'error');
+        if (currentQueue !== 'restock' && currentQueue !== 'suspended') {
+            showNotification('Cette action n\'est disponible que dans les files retour en stock et suspendues', 'error');
             return;
         }
         
@@ -1921,9 +1976,8 @@ $(document).ready(function() {
     // Démarrer l'application
     initialize();
     
-    // Actualiser les compteurs toutes les 60 secondes (réduit la fréquence)
+    // Actualiser les compteurs toutes les 60 secondes
     setInterval(function() {
-        // Ne pas actualiser pendant les chargements
         if (!isLoadingQueue && !isLoadingCounts) {
             loadQueueCounts();
         }
@@ -1931,14 +1985,16 @@ $(document).ready(function() {
     
     // Actualiser la file courante toutes les 2 minutes
     setInterval(function() {
-        // Ne pas actualiser pendant les chargements ou si une modal est ouverte
         if (!isLoadingQueue && !isLoadingCounts && $('.modal:visible').length === 0) {
             console.log('Actualisation automatique de la file', currentQueue);
             loadCurrentQueue();
         }
     }, 120000);
     
-    // Exposer les fonctions pour les modales
+    // =========================
+    // FONCTION GLOBALE POUR LES MODALES
+    // =========================
+    
     window.processAction = function(action, formData) {
         if (!currentOrder) {
             showNotification('Aucune commande sélectionnée', 'error');

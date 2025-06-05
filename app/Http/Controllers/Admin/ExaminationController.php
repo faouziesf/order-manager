@@ -1,28 +1,41 @@
 <?php
 
-namespace App\Http\Controllers\Admin\Process;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\ProcessTrait;
 use App\Models\Order;
-use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Gate;
 
 class ExaminationController extends Controller
 {
+    use ProcessTrait;
+
+    public function __construct()
+    {
+        $this->middleware('auth:admin');
+        $this->middleware(function ($request, $next) {
+            if (!Gate::allows('view-examination', auth('admin')->user())) {
+                abort(403, 'Accès non autorisé à l\'interface d\'examen');
+            }
+            return $next($request);
+        });
+    }
+
     /**
      * Interface d'examen des commandes avec problèmes de stock
      */
     public function index()
     {
-        return view('admin.process.examination.index');
+        return view('admin.process.examination');
     }
 
     /**
-     * Obtenir les commandes avec problèmes de stock
+     * Obtenir les commandes pour l'interface d'examen
      */
     public function getOrders(Request $request)
     {
@@ -36,18 +49,15 @@ class ExaminationController extends Controller
                 ], 401);
             }
 
-            // Obtenir les commandes avec problèmes de stock
-            $orders = $this->findOrdersWithStockIssues($admin);
-            
-            // Appliquer les filtres si fournis
-            if ($request->has('filters')) {
-                $orders = $this->applyFilters($orders, $request->input('filters'));
-            }
+            // Obtenir les commandes avec problèmes de stock (mais pas suspendues)
+            $orders = $this->findOrdersWithStockIssues($admin, false);
             
             if ($orders->count() > 0) {
                 $ordersData = $orders->map(function($order) {
                     return $this->formatOrderDataForExamination($order);
-                })->filter()->values()->toArray();
+                })->filter(function($orderData) {
+                    return $orderData !== null;
+                })->values()->toArray();
                 
                 return response()->json([
                     'hasOrders' => true,
@@ -62,7 +72,7 @@ class ExaminationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur dans ExaminationController@getOrders: ' . $e->getMessage(), [
+            Log::error('Erreur dans getOrders: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -85,7 +95,7 @@ class ExaminationController extends Controller
                 return response()->json(['error' => 'Non authentifié'], 401);
             }
             
-            $count = $this->countOrdersWithStockIssues($admin);
+            $count = $this->countOrdersWithStockIssues($admin, false);
             
             return response()->json([
                 'count' => $count,
@@ -93,7 +103,7 @@ class ExaminationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur dans ExaminationController@getCount: ' . $e->getMessage());
+            Log::error('Erreur dans getCount: ' . $e->getMessage());
             
             return response()->json([
                 'error' => 'Erreur lors du chargement du compteur',
@@ -160,11 +170,11 @@ class ExaminationController extends Controller
                 $item->delete();
             }
 
-            // Recalculer le prix de la commande originale et la suspendre
+            // Recalculer le prix de la commande originale
             $originalTotalPrice = $stockIssues['unavailableItems']->sum('total_price');
             $order->total_price = $originalTotalPrice;
             $order->is_suspended = true;
-            $order->suspension_reason = 'Produits en rupture de stock ou inactifs - Division effectuée';
+            $order->suspension_reason = 'Produits en rupture de stock ou inactifs';
             $order->save();
 
             // Enregistrer dans l'historique
@@ -200,7 +210,7 @@ class ExaminationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur dans ExaminationController@splitOrder: ' . $e->getMessage(), [
+            Log::error('Erreur dans splitOrder: ' . $e->getMessage(), [
                 'order_id' => $order->id,
                 'trace' => $e->getTraceAsString()
             ]);
@@ -213,7 +223,7 @@ class ExaminationController extends Controller
     }
 
     /**
-     * Traiter une action d'examen (annuler, suspendre, réactiver)
+     * Action d'examen (annuler, modifier, etc.)
      */
     public function processAction(Request $request, Order $order)
     {
@@ -292,7 +302,7 @@ class ExaminationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur dans ExaminationController@processAction: ' . $e->getMessage(), [
+            Log::error('Erreur dans processAction: ' . $e->getMessage(), [
                 'order_id' => $order->id,
                 'action' => $request->action,
                 'trace' => $e->getTraceAsString()
@@ -306,7 +316,7 @@ class ExaminationController extends Controller
     }
 
     /**
-     * Actions en lot
+     * Actions groupées - Division
      */
     public function bulkSplit(Request $request)
     {
@@ -318,64 +328,115 @@ class ExaminationController extends Controller
             ]);
 
             $admin = Auth::guard('admin')->user();
-            $orderIds = $validated['order_ids'];
             $notes = $validated['notes'];
 
             DB::beginTransaction();
 
             $successCount = 0;
-            $failedOrders = [];
+            $errorCount = 0;
+            $errors = [];
+            $processedOrderIds = [];
 
-            foreach ($orderIds as $orderId) {
-                $order = $admin->orders()->find($orderId);
+            foreach ($validated['order_ids'] as $orderId) {
+                $order = $admin->orders()->with('items.product')->find($orderId);
                 
                 if (!$order) {
-                    $failedOrders[] = "Commande #{$orderId} non trouvée";
+                    $errorCount++;
+                    $errors[] = ['id' => $orderId, 'reason' => "Commande #{$orderId} non trouvée pour cet admin."];
                     continue;
                 }
 
+                // Vérifier que la commande peut être divisée
                 $stockIssues = $this->analyzeOrderStockIssues($order);
                 
                 if (!$stockIssues['hasIssues'] || $stockIssues['availableItems']->count() === 0) {
-                    $failedOrders[] = "Commande #{$orderId} ne peut pas être divisée";
+                    $errorCount++;
+                    $errors[] = ['id' => $orderId, 'reason' => "Commande #{$orderId} ne peut pas être divisée"];
                     continue;
                 }
 
-                // Effectuer la division (logique similaire à splitOrder)
-                $result = $this->performOrderSplit($order, $notes, $admin);
-                
-                if ($result['success']) {
+                try {
+                    // Processus de division identique à splitOrder
+                    $newOrder = $order->replicate();
+                    $newOrder->status = 'nouvelle';
+                    $newOrder->attempts_count = 0;
+                    $newOrder->daily_attempts_count = 0;
+                    $newOrder->last_attempt_at = null;
+                    $newOrder->is_suspended = false;
+                    $newOrder->suspension_reason = null;
+                    $newOrder->save();
+
+                    $newTotalPrice = 0;
+                    foreach ($stockIssues['availableItems'] as $item) {
+                        $newOrder->items()->create([
+                            'product_id' => $item->product_id,
+                            'quantity' => $item->quantity,
+                            'unit_price' => $item->unit_price,
+                            'total_price' => $item->total_price,
+                        ]);
+                        $newTotalPrice += $item->total_price;
+                    }
+                    
+                    $newOrder->total_price = $newTotalPrice;
+                    $newOrder->save();
+
+                    foreach ($stockIssues['availableItems'] as $item) {
+                        $item->delete();
+                    }
+
+                    $originalTotalPrice = $stockIssues['unavailableItems']->sum('total_price');
+                    $order->total_price = $originalTotalPrice;
+                    $order->is_suspended = true;
+                    $order->suspension_reason = 'Produits en rupture de stock ou inactifs';
+                    $order->save();
+
+                    $order->recordHistory(
+                        'division',
+                        "Commande divisée par division groupée par {$admin->name}. Nouvelle commande #{$newOrder->id} créée. Raison: {$notes}",
+                        ['bulk_division' => true, 'new_order_id' => $newOrder->id]
+                    );
+
+                    $processedOrderIds[] = $orderId;
                     $successCount++;
-                } else {
-                    $failedOrders[] = "Commande #{$orderId}: " . $result['message'];
+
+                } catch (\Exception $e) {
+                    $errorCount++;
+                    $errors[] = ['id' => $orderId, 'reason' => "Erreur lors de la division: " . $e->getMessage()];
                 }
             }
 
             DB::commit();
 
-            $message = "{$successCount} commande(s) divisée(s) avec succès";
-            if (count($failedOrders) > 0) {
-                $message .= ". Échecs: " . implode(', ', $failedOrders);
+            $message = "Division groupée terminée : {$successCount} réussie(s)";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} échec(s)";
             }
 
             return response()->json([
-                'success' => true,
+                'success' => $errorCount === 0,
                 'message' => $message,
-                'success_count' => $successCount,
-                'failed_count' => count($failedOrders)
+                'details' => [
+                    'success_count' => $successCount,
+                    'error_count' => $errorCount,
+                    'processed_ids' => $processedOrderIds,
+                    'errors' => $errors
+                ]
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur dans ExaminationController@bulkSplit: ' . $e->getMessage());
+            Log::error('Erreur dans bulkSplit: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la division en lot: ' . $e->getMessage()
+                'message' => 'Erreur lors de la division groupée: ' . $e->getMessage()
             ], 500);
         }
     }
 
+    /**
+     * Actions groupées - Annulation
+     */
     public function bulkCancel(Request $request)
     {
         try {
@@ -386,51 +447,71 @@ class ExaminationController extends Controller
             ]);
 
             $admin = Auth::guard('admin')->user();
-            $orderIds = $validated['order_ids'];
             $notes = $validated['notes'];
 
             DB::beginTransaction();
 
             $successCount = 0;
+            $errorCount = 0;
+            $errors = [];
+            $processedOrderIds = [];
 
-            foreach ($orderIds as $orderId) {
+            foreach ($validated['order_ids'] as $orderId) {
                 $order = $admin->orders()->find($orderId);
                 
-                if ($order) {
-                    $order->status = 'annulée';
-                    $order->is_suspended = false;
-                    $order->suspension_reason = null;
-                    $order->save();
-                    
-                    $order->recordHistory(
-                        'annulation',
-                        "Commande annulée en lot depuis l'interface d'examen par {$admin->name}. Raison: {$notes}",
-                        ['bulk_cancelled_from_examination' => true]
-                    );
-                    
-                    $successCount++;
+                if (!$order) {
+                    $errorCount++;
+                    $errors[] = ['id' => $orderId, 'reason' => "Commande #{$orderId} non trouvée pour cet admin."];
+                    continue;
                 }
+
+                $order->status = 'annulée';
+                $order->is_suspended = false;
+                $order->suspension_reason = null;
+                $order->save();
+
+                $order->recordHistory(
+                    'annulation',
+                    "Commande annulée par annulation groupée par {$admin->name}. Raison: {$notes}",
+                    ['bulk_cancellation' => true, 'notes' => $notes]
+                );
+
+                $processedOrderIds[] = $orderId;
+                $successCount++;
             }
 
             DB::commit();
 
+            $message = "Annulation groupée terminée : {$successCount} réussie(s)";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} échec(s)";
+            }
+
             return response()->json([
-                'success' => true,
-                'message' => "{$successCount} commande(s) annulée(s) avec succès",
-                'success_count' => $successCount
+                'success' => $errorCount === 0,
+                'message' => $message,
+                'details' => [
+                    'success_count' => $successCount,
+                    'error_count' => $errorCount,
+                    'processed_ids' => $processedOrderIds,
+                    'errors' => $errors
+                ]
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur dans ExaminationController@bulkCancel: ' . $e->getMessage());
+            Log::error('Erreur dans bulkCancel: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'annulation en lot: ' . $e->getMessage()
+                'message' => 'Erreur lors de l\'annulation groupée: ' . $e->getMessage()
             ], 500);
         }
     }
 
+    /**
+     * Actions groupées - Suspension
+     */
     public function bulkSuspend(Request $request)
     {
         try {
@@ -441,65 +522,81 @@ class ExaminationController extends Controller
             ]);
 
             $admin = Auth::guard('admin')->user();
-            $orderIds = $validated['order_ids'];
             $notes = $validated['notes'];
 
             DB::beginTransaction();
 
             $successCount = 0;
+            $errorCount = 0;
+            $errors = [];
+            $processedOrderIds = [];
 
-            foreach ($orderIds as $orderId) {
+            foreach ($validated['order_ids'] as $orderId) {
                 $order = $admin->orders()->find($orderId);
                 
-                if ($order) {
-                    $order->is_suspended = true;
-                    $order->suspension_reason = $notes;
-                    $order->save();
-                    
-                    $order->recordHistory(
-                        'suspension',
-                        "Commande suspendue en lot depuis l'interface d'examen par {$admin->name}. Raison: {$notes}",
-                        ['bulk_suspended_from_examination' => true]
-                    );
-                    
-                    $successCount++;
+                if (!$order) {
+                    $errorCount++;
+                    $errors[] = ['id' => $orderId, 'reason' => "Commande #{$orderId} non trouvée pour cet admin."];
+                    continue;
                 }
+
+                $order->is_suspended = true;
+                $order->suspension_reason = $notes;
+                $order->save();
+
+                $order->recordHistory(
+                    'suspension',
+                    "Commande suspendue par suspension groupée par {$admin->name}. Raison: {$notes}",
+                    ['bulk_suspension' => true, 'notes' => $notes]
+                );
+
+                $processedOrderIds[] = $orderId;
+                $successCount++;
             }
 
             DB::commit();
 
+            $message = "Suspension groupée terminée : {$successCount} réussie(s)";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} échec(s)";
+            }
+
             return response()->json([
-                'success' => true,
-                'message' => "{$successCount} commande(s) suspendue(s) avec succès",
-                'success_count' => $successCount
+                'success' => $errorCount === 0,
+                'message' => $message,
+                'details' => [
+                    'success_count' => $successCount,
+                    'error_count' => $errorCount,
+                    'processed_ids' => $processedOrderIds,
+                    'errors' => $errors
+                ]
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur dans ExaminationController@bulkSuspend: ' . $e->getMessage());
+            Log::error('Erreur dans bulkSuspend: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la suspension en lot: ' . $e->getMessage()
+                'message' => 'Erreur lors de la suspension groupée: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * HELPERS
+     * Helper: Trouver les commandes avec problèmes de stock
      */
-
-    /**
-     * Trouver les commandes avec problèmes de stock
-     */
-    private function findOrdersWithStockIssues($admin)
+    private function findOrdersWithStockIssues($admin, $includeSuspended = true)
     {
-        return $admin->orders()
-            ->with(['items.product'])
-            ->whereIn('status', ['nouvelle', 'confirmée', 'datée'])
-            ->where(function($q) {
+        $query = $admin->orders()->with(['items.product']);
+        
+        if (!$includeSuspended) {
+            $query->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            })
+            });
+        }
+        
+        return $query->whereIn('status', ['nouvelle', 'confirmée', 'datée'])
             ->get()
             ->filter(function($order) {
                 return $this->orderHasStockIssues($order);
@@ -507,100 +604,33 @@ class ExaminationController extends Controller
     }
 
     /**
-     * Compter les commandes avec problèmes de stock
+     * Helper: Compter les commandes avec problèmes de stock
      */
-    private function countOrdersWithStockIssues($admin)
+    private function countOrdersWithStockIssues($admin, $includeSuspended = true)
     {
-        $orders = $admin->orders()
-            ->with(['items.product'])
-            ->whereIn('status', ['nouvelle', 'confirmée', 'datée'])
-            ->where(function($q) {
+        $orders = $admin->orders()->with(['items.product']);
+        
+        if (!$includeSuspended) {
+            $orders->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            })
-            ->get();
-
-        return $orders->filter(function($order) {
-            return $this->orderHasStockIssues($order);
-        })->count();
-    }
-
-    /**
-     * Vérifier si une commande a des problèmes de stock
-     */
-    private function orderHasStockIssues($order)
-    {
-        foreach ($order->items as $item) {
-            if (!$item->product) {
-                return true; // Produit supprimé
-            }
-            
-            if (!$item->product->is_active) {
-                return true; // Produit inactif
-            }
-            
-            if ($item->product->stock < $item->quantity) {
-                return true; // Stock insuffisant
-            }
+            });
         }
         
-        return false;
+        return $orders->whereIn('status', ['nouvelle', 'confirmée', 'datée'])
+            ->get()
+            ->filter(function($order) {
+                return $this->orderHasStockIssues($order);
+            })->count();
     }
 
     /**
-     * Analyser les problèmes de stock d'une commande
-     */
-    private function analyzeOrderStockIssues($order)
-    {
-        $availableItems = collect();
-        $unavailableItems = collect();
-        $issues = [];
-
-        foreach ($order->items as $item) {
-            $hasIssue = false;
-            $issueReasons = [];
-
-            if (!$item->product) {
-                $hasIssue = true;
-                $issueReasons[] = 'Produit supprimé';
-            } else {
-                if (!$item->product->is_active) {
-                    $hasIssue = true;
-                    $issueReasons[] = 'Produit inactif';
-                }
-                
-                if ($item->product->stock < $item->quantity) {
-                    $hasIssue = true;
-                    $issueReasons[] = "Stock insuffisant ({$item->product->stock} disponible, {$item->quantity} demandé)";
-                }
-            }
-
-            if ($hasIssue) {
-                $unavailableItems->push($item);
-                $issues[] = [
-                    'item_id' => $item->id,
-                    'product_name' => $item->product ? $item->product->name : 'Produit supprimé',
-                    'reasons' => $issueReasons
-                ];
-            } else {
-                $availableItems->push($item);
-            }
-        }
-
-        return [
-            'hasIssues' => $unavailableItems->count() > 0,
-            'availableItems' => $availableItems,
-            'unavailableItems' => $unavailableItems,
-            'issues' => $issues
-        ];
-    }
-
-    /**
-     * Formater les données d'une commande pour l'examen
+     * Helper: Formater les données d'une commande pour l'examen
      */
     private function formatOrderDataForExamination($order)
     {
         try {
             if (!$order || !$order->id) {
+                Log::warning('formatOrderDataForExamination: order invalide');
                 return null;
             }
 
@@ -654,101 +684,6 @@ class ExaminationController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return null;
-        }
-    }
-
-    /**
-     * Appliquer des filtres aux commandes
-     */
-    private function applyFilters($orders, $filters)
-    {
-        if (isset($filters['status']) && $filters['status']) {
-            $orders = $orders->where('status', $filters['status']);
-        }
-
-        if (isset($filters['priority']) && $filters['priority']) {
-            $orders = $orders->where('priority', $filters['priority']);
-        }
-
-        if (isset($filters['date_from']) && $filters['date_from']) {
-            $orders = $orders->where('created_at', '>=', $filters['date_from']);
-        }
-
-        if (isset($filters['date_to']) && $filters['date_to']) {
-            $orders = $orders->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
-        }
-
-        return $orders;
-    }
-
-    /**
-     * Effectuer la division d'une commande (helper pour actions en lot)
-     */
-    private function performOrderSplit($order, $notes, $admin)
-    {
-        try {
-            $stockIssues = $this->analyzeOrderStockIssues($order);
-            
-            if (!$stockIssues['hasIssues'] || $stockIssues['availableItems']->count() === 0) {
-                return [
-                    'success' => false,
-                    'message' => 'Aucun produit disponible'
-                ];
-            }
-
-            // Créer la nouvelle commande
-            $newOrder = $order->replicate();
-            $newOrder->status = 'nouvelle';
-            $newOrder->attempts_count = 0;
-            $newOrder->daily_attempts_count = 0;
-            $newOrder->last_attempt_at = null;
-            $newOrder->is_suspended = false;
-            $newOrder->suspension_reason = null;
-            $newOrder->save();
-
-            // Ajouter les produits disponibles
-            $newTotalPrice = 0;
-            foreach ($stockIssues['availableItems'] as $item) {
-                $newOrder->items()->create([
-                    'product_id' => $item->product_id,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'total_price' => $item->total_price,
-                ]);
-                $newTotalPrice += $item->total_price;
-            }
-            
-            $newOrder->total_price = $newTotalPrice;
-            $newOrder->save();
-
-            // Modifier la commande originale
-            foreach ($stockIssues['availableItems'] as $item) {
-                $item->delete();
-            }
-
-            $originalTotalPrice = $stockIssues['unavailableItems']->sum('total_price');
-            $order->total_price = $originalTotalPrice;
-            $order->is_suspended = true;
-            $order->suspension_reason = 'Produits en rupture - Division en lot';
-            $order->save();
-
-            // Historique
-            $order->recordHistory(
-                'division',
-                "Commande divisée en lot par {$admin->name}. Nouvelle commande #{$newOrder->id}. Raison: {$notes}",
-                ['bulk_division' => true, 'new_order_id' => $newOrder->id]
-            );
-
-            return [
-                'success' => true,
-                'new_order_id' => $newOrder->id
-            ];
-
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage()
-            ];
         }
     }
 }
