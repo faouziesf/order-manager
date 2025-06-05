@@ -327,7 +327,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * ULTRA-SIMPLIFIÉ: Compter les commandes suspendues avec produits en stock
+     * NOUVELLE: Compter les commandes prêtes pour réactivation
      */
     public function getRestockCount()
     {
@@ -338,27 +338,15 @@ class ProcessController extends Controller
                 return response()->json(['error' => 'Non authentifié'], 401);
             }
             
-            Log::info("RESTOCK COUNT - Admin {$admin->id}");
-            
-            // Récupérer TOUTES les commandes suspendues
             $suspendedOrders = $admin->orders()
                 ->with(['items.product'])
                 ->where('is_suspended', true)
                 ->whereNotIn('status', ['annulée', 'livrée'])
                 ->get();
 
-            Log::info("RESTOCK COUNT - {$suspendedOrders->count()} commandes suspendues trouvées");
-
-            $count = 0;
-            foreach ($suspendedOrders as $order) {
-                $hasStock = $this->allProductsInStock($order);
-                Log::info("RESTOCK COUNT - Commande {$order->id}: " . ($hasStock ? 'EN STOCK' : 'PAS EN STOCK'));
-                if ($hasStock) {
-                    $count++;
-                }
-            }
-            
-            Log::info("RESTOCK COUNT - Total éligible: {$count}");
+            $count = $suspendedOrders->filter(function($order) {
+                return $this->orderCanBeReactivated($order);
+            })->count();
             
             return response()->json([
                 'count' => $count,
@@ -372,48 +360,6 @@ class ProcessController extends Controller
                 'error' => 'Erreur lors du chargement du compteur',
                 'count' => 0
             ], 500);
-        }
-    }
-
-    /**
-     * ULTRA-SIMPLE: Vérifier si tous les produits d'une commande sont en stock
-     */
-    private function allProductsInStock($order)
-    {
-        try {
-            if (!$order->items || $order->items->count() === 0) {
-                Log::info("STOCK CHECK - Commande {$order->id}: Pas d'items");
-                return false;
-            }
-
-            foreach ($order->items as $item) {
-                // Vérifier si le produit existe
-                if (!$item->product) {
-                    Log::info("STOCK CHECK - Commande {$order->id}, Item {$item->id}: Produit supprimé");
-                    return false;
-                }
-                
-                // Vérifier si le produit est actif
-                if (!$item->product->is_active) {
-                    Log::info("STOCK CHECK - Commande {$order->id}, Produit {$item->product->id}: Inactif");
-                    return false;
-                }
-                
-                // Vérifier le stock
-                if ($item->product->stock < $item->quantity) {
-                    Log::info("STOCK CHECK - Commande {$order->id}, Produit {$item->product->id}: Stock insuffisant ({$item->product->stock} < {$item->quantity})");
-                    return false;
-                }
-                
-                Log::info("STOCK CHECK - Commande {$order->id}, Produit {$item->product->id}: OK");
-            }
-            
-            Log::info("STOCK CHECK - Commande {$order->id}: TOUS PRODUITS EN STOCK");
-            return true;
-            
-        } catch (\Exception $e) {
-            Log::error("STOCK CHECK - Erreur commande {$order->id}: " . $e->getMessage());
-            return false;
         }
     }
 
@@ -789,11 +735,11 @@ class ProcessController extends Controller
     }
 
     /**
-     * ULTRA-SIMPLE: Utilise la même fonction pour la compatibilité
+     * Helper: Vérifier si une commande peut être réactivée
      */
     private function orderCanBeReactivated($order)
     {
-        return $this->allProductsInStock($order);
+        return !$this->orderHasStockIssues($order);
     }
 
     /**
@@ -1021,16 +967,15 @@ class ProcessController extends Controller
     }
 
     /**
-     * ULTRA-SIMPLIFIÉ: getQueue pour restock
+     * Obtenir une commande de la file spécifiée
      */
     public function getQueue($queue)
     {
         try {
-            Log::info("QUEUE - Demande pour file '{$queue}'");
-            
             if (!is_string($queue)) {
+                Log::error('getQueue: paramètre queue n\'est pas une chaîne', ['queue' => $queue, 'type' => gettype($queue)]);
                 return response()->json([
-                    'error' => 'Paramètre de file d\'attente invalide',
+                    'error' => 'Paramètre de file d\'attente invalide (type incorrect)',
                     'hasOrder' => false
                 ], 400);
             }
@@ -1038,6 +983,7 @@ class ProcessController extends Controller
             $queue = trim(strtolower($queue));
             
             if (!in_array($queue, ['standard', 'dated', 'old', 'restock'])) {
+                Log::error('getQueue: nom de file invalide', ['queue' => $queue]);
                 return response()->json([
                     'error' => 'File d\'attente invalide',
                     'hasOrder' => false
@@ -1053,39 +999,16 @@ class ProcessController extends Controller
                 ], 401);
             }
 
-            Log::info("QUEUE - Admin {$admin->id} demande file '{$queue}'");
-
             $this->resetDailyCountersIfNeeded($admin);
 
-            $order = null;
-            
-            // ULTRA-SIMPLE pour restock : première commande suspendue avec stock
+            // CORRECTION: Gestion spéciale pour restock
             if ($queue === 'restock') {
-                Log::info("QUEUE RESTOCK - Recherche ultra-simple...");
-                
-                $suspendedOrders = $admin->orders()
-                    ->with(['items.product'])
-                    ->where('is_suspended', true)
-                    ->whereNotIn('status', ['annulée', 'livrée'])
-                    ->orderBy('created_at', 'asc')
-                    ->get();
-
-                Log::info("QUEUE RESTOCK - {$suspendedOrders->count()} commandes suspendues trouvées");
-
-                foreach ($suspendedOrders as $suspendedOrder) {
-                    if ($this->allProductsInStock($suspendedOrder)) {
-                        $order = $suspendedOrder;
-                        Log::info("QUEUE RESTOCK - Commande {$order->id} sélectionnée");
-                        break;
-                    }
-                }
+                $order = $this->findNextRestockOrder($admin);
             } else {
-                Log::info("QUEUE - Recherche commande standard...");
                 $order = $this->findNextOrderExcludingStockIssues($admin, $queue);
             }
             
             if ($order) {
-                Log::info("QUEUE - Commande trouvée: {$order->id}");
                 $orderData = $this->formatOrderData($order);
                 
                 return response()->json([
@@ -1094,19 +1017,63 @@ class ProcessController extends Controller
                 ]);
             }
             
-            Log::info("QUEUE - Aucune commande disponible pour '{$queue}'");
             return response()->json([
                 'hasOrder' => false,
-                'message' => "Aucune commande disponible dans la file {$queue}"
+                'message' => 'Aucune commande disponible dans cette file'
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur dans getQueue: ' . $e->getMessage());
+            Log::error('Erreur dans getQueue: ' . $e->getMessage(), [
+                'queue' => $queue ?? 'undefined',
+                'queue_type' => isset($queue) ? gettype($queue) : 'undefined',
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return response()->json([
                 'error' => 'Erreur interne du serveur: ' . $e->getMessage(),
                 'hasOrder' => false
             ], 500);
+        }
+    }
+
+    /**
+     * NOUVELLE: Trouver la prochaine commande pour le retour en stock
+     * Logique : commandes suspendues (nouvelle ou datée) avec stock maintenant disponible
+     */
+    private function findNextRestockOrder($admin)
+    {
+        try {
+            // Paramètres spécifiques pour les commandes retour en stock
+            $maxTotalAttempts = $this->getSetting('restock_max_total_attempts', 5);
+            $maxDailyAttempts = $this->getSetting('restock_max_daily_attempts', 2);
+            $delayHours = $this->getSetting('restock_delay_hours', 1);
+
+            // Chercher les commandes suspendues avec statut nouvelle ou datée
+            $query = Order::where('admin_id', $admin->id)
+                ->with(['items.product'])
+                ->where('is_suspended', true) // OBLIGATOIRE: commandes suspendues
+                ->whereIn('status', ['nouvelle', 'datée']) // Statuts acceptés
+                ->where('attempts_count', '<', $maxTotalAttempts)
+                ->where('daily_attempts_count', '<', $maxDailyAttempts)
+                ->where(function($q) use ($delayHours) {
+                    $q->whereNull('last_attempt_at')
+                    ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+                })
+                ->orderBy('priority', 'desc')
+                ->orderBy('created_at', 'asc');
+
+            $orders = $query->get();
+
+            // Filtrer les commandes qui peuvent maintenant être traitées (stock disponible)
+            $eligibleOrder = $orders->filter(function($order) {
+                return $this->orderCanBeReactivated($order);
+            })->first();
+
+            return $eligibleOrder;
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans findNextRestockOrder: ' . $e->getMessage());
+            return null;
         }
     }
 
@@ -1117,18 +1084,24 @@ class ProcessController extends Controller
     {
         try {
             if (!$admin || !is_string($queue)) {
+                Log::error('findNextOrderExcludingStockIssues: paramètres invalides', [
+                    'admin' => $admin ? $admin->id : null,
+                    'queue' => $queue,
+                    'queue_type' => gettype($queue)
+                ]);
                 return null;
             }
 
             $queue = trim(strtolower($queue));
             
             if (!in_array($queue, ['standard', 'dated', 'old'])) {
+                Log::error('findNextOrderExcludingStockIssues: queue invalide', ['queue' => $queue]);
                 return null;
             }
 
             $query = Order::where('admin_id', $admin->id)
                 ->with(['items.product'])
-                // Exclure les commandes suspendues
+                // NOUVEAU: Exclure les commandes suspendues
                 ->where(function($q) {
                     $q->where('is_suspended', false)->orWhereNull('is_suspended');
                 });
@@ -1154,7 +1127,10 @@ class ProcessController extends Controller
             return $filteredOrders->first();
 
         } catch (\Exception $e) {
-            Log::error('Erreur dans findNextOrderExcludingStockIssues: ' . $e->getMessage());
+            Log::error('Erreur dans findNextOrderExcludingStockIssues: ' . $e->getMessage(), [
+                'queue' => $queue ?? 'undefined',
+                'admin_id' => $admin ? $admin->id : null
+            ]);
             return null;
         }
     }
@@ -1228,7 +1204,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * ULTRA-SIMPLE: getCounts avec restock basique
+     * MISE À JOUR: Corriger getCounts pour inclure restock
      */
     public function getCounts()
     {
@@ -1256,19 +1232,8 @@ class ProcessController extends Controller
             $examination = $this->countOrdersWithStockIssues($admin, false);
             $suspended = $admin->orders()->where('is_suspended', true)->whereNotIn('status', ['annulée', 'livrée'])->count();
             
-            // ULTRA-SIMPLE: compter commandes suspendues avec stock
-            $suspendedOrders = $admin->orders()
-                ->with(['items.product'])
-                ->where('is_suspended', true)
-                ->whereNotIn('status', ['annulée', 'livrée'])
-                ->get();
-
-            $restock = 0;
-            foreach ($suspendedOrders as $order) {
-                if ($this->allProductsInStock($order)) {
-                    $restock++;
-                }
-            }
+            // NOUVEAU: Compter les commandes restock
+            $restock = $this->getRestockCountForInterface($admin);
             
             $counts = [
                 'standard' => $standard,
@@ -1308,12 +1273,13 @@ class ProcessController extends Controller
     {
         try {
             if (!is_string($queue) || !in_array($queue, ['standard', 'dated', 'old'])) {
+                Log::warning("getQueueCountExcludingStockIssues: paramètre queue invalide", ['queue' => $queue]);
                 return 0;
             }
 
             $query = Order::where('admin_id', $admin->id)
                 ->with(['items.product'])
-                // Exclure les commandes suspendues
+                // NOUVEAU: Exclure les commandes suspendues
                 ->where(function($q) {
                     $q->where('is_suspended', false)->orWhereNull('is_suspended');
                 });
@@ -1345,19 +1311,55 @@ class ProcessController extends Controller
     }
 
     /**
+     * NOUVELLE: Compter les commandes pour l'interface restock
+     */
+    private function getRestockCountForInterface($admin)
+    {
+        try {
+            $maxTotalAttempts = $this->getSetting('restock_max_total_attempts', 5);
+            $maxDailyAttempts = $this->getSetting('restock_max_daily_attempts', 2);
+            $delayHours = $this->getSetting('restock_delay_hours', 1);
+
+            $query = Order::where('admin_id', $admin->id)
+                ->with(['items.product'])
+                ->where('is_suspended', true)
+                ->whereIn('status', ['nouvelle', 'datée'])
+                ->where('attempts_count', '<', $maxTotalAttempts)
+                ->where('daily_attempts_count', '<', $maxDailyAttempts)
+                ->where(function($q) use ($delayHours) {
+                    $q->whereNull('last_attempt_at')
+                    ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+                });
+
+            $orders = $query->get();
+
+            $count = $orders->filter(function($order) {
+                return $this->orderCanBeReactivated($order);
+            })->count();
+
+            return $count;
+
+        } catch (\Exception $e) {
+            Log::error("Erreur dans getRestockCountForInterface: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Helper pour obtenir les paramètres avec gestion d'erreur
      */
     private function getSetting($key, $default)
     {
         try {
             if (!is_string($key)) {
+                Log::warning("getSetting: clé invalide", ['key' => $key, 'type' => gettype($key)]);
                 return $default;
             }
             
             $value = AdminSetting::get($key, $default);
             return is_numeric($value) ? (float)$value : $value;
-
         } catch (\Exception $e) {
+            Log::warning("Impossible de récupérer le setting {$key}, utilisation de la valeur par défaut: {$default}");
             return $default;
         }
     }
@@ -1424,14 +1426,18 @@ class ProcessController extends Controller
             $today = now()->format('Y-m-d');
             
             if ($lastReset !== $today) {
+                Log::info("Réinitialisation des compteurs journaliers pour l'admin {$admin->id}");
+                
                 $updatedCount = Order::where('admin_id', $admin->id)
                     ->whereDate('last_attempt_at', '<', $today)
                     ->update(['daily_attempts_count' => 0]);
                 
                 AdminSetting::set($lastResetSettingKey, $today);
+                
+                Log::info("Compteurs journaliers réinitialisés pour {$updatedCount} commandes pour l'admin {$admin->id}");
             }
         } catch (\Exception $e) {
-            Log::error("Erreur lors de la réinitialisation des compteurs journaliers pour admin {$admin->id}: " . $e->getMessage());
+            Log::error("Erreur lors de la réinitialisation des compteurs journaliers: " . $e->getMessage());
         }
     }
 
@@ -1498,17 +1504,18 @@ class ProcessController extends Controller
                     break;
                 
                 case 'reactivate':
+                    // NOUVELLE: Action pour réactiver une commande depuis l'onglet retour en stock
                     if ($request->queue !== 'restock') {
                         DB::rollBack();
                         return response()->json([
-                            'error' => 'Action de réactivation uniquement pour la file retour en stock.'
+                            'error' => 'Action de réactivation uniquement disponible dans la file retour en stock'
                         ], 400);
                     }
                     
-                    if (!$this->allProductsInStock($order)) {
+                    if ($this->orderHasStockIssues($order)) {
                         DB::rollBack();
                         return response()->json([
-                            'error' => 'Impossible de réactiver: certains produits sont toujours en rupture de stock ou inactifs.'
+                            'error' => 'Impossible de réactiver: certains produits sont toujours en rupture de stock'
                         ], 400);
                     }
                     
@@ -1519,7 +1526,7 @@ class ProcessController extends Controller
                     $order->daily_attempts_count = 0;
                     $order->last_attempt_at = null;
                     $order->save();
-                    $order->recordHistory('réactivation_restock', $historyNote . " (depuis file restock)");
+                    $order->recordHistory('réactivation', $historyNote . " (depuis file restock)");
                     break;    
 
                 default:
@@ -1594,9 +1601,10 @@ class ProcessController extends Controller
                     continue;
                 }
 
-                if (!$this->allProductsInStock($order)) {
+                // Vérifier que les stocks sont OK
+                if ($this->orderHasStockIssues($order)) {
                     $errorCount++;
-                    $errors[] = ['id' => $orderId, 'reason' => "Commande #{$orderId} a encore des problèmes de stock ou produits inactifs."];
+                    $errors[] = ['id' => $orderId, 'reason' => "Commande #{$orderId} a encore des problèmes de stock"];
                     continue;
                 }
 
@@ -1609,6 +1617,7 @@ class ProcessController extends Controller
                     "Commande réactivée par réactivation groupée par {$admin->name}. Raison: {$notes}",
                     ['bulk_reactivation' => true, 'notes' => $notes]
                 );
+
                 $processedOrderIds[] = $orderId;
                 $successCount++;
             }
@@ -1617,7 +1626,7 @@ class ProcessController extends Controller
 
             $message = "Réactivation groupée terminée : {$successCount} réussie(s)";
             if ($errorCount > 0) {
-                $message .= ", {$errorCount} échec(s).";
+                $message .= ", {$errorCount} échec(s)";
             }
 
             return response()->json([
@@ -1637,7 +1646,7 @@ class ProcessController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur serveur lors de la réactivation groupée: ' . $e->getMessage()
+                'message' => 'Erreur lors de la réactivation groupée: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1680,18 +1689,19 @@ class ProcessController extends Controller
 
                 $order->recordHistory(
                     'annulation',
-                    "Commande annulée par annulation groupée (suspendues) par {$admin->name}. Raison: {$notes}",
-                    ['bulk_cancellation_suspended' => true, 'notes' => $notes]
+                    "Commande annulée par annulation groupée par {$admin->name}. Raison: {$notes}",
+                    ['bulk_cancellation' => true, 'notes' => $notes]
                 );
+
                 $processedOrderIds[] = $orderId;
                 $successCount++;
             }
 
             DB::commit();
 
-            $message = "Annulation groupée (suspendues) terminée : {$successCount} réussie(s)";
+            $message = "Annulation groupée terminée : {$successCount} réussie(s)";
             if ($errorCount > 0) {
-                $message .= ", {$errorCount} échec(s).";
+                $message .= ", {$errorCount} échec(s)";
             }
 
             return response()->json([
@@ -1711,7 +1721,7 @@ class ProcessController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur serveur lors de l\'annulation groupée: ' . $e->getMessage()
+                'message' => 'Erreur lors de l\'annulation groupée: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1819,6 +1829,8 @@ class ProcessController extends Controller
                     'auto_transition' => true
                 ]
             );
+            
+            Log::info("Commande {$order->id} automatiquement changée au statut 'ancienne' après {$order->attempts_count} tentatives (seuil: {$standardMaxAttempts})");
         }
     }
 
@@ -1829,6 +1841,7 @@ class ProcessController extends Controller
     {
         try {
             if (!is_array($cartItems)) {
+                Log::warning('updateOrderItems: cartItems n\'est pas un tableau', ['order_id' => $order->id]);
                 return;
             }
 
@@ -1839,10 +1852,13 @@ class ProcessController extends Controller
                     is_numeric($item['quantity']) && $item['quantity'] > 0 &&
                     is_numeric($item['unit_price']) && $item['unit_price'] >= 0) {
                     $validItems[] = $item;
+                } else {
+                    Log::warning('updateOrderItems: item invalide ignoré', ['item' => $item, 'order_id' => $order->id]);
                 }
             }
 
             if (empty($validItems) && !empty($cartItems)) {
+                Log::error('updateOrderItems: Aucun item valide fourni pour la mise à jour.', ['order_id' => $order->id]);
                 return;
             }
 
@@ -1863,9 +1879,10 @@ class ProcessController extends Controller
             $orderUpdateData = ['total_price' => $newCalculatedTotalPrice];
             
             $order->update($orderUpdateData);
+            Log::info("Items mis à jour pour la commande {$order->id}. Nouveau total: {$newCalculatedTotalPrice}");
             
         } catch (\Exception $e) {
-            Log::error("Erreur lors de la mise à jour des items pour la commande {$order->id}: " . $e->getMessage());
+            Log::error("Erreur lors de la mise à jour des items pour la commande {$order->id}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             throw $e;
         }
     }
