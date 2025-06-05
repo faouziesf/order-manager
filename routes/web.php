@@ -168,8 +168,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('process.action');
             
         // ========================================
+        // ROUTES DE RACCOURCI POUR TOUTES LES INTERFACES
+        // ========================================
+        
+        // Routes de raccourci - DOIVENT ÊTRE AVANT les groupes avec préfixes
+        Route::get('process/examination', [ExaminationController::class, 'index'])
+            ->name('process.examination');
+        Route::get('process/suspended', [SuspendedController::class, 'index'])
+            ->name('process.suspended');
+        Route::get('process/restock', [RestockController::class, 'index'])
+            ->name('process.restock');
+            
+        // ========================================
         // INTERFACE D'EXAMEN DES COMMANDES
         // ========================================
+            
         Route::prefix('process/examination')->name('process.examination.')->group(function () {
             Route::get('/', [ExaminationController::class, 'index'])
                 ->name('index');
@@ -194,6 +207,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ========================================
         // INTERFACE DES COMMANDES SUSPENDUES
         // ========================================
+            
         Route::prefix('process/suspended')->name('process.suspended.')->group(function () {
             Route::get('/', [SuspendedController::class, 'index'])
                 ->name('index');
@@ -214,6 +228,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ========================================
         // INTERFACE DE RETOUR EN STOCK
         // ========================================
+            
         Route::prefix('process/restock')->name('process.restock.')->group(function () {
             Route::get('/', [RestockController::class, 'index'])
                 ->name('index');

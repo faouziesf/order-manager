@@ -1471,7 +1471,7 @@
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.process.examination') }}"
+                        <a href="{{ route('admin.process.examination.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.process.examination') ? 'active' : '' }}">
                             <i class="fas fa-exclamation-triangle"></i>Examen stock
                             <span class="badge bg-warning ms-1" id="examination-count-badge" style="display: none;"></span>
