@@ -168,16 +168,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('process.action');
             
         // ========================================
-        // ROUTES DE RACCOURCI POUR TOUTES LES INTERFACES
+        // INTERFACES DE TRAITEMENT - STRUCTURE CORRIGÉE
         // ========================================
-        
-        // Routes de raccourci - DOIVENT ÊTRE AVANT les groupes avec préfixes
-        Route::get('process/examination', [ExaminationController::class, 'index'])
-            ->name('process.examination');
-        Route::get('process/suspended', [SuspendedController::class, 'index'])
-            ->name('process.suspended');
-        Route::get('process/restock', [RestockController::class, 'index'])
-            ->name('process.restock');
             
         // ========================================
         // INTERFACE D'EXAMEN DES COMMANDES
@@ -247,6 +239,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
         
         // ========================================
+        // ROUTES DE RACCOURCI (pour compatibilité)
+        // ========================================
+        
+        Route::get('process/examination', [ExaminationController::class, 'index'])
+            ->name('process.examination');
+        Route::get('process/suspended', [SuspendedController::class, 'index'])
+            ->name('process.suspended');
+        Route::get('process/restock', [RestockController::class, 'index'])
+            ->name('process.restock');
+        
+        // ========================================
         // GESTION DES UTILISATEURS
         // ========================================
         Route::resource('managers', ManagerController::class);
@@ -265,7 +268,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('login-history.show');
 
         // ========================================
-        // IMPORTATION ET INTÉGRATIONS - Version corrigée
+        // IMPORTATION ET INTÉGRATIONS
         // ========================================
         Route::get('import', [ImportController::class, 'index'])->name('import.index');
         Route::post('import/csv', [ImportController::class, 'importCsv'])->name('import.csv');
@@ -288,7 +291,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');
         
         // ========================================
-        // PARAMÈTRES - SECTION MISE À JOUR
+        // PARAMÈTRES
         // ========================================
         Route::get('settings', [AdminSettingController::class, 'index'])
             ->name('settings.index');

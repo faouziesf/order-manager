@@ -19,10 +19,16 @@ trait ProcessTrait
                 return $default;
             }
             
+            // Vérifier si la classe AdminSetting existe
+            if (!class_exists(AdminSetting::class)) {
+                Log::warning("AdminSetting class not found, using default value for {$key}");
+                return $default;
+            }
+            
             $value = AdminSetting::get($key, $default);
             return is_numeric($value) ? (float)$value : $value;
         } catch (\Exception $e) {
-            Log::warning("Impossible de récupérer le setting {$key}, utilisation de la valeur par défaut: {$default}");
+            Log::warning("Impossible de récupérer le setting {$key}, utilisation de la valeur par défaut: {$default}. Erreur: " . $e->getMessage());
             return $default;
         }
     }
@@ -33,12 +39,23 @@ trait ProcessTrait
     protected function resetDailyCountersIfNeeded($admin)
     {
         try {
+            if (!$admin || !$admin->id) {
+                Log::warning('resetDailyCountersIfNeeded: admin invalide');
+                return;
+            }
+
             $lastResetSettingKey = 'last_daily_reset_' . $admin->id;
-            $lastReset = AdminSetting::get($lastResetSettingKey);
+            $lastReset = $this->getSetting($lastResetSettingKey, null);
             $today = now()->format('Y-m-d');
             
             if ($lastReset !== $today) {
                 Log::info("Réinitialisation des compteurs journaliers pour l'admin {$admin->id}");
+                
+                // Vérifier si la table orders existe
+                if (!\Schema::hasTable('orders')) {
+                    Log::error('Table orders not found');
+                    return;
+                }
                 
                 $updatedCount = \App\Models\Order::where('admin_id', $admin->id)
                     ->whereDate('last_attempt_at', '<', $today)
@@ -60,6 +77,7 @@ trait ProcessTrait
     {
         try {
             if (!$order || !$order->items || $order->items->count() === 0) {
+                Log::debug("orderHasStockIssues: commande sans items", ['order_id' => $order->id ?? 'unknown']);
                 return false;
             }
 
@@ -70,14 +88,30 @@ trait ProcessTrait
 
             foreach ($order->items as $item) {
                 if (!$item->product) {
+                    Log::debug("orderHasStockIssues: produit supprimé détecté", [
+                        'order_id' => $order->id,
+                        'item_id' => $item->id,
+                        'product_id' => $item->product_id
+                    ]);
                     return true; // Produit supprimé
                 }
                 
                 if (!$item->product->is_active) {
+                    Log::debug("orderHasStockIssues: produit inactif détecté", [
+                        'order_id' => $order->id,
+                        'product_id' => $item->product->id,
+                        'product_name' => $item->product->name
+                    ]);
                     return true; // Produit inactif
                 }
                 
                 if ($item->product->stock < $item->quantity) {
+                    Log::debug("orderHasStockIssues: stock insuffisant détecté", [
+                        'order_id' => $order->id,
+                        'product_id' => $item->product->id,
+                        'stock_available' => $item->product->stock,
+                        'quantity_needed' => $item->quantity
+                    ]);
                     return true; // Stock insuffisant
                 }
             }
@@ -94,47 +128,74 @@ trait ProcessTrait
      */
     protected function analyzeOrderStockIssues($order)
     {
-        $availableItems = collect();
-        $unavailableItems = collect();
-        $issues = [];
+        try {
+            $availableItems = collect();
+            $unavailableItems = collect();
+            $issues = [];
 
-        foreach ($order->items as $item) {
-            $hasIssue = false;
-            $issueReasons = [];
-
-            if (!$item->product) {
-                $hasIssue = true;
-                $issueReasons[] = 'Produit supprimé';
-            } else {
-                if (!$item->product->is_active) {
-                    $hasIssue = true;
-                    $issueReasons[] = 'Produit inactif';
-                }
-                
-                if ($item->product->stock < $item->quantity) {
-                    $hasIssue = true;
-                    $issueReasons[] = "Stock insuffisant ({$item->product->stock} disponible, {$item->quantity} demandé)";
-                }
-            }
-
-            if ($hasIssue) {
-                $unavailableItems->push($item);
-                $issues[] = [
-                    'item_id' => $item->id,
-                    'product_name' => $item->product ? $item->product->name : 'Produit supprimé',
-                    'reasons' => $issueReasons
+            if (!$order || !$order->items) {
+                Log::warning('analyzeOrderStockIssues: commande ou items invalides', ['order_id' => $order->id ?? 'unknown']);
+                return [
+                    'hasIssues' => false,
+                    'availableItems' => $availableItems,
+                    'unavailableItems' => $unavailableItems,
+                    'issues' => $issues
                 ];
-            } else {
-                $availableItems->push($item);
             }
-        }
 
-        return [
-            'hasIssues' => $unavailableItems->count() > 0,
-            'availableItems' => $availableItems,
-            'unavailableItems' => $unavailableItems,
-            'issues' => $issues
-        ];
+            // Recharger les relations si nécessaire
+            if (!$order->relationLoaded('items')) {
+                $order->load(['items.product']);
+            }
+
+            foreach ($order->items as $item) {
+                $hasIssue = false;
+                $issueReasons = [];
+
+                if (!$item->product) {
+                    $hasIssue = true;
+                    $issueReasons[] = 'Produit supprimé';
+                } else {
+                    if (!$item->product->is_active) {
+                        $hasIssue = true;
+                        $issueReasons[] = 'Produit inactif';
+                    }
+                    
+                    if ($item->product->stock < $item->quantity) {
+                        $hasIssue = true;
+                        $issueReasons[] = "Stock insuffisant ({$item->product->stock} disponible, {$item->quantity} demandé)";
+                    }
+                }
+
+                if ($hasIssue) {
+                    $unavailableItems->push($item);
+                    $issues[] = [
+                        'item_id' => $item->id,
+                        'product_name' => $item->product ? $item->product->name : 'Produit supprimé',
+                        'reasons' => $issueReasons
+                    ];
+                } else {
+                    $availableItems->push($item);
+                }
+            }
+
+            return [
+                'hasIssues' => $unavailableItems->count() > 0,
+                'availableItems' => $availableItems,
+                'unavailableItems' => $unavailableItems,
+                'issues' => $issues
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erreur dans analyzeOrderStockIssues: ' . $e->getMessage(), [
+                'order_id' => $order->id ?? 'unknown'
+            ]);
+            return [
+                'hasIssues' => false,
+                'availableItems' => collect(),
+                'unavailableItems' => collect(),
+                'issues' => []
+            ];
+        }
     }
 
     /**
@@ -143,18 +204,26 @@ trait ProcessTrait
     protected function formatOrderData($order)
     {
         try {
-            $order->load(['items.product']);
+            if (!$order || !$order->id) {
+                Log::warning('formatOrderData: commande invalide');
+                return null;
+            }
+
+            // Recharger les relations si nécessaire
+            if (!$order->relationLoaded('items')) {
+                $order->load(['items.product']);
+            }
             
             return [
                 'id' => $order->id,
-                'status' => $order->status,
-                'priority' => $order->priority,
-                'customer_name' => $order->customer_name,
-                'customer_phone' => $order->customer_phone,
-                'customer_phone_2' => $order->customer_phone_2,
-                'customer_governorate' => $order->customer_governorate,
-                'customer_city' => $order->customer_city,
-                'customer_address' => $order->customer_address,
+                'status' => $order->status ?? 'nouvelle',
+                'priority' => $order->priority ?? 'normale',
+                'customer_name' => $order->customer_name ?? '',
+                'customer_phone' => $order->customer_phone ?? '',
+                'customer_phone_2' => $order->customer_phone_2 ?? '',
+                'customer_governorate' => $order->customer_governorate ?? '',
+                'customer_city' => $order->customer_city ?? '',
+                'customer_address' => $order->customer_address ?? '',
                 'shipping_cost' => floatval($order->shipping_cost ?? 0),
                 'total_price' => floatval($order->total_price ?? 0),
                 'confirmed_price' => $order->confirmed_price ? floatval($order->confirmed_price) : null,
@@ -166,21 +235,28 @@ trait ProcessTrait
                 'last_attempt_at' => $order->last_attempt_at ? ($order->last_attempt_at instanceof Carbon ? $order->last_attempt_at->toISOString() : Carbon::parse($order->last_attempt_at)->toISOString()) : null,
                 'is_suspended' => $order->is_suspended ?? false,
                 'suspension_reason' => $order->suspension_reason ?? '',
-                'items' => $order->items->map(function($item) {
+                'items' => $order->items ? $order->items->map(function($item) {
                     return [
                         'id' => $item->id,
                         'product_id' => $item->product_id,
-                        'quantity' => intval($item->quantity),
-                        'unit_price' => floatval($item->unit_price),
-                        'total_price' => floatval($item->total_price),
+                        'quantity' => intval($item->quantity ?? 0),
+                        'unit_price' => floatval($item->unit_price ?? 0),
+                        'total_price' => floatval($item->total_price ?? 0),
                         'product' => $item->product ? [
                             'id' => $item->product->id,
-                            'name' => $item->product->name,
-                            'price' => floatval($item->product->price),
-                            'stock' => intval($item->product->stock)
-                        ] : null
+                            'name' => $item->product->name ?? 'Produit sans nom',
+                            'price' => floatval($item->product->price ?? 0),
+                            'stock' => intval($item->product->stock ?? 0),
+                            'is_active' => $item->product->is_active ?? false
+                        ] : [
+                            'id' => null,
+                            'name' => 'Produit supprimé',
+                            'price' => 0,
+                            'stock' => 0,
+                            'is_active' => false
+                        ]
                     ];
-                })->toArray()
+                })->toArray() : []
             ];
         } catch (\Exception $e) {
             Log::error('Erreur dans formatOrderData: ' . $e->getMessage(), ['order_id' => $order->id ?? 'unknown']);
@@ -193,7 +269,7 @@ trait ProcessTrait
      */
     protected function validateConfirmation($request)
     {
-        $request->validate([
+        return $request->validate([
             'confirmed_price' => 'required|numeric|min:0',
             'shipping_cost' => 'nullable|numeric|min:0',
             'customer_name' => 'nullable|string|max:255',
@@ -226,7 +302,11 @@ trait ProcessTrait
         $order->suspension_reason = null;
 
         $order->update($updateData);
-        $order->recordHistory('confirmation', $notes);
+        
+        // Enregistrer l'historique si la méthode existe
+        if (method_exists($order, 'recordHistory')) {
+            $order->recordHistory('confirmation', $notes);
+        }
     }
 
     /**
@@ -270,7 +350,10 @@ trait ProcessTrait
         $order->last_attempt_at = now();
         $order->save();
         
-        $order->recordHistory('tentative', $notes);
+        // Enregistrer l'historique si la méthode existe
+        if (method_exists($order, 'recordHistory')) {
+            $order->recordHistory('tentative', $notes);
+        }
         
         $standardMaxAttempts = (int)$this->getSetting('standard_max_total_attempts', 9);
         if ($order->status === 'nouvelle' && $order->attempts_count >= $standardMaxAttempts) {
@@ -281,16 +364,18 @@ trait ProcessTrait
             $order->daily_attempts_count = 0;
             $order->save();
             
-            $order->recordHistory(
-                'changement_statut_auto', 
-                "Commande #{$order->id} automatiquement passée en file 'ancienne' après {$standardMaxAttempts} tentatives en file 'nouvelle'. Notes: {$notes}",
-                [
-                    'previous_status' => $previousStatus, 
-                    'new_status' => 'ancienne',
-                    'attempts_reached' => $standardMaxAttempts,
-                    'auto_transition' => true
-                ]
-            );
+            if (method_exists($order, 'recordHistory')) {
+                $order->recordHistory(
+                    'changement_statut_auto', 
+                    "Commande #{$order->id} automatiquement passée en file 'ancienne' après {$standardMaxAttempts} tentatives en file 'nouvelle'. Notes: {$notes}",
+                    [
+                        'previous_status' => $previousStatus, 
+                        'new_status' => 'ancienne',
+                        'attempts_reached' => $standardMaxAttempts,
+                        'auto_transition' => true
+                    ]
+                );
+            }
             
             Log::info("Commande {$order->id} automatiquement changée au statut 'ancienne' après {$order->attempts_count} tentatives (seuil: {$standardMaxAttempts})");
         }
