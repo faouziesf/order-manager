@@ -239,17 +239,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
         
         // ========================================
-        // ROUTES DE RACCOURCI (pour compatibilité)
-        // ========================================
-        
-        Route::get('process/examination', [ExaminationController::class, 'index'])
-            ->name('process.examination');
-        Route::get('process/suspended', [SuspendedController::class, 'index'])
-            ->name('process.suspended');
-        Route::get('process/restock', [RestockController::class, 'index'])
-            ->name('process.restock');
-        
-        // ========================================
         // GESTION DES UTILISATEURS
         // ========================================
         Route::resource('managers', ManagerController::class);
@@ -312,6 +301,24 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])
             ->name('settings.stats');
     });
+
+    Route::get('debug-auth', function() {
+        $admin = auth('admin')->user();
+        
+        return [
+            'is_authenticated' => auth('admin')->check(),
+            'admin_id' => $admin ? $admin->id : null,
+            'admin_name' => $admin ? $admin->name : null,
+            'admin_class' => $admin ? get_class($admin) : null,
+            'admin_instance_check' => $admin instanceof \App\Models\Admin,
+            'gates' => [
+                'view-process-interface' => \Gate::allows('view-process-interface', $admin),
+                'view-examination' => \Gate::allows('view-examination', $admin),
+                'view-suspended' => \Gate::allows('view-suspended', $admin),
+                'view-restock' => \Gate::allows('view-restock', $admin),
+            ]
+        ];
+    })->name('admin.debug-auth');
 });
 
 // ========================================

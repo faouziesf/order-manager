@@ -952,7 +952,6 @@
 
 @section('content')
 <div class="process-container">
-    <!-- Header avec onglets -->
     <div class="process-header">
         <div class="process-icon">
             <i class="fas fa-headset"></i>
@@ -999,40 +998,25 @@
                 <div class="queue-badge" id="restock-count">0</div>
             </div>
 
-            <div class="queue-tab" data-queue="suspended">
-                <div class="queue-icon">
-                    <i class="fas fa-pause-circle"></i>
-                </div>
-                <div>
-                    <div>Suspendues</div>
-                </div>
-                <div class="queue-badge" id="suspended-count">0</div>
-            </div>
         </div>
     </div>
 
-    <!-- Contenu principal -->
     <div class="process-content" id="process-content">
-        <!-- Message de chargement initial -->
         <div class="no-order fade-in" id="loading-message">
             <i class="fas fa-spinner fa-spin"></i>
             <h3>Chargement en cours...</h3>
             <p>Préparation de l'interface de traitement</p>
         </div>
         
-        <!-- Message aucune commande -->
         <div class="no-order fade-in" id="no-order-message" style="display: none;">
             <i class="fas fa-inbox"></i>
             <h3>Aucune commande disponible</h3>
             <p>Il n'y a aucune commande à traiter dans cette file pour le moment.</p>
         </div>
 
-        <!-- Zone principale (visible quand une commande est chargée) -->
         <div id="main-content" style="display: none; grid-column: 1 / -1;">
             <div class="process-content">
-                <!-- Zone de la commande (gauche) -->
                 <div class="order-zone">
-                    <!-- Carte informations commande -->
                     <div class="order-card slide-up">
                         <div class="order-header">
                             <div>
@@ -1058,7 +1042,6 @@
                             <div class="order-status" id="order-status">Nouvelle</div>
                         </div>
 
-                        <!-- Section spéciale pour retour en stock -->
                         <div class="restock-info" id="restock-info" style="display: none;">
                             <div class="restock-header">
                                 <i class="fas fa-check-circle"></i>
@@ -1070,7 +1053,6 @@
                             </div>
                         </div>
 
-                        <!-- Formulaire client -->
                         <div class="customer-form">
                             <div class="form-grid">
                                 <div class="form-group">
@@ -1129,7 +1111,6 @@
                     </div>
                 </div>
 
-                <!-- Zone panier (droite) -->
                 <div class="cart-zone">
                     <div class="cart-card slide-up">
                         <div class="cart-header" onclick="toggleCart()">
@@ -1144,7 +1125,6 @@
                         </div>
 
                         <div class="cart-body">
-                            <!-- Recherche de produits -->
                             <div class="product-search">
                                 <div class="search-wrapper">
                                     <i class="fas fa-search search-icon"></i>
@@ -1154,7 +1134,6 @@
                                 </div>
                             </div>
 
-                            <!-- Produits du panier -->
                             <div class="cart-items" id="cart-items">
                                 <div class="cart-empty" id="cart-empty">
                                     <i class="fas fa-shopping-basket"></i>
@@ -1163,7 +1142,6 @@
                                 </div>
                             </div>
 
-                            <!-- Résumé du panier -->
                             <div class="cart-summary" id="cart-summary" style="display: none;">
                                 <div class="summary-row">
                                     <span class="summary-label">Sous-total:</span>
@@ -1182,10 +1160,8 @@
                     </div>
                 </div>
 
-                <!-- Zone d'actions -->
                 <div class="actions-zone slide-up">
                     <div class="action-buttons" id="action-buttons">
-                        <!-- Boutons standard -->
                         <button class="action-btn btn-call" id="btn-call">
                             <i class="fas fa-phone-slash"></i>
                             <span>Ne répond pas</span>
@@ -1206,7 +1182,6 @@
                             <span>Dater</span>
                         </button>
                         
-                        <!-- Bouton spécial pour retour en stock -->
                         <button class="action-btn btn-reactivate" id="btn-reactivate" style="display: none;">
                             <i class="fas fa-play-circle"></i>
                             <span>Réactiver définitivement</span>
@@ -1223,7 +1198,6 @@
     </div>
 </div>
 
-<!-- Modales -->
 @include('admin.process.modals')
 
 @endsection
@@ -1332,7 +1306,7 @@ $(document).ready(function() {
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
                 $('#restock-count').text(data.restock || 0);
-                $('#suspended-count').text(data.suspended || 0);
+                // Ligne pour #suspended-count supprimée
             })
             .fail(function(xhr, status, error) {
                 console.error('Erreur compteurs:', error, xhr.responseText);
@@ -1381,13 +1355,13 @@ $(document).ready(function() {
         // Déterminer l'endpoint selon le type de queue
         let endpoint;
         switch(currentQueue) {
-            case 'suspended':
-                endpoint = '/admin/process/suspended/orders';
-                break;
+            // Le cas 'suspended' est retiré ici car l'onglet n'existe plus.
+            // Si des commandes suspendues doivent être chargées par un autre moyen (ex: via restock),
+            // la logique du backend devra le gérer.
             case 'restock':
-                endpoint = '/admin/process/restock';
+                endpoint = '/admin/process/restock'; // Ce endpoint pourrait déjà gérer les commandes suspendues éligibles au restock
                 break;
-            default:
+            default: // standard, dated, old
                 endpoint = `/admin/process/${currentQueue}`;
         }
         
@@ -1402,10 +1376,9 @@ $(document).ready(function() {
                     displayOrder(data.order);
                     showMainContent();
                     console.log('Commande affichée:', currentOrder.id);
-                } else if (data.hasOrders && data.orders) {
-                    // Format pour les commandes multiples (suspended)
+                } else if (data.hasOrders && data.orders) { 
+                    // Format pour les commandes multiples (potentiellement pour d'autres vues si adaptées)
                     if (Array.isArray(data.orders) && data.orders.length > 0) {
-                        // Prendre la première commande
                         currentOrder = data.orders[0];
                         displayOrder(data.orders[0]);
                         showMainContent();
@@ -1487,11 +1460,13 @@ $(document).ready(function() {
     
     function updateQueueSpecificDisplay(order) {
         // Affichage spécial selon le type de queue
-        if (currentQueue === 'restock' || currentQueue === 'suspended') {
+        // La condition pour currentQueue === 'suspended' a été retirée.
+        // La logique pour 'restock' gérera les commandes concernées.
+        if (currentQueue === 'restock' && order.is_suspended) { // Adapté pour les commandes suspendues dans la file restock
             $('#restock-info').show();
             $('#btn-reactivate').show();
-            $('#btn-call span').text('Reporter');
-            console.log('Interface restock/suspended activée pour commande:', order.id);
+            $('#btn-call span').text('Reporter'); // Ou une autre action pertinente
+            console.log('Interface restock activée pour commande suspendue:', order.id);
         } else {
             $('#restock-info').hide();
             $('#btn-reactivate').hide();
@@ -1881,8 +1856,10 @@ $(document).ready(function() {
     }
     
     function showReactivateModal() {
-        if (currentQueue !== 'restock' && currentQueue !== 'suspended') {
-            showNotification('Cette action n\'est disponible que dans les files retour en stock et suspendues', 'error');
+        // La condition a été ajustée car 'suspended' n'est plus une file directement sélectionnable.
+        // Cette action est principalement pertinente pour les commandes dans la file 'restock' qui étaient suspendues.
+        if (currentQueue !== 'restock' || !currentOrder || !currentOrder.is_suspended) {
+            showNotification('Cette action est disponible pour les commandes suspendues dans la file "Retour en Stock".', 'error');
             return;
         }
         
@@ -2006,7 +1983,8 @@ $(document).ready(function() {
         // Préparation des données
         const requestData = {
             action: action,
-            queue: currentQueue,
+            queue: currentQueue, // La queue 'suspended' ne sera plus envoyée d'ici si l'onglet est retiré.
+                               // Le backend doit gérer les actions en fonction de l'état réel de la commande.
             ...formData
         };
         

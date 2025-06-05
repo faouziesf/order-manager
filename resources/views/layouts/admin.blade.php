@@ -1450,8 +1450,6 @@
                 </a>
             </li>
 
-            <!-- NOUVEAU MENU TRAITEMENT AVEC SOUS-MENUS -->
-            
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.process*') ? 'active' : '' }}"
                     data-target="processSubmenu" data-tooltip="Traitement">
@@ -1472,21 +1470,21 @@
                     </li>
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.examination.index') }}"
-                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.examination') ? 'active' : '' }}">
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.examination.*') ? 'active' : '' }}">
                             <i class="fas fa-exclamation-triangle"></i>Examen stock
                             <span class="badge bg-warning ms-1" id="examination-count-badge" style="display: none;"></span>
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.process.suspended') }}"
-                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.suspended') ? 'active' : '' }}">
+                        <a href="{{ route('admin.process.suspended.index') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.suspended.*') ? 'active' : '' }}">
                             <i class="fas fa-pause-circle"></i>Commandes suspendues
                             <span class="badge bg-purple ms-1" id="suspended-count-badge" style="display: none;"></span>
                         </a>
                     </li>
                     <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.process.restock') }}"
-                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.restock') ? 'active' : '' }}">
+                        <a href="{{ route('admin.process.restock.index') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.process.restock.*') ? 'active' : '' }}">
                             <i class="fas fa-box-open"></i>Retour en stock
                             <span class="badge bg-success ms-1" id="restock-count-badge" style="display: none;"></span>
                         </a>
