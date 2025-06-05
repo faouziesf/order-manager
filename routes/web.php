@@ -151,30 +151,37 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('orders', OrderController::class);
         
         // ========================================
-        // TRAITEMENT DES COMMANDES - SECTION DIVISÉE EN CONTRÔLEURS SPÉCIALISÉS
+        // TRAITEMENT DES COMMANDES - SOLUTION HYBRIDE OPTIMISÉE
         // ========================================
         
-        // Interface de traitement principal
+        // ========================================
+        // INTERFACE DE TRAITEMENT PRINCIPAL
+        // ========================================
+        
+        // Interface de traitement principal (vue)
         Route::get('process', [ProcessController::class, 'interface'])
             ->name('process.interface');
         Route::get('process/test', [ProcessController::class, 'test'])
             ->name('process.test');
         Route::get('process/counts', [ProcessController::class, 'getCounts'])
             ->name('process.getCounts');
-        Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
-            ->where('queue', 'standard|dated|old|restock')
-            ->name('process.getQueue');
         Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
             ->name('process.action');
+        
+        // ========================================
+        // ROUTE API SPÉCIFIQUE POUR RESTOCK SEULEMENT
+        // ========================================
+        
+        // Route API spécifique pour l'onglet restock (JSON)
+        Route::get('process/api/restock', [ProcessController::class, 'getQueue'])
+            ->defaults('queue', 'restock')
+            ->name('process.api.restock');
+        
+        // ========================================
+        // INTERFACES DE TRAITEMENT SPÉCIALISÉES
+        // ========================================
             
-        // ========================================
-        // INTERFACES DE TRAITEMENT - STRUCTURE CORRIGÉE
-        // ========================================
-            
-        // ========================================
         // INTERFACE D'EXAMEN DES COMMANDES
-        // ========================================
-            
         Route::prefix('process/examination')->name('process.examination.')->group(function () {
             Route::get('/', [ExaminationController::class, 'index'])
                 ->name('index');
@@ -196,10 +203,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('bulk-suspend');
         });
         
-        // ========================================
         // INTERFACE DES COMMANDES SUSPENDUES
-        // ========================================
-            
         Route::prefix('process/suspended')->name('process.suspended.')->group(function () {
             Route::get('/', [SuspendedController::class, 'index'])
                 ->name('index');
@@ -217,10 +221,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('bulk-cancel');
         });
         
-        // ========================================
         // INTERFACE DE RETOUR EN STOCK
-        // ========================================
-            
         Route::prefix('process/restock')->name('process.restock.')->group(function () {
             Route::get('/', [RestockController::class, 'index'])
                 ->name('index');
@@ -237,6 +238,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/bulk-reactivate', [RestockController::class, 'bulkReactivate'])
                 ->name('bulk-reactivate');
         });
+        
+        // ========================================
+        // ROUTE GÉNÉRIQUE POUR LES AUTRES ONGLETS (standard, dated, old)
+        // ========================================
+        
+        // Route générique pour les onglets standard, dated, old (JSON)
+        // IMPORTANTE: Cette route DOIT être APRÈS toutes les routes spécifiques
+        Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
+            ->where('queue', 'standard|dated|old')
+            ->name('process.getQueue');
         
         // ========================================
         // GESTION DES UTILISATEURS

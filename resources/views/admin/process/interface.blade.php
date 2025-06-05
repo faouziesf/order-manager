@@ -1359,7 +1359,7 @@ $(document).ready(function() {
             // Si des commandes suspendues doivent être chargées par un autre moyen (ex: via restock),
             // la logique du backend devra le gérer.
             case 'restock':
-                endpoint = '/admin/process/restock'; // Ce endpoint pourrait déjà gérer les commandes suspendues éligibles au restock
+                endpoint = '/admin/process/api/restock'; // Ce endpoint pourrait déjà gérer les commandes suspendues éligibles au restock
                 break;
             default: // standard, dated, old
                 endpoint = `/admin/process/${currentQueue}`;
