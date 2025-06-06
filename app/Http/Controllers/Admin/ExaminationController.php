@@ -180,25 +180,27 @@ class ExaminationController extends Controller
             $order->suspension_reason = 'Produits en rupture de stock ou inactifs';
             $order->save();
 
-            // Enregistrer dans l'historique
+            // Enregistrer dans l'historique avec des actions autorisées
             $order->recordHistory(
-                'division',
+                'modification',
                 "Commande divisée par {$admin->name}. Nouvelle commande #{$newOrder->id} créée avec les produits disponibles. Raison: {$notes}",
                 [
                     'new_order_id' => $newOrder->id,
                     'available_items_count' => $stockIssues['availableItems']->count(),
                     'unavailable_items_count' => $stockIssues['unavailableItems']->count(),
-                    'division_reason' => $notes
+                    'division_reason' => $notes,
+                    'action_type' => 'division'
                 ]
             );
 
             $newOrder->recordHistory(
-                'création',
+                'modification',
                 "Commande créée suite à la division de la commande #{$order->id} par {$admin->name}. Contient uniquement les produits disponibles.",
                 [
                     'original_order_id' => $order->id,
                     'items_count' => $stockIssues['availableItems']->count(),
-                    'created_from_division' => true
+                    'created_from_division' => true,
+                    'action_type' => 'creation'
                 ]
             );
 
@@ -394,9 +396,13 @@ class ExaminationController extends Controller
                     $order->save();
 
                     $order->recordHistory(
-                        'division',
+                        'modification',
                         "Commande divisée par division groupée par {$admin->name}. Nouvelle commande #{$newOrder->id} créée. Raison: {$notes}",
-                        ['bulk_division' => true, 'new_order_id' => $newOrder->id]
+                        [
+                            'bulk_division' => true, 
+                            'new_order_id' => $newOrder->id,
+                            'action_type' => 'bulk_division'
+                        ]
                     );
 
                     $processedOrderIds[] = $orderId;
@@ -476,7 +482,11 @@ class ExaminationController extends Controller
                 $order->recordHistory(
                     'annulation',
                     "Commande annulée par annulation groupée par {$admin->name}. Raison: {$notes}",
-                    ['bulk_cancellation' => true, 'notes' => $notes]
+                    [
+                        'bulk_cancellation' => true, 
+                        'notes' => $notes,
+                        'action_type' => 'bulk_cancellation'
+                    ]
                 );
 
                 $processedOrderIds[] = $orderId;
@@ -550,7 +560,11 @@ class ExaminationController extends Controller
                 $order->recordHistory(
                     'suspension',
                     "Commande suspendue par suspension groupée par {$admin->name}. Raison: {$notes}",
-                    ['bulk_suspension' => true, 'notes' => $notes]
+                    [
+                        'bulk_suspension' => true, 
+                        'notes' => $notes,
+                        'action_type' => 'bulk_suspension'
+                    ]
                 );
 
                 $processedOrderIds[] = $orderId;

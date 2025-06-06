@@ -6,452 +6,733 @@
 @section('css')
 <style>
     :root {
-        --suspended-primary: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        --suspended-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        --suspended-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        --suspended-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        --suspended-info: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        --suspended-primary: #8b5cf6;
+        --suspended-secondary: #7c3aed;
+        --suspended-success: #10b981;
+        --suspended-warning: #ef4444;
+        --suspended-danger: #f59e0b;
+        --suspended-info: #06b6d4;
         --glass-bg: rgba(255, 255, 255, 0.95);
-        --glass-border: rgba(255, 255, 255, 0.2);
-        --shadow-elevated: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        --border-radius-xl: 24px;
-        --border-radius-2xl: 32px;
-        --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        --shadow-modern: 0 4px 6px rgba(0, 0, 0, 0.05);
+        --shadow-elevated: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        --border-radius-modern: 12px;
+        --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     body {
         background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-        font-family: 'Inter', sans-serif;
-        overflow-x: hidden;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Container principal */
+    /* Container principal optimisé pour desktop */
     .suspended-container {
-        background: var(--glass-bg);
-        backdrop-filter: blur(20px);
-        border-radius: var(--border-radius-2xl);
-        box-shadow: var(--shadow-elevated);
-        border: 1px solid var(--glass-border);
+        background: white;
+        border-radius: var(--border-radius-modern);
+        box-shadow: var(--shadow-modern);
         margin: 0.5rem;
         min-height: calc(100vh - 120px);
         overflow: hidden;
     }
 
-    /* Header */
+    /* Header simplifié */
     .suspended-header {
-        background: var(--suspended-primary);
-        padding: 1.5rem 2rem;
-        position: relative;
-        overflow: hidden;
+        background: linear-gradient(135deg, var(--suspended-primary) 0%, var(--suspended-secondary) 100%);
+        padding: 1.25rem 2rem;
+        color: white;
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
 
-    .suspended-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 100%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-        transform: rotate(15deg);
+    .header-title {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
 
-    .suspended-icon {
-        color: white;
-        font-size: 3rem;
-        position: relative;
-        z-index: 2;
+    .header-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 70px;
-        height: 70px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: var(--border-radius-xl);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-size: 1.25rem;
     }
 
-    .suspended-title {
-        position: relative;
-        z-index: 2;
-        color: white;
-        flex: 1;
-        margin-left: 1.5rem;
-    }
-
-    .suspended-title h1 {
-        font-size: 2rem;
+    .header-text h1 {
+        font-size: 1.5rem;
         font-weight: 700;
         margin: 0;
-        margin-bottom: 0.5rem;
     }
 
-    .suspended-subtitle {
-        font-size: 1.1rem;
+    .header-subtitle {
+        font-size: 0.875rem;
         opacity: 0.9;
         margin: 0;
     }
 
-    .suspended-stats {
-        position: relative;
-        z-index: 2;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border-radius: var(--border-radius-xl);
-        padding: 1rem 1.5rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: white;
+    .header-stats {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 0.75rem 1.25rem;
+        border-radius: 8px;
         text-align: center;
+        backdrop-filter: blur(10px);
     }
 
-    .stats-number {
-        font-size: 2rem;
+    .stat-number {
+        font-size: 1.5rem;
         font-weight: 700;
-        display: block;
+        line-height: 1;
     }
 
-    .stats-label {
-        font-size: 0.9rem;
+    .stat-label {
+        font-size: 0.75rem;
         opacity: 0.9;
+        margin-top: 0.25rem;
     }
 
-    /* Toolbar avec filtres et actions */
-    .suspended-toolbar {
-        background: white;
-        padding: 1.5rem 2rem;
+    /* Barre d'actions modernisée */
+    .actions-bar {
+        background: #f8fafc;
+        padding: 1rem 2rem;
         border-bottom: 1px solid #e5e7eb;
         display: flex;
-        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+    }
+
+    .actions-left {
+        display: flex;
+        align-items: center;
         gap: 1rem;
+        flex: 1;
+    }
+
+    .actions-right {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    /* Recherche en temps réel */
+    .search-container {
+        position: relative;
+        flex: 1;
+        max-width: 400px;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: var(--transition-smooth);
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-input:focus {
+        border-color: var(--suspended-primary);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        outline: none;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 0.875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        font-size: 0.875rem;
+        z-index: 10;
+    }
+
+    .search-clear {
+        position: absolute;
+        right: 0.875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 0.875rem;
+        opacity: 0;
+        transition: var(--transition-smooth);
+        z-index: 10;
+    }
+
+    .search-input:not(:placeholder-shown) + .search-icon + .search-clear {
+        opacity: 1;
+    }
+
+    .search-clear:hover {
+        color: #ef4444;
+    }
+
+    /* Dropdown filtres avancés */
+    .filters-dropdown {
+        position: relative;
+    }
+
+    .filters-trigger {
+        background: white;
+        border: 2px solid #e5e7eb;
+        color: #374151;
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .filters-trigger:hover {
+        border-color: var(--suspended-primary);
+        transform: translateY(-1px);
+    }
+
+    .filters-trigger.active {
+        background: var(--suspended-primary);
+        border-color: var(--suspended-primary);
+        color: white;
+    }
+
+    .filters-badge {
+        background: #ef4444;
+        color: white;
+        font-size: 0.7rem;
+        padding: 0.125rem 0.375rem;
+        border-radius: 8px;
+        font-weight: 700;
+        min-width: 16px;
+        text-align: center;
+        line-height: 1;
+    }
+
+    .filters-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow-elevated);
+        border: 1px solid #e5e7eb;
+        min-width: 320px;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: var(--transition-smooth);
+    }
+
+    .filters-dropdown-menu.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .filters-header {
+        background: #f8fafc;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        border-radius: 12px 12px 0 0;
+        display: flex;
         align-items: center;
         justify-content: space-between;
     }
 
-    .toolbar-left {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-        align-items: center;
-        flex: 1;
+    .filters-title {
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
     }
 
-    .toolbar-right {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
+    .filters-clear {
+        color: #6b7280;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
     }
 
-    /* Filtres optimisés pour desktop */
-    .filters-section {
+    .filters-clear:hover {
+        color: #ef4444;
+    }
+
+    .filters-body {
+        padding: 1.25rem;
+    }
+
+    .filters-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: 1fr 1fr;
         gap: 1rem;
-        align-items: end;
-        width: 100%;
-        max-width: 1200px;
+        margin-bottom: 1rem;
     }
 
     .filter-group {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.375rem;
+    }
+
+    .filter-group.full-width {
+        grid-column: 1 / -1;
     }
 
     .filter-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        color: #6b7280;
+        color: #374151;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.025em;
     }
 
-    .filter-control {
-        border: 2px solid #e5e7eb;
+    .filter-input {
+        border: 1px solid #d1d5db;
         border-radius: 8px;
         padding: 0.5rem 0.75rem;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
+        font-size: 0.875rem;
+        transition: var(--transition-smooth);
         background: white;
-        min-width: 180px;
     }
 
-    .filter-control:focus {
-        border-color: #8b5cf6;
+    .filter-input:focus {
+        border-color: var(--suspended-primary);
         box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
         outline: none;
     }
 
-    /* Actions groupées */
-    .bulk-actions {
-        display: none;
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        color: white;
-        padding: 0.75rem 1.5rem;
-        border-radius: 12px;
-        align-items: center;
-        gap: 1rem;
-        animation: slideDown 0.3s ease-out;
-        margin-bottom: 1rem;
-        width: 100%;
+    .filters-actions {
+        display: flex;
+        gap: 0.75rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
     }
 
-    .bulk-actions.show {
+    .filters-apply {
+        background: var(--suspended-primary);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        flex: 1;
+    }
+
+    .filters-apply:hover {
+        background: var(--suspended-secondary);
+        transform: translateY(-1px);
+    }
+
+    .filters-reset {
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #d1d5db;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+    }
+
+    .filters-reset:hover {
+        background: #e5e7eb;
+    }
+
+    /* Toggle vue liste/grille */
+    .view-toggle {
+        display: flex;
+        background: #e5e7eb;
+        border-radius: 8px;
+        padding: 0.25rem;
+    }
+
+    .view-btn {
+        padding: 0.5rem 0.75rem;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .view-btn.active {
+        background: white;
+        color: var(--suspended-primary);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Mode sélection groupée avec palette violette */
+    .bulk-mode-banner {
+        background: linear-gradient(135deg, var(--suspended-primary) 0%, var(--suspended-secondary) 100%);
+        color: white;
+        padding: 0.875rem 2rem;
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    .bulk-mode-banner.active {
         display: flex;
     }
 
-    .selected-count {
-        font-weight: 600;
-        padding: 0.25rem 0.75rem;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 15px;
-        font-size: 0.9rem;
+    .bulk-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
 
-    .bulk-action-btn {
+    .bulk-count {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .bulk-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .bulk-btn {
         background: rgba(255, 255, 255, 0.15);
         border: 1px solid rgba(255, 255, 255, 0.3);
         color: white;
         padding: 0.5rem 1rem;
-        border-radius: 8px;
-        font-size: 0.85rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: var(--transition-smooth);
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
 
-    .bulk-action-btn:hover {
+    .bulk-btn:hover {
         background: rgba(255, 255, 255, 0.25);
         transform: translateY(-1px);
     }
 
-    /* Content */
-    .suspended-content {
-        padding: 2rem;
-        min-height: calc(100vh - 300px);
+    /* Container de contenu avec vues */
+    .content-container {
+        position: relative;
+        min-height: 600px;
     }
 
-    /* Vue en grille optimisée pour desktop */
+    /* Vue tableau (liste) */
+    .table-container {
+        background: white;
+        overflow: hidden;
+        position: relative;
+        display: none;
+    }
+
+    .table-container.active {
+        display: block;
+    }
+
+    .table {
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+    }
+
+    .table thead th {
+        background: #f8fafc;
+        border: none;
+        padding: 0.875rem 1rem;
+        font-weight: 600;
+        color: #374151;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-size: 0.875rem;
+    }
+
+    .table tbody td {
+        padding: 0.875rem 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        transition: var(--transition-smooth);
+        font-size: 0.875rem;
+    }
+
+    .table tbody tr {
+        transition: var(--transition-smooth);
+        cursor: pointer;
+    }
+
+    .table tbody tr:hover {
+        background: #f8fafc;
+        transform: translateX(2px);
+        box-shadow: 4px 0 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .table tbody tr.selected {
+        background: #f3e8ff !important;
+        border-left: 4px solid var(--suspended-primary);
+    }
+
+    /* Vue grille */
+    .grid-container {
+        padding: 1.5rem;
+        display: none;
+    }
+
+    .grid-container.active {
+        display: block;
+    }
+
     .orders-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
-        gap: 1.5rem;
-        max-width: none;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1rem;
     }
 
-    /* Order Cards */
     .order-card {
         background: white;
-        border-radius: var(--border-radius-xl);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid #f1f5f9;
         overflow: hidden;
         transition: var(--transition-smooth);
         position: relative;
+        border-left: 4px solid var(--suspended-primary);
     }
 
     .order-card:hover {
-        box-shadow: var(--shadow-elevated);
-        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        transform: translateY(-3px);
+        border-color: var(--suspended-primary);
+    }
+
+    .order-card.selected {
+        border-left-color: var(--suspended-secondary);
+        box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+        background: linear-gradient(135deg, #f5f3ff 0%, #f3e8ff 100%);
     }
 
     .order-card-checkbox {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        width: 24px;
-        height: 24px;
+        width: 18px;
+        height: 18px;
         border-radius: 6px;
         border: 2px solid #d1d5db;
         background: white;
         cursor: pointer;
-        z-index: 10;
+        transition: var(--transition-smooth);
+        margin: 0;
     }
 
     .order-card-checkbox:checked {
-        background: #8b5cf6;
-        border-color: #8b5cf6;
+        background: var(--suspended-primary);
+        border-color: var(--suspended-primary);
     }
 
     .order-card-header {
-        background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid #e5e7eb;
+        background: linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%);
+        padding: 0.875rem;
+        border-bottom: 1px solid #f3f4f6;
+        position: relative;
+    }
+
+    .order-card-body {
+        padding: 0.875rem;
+    }
+
+    /* Styles pour les cartes modernes et compactes */
+    .card-header-top {
         display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .card-checkbox-container {
+        display: flex;
+        align-items: center;
+    }
+
+    .card-header-badges {
+        display: flex;
+        gap: 0.375rem;
         align-items: center;
         justify-content: space-between;
     }
 
-    .order-info {
-        display: flex;
+    .status-badge-compact {
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        display: inline-flex;
         align-items: center;
-        gap: 1rem;
+        gap: 0.25rem;
     }
 
-    .order-id {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #374151;
+    .priority-badge-compact {
+        padding: 0.2rem 0.4rem;
+        border-radius: 8px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .customer-compact {
+        margin-bottom: 0.75rem;
+    }
+
+    .customer-row {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-    }
-
-    .order-status {
-        padding: 4px 12px;
-        border-radius: 15px;
-        font-weight: 600;
+        margin-bottom: 0.375rem;
         font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
 
-    .status-nouvelle { background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); color: #5b21b6; }
-    .status-datée { background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%); color: #92400e; }
-    .status-confirmée { background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%); color: #166534; }
-
-    .priority-badge {
-        padding: 4px 8px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.7rem;
-        text-transform: uppercase;
+    .customer-row:last-child {
+        margin-bottom: 0;
     }
 
-    .priority-normale { background: #f3f4f6; color: #6b7280; }
-    .priority-urgente { background: #fef3c7; color: #d97706; }
-    .priority-vip { background: #fee2e2; color: #dc2626; }
-
-    .order-card-body {
-        padding: 1.5rem;
-    }
-
-    .customer-info {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .info-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .info-icon {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #f3f4f6;
-        border-radius: 8px;
+    .customer-icon {
+        width: 14px;
         color: #6b7280;
-        font-size: 0.9rem;
+        font-size: 0.75rem;
         flex-shrink: 0;
     }
 
-    .info-content {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .info-label {
-        font-size: 0.8rem;
-        color: #6b7280;
-        margin-bottom: 2px;
-    }
-
-    .info-value {
+    .customer-name {
         font-weight: 600;
         color: #374151;
-        font-size: 0.9rem;
-        word-break: break-word;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
-    /* Section de suspension */
-    .suspension-info {
+    .customer-phone {
+        color: #6b7280;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+    }
+
+    .customer-date {
+        color: #9ca3af;
+        font-size: 0.75rem;
+    }
+
+    .suspension-compact {
         background: #fef2f2;
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
         border: 1px solid #fecaca;
+        border-radius: 8px;
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
     }
 
-    .suspension-header {
+    .suspension-compact-header {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 0.75rem;
+        gap: 0.375rem;
         color: #dc2626;
         font-weight: 600;
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
     }
 
     .suspension-reason {
-        background: white;
-        padding: 0.75rem;
-        border-radius: 8px;
-        color: #374151;
-        font-size: 0.9rem;
-        line-height: 1.4;
-        border-left: 4px solid #ef4444;
+        font-size: 0.7rem;
+        color: #7f1d1d;
+        line-height: 1.3;
     }
 
-    /* Indicateur de disponibilité des stocks */
-    .stock-status {
-        display: flex;
+    .availability-compact {
+        margin-bottom: 0.75rem;
+    }
+
+    .availability-status {
+        display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 0.75rem;
+        gap: 0.375rem;
+        padding: 0.25rem 0.5rem;
         border-radius: 8px;
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         font-weight: 600;
-        margin-bottom: 1rem;
     }
 
-    .stock-status.available {
-        background: #dcfce7;
-        color: #166534;
+    .availability-status.available {
+        background: #f0fdf4;
+        color: #059669;
         border: 1px solid #bbf7d0;
     }
 
-    .stock-status.unavailable {
+    .availability-status.unavailable {
         background: #fef2f2;
-        color: #991b1b;
+        color: #dc2626;
         border: 1px solid #fecaca;
     }
 
-    /* Action Buttons */
-    .order-actions {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 0.75rem;
+    .card-footer {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding-top: 0.75rem;
+        border-top: 1px solid #f1f5f9;
     }
 
-    .action-btn {
-        padding: 0.75rem 1rem;
+    .price-compact {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: var(--suspended-primary);
+        font-size: 0.875rem;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 0.375rem;
+    }
+
+    .card-action-btn {
+        width: 28px;
+        height: 28px;
         border: none;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.85rem;
+        border-radius: 8px;
         cursor: pointer;
         transition: var(--transition-smooth);
         display: flex;
         align-items: center;
-        gap: 0.5rem;
         justify-content: center;
+        font-size: 0.75rem;
         position: relative;
         overflow: hidden;
     }
 
-    .action-btn::before {
+    .card-action-btn::before {
         content: '';
         position: absolute;
         top: 0;
@@ -461,131 +742,269 @@
         background: rgba(255, 255, 255, 0.2);
         transform: translateX(-100%);
         transition: transform 0.3s ease;
-        z-index: 0;
     }
 
-    .action-btn:hover::before {
+    .card-action-btn:hover::before {
         transform: translateX(0);
     }
 
+    .card-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-action-btn.reactivate {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .card-action-btn.edit {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+    }
+
+    .card-action-btn.cancel {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .card-action-btn.modify {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    /* Composants communs */
+    .order-id {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: var(--suspended-primary);
+        font-size: 0.95rem;
+    }
+
+    .customer-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .status-badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    .status-nouvelle { background: rgba(107, 114, 128, 0.1); color: #374151; }
+    .status-confirmée { background: rgba(16, 185, 129, 0.1); color: #059669; }
+    .status-datée { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+    .status-annulée { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+
+    .priority-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .priority-normale { background: #f3f4f6; color: #6b7280; }
+    .priority-urgente { background: #fef3c7; color: #d97706; }
+    .priority-vip { background: #fee2e2; color: #dc2626; }
+
+    .price-display {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: #059669;
+        font-size: 0.9rem;
+    }
+
+    /* Section de suspension */
+    .suspension-info {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+        max-width: 280px;
+    }
+
+    .suspension-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #dc2626;
+        font-weight: 600;
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .stock-status {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 6px;
+        padding: 0.5rem;
+        max-width: 280px;
+    }
+
+    .stock-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #059669;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+
+    .stock-unavailable {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+    }
+
+    .stock-unavailable .stock-header {
+        color: #dc2626;
+    }
+
+    /* Actions */
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        padding: 0.375rem 0.75rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
     .action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
-    .action-btn span {
-        position: relative;
-        z-index: 1;
+    .btn-reactivate { 
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+        color: white; 
+    }
+    .btn-edit { 
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); 
+        color: white; 
+    }
+    .btn-cancel { 
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+        color: white; 
+    }
+    .btn-modify { 
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+        color: white; 
     }
 
-    .btn-reactivate { background: var(--suspended-success); color: white; }
-    .btn-edit { background: var(--suspended-info); color: white; }
-    .btn-cancel { background: var(--suspended-danger); color: white; }
-    .btn-modify { background: var(--suspended-warning); color: white; }
+    /* Boutons principaux */
+    .btn-primary {
+        background: linear-gradient(135deg, var(--suspended-primary) 0%, var(--suspended-secondary) 100%);
+        border: none;
+        color: white;
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 
-    /* Empty State */
-    .no-orders {
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        color: #374151;
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-secondary:hover {
+        background: #e5e7eb;
+        transform: translateY(-1px);
+    }
+
+    /* Case à cocher */
+    .checkbox-cell {
+        width: 40px;
         text-align: center;
-        padding: 4rem 2rem;
+    }
+
+    .order-checkbox {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        border: 2px solid #d1d5db;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+    }
+
+    .order-checkbox:checked {
+        background: var(--suspended-primary);
+        border-color: var(--suspended-primary);
+    }
+
+    /* États vides et de chargement */
+    .empty-state, .loading-state {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
         color: #6b7280;
-        grid-column: 1 / -1;
+        padding: 2rem;
     }
 
-    .no-orders i {
-        font-size: 4rem;
-        margin-bottom: 1.5rem;
+    .empty-state i, .loading-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
         opacity: 0.5;
-        color: #8b5cf6;
+        color: var(--suspended-primary);
     }
 
-    .no-orders h3 {
-        font-size: 1.5rem;
-        margin-bottom: 0.75rem;
+    .empty-state h3, .loading-state h3 {
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
         color: #374151;
     }
 
-    .no-orders p {
-        font-size: 1.1rem;
-        max-width: 500px;
-        margin: 0 auto;
-        line-height: 1.6;
+    .loading-spinner {
+        animation: spin 1s linear infinite;
     }
 
-    /* Responsive */
-    @media (max-width: 1400px) {
-        .orders-grid {
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-        }
-    }
-
-    @media (max-width: 1200px) {
-        .orders-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .filters-section {
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        }
-    }
-
-    @media (max-width: 768px) {
-        .suspended-header {
-            flex-direction: column;
-            gap: 1rem;
-            text-align: center;
-            padding: 1.25rem 1.5rem;
-        }
-
-        .suspended-title {
-            margin-left: 0;
-        }
-
-        .suspended-content {
-            padding: 1.5rem;
-        }
-
-        .suspended-toolbar {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 1rem;
-        }
-
-        .filters-section {
-            grid-template-columns: 1fr;
-        }
-
-        .customer-info {
-            grid-template-columns: 1fr;
-        }
-
-        .order-actions {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* Animations */
-    .fade-in {
-        animation: fadeIn 0.5s ease-out;
-    }
-
-    .slide-up {
-        animation: slideUp 0.5s ease-out;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
 
     @keyframes slideDown {
@@ -599,164 +1018,336 @@
         }
     }
 
-    /* Loading */
-    .loading-orders {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: #6b7280;
-        grid-column: 1 / -1;
+    /* Responsive optimisé */
+    @media (max-width: 1400px) {
+        .orders-grid {
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        }
     }
 
-    .loading-spinner {
-        font-size: 3rem;
-        color: #8b5cf6;
-        animation: spin 1s linear infinite;
-        margin-bottom: 1.5rem;
+    @media (max-width: 1200px) {
+        .table thead th:nth-child(5),
+        .table tbody td:nth-child(5) {
+            display: none;
+        }
+        
+        .orders-grid {
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        }
     }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    @media (max-width: 768px) {
+        .suspended-container {
+            margin: 0.25rem;
+        }
+
+        .suspended-header {
+            padding: 1rem;
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .actions-bar {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .actions-left {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .search-container {
+            max-width: none;
+        }
+
+        .filters-dropdown-menu {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100vw - 2rem);
+            max-width: 400px;
+        }
+
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .bulk-mode-banner {
+            flex-direction: column;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .table {
+            min-width: 800px;
+        }
+
+        .orders-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .card-header-top {
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .card-checkbox-container {
+            align-self: flex-start;
+        }
+
+        .card-header-badges {
+            align-self: stretch;
+            justify-content: space-between;
+        }
+
+        .card-footer {
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: stretch;
+        }
+
+        .card-actions {
+            justify-content: center;
+        }
+    }
+
+    /* Animations */
+    .fade-in {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .slide-up {
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .table tbody tr, .order-card {
+        animation: slideUp 0.2s ease-out;
     }
 </style>
 @endsection
 
 @section('content')
 <div class="suspended-container">
-    <!-- Header -->
+    <!-- Header simplifié -->
     <div class="suspended-header">
-        <div class="suspended-icon">
-            <i class="fas fa-pause-circle"></i>
+        <div class="header-title">
+            <div class="header-icon">
+                <i class="fas fa-pause-circle"></i>
+            </div>
+            <div class="header-text">
+                <h1>Commandes Suspendues</h1>
+                <p class="header-subtitle">Gestion et réactivation des commandes suspendues</p>
+            </div>
         </div>
         
-        <div class="suspended-title">
-            <h1>Commandes Suspendues</h1>
-            <p class="suspended-subtitle">Gestion et réactivation des commandes suspendues</p>
-        </div>
-        
-        <div class="suspended-stats">
-            <span class="stats-number" id="orders-count">0</span>
-            <span class="stats-label">Commandes suspendues</span>
+        <div class="header-stats">
+            <div class="stat-number" id="orders-count">0</div>
+            <div class="stat-label">Commandes</div>
         </div>
     </div>
 
-    <!-- Toolbar avec filtres et actions -->
-    <div class="suspended-toolbar">
-        <!-- Actions groupées -->
-        <div class="bulk-actions" id="bulk-actions">
-            <span class="selected-count" id="selected-count">0 sélectionnée(s)</span>
-            <button class="bulk-action-btn" onclick="bulkReactivate()">
-                <i class="fas fa-play-circle"></i>
-                Réactiver sélectionnées
-            </button>
-            <button class="bulk-action-btn" onclick="bulkCancel()">
-                <i class="fas fa-times-circle"></i>
-                Annuler sélectionnées
-            </button>
-            <button class="bulk-action-btn" onclick="clearSelection()">
-                <i class="fas fa-times"></i>
-                Annuler sélection
-            </button>
-        </div>
-
-        <!-- Filtres -->
-        <div class="filters-section">
-            <div class="filter-group">
-                <label class="filter-label">Recherche</label>
-                <input type="text" class="filter-control" id="filter-search" placeholder="ID, nom, téléphone, raison...">
+    <!-- Barre d'actions modernisée -->
+    <div class="actions-bar">
+        <div class="actions-left">
+            <!-- Recherche en temps réel -->
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="search-input" id="realtime-search" 
+                       placeholder="Rechercher par ID, nom, raison...">
+                <i class="fas fa-times search-clear" onclick="clearSearch()"></i>
             </div>
 
-            <div class="filter-group">
-                <label class="filter-label">Statut</label>
-                <select class="filter-control" id="filter-status">
-                    <option value="">Tous les statuts</option>
-                    <option value="nouvelle">Nouvelle</option>
-                    <option value="confirmée">Confirmée</option>
-                    <option value="datée">Datée</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Priorité</label>
-                <select class="filter-control" id="filter-priority">
-                    <option value="">Toutes priorités</option>
-                    <option value="normale">Normale</option>
-                    <option value="urgente">Urgente</option>
-                    <option value="vip">VIP</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Stock</label>
-                <select class="filter-control" id="filter-stock">
-                    <option value="">Tous</option>
-                    <option value="yes">Avec problèmes de stock</option>
-                    <option value="no">Sans problèmes de stock</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Date de</label>
-                <input type="date" class="filter-control" id="filter-date-from">
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Date à</label>
-                <input type="date" class="filter-control" id="filter-date-to">
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Tri</label>
-                <select class="filter-control" id="filter-sort">
-                    <option value="created_at_desc">Plus récentes</option>
-                    <option value="created_at_asc">Plus anciennes</option>
-                    <option value="customer_name_asc">Nom A-Z</option>
-                    <option value="customer_name_desc">Nom Z-A</option>
-                </select>
-            </div>
-
-            <div class="filter-group" style="display: flex; gap: 0.5rem; align-items: end;">
-                <button class="action-btn btn-edit" onclick="applyFilters()" style="min-width: auto; padding: 0.6rem 1rem;">
+            <!-- Dropdown filtres avancés -->
+            <div class="filters-dropdown">
+                <button class="filters-trigger" id="filters-trigger" onclick="toggleFiltersDropdown()">
                     <i class="fas fa-filter"></i>
-                    <span>Filtrer</span>
+                    <span>Filtres avancés</span>
+                    <span class="filters-badge" id="filters-count" style="display: none;">0</span>
+                    <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
                 </button>
-                <button class="action-btn btn-cancel" onclick="clearFilters()" style="min-width: auto; padding: 0.6rem 1rem;">
-                    <i class="fas fa-times"></i>
-                    <span>Effacer</span>
+                
+                <div class="filters-dropdown-menu" id="filters-dropdown-menu">
+                    <div class="filters-header">
+                        <span class="filters-title">Filtres avancés</span>
+                        <span class="filters-clear" onclick="clearAllFilters()">Tout effacer</span>
+                    </div>
+                    <div class="filters-body">
+                        <div class="filters-grid">
+                            <div class="filter-group">
+                                <label class="filter-label">Statut</label>
+                                <select class="filter-input" id="filter-status">
+                                    <option value="">Tous</option>
+                                    <option value="nouvelle">Nouvelle</option>
+                                    <option value="confirmée">Confirmée</option>
+                                    <option value="datée">Datée</option>
+                                </select>
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">Priorité</label>
+                                <select class="filter-input" id="filter-priority">
+                                    <option value="">Toutes</option>
+                                    <option value="normale">Normale</option>
+                                    <option value="urgente">Urgente</option>
+                                    <option value="vip">VIP</option>
+                                </select>
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">Disponibilité</label>
+                                <select class="filter-input" id="filter-stock">
+                                    <option value="">Toutes</option>
+                                    <option value="yes">Avec problèmes</option>
+                                    <option value="no">Sans problèmes</option>
+                                </select>
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">Date début</label>
+                                <input type="date" class="filter-input" id="filter-date-from">
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">Date fin</label>
+                                <input type="date" class="filter-input" id="filter-date-to">
+                            </div>
+                        </div>
+                        
+                        <div class="filters-actions">
+                            <button class="filters-apply" onclick="applyAdvancedFilters()">
+                                <i class="fas fa-check"></i>
+                                Appliquer
+                            </button>
+                            <button class="filters-reset" onclick="resetAdvancedFilters()">
+                                <i class="fas fa-undo"></i>
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions-right">
+            <!-- Toggle vue -->
+            <div class="view-toggle">
+                <button class="view-btn active" id="list-view-btn" onclick="switchView('list')">
+                    <i class="fas fa-list"></i>
+                    Liste
                 </button>
-                <button class="action-btn btn-reactivate" onclick="refreshOrders()" style="min-width: auto; padding: 0.6rem 1rem;">
-                    <i class="fas fa-sync-alt"></i>
-                    <span>Actualiser</span>
+                <button class="view-btn" id="grid-view-btn" onclick="switchView('grid')">
+                    <i class="fas fa-th"></i>
+                    Grille
                 </button>
             </div>
+
+            <button class="btn-primary" onclick="refreshOrders()">
+                <i class="fas fa-sync-alt"></i>
+                Actualiser
+            </button>
         </div>
     </div>
 
-    <!-- Content -->
-    <div class="suspended-content">
-        <!-- Loading State -->
-        <div class="loading-orders fade-in" id="loading-state">
+    <!-- Banner mode sélection groupée -->
+    <div class="bulk-mode-banner" id="bulk-mode-banner">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span class="bulk-count" id="bulk-count">0 sélectionnée(s)</span>
+            <span>Mode sélection activé</span>
+        </div>
+        <div class="bulk-actions">
+            <button class="bulk-btn" onclick="bulkReactivate()">
+                <i class="fas fa-play-circle"></i>
+                Réactiver
+            </button>
+            <button class="bulk-btn" onclick="bulkCancel()">
+                <i class="fas fa-times-circle"></i>
+                Annuler
+            </button>
+            <button class="bulk-btn" onclick="clearSelection()">
+                <i class="fas fa-times"></i>
+                Effacer sélection
+            </button>
+        </div>
+    </div>
+
+    <!-- Container de contenu avec switch vue -->
+    <div class="content-container">
+        <!-- États de chargement et vide -->
+        <div class="loading-state fade-in" id="loading-state">
             <i class="fas fa-spinner loading-spinner"></i>
             <h3>Chargement en cours...</h3>
             <p>Recherche des commandes suspendues</p>
         </div>
         
-        <!-- No Orders State -->
-        <div class="no-orders fade-in" id="no-orders-state" style="display: none;">
+        <div class="empty-state fade-in" id="empty-state" style="display: none;">
             <i class="fas fa-check-circle"></i>
             <h3>Aucune commande suspendue !</h3>
-            <p>Toutes les commandes sont actuellement actives. Excellent travail !</p>
+            <p>Toutes les commandes sont actuellement actives.</p>
         </div>
 
-        <!-- Orders Grid -->
-        <div class="orders-grid" id="orders-grid" style="display: none;">
-            <!-- Les commandes seront chargées ici dynamiquement -->
+        <!-- Vue Liste (par défaut) -->
+        <div class="table-container active" id="table-view">
+            <table class="table" id="orders-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell">
+                            <input type="checkbox" class="order-checkbox" id="select-all">
+                        </th>
+                        <th>ID</th>
+                        <th>Client</th>
+                        <th>Statut & Priorité</th>
+                        <th>Raison de Suspension</th>
+                        <th>Disponibilité</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-tbody">
+                    <!-- Les commandes seront chargées ici -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Vue Grille -->
+        <div class="grid-container" id="grid-view">
+            <div class="orders-grid" id="orders-grid">
+                <!-- Les cartes seront chargées ici -->
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Modales -->
 @include('admin.process.suspended-modals')
+@include('admin.process.bulk-modals')
 
 @endsection
 
@@ -767,6 +1358,8 @@ $(document).ready(function() {
     let allOrders = [];
     let selectedOrders = [];
     let filters = {};
+    let currentView = 'list';
+    let searchTerm = '';
     
     // =========================
     // INITIALISATION
@@ -797,11 +1390,118 @@ $(document).ready(function() {
     }
     
     function setupEventListeners() {
-        // Filtres en temps réel
-        $('#filter-search').on('input', debounce(applyFilters, 500));
+        // Recherche en temps réel
+        $('#realtime-search').on('input', debounce(handleRealtimeSearch, 300));
         
-        // Sélection globale
-        $(document).on('change', '.order-card-checkbox', updateSelection);
+        // Filtres avancés
+        $('#filter-status, #filter-priority, #filter-stock, #filter-date-from, #filter-date-to').on('change', updateFiltersCount);
+        
+        // Sélection
+        $('#select-all').on('change', toggleSelectAll);
+        $(document).on('change', '.order-checkbox:not(#select-all), .order-card-checkbox', updateSelection);
+        
+        // Événements pour les lignes du tableau
+        $(document).on('click', 'tbody tr', function(e) {
+            if (!$(e.target).is('input, button, a')) {
+                const checkbox = $(this).find('.order-checkbox');
+                checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+            }
+        });
+        
+        // Événements pour les cartes
+        $(document).on('click', '.order-card', function(e) {
+            if (!$(e.target).is('input, button, a')) {
+                const checkbox = $(this).find('.order-card-checkbox');
+                checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+            }
+        });
+
+        // Fermer le dropdown si on clique à l'extérieur
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.filters-dropdown').length) {
+                hideFiltersDropdown();
+            }
+        });
+    }
+    
+    // =========================
+    // RECHERCHE EN TEMPS RÉEL
+    // =========================
+    
+    function handleRealtimeSearch() {
+        searchTerm = $('#realtime-search').val().trim().toLowerCase();
+        applyFilters();
+    }
+    
+    window.clearSearch = function() {
+        $('#realtime-search').val('');
+        searchTerm = '';
+        applyFilters();
+    }
+    
+    // =========================
+    // GESTION DU DROPDOWN FILTRES
+    // =========================
+    
+    window.toggleFiltersDropdown = function() {
+        const menu = $('#filters-dropdown-menu');
+        if (menu.hasClass('show')) {
+            hideFiltersDropdown();
+        } else {
+            showFiltersDropdown();
+        }
+    }
+    
+    function showFiltersDropdown() {
+        $('#filters-dropdown-menu').addClass('show');
+        $('#filters-trigger').addClass('active');
+    }
+    
+    function hideFiltersDropdown() {
+        $('#filters-dropdown-menu').removeClass('show');
+        $('#filters-trigger').removeClass('active');
+    }
+    
+    function updateFiltersCount() {
+        let count = 0;
+        if ($('#filter-status').val()) count++;
+        if ($('#filter-priority').val()) count++;
+        if ($('#filter-stock').val()) count++;
+        if ($('#filter-date-from').val()) count++;
+        if ($('#filter-date-to').val()) count++;
+        
+        const badge = $('#filters-count');
+        const trigger = $('#filters-trigger');
+        
+        if (count > 0) {
+            badge.text(count).show();
+            trigger.addClass('active');
+        } else {
+            badge.hide();
+            if (!$('#filters-dropdown-menu').hasClass('show')) {
+                trigger.removeClass('active');
+            }
+        }
+    }
+    
+    window.applyAdvancedFilters = function() {
+        applyFilters();
+        hideFiltersDropdown();
+    }
+    
+    window.resetAdvancedFilters = function() {
+        $('#filter-status, #filter-priority, #filter-stock, #filter-date-from, #filter-date-to').val('');
+        updateFiltersCount();
+        applyFilters();
+    }
+    
+    window.clearAllFilters = function() {
+        $('#realtime-search').val('');
+        $('#filter-status, #filter-priority, #filter-stock, #filter-date-from, #filter-date-to').val('');
+        searchTerm = '';
+        updateFiltersCount();
+        applyFilters();
+        hideFiltersDropdown();
     }
     
     // =========================
@@ -815,38 +1515,46 @@ $(document).ready(function() {
         
         $.get('/admin/process/suspended/orders?' + params.toString())
             .done(function(data) {
-                console.log('Données reçues:', data);
-                
-                if (data.hasOrders && data.orders) {
-                    if (Array.isArray(data.orders)) {
-                        allOrders = data.orders;
-                        orders = [...allOrders];
-                        displayOrders(orders);
-                        updateOrdersCount(data.total || orders.length);
-                        showOrdersGrid();
-                    } else {
-                        console.error('Les données orders ne sont pas un tableau:', typeof data.orders, data.orders);
-                        showNotification('Erreur: format de données invalide', 'error');
-                        showNoOrders();
-                        updateOrdersCount(0);
-                    }
+                if (data.hasOrders && data.orders && Array.isArray(data.orders)) {
+                    allOrders = data.orders;
+                    applyFilters();
+                    updateOrdersCount(data.total || allOrders.length);
                 } else {
-                    showNoOrders();
+                    showEmpty();
                     updateOrdersCount(0);
                 }
             })
-            .fail(function(xhr, status, error) {
-                console.error('Erreur lors du chargement:', {xhr, status, error});
-                
+            .fail(function(xhr) {
+                console.error('Erreur lors du chargement:', xhr);
                 let errorMessage = 'Erreur lors du chargement des commandes';
                 if (xhr.responseJSON && xhr.responseJSON.error) {
                     errorMessage = xhr.responseJSON.error;
                 }
-                
                 showNotification(errorMessage, 'error');
-                showNoOrders();
+                showEmpty();
                 updateOrdersCount(0);
             });
+    }
+    
+    // =========================
+    // GESTION DES VUES
+    // =========================
+    
+    window.switchView = function(view) {
+        currentView = view;
+        
+        $('.view-btn').removeClass('active');
+        $(`#${view}-view-btn`).addClass('active');
+        
+        if (view === 'list') {
+            $('#table-view').addClass('active');
+            $('#grid-view').removeClass('active');
+        } else {
+            $('#table-view').removeClass('active');
+            $('#grid-view').addClass('active');
+        }
+        
+        displayOrders(orders);
     }
     
     // =========================
@@ -854,153 +1562,224 @@ $(document).ready(function() {
     // =========================
     
     function displayOrders(ordersToDisplay) {
-        const grid = $('#orders-grid');
-        grid.empty();
-        
-        if (!Array.isArray(ordersToDisplay)) {
-            console.error('displayOrders: orders n\'est pas un tableau:', typeof ordersToDisplay, ordersToDisplay);
-            showNotification('Erreur: données invalides reçues du serveur', 'error');
-            showNoOrders();
+        if (!Array.isArray(ordersToDisplay) || ordersToDisplay.length === 0) {
+            showEmpty();
             return;
         }
         
-        if (ordersToDisplay.length === 0) {
-            grid.html('<div class="no-orders"><i class="fas fa-filter"></i><h3>Aucune commande trouvée</h3><p>Essayez de modifier vos filtres</p></div>');
-            return;
+        if (currentView === 'list') {
+            displayTableView(ordersToDisplay);
+        } else {
+            displayGridView(ordersToDisplay);
         }
         
-        ordersToDisplay.forEach((order, index) => {
-            try {
-                if (!order || !order.id) {
-                    console.warn(`Commande ${index} invalide:`, order);
-                    return;
-                }
-                
-                const orderCard = createOrderCard(order);
-                if (orderCard) {
-                    grid.append(orderCard);
-                }
-            } catch (error) {
-                console.error(`Erreur lors de la création de la carte pour la commande ${index}:`, error, order);
-            }
+        showContent();
+    }
+    
+    function displayTableView(ordersToDisplay) {
+        const tbody = $('#orders-tbody');
+        tbody.empty();
+        
+        ordersToDisplay.forEach(order => {
+            const row = createOrderRow(order);
+            tbody.append(row);
         });
     }
     
-    function createOrderCard(order) {
-        try {
-            const isSelected = selectedOrders.includes(order.id);
-            const canReactivate = order.can_reactivate || false;
-            
-            const stockStatusHtml = canReactivate ? `
-                <div class="stock-status available">
-                    <i class="fas fa-check-circle"></i>
-                    Peut être réactivée - Tous les produits sont disponibles
-                </div>
-            ` : `
-                <div class="stock-status unavailable">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Problème de stock - Vérification nécessaire
-                </div>
-            `;
-            
-            const actionsHtml = `
-                <div class="order-actions">
-                    ${canReactivate ? `
-                        <button class="action-btn btn-reactivate" onclick="showReactivateModal(${order.id})">
-                            <i class="fas fa-play-circle"></i>
-                            <span>Réactiver</span>
-                        </button>
-                    ` : ''}
-                    <button class="action-btn btn-edit" onclick="editOrder(${order.id})">
-                        <i class="fas fa-edit"></i>
-                        <span>Modifier</span>
-                    </button>
-                    <button class="action-btn btn-modify" onclick="showModifySuspensionModal(${order.id})">
-                        <i class="fas fa-pen"></i>
-                        <span>Modifier raison</span>
-                    </button>
-                    <button class="action-btn btn-cancel" onclick="showCancelModal(${order.id})">
-                        <i class="fas fa-times-circle"></i>
-                        <span>Annuler</span>
-                    </button>
+    function displayGridView(ordersToDisplay) {
+        const grid = $('#orders-grid');
+        grid.empty();
+        
+        ordersToDisplay.forEach(order => {
+            const card = createOrderCard(order);
+            grid.append(card);
+        });
+    }
+    
+    function createOrderRow(order) {
+        const isSelected = selectedOrders.includes(order.id);
+        const canReactivate = order.can_reactivate || false;
+        
+        // Statut de disponibilité
+        let availabilityHtml = '';
+        if (canReactivate) {
+            availabilityHtml = `
+                <div class="stock-status">
+                    <div class="stock-header">
+                        <i class="fas fa-check-circle"></i>
+                        Peut être réactivée
+                    </div>
                 </div>
             `;
-            
-            const card = $(`
-                <div class="order-card" data-order-id="${order.id}">
-                    <input type="checkbox" class="order-card-checkbox" data-order-id="${order.id}" ${isSelected ? 'checked' : ''}>
-                    <div class="order-card-header">
-                        <div class="order-info">
-                            <div class="order-id">
-                                <i class="fas fa-pause-circle"></i>
-                                #${String(order.id).padStart(6, '0')}
+        } else {
+            availabilityHtml = `
+                <div class="stock-status stock-unavailable">
+                    <div class="stock-header">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Problème de stock
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Raison de suspension
+        const suspensionHtml = `
+            <div class="suspension-info">
+                <div class="suspension-header">
+                    <i class="fas fa-pause-circle"></i>
+                    Suspension
+                </div>
+                <div class="suspension-reason">
+                    ${order.suspension_reason || 'Aucune raison spécifiée'}
+                </div>
+            </div>
+        `;
+        
+        // Actions disponibles
+        const actionsHtml = `
+            <div class="action-buttons">
+                ${canReactivate ? `
+                    <button class="action-btn btn-reactivate" onclick="showReactivateModal(${order.id})" title="Réactiver">
+                        <i class="fas fa-play-circle"></i>
+                    </button>
+                ` : ''}
+                <button class="action-btn btn-edit" onclick="editOrder(${order.id})" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn btn-modify" onclick="showModifySuspensionModal(${order.id})" title="Modifier raison">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button class="action-btn btn-cancel" onclick="showCancelModal(${order.id})" title="Annuler">
+                    <i class="fas fa-times-circle"></i>
+                </button>
+            </div>
+        `;
+        
+        const row = $(`
+            <tr class="${isSelected ? 'selected' : ''}" data-order-id="${order.id}">
+                <td class="checkbox-cell">
+                    <input type="checkbox" class="order-checkbox" data-order-id="${order.id}" ${isSelected ? 'checked' : ''}>
+                </td>
+                <td>
+                    <span class="order-id">#${String(order.id).padStart(6, '0')}</span>
+                </td>
+                <td>
+                    <div class="customer-info">
+                        <div class="customer-name">${order.customer_name || 'Non spécifié'}</div>
+                        <div class="customer-phone">
+                            <i class="fas fa-phone"></i> ${order.customer_phone || 'N/A'}
+                        </div>
+                        ${order.customer_address ? `
+                            <div class="customer-address" title="${order.customer_address}">
+                                <i class="fas fa-map-marker-alt"></i> ${order.customer_address}
                             </div>
-                            <div class="order-status status-${order.status || 'nouvelle'}">${capitalizeFirst(order.status || 'nouvelle')}</div>
-                            <div class="priority-badge priority-${order.priority || 'normale'}">${capitalizeFirst(order.priority || 'normale')}</div>
+                        ` : ''}
+                    </div>
+                </td>
+                <td>
+                    <div class="status-badge status-${order.status || 'nouvelle'}">
+                        <i class="fas fa-circle"></i>
+                        ${capitalizeFirst(order.status || 'nouvelle')}
+                    </div>
+                    <br>
+                    <div class="priority-badge priority-${order.priority || 'normale'}" style="margin-top: 0.5rem;">
+                        ${capitalizeFirst(order.priority || 'normale')}
+                    </div>
+                </td>
+                <td>${suspensionHtml}</td>
+                <td>${availabilityHtml}</td>
+                <td>
+                    <div style="font-size: 0.875rem; color: #6b7280;">
+                        ${formatDate(order.created_at)}
+                    </div>
+                </td>
+                <td>${actionsHtml}</td>
+            </tr>
+        `);
+        
+        return row;
+    }
+    
+    function createOrderCard(order) {
+        const isSelected = selectedOrders.includes(order.id);
+        const canReactivate = order.can_reactivate || false;
+        
+        const actionsHtml = `
+            <div class="card-actions">
+                ${canReactivate ? `
+                    <button class="card-action-btn reactivate" onclick="showReactivateModal(${order.id})" title="Réactiver">
+                        <i class="fas fa-play-circle"></i>
+                    </button>
+                ` : ''}
+                <button class="card-action-btn edit" onclick="editOrder(${order.id})" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="card-action-btn modify" onclick="showModifySuspensionModal(${order.id})" title="Modifier raison">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button class="card-action-btn cancel" onclick="showCancelModal(${order.id})" title="Annuler">
+                    <i class="fas fa-times-circle"></i>
+                </button>
+            </div>
+        `;
+        
+        const card = $(`
+            <div class="order-card ${isSelected ? 'selected' : ''}" data-order-id="${order.id}">
+                <div class="order-card-header">
+                    <div class="card-header-top">
+                        <div class="card-checkbox-container">
+                            <input type="checkbox" class="order-card-checkbox" data-order-id="${order.id}" ${isSelected ? 'checked' : ''}>
+                        </div>
+                        <span class="order-id">#${String(order.id).padStart(6, '0')}</span>
+                        <div class="price-compact">${parseFloat(order.total_price || 0).toFixed(3)} TND</div>
+                    </div>
+                    <div class="card-header-badges">
+                        <span class="status-badge-compact status-${order.status || 'nouvelle'}">${capitalizeFirst(order.status || 'nouvelle')}</span>
+                        <span class="priority-badge-compact priority-${order.priority || 'normale'}">${capitalizeFirst(order.priority || 'normale')}</span>
+                    </div>
+                </div>
+                
+                <div class="order-card-body">
+                    <div class="customer-compact">
+                        <div class="customer-row">
+                            <i class="fas fa-user customer-icon"></i>
+                            <span class="customer-name">${order.customer_name || 'Non spécifié'}</span>
+                        </div>
+                        <div class="customer-row">
+                            <i class="fas fa-phone customer-icon"></i>
+                            <span class="customer-phone">${order.customer_phone || 'N/A'}</span>
+                        </div>
+                        <div class="customer-row">
+                            <i class="fas fa-calendar customer-icon"></i>
+                            <span class="customer-date">${formatDate(order.created_at)}</span>
                         </div>
                     </div>
-                    <div class="order-card-body">
-                        <div class="customer-info">
-                            <div class="info-item">
-                                <div class="info-icon">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">Client</div>
-                                    <div class="info-value">${order.customer_name || 'Non spécifié'}</div>
-                                </div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-icon">
-                                    <i class="fas fa-phone"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">Téléphone</div>
-                                    <div class="info-value">${order.customer_phone || 'Non spécifié'}</div>
-                                </div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-icon">
-                                    <i class="fas fa-calendar"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">Date de création</div>
-                                    <div class="info-value">${formatDate(order.created_at)}</div>
-                                </div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-icon">
-                                    <i class="fas fa-shopping-bag"></i>
-                                </div>
-                                <div class="info-content">
-                                    <div class="info-label">Articles</div>
-                                    <div class="info-value">${order.items_count || 0} produit(s)</div>
-                                </div>
-                            </div>
+                    
+                    <div class="suspension-compact">
+                        <div class="suspension-compact-header">
+                            <i class="fas fa-pause-circle"></i>
+                            <span>Raison de suspension</span>
                         </div>
-                        
-                        ${stockStatusHtml}
-                        
-                        <div class="suspension-info">
-                            <div class="suspension-header">
-                                <i class="fas fa-pause-circle"></i>
-                                <span>Raison de la suspension</span>
-                            </div>
-                            <div class="suspension-reason">
-                                ${order.suspension_reason || 'Aucune raison spécifiée'}
-                            </div>
+                        <div class="suspension-reason">
+                            ${order.suspension_reason || 'Aucune raison spécifiée'}
                         </div>
-                        
+                    </div>
+                    
+                    <div class="availability-compact">
+                        <div class="availability-status ${canReactivate ? 'available' : 'unavailable'}">
+                            <i class="fas fa-${canReactivate ? 'check-circle' : 'exclamation-triangle'}"></i>
+                            <span>${canReactivate ? 'Peut être réactivée' : 'Problème de stock'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
                         ${actionsHtml}
                     </div>
                 </div>
-            `);
-            
-            return card;
-        } catch (error) {
-            console.error('Erreur dans createOrderCard:', error, order);
-            return null;
-        }
+            </div>
+        `);
+        
+        return card;
     }
     
     // =========================
@@ -1009,30 +1788,55 @@ $(document).ready(function() {
     
     window.applyFilters = function() {
         filters = {
-            search: $('#filter-search').val().trim(),
+            search: searchTerm,
             status: $('#filter-status').val(),
             priority: $('#filter-priority').val(),
             has_stock_issues: $('#filter-stock').val(),
             date_from: $('#filter-date-from').val(),
-            date_to: $('#filter-date-to').val(),
-            sort: $('#filter-sort').val() || 'created_at_desc',
-            order: $('#filter-sort').val() && $('#filter-sort').val().includes('_desc') ? 'desc' : 'asc'
+            date_to: $('#filter-date-to').val()
         };
         
-        loadSuspendedOrders();
-    }
-    
-    window.clearFilters = function() {
-        $('#filter-search').val('');
-        $('#filter-status').val('');
-        $('#filter-priority').val('');
-        $('#filter-stock').val('');
-        $('#filter-date-from').val('');
-        $('#filter-date-to').val('');
-        $('#filter-sort').val('created_at_desc');
+        let filteredOrders = allOrders.filter(order => {
+            // Recherche en temps réel
+            if (searchTerm) {
+                const searchFields = [
+                    order.id.toString(),
+                    order.customer_name || '',
+                    order.customer_phone || '',
+                    order.suspension_reason || ''
+                ].join(' ').toLowerCase();
+                
+                if (!searchFields.includes(searchTerm)) return false;
+            }
+            
+            // Filtres avancés
+            if (filters.status && order.status !== filters.status) return false;
+            if (filters.priority && order.priority !== filters.priority) return false;
+            
+            if (filters.has_stock_issues) {
+                if (filters.has_stock_issues === 'yes' && order.can_reactivate) return false;
+                if (filters.has_stock_issues === 'no' && !order.can_reactivate) return false;
+            }
+            
+            if (filters.date_from) {
+                const orderDate = new Date(order.created_at);
+                const fromDate = new Date(filters.date_from);
+                if (orderDate < fromDate) return false;
+            }
+            
+            if (filters.date_to) {
+                const orderDate = new Date(order.created_at);
+                const toDate = new Date(filters.date_to);
+                toDate.setHours(23, 59, 59, 999);
+                if (orderDate > toDate) return false;
+            }
+            
+            return true;
+        });
         
-        filters = {};
-        loadSuspendedOrders();
+        orders = filteredOrders;
+        displayOrders(orders);
+        updateOrdersCount(orders.length);
     }
     
     window.refreshOrders = function() {
@@ -1044,54 +1848,66 @@ $(document).ready(function() {
     // SÉLECTION ET ACTIONS GROUPÉES
     // =========================
     
+    function toggleSelectAll() {
+        const isChecked = $('#select-all').prop('checked');
+        $('.order-checkbox:not(#select-all), .order-card-checkbox').prop('checked', isChecked);
+        updateSelection();
+    }
+    
     function updateSelection() {
         selectedOrders = [];
-        $('.order-card-checkbox:checked').each(function() {
-            const orderId = parseInt($(this).data('order-id'));
-            if (!selectedOrders.includes(orderId)) {
-                selectedOrders.push(orderId);
-            }
+        $('.order-checkbox:not(#select-all):checked, .order-card-checkbox:checked').each(function() {
+            selectedOrders.push(parseInt($(this).data('order-id')));
         });
         
+        // Mettre à jour les classes des lignes et cartes
+        $('tbody tr, .order-card').removeClass('selected');
+        selectedOrders.forEach(orderId => {
+            $(`tr[data-order-id="${orderId}"], .order-card[data-order-id="${orderId}"]`).addClass('selected');
+        });
+        
+        // Mettre à jour l'état du "Tout sélectionner"
+        const totalCheckboxes = $('.order-checkbox:not(#select-all), .order-card-checkbox').length;
+        const checkedCheckboxes = $('.order-checkbox:not(#select-all):checked, .order-card-checkbox:checked').length;
+        $('#select-all').prop('indeterminate', checkedCheckboxes > 0 && checkedCheckboxes < totalCheckboxes);
+        $('#select-all').prop('checked', checkedCheckboxes === totalCheckboxes && totalCheckboxes > 0);
+        
+        // Afficher/masquer le banner des actions groupées
         updateBulkActions();
     }
     
     function updateBulkActions() {
         const count = selectedOrders.length;
-        $('#selected-count').text(`${count} sélectionnée${count > 1 ? 's' : ''}`);
-        
         if (count > 0) {
-            $('#bulk-actions').addClass('show');
+            $('#bulk-count').text(`${count} sélectionnée${count > 1 ? 's' : ''}`);
+            $('#bulk-mode-banner').addClass('active');
         } else {
-            $('#bulk-actions').removeClass('show');
+            $('#bulk-mode-banner').removeClass('active');
         }
     }
     
     window.clearSelection = function() {
         selectedOrders = [];
-        $('.order-card-checkbox').prop('checked', false);
+        $('.order-checkbox, .order-card-checkbox').prop('checked', false);
+        $('tbody tr, .order-card').removeClass('selected');
         updateBulkActions();
     }
     
+    // Actions groupées avec refresh de page
     window.bulkReactivate = function() {
         if (selectedOrders.length === 0) {
             showNotification('Aucune commande sélectionnée', 'warning');
             return;
         }
         
-        // Vérifier que toutes les commandes sélectionnées peuvent être réactivées
         const eligibleOrders = selectedOrders.filter(orderId => {
             const order = orders.find(o => o.id === orderId);
             return order && order.can_reactivate;
         });
         
         if (eligibleOrders.length === 0) {
-            showNotification('Aucune des commandes sélectionnées ne peut être réactivée (problèmes de stock)', 'warning');
+            showNotification('Aucune des commandes sélectionnées ne peut être réactivée', 'warning');
             return;
-        }
-        
-        if (eligibleOrders.length !== selectedOrders.length) {
-            showNotification(`Seulement ${eligibleOrders.length} sur ${selectedOrders.length} commandes peuvent être réactivées`, 'warning');
         }
         
         $('#bulk-reactivate-count').text(eligibleOrders.length);
@@ -1110,6 +1926,88 @@ $(document).ready(function() {
         $('#bulkCancelModal').modal('show');
     }
     
+    // Override des fonctions de soumission pour forcer le refresh
+    const originalSubmitBulkReactivate = window.submitBulkReactivate;
+    window.submitBulkReactivate = function() {
+        const ordersValue = $('#bulk-reactivate-orders').val();
+        const notesValue = $('#bulk-reactivate-notes').val().trim();
+        
+        if (!notesValue) {
+            showNotification('Veuillez saisir une raison pour la réactivation groupée', 'error');
+            return;
+        }
+        
+        processBulkSuspendedActionWithRefresh('/admin/process/suspended/bulk-reactivate', {
+            order_ids: ordersValue.split(','),
+            notes: notesValue
+        }, '#bulkReactivateModal');
+    };
+    
+    const originalSubmitBulkCancel = window.submitBulkCancel;
+    window.submitBulkCancel = function() {
+        const ordersValue = $('#bulk-cancel-orders').val();
+        const notesValue = $('#bulk-cancel-notes').val().trim();
+        
+        if (!notesValue) {
+            showNotification('Veuillez saisir une raison pour l\'annulation groupée', 'error');
+            return;
+        }
+        
+        processBulkSuspendedActionWithRefresh('/admin/process/suspended/bulk-cancel', {
+            order_ids: ordersValue.split(','),
+            notes: notesValue
+        }, '#bulkCancelModal');
+    };
+    
+    function processBulkSuspendedActionWithRefresh(url, data, modalSelector) {
+        $(modalSelector).modal('hide');
+        
+        if ($('#bulkProgressModal').length) {
+            showProgressModal(data.order_ids.length);
+        }
+        
+        $.ajax({
+            url: url,
+            method: 'POST',
+            data: data,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        })
+        .done(function(response) {
+            if ($('#bulkProgressModal').length) {
+                updateProgressModal(response);
+                
+                setTimeout(() => {
+                    $('#bulkProgressModal').modal('hide');
+                    showNotification(response.message, 'success');
+                    
+                    // Forcer le refresh de la page après action groupée
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                }, 2000);
+            } else {
+                showNotification(response.message, 'success');
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            }
+        })
+        .fail(function(xhr) {
+            if ($('#bulkProgressModal').length) {
+                $('#bulkProgressModal').modal('hide');
+            }
+            
+            let errorMessage = 'Erreur lors du traitement groupé';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+            showNotification(errorMessage, 'error');
+        });
+    }
+    
     // =========================
     // ACTIONS INDIVIDUELLES
     // =========================
@@ -1123,7 +2021,7 @@ $(document).ready(function() {
         $('#reactivate-notes').val('');
         
         $('#reactivateModal').modal('show');
-    };
+    }
     
     window.showCancelModal = function(orderId) {
         $('#cancelOrderId').val(orderId);
@@ -1131,7 +2029,7 @@ $(document).ready(function() {
         $('#cancel-notes').val('');
         
         $('#cancelModal').modal('show');
-    };
+    }
     
     window.showModifySuspensionModal = function(orderId) {
         const order = orders.find(o => o.id === orderId);
@@ -1144,14 +2042,14 @@ $(document).ready(function() {
         $('#modify-notes').val('');
         
         $('#modifySuspensionModal').modal('show');
-    };
+    }
     
     window.editOrder = function(orderId) {
         window.location.href = `/admin/orders/${orderId}/edit`;
-    };
+    }
     
     // =========================
-    // SOUMISSION DES ACTIONS
+    // SOUMISSION DES ACTIONS INDIVIDUELLES
     // =========================
     
     window.submitReactivate = function() {
@@ -1164,7 +2062,7 @@ $(document).ready(function() {
         }
         
         processSuspendedAction(orderId, 'reactivate', notes, '#reactivateModal');
-    };
+    }
     
     window.submitCancel = function() {
         const orderId = $('#cancelOrderId').val();
@@ -1176,7 +2074,7 @@ $(document).ready(function() {
         }
         
         processSuspendedAction(orderId, 'cancel', notes, '#cancelModal');
-    };
+    }
     
     window.submitModifySuspension = function() {
         const orderId = $('#modifyOrderId').val();
@@ -1191,16 +2089,17 @@ $(document).ready(function() {
         processSuspendedAction(orderId, 'edit_suspension', notes, '#modifySuspensionModal', {
             new_suspension_reason: newReason
         });
-    };
+    }
     
     function processSuspendedAction(orderId, action, notes, modalSelector, extraData = {}) {
-        const submitBtn = $(modalSelector + ' .btn-primary');
+        const submitBtn = $(modalSelector + ' .btn-primary, ' + modalSelector + ' .btn-success, ' + modalSelector + ' .btn-danger');
         const originalText = submitBtn.html();
         submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Traitement...');
         
         const data = {
             action: action,
             notes: notes,
+            _token: $('meta[name="csrf-token"]').attr('content'),
             ...extraData
         };
         
@@ -1231,20 +2130,26 @@ $(document).ready(function() {
     
     function showLoading() {
         $('#loading-state').show();
-        $('#no-orders-state').hide();
-        $('#orders-grid').hide();
+        $('#empty-state').hide();
+        $('#table-view, #grid-view').hide();
     }
     
-    function showNoOrders() {
+    function showEmpty() {
         $('#loading-state').hide();
-        $('#no-orders-state').show();
-        $('#orders-grid').hide();
+        $('#empty-state').show();
+        $('#table-view, #grid-view').hide();
     }
     
-    function showOrdersGrid() {
+    function showContent() {
         $('#loading-state').hide();
-        $('#no-orders-state').hide();
-        $('#orders-grid').show();
+        $('#empty-state').hide();
+        if (currentView === 'list') {
+            $('#table-view').show();
+            $('#grid-view').hide();
+        } else {
+            $('#table-view').hide();
+            $('#grid-view').show();
+        }
     }
     
     function updateOrdersCount(count) {
@@ -1263,15 +2168,10 @@ $(document).ready(function() {
         const diff = now - date;
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         
-        if (days === 0) {
-            return 'Aujourd\'hui';
-        } else if (days === 1) {
-            return 'Hier';
-        } else if (days < 7) {
-            return `Il y a ${days} jour${days > 1 ? 's' : ''}`;
-        } else {
-            return date.toLocaleDateString('fr-FR');
-        }
+        if (days === 0) return 'Aujourd\'hui';
+        if (days === 1) return 'Hier';
+        if (days < 7) return `Il y a ${days} jour${days > 1 ? 's' : ''}`;
+        return date.toLocaleDateString('fr-FR');
     }
     
     function capitalizeFirst(str) {
@@ -1294,7 +2194,7 @@ $(document).ready(function() {
     function showNotification(message, type = 'info') {
         const alertClass = {
             'success': 'alert-success',
-            'error': 'alert-danger',
+            'error': 'alert-danger', 
             'warning': 'alert-warning',
             'info': 'alert-info'
         }[type] || 'alert-info';
@@ -1309,10 +2209,52 @@ $(document).ready(function() {
         `);
         
         $('body').append(alert);
-        
-        setTimeout(() => {
-            alert.fadeOut(() => alert.remove());
-        }, 5000);
+        setTimeout(() => alert.fadeOut(() => alert.remove()), 5000);
+    }
+    
+    function showProgressModal(totalCount) {
+        if ($('#progress-total').length) {
+            $('#progress-total').text(totalCount);
+            $('#progress-success').text(0);
+            $('#progress-errors').text(0);
+            $('#progress-bar').css('width', '0%');
+            $('#progress-message').text('Traitement des commandes en cours...');
+            $('#progress-detail').text('Veuillez patienter pendant le traitement des actions groupées.');
+            
+            $('#bulkProgressModal').modal('show');
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 90) progress = 90;
+                
+                $('#progress-bar').css('width', progress + '%');
+                
+                if (progress >= 90) {
+                    clearInterval(interval);
+                }
+            }, 200);
+        }
+    }
+    
+    function updateProgressModal(response) {
+        if ($('#progress-bar').length) {
+            $('#progress-bar').css('width', '100%');
+            $('#progress-message').text('Traitement terminé');
+            
+            if (response.details) {
+                $('#progress-success').text(response.details.success_count || 0);
+                $('#progress-errors').text(response.details.error_count || 0);
+                
+                if (response.details.error_count > 0) {
+                    $('#progress-detail').text(`${response.details.success_count} réussie(s), ${response.details.error_count} erreur(s)`);
+                } else {
+                    $('#progress-detail').text('Toutes les commandes ont été traitées avec succès');
+                }
+            } else {
+                $('#progress-detail').text('Traitement terminé avec succès');
+            }
+        }
     }
     
     // =========================
@@ -1321,7 +2263,7 @@ $(document).ready(function() {
     
     initialize();
     
-    // Actualiser les commandes toutes les 2 minutes
+    // Actualisation automatique toutes les 2 minutes
     setInterval(() => {
         if (selectedOrders.length === 0) {
             refreshOrders();
