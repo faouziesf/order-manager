@@ -34,6 +34,8 @@
             --sidebar-collapsed-width: 80px;
             --header-height: 75px;
             --brand-color: #ff6b35;
+            --duplicate-color: #d4a147;
+            --duplicate-color-dark: #b8941f;
             --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
             --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
@@ -41,6 +43,18 @@
             --border-radius: 12px;
             --border-radius-lg: 16px;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Badge doublé pour les commandes doubles */
+        .badge.badge-doublé,
+        .badge.bg-doublé {
+            background: linear-gradient(135deg, var(--duplicate-color) 0%, var(--duplicate-color-dark) 100%) !important;
+            color: white !important;
+            border: none !important;
+            font-weight: 600;
+            padding: 0.375rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
         }
 
         /* Badge purple pour les commandes suspendues */
@@ -67,7 +81,6 @@
         }
 
         /* ===== SOLUTION ULTRA-RADICALE POUR LES MODALES ===== */
-        /* FORCER la suppression de TOUS les modal-backdrop avec CSS */
         .modal-backdrop,
         .modal-backdrop.fade,
         .modal-backdrop.show,
@@ -84,7 +97,6 @@
             z-index: -9999 !important;
         }
 
-        /* Empêcher la création de backdrop */
         div[class*="backdrop"] {
             display: none !important;
             visibility: hidden !important;
@@ -92,7 +104,6 @@
             pointer-events: none !important;
         }
 
-        /* SOLUTION DÉFINITIVE : Modales centrées avec padding complet et largeur optimisée */
         .modal {
             z-index: 99999 !important;
             position: fixed !important;
@@ -110,7 +121,6 @@
             overflow-y: auto !important;
         }
 
-        /* Ajustement du padding selon l'état de la sidebar */
         .content-expanded ~ .modal,
         body:has(.sidebar-collapsed) .modal {
             padding: 40px 40px 40px calc(var(--sidebar-collapsed-width) + 60px) !important;
@@ -136,7 +146,6 @@
             flex-direction: column !important;
         }
 
-        /* Largeurs spécifiques pour différents types de modales */
         .modal-lg .modal-dialog {
             max-width: 90% !important;
             min-width: 700px !important;
@@ -157,18 +166,15 @@
             width: 100% !important;
         }
 
-        /* Tailles spécifiques pour différents types de modales */
         .modal-dialog-centered {
             min-height: auto !important;
         }
 
-        /* S'assurer que le contenu de la modale ne déborde pas */
         .modal-body {
             overflow-y: auto !important;
             max-height: calc(80vh - 200px) !important;
         }
 
-        /* Responsive : ajustements pour mobile */
         @media (max-width: 768px) {
             .modal {
                 padding: 20px !important;
@@ -207,7 +213,6 @@
             }
         }
 
-        /* Empêcher TOUT élément de rester visible après fermeture */
         .modal:not(.show) {
             display: none !important;
             visibility: hidden !important;
@@ -216,21 +221,19 @@
             background: none !important;
         }
 
-        /* Restaurer l'état normal du body - FORCÉ */
         body:not(.modal-open) {
             overflow: auto !important;
             padding-right: 0 !important;
             margin-right: 0 !important;
         }
 
-        /* Empêcher le scroll du body quand une modale est ouverte */
         body.modal-open {
             overflow: hidden !important;
             padding-right: 0 !important;
             margin-right: 0 !important;
         }
 
-        /* Page Loader - Version remise */
+        /* Page Loader */
         .page-loader {
             position: fixed;
             top: 0;
@@ -321,14 +324,13 @@
             100% { width: 100%; }
         }
 
-        /* Empêcher le page loader de s'afficher avec les modales */
         body.modal-open .page-loader {
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
         }
 
-        /* ===== SIDEBAR MODERNE ===== */
+        /* ===== SIDEBAR MODERNE AVEC SCROLLBAR ===== */
         .sidebar {
             min-height: 100vh;
             background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
@@ -342,6 +344,8 @@
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: var(--shadow-xl);
             border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar::before {
@@ -360,98 +364,53 @@
             width: var(--sidebar-collapsed-width);
         }
 
-        /* Brand Section */
+        /* Brand Section - Supprimé */
         .sidebar-brand {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            margin: 0;
-            padding: 24px 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            z-index: 2;
             display: none;
         }
 
-        .sidebar-brand a {
-            color: white;
-            font-weight: 700;
-            text-decoration: none;
-            font-size: 1.25rem;
-            letter-spacing: -0.5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            transition: var(--transition);
-        }
-
-        .sidebar-brand a:hover {
-            transform: scale(1.02);
-        }
-
-        .sidebar-brand .brand-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--brand-color) 0%, #ff8a65 100%);
-            border-radius: var(--border-radius);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            box-shadow: var(--shadow-md);
-            position: relative;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-
-        .sidebar-brand .brand-icon::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
-            transform: rotate(45deg);
-            animation: shine 3s infinite;
-        }
-
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-            100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-        }
-
-        .logo-full {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
+        .logo-full,
         .logo-mini {
             display: none;
         }
 
-        .sidebar-collapsed .logo-full {
-            display: none;
-        }
-
-        .sidebar-collapsed .logo-mini {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Menu Section - SOLUTION DÉFINITIVE POUR LE CENTRAGE DES ICÔNES */
+        /* Menu Section avec Scrollbar - Sans brand */
         .sidebar-menu {
             padding: 24px 0;
             list-style: none;
             position: relative;
             z-index: 2;
-            height: auto;
+            flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
+            max-height: calc(100vh - 48px); /* Ajusté sans brand */
+        }
+
+        /* Scrollbar personnalisé pour la sidebar */
+        .sidebar-menu::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-menu::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin: 5px;
+        }
+
+        .sidebar-menu::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            transition: background 0.3s ease;
+        }
+
+        .sidebar-menu::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Pour Firefox */
+        .sidebar-menu {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
         }
 
         @media (min-width: 769px) {
@@ -460,26 +419,13 @@
             }
         }
 
-        .sidebar-menu::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .sidebar-menu::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .sidebar-menu::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 2px;
-        }
-
         .sidebar-item {
             position: relative;
             margin-bottom: 6px;
             padding: 0 16px;
         }
 
-        /* SOLUTION DÉFINITIVE : Styles pour les liens normaux */
+        /* Styles pour les liens normaux */
         .sidebar-link {
             display: flex;
             align-items: center;
@@ -526,7 +472,7 @@
             border-left: 4px solid var(--brand-color);
         }
 
-        /* SOLUTION DÉFINITIVE : Icônes toujours centralisées */
+        /* Icônes toujours centralisées */
         .sidebar-icon {
             min-width: 28px;
             width: 28px;
@@ -564,7 +510,7 @@
             transition: var(--transition);
         }
 
-        /* SOLUTION DÉFINITIVE : Mode collapsed - TOUTES les icônes centrées */
+        /* Mode collapsed - TOUTES les icônes centrées */
         .sidebar-collapsed .sidebar-link {
             padding: 16px 0;
             justify-content: center;
@@ -622,7 +568,7 @@
             position: absolute;
             left: calc(100% + 16px);
             top: -8px;
-            width: 250px;
+            width: 280px;
             background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
             border-radius: var(--border-radius);
             box-shadow: var(--shadow-xl);
@@ -1024,6 +970,26 @@
             border-left: 4px solid var(--info-color);
         }
 
+        /* Alerte spéciale pour les doublons */
+        .duplicate-alert {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
+            border: 1px solid var(--duplicate-color);
+            color: #92400e;
+            margin-bottom: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(212, 161, 71, 0.2);
+            border-left: 4px solid var(--duplicate-color);
+        }
+
+        .duplicate-alert .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .duplicate-alert .badge {
+            animation: pulse 2s infinite;
+        }
+
         /* Modern Footer */
         .footer {
             background: rgba(255, 255, 255, 0.9);
@@ -1170,7 +1136,7 @@
             }
 
             .sidebar-collapsed .logo-full {
-                display: flex;
+                display: none;
             }
 
             .sidebar-collapsed .sidebar-submenu {
@@ -1234,7 +1200,7 @@
             }
         }
 
-        /* Enhanced Scrollbar */
+        /* Enhanced Scrollbar pour tout le site */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -1423,22 +1389,10 @@
             </div>
         </div>
     </div>
+    
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <a href="{{ route('admin.dashboard') }}" class="logo-full">
-                <div class="brand-icon">
-                    <i class="fas fa-shopping-cart"></i>
-                </div>
-                <span>Order Manager</span>
-            </a>
-            <a href="{{ route('admin.dashboard') }}" class="logo-mini">
-                <div class="brand-icon">
-                    <i class="fas fa-shopping-cart"></i>
-                </div>
-            </a>
-        </div>
-
         <ul class="sidebar-menu">
+            <!-- Dashboard -->
             <li class="sidebar-item">
                 <a href="{{ route('admin.dashboard') }}"
                     class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"
@@ -1450,8 +1404,9 @@
                 </a>
             </li>
 
+            <!-- Traitement (avec doublons) -->
             <li class="sidebar-item">
-                <a href="#" class="sidebar-link {{ request()->routeIs('admin.process*') ? 'active' : '' }}"
+                <a href="#" class="sidebar-link {{ request()->routeIs('admin.process*') || request()->routeIs('admin.duplicates*') ? 'active' : '' }}"
                     data-target="processSubmenu" data-tooltip="Traitement">
                     <div class="sidebar-icon">
                         <i class="fas fa-headset"></i>
@@ -1461,13 +1416,43 @@
                         <i class="fas fa-chevron-down"></i>
                     </span>
                 </a>
-                <ul class="sidebar-submenu {{ request()->routeIs('admin.process*') ? 'show' : '' }}" id="processSubmenu">
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.process*') || request()->routeIs('admin.duplicates*') ? 'show' : '' }}" id="processSubmenu">
+                    <!-- Interface principale -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.interface') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.process.interface') ? 'active' : '' }}">
                             <i class="fas fa-phone"></i>Interface principale
                         </a>
                     </li>
+                    
+                    <!-- Commandes doubles -->
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.duplicates.index') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.duplicates.*') ? 'active' : '' }}">
+                            <i class="fas fa-copy"></i>Commandes doubles
+                            @php
+                                $duplicate_count = 0;
+                                try {
+                                    if (auth('admin')->check()) {
+                                        $duplicate_count = \App\Models\Order::where('admin_id', auth('admin')->id())
+                                            ->where('is_duplicate', true)
+                                            ->where('reviewed_for_duplicates', false)
+                                            ->where('status', 'nouvelle')
+                                            ->distinct('customer_phone')
+                                            ->count('customer_phone');
+                                    }
+                                } catch (\Exception $e) {
+                                    // Colonnes pas encore créées
+                                    $duplicate_count = 0;
+                                }
+                            @endphp
+                            @if($duplicate_count > 0)
+                                <span class="badge badge-doublé ms-1">{{ $duplicate_count }}</span>
+                            @endif
+                        </a>
+                    </li>
+                    
+                    <!-- Examen stock -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.examination.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.process.examination.*') ? 'active' : '' }}">
@@ -1475,6 +1460,8 @@
                             <span class="badge bg-warning ms-1" id="examination-count-badge" style="display: none;"></span>
                         </a>
                     </li>
+                    
+                    <!-- Commandes suspendues -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.suspended.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.process.suspended.*') ? 'active' : '' }}">
@@ -1482,6 +1469,8 @@
                             <span class="badge bg-purple ms-1" id="suspended-count-badge" style="display: none;"></span>
                         </a>
                     </li>
+                    
+                    <!-- Retour en stock -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.restock.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.process.restock.*') ? 'active' : '' }}">
@@ -1492,6 +1481,7 @@
                 </ul>
             </li>
 
+            <!-- Produits -->
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.products*') ? 'active' : '' }}"
                     data-target="productsSubmenu" data-tooltip="Produits">
@@ -1529,6 +1519,7 @@
                 </ul>
             </li>
 
+            <!-- Commandes -->
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.orders*') ? 'active' : '' }}"
                     data-target="ordersSubmenu" data-tooltip="Commandes">
@@ -1556,6 +1547,7 @@
                 </ul>
             </li>
 
+            <!-- Utilisateurs -->
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') ? 'active' : '' }}"
                     data-target="usersSubmenu" data-tooltip="Utilisateurs">
@@ -1583,6 +1575,7 @@
                 </ul>
             </li>
 
+            <!-- Importation -->
             <li class="sidebar-item">
                 <a href="#"
                     class="sidebar-link {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') ? 'active' : '' }}"
@@ -1612,6 +1605,7 @@
                 </ul>
             </li>
 
+            <!-- Historique -->
             <li class="sidebar-item">
                 <a href="{{ route('admin.login-history.index') }}"
                     class="sidebar-link {{ request()->routeIs('admin.login-history*') ? 'active' : '' }}"
@@ -1623,6 +1617,7 @@
                 </a>
             </li>
 
+            <!-- Paramètres -->
             <li class="sidebar-item">
                 <a href="{{ route('admin.settings.index') }}"
                     class="sidebar-link {{ request()->routeIs('admin.settings.index') ? 'active' : '' }}"
@@ -1757,6 +1752,57 @@
                 </div>
             @endif
 
+            {{-- Alerte globale pour les commandes doubles --}}
+            @php
+                $duplicate_count = 0;
+                try {
+                    if (auth('admin')->check()) {
+                        $duplicate_count = \App\Models\Order::where('admin_id', auth('admin')->id())
+                            ->where('is_duplicate', true)
+                            ->where('reviewed_for_duplicates', false)
+                            ->where('status', 'nouvelle')
+                            ->distinct('customer_phone')
+                            ->count('customer_phone');
+                    }
+                } catch (\Exception $e) {
+                    // Colonnes pas encore créées
+                    $duplicate_count = 0;
+                }
+            @endphp
+
+            @if($duplicate_count > 0)
+                <div class="alert duplicate-alert alert-dismissible fade show animate-slide-down" role="alert">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            <i class="fas fa-copy fa-2x" style="color: var(--duplicate-color);"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="mb-2">
+                                <i class="fas fa-exclamation-triangle me-2" style="color: var(--duplicate-color);"></i>
+                                <strong>Commandes en double détectées</strong>
+                                <span class="badge badge-doublé ms-1">
+                                    {{ $duplicate_count }} {{ $duplicate_count > 1 ? 'clients' : 'client' }}
+                                </span>
+                            </h5>
+                            <p class="mb-2">
+                                <strong>{{ $duplicate_count }}</strong> {{ $duplicate_count > 1 ? 'clients ont' : 'client a' }} des commandes en double qui nécessitent votre attention.
+                                Ces commandes peuvent être fusionnées ou marquées comme examinées.
+                            </p>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('admin.duplicates.index') }}" class="btn btn-sm badge-doublé" 
+                                   style="background: linear-gradient(135deg, var(--duplicate-color) 0%, var(--duplicate-color-dark) 100%); color: white; border: none;">
+                                    <i class="fas fa-eye me-2"></i>Examiner maintenant
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="quickCheckDuplicates()">
+                                    <i class="fas fa-search me-2"></i>Vérifier doublons
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" onclick="dismissDuplicateAlert()"></button>
+                </div>
+            @endif
+
             @if (session('success'))
                 <div class="alert alert-success alert-dismissible fade show animate-slide-down" role="alert">
                     <div class="d-flex align-items-center">
@@ -1817,13 +1863,10 @@
         $(document).ready(function() {
             // ===== SOLUTION DÉFINITIVE POUR LES MODALES =====
             
-            // Fonction de nettoyage ultra-agressive
             function ultimateCleanup() {
-                // Supprimer TOUS les éléments de modal
                 $('.modal-backdrop').remove();
                 $('.modal').removeClass('show').hide().css('display', 'none');
                 
-                // Nettoyer le body complètement
                 $('body')
                     .removeClass('modal-open')
                     .css({
@@ -1836,32 +1879,26 @@
                 console.log('🧹 Nettoyage complet effectué');
             }
 
-            // Nettoyage initial immédiat
             ultimateCleanup();
 
-            // Intercepter TOUTES les ouvertures de modales
             $(document).on('show.bs.modal', '.modal', function() {
                 // Plus de référence au page loader
             });
 
-            // Intercepter TOUTES les fermetures de modales
             $(document).on('hidden.bs.modal', '.modal', function() {
                 setTimeout(ultimateCleanup, 50);
             });
 
-            // Nettoyage sur clic de fermeture
             $(document).on('click', '[data-bs-dismiss="modal"], .modal-backdrop', function() {
                 setTimeout(ultimateCleanup, 100);
             });
 
-            // Nettoyage sur ESC
             $(document).on('keydown', function(e) {
                 if (e.key === 'Escape') {
                     setTimeout(ultimateCleanup, 100);
                 }
             });
 
-            // Surveillance continue - nettoyage automatique
             setInterval(function() {
                 if ($('.modal.show').length === 0 && ($('.modal-backdrop').length > 0 || $('body').hasClass('modal-open'))) {
                     console.log('🔍 Éléments bloquants détectés - nettoyage automatique');
@@ -1869,7 +1906,6 @@
                 }
             }, 2000);
 
-            // Exposer la fonction de nettoyage
             window.ultimateCleanup = ultimateCleanup;
 
             // ===== SOLUTION DÉFINITIVE POUR LE SIDEBAR =====
@@ -1878,7 +1914,6 @@
             const content = $('#content');
             const sidebarToggle = $('#sidebarToggle');
 
-            // Gestion des sous-menus avec flyout en mode collapsed
             function handleSubmenuDisplay() {
                 const isCollapsed = sidebar.hasClass('sidebar-collapsed');
                 const isMobile = window.innerWidth <= 768;
@@ -1942,7 +1977,6 @@
                 }
             }
 
-            // Gestion d'état du sidebar
             function applySidebarState() {
                 const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
                 const isMobile = window.innerWidth <= 768;
@@ -1969,7 +2003,6 @@
                 applySidebarState();
             }, 250));
 
-            // Toggle sidebar
             sidebarToggle.on('click', function() {
                 const isMobile = window.innerWidth <= 768;
                 
@@ -2037,7 +2070,7 @@
 
             // Auto-hide alerts
             setTimeout(() => {
-                $('.alert:not(.alert-warning)').each(function() {
+                $('.alert:not(.alert-warning):not(.duplicate-alert)').each(function() {
                     const alert = $(this);
                     alert.fadeOut(500, function() {
                         alert.remove();
@@ -2152,6 +2185,93 @@
             $('.alert-success').each(function() {
                 announce('Opération réussie');
             });
+        });
+
+        // Fonctions pour les doublons
+        function quickCheckDuplicates() {
+            const button = event.target;
+            const originalHtml = button.innerHTML;
+            
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Vérification...';
+            button.disabled = true;
+            
+            fetch('{{ route("admin.duplicates.check") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                button.innerHTML = originalHtml;
+                button.disabled = false;
+                
+                if (data.success) {
+                    showNotification('success', data.message);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showNotification('error', data.message || 'Erreur lors de la vérification');
+                }
+            })
+            .catch(error => {
+                button.innerHTML = originalHtml;
+                button.disabled = false;
+                showNotification('error', 'Erreur lors de la vérification des doublons');
+                console.error('Erreur:', error);
+            });
+        }
+
+        function dismissDuplicateAlert() {
+            const alertTimestamp = new Date().getTime();
+            localStorage.setItem('duplicate_alert_dismissed_{{ auth("admin")->id() ?? 0 }}', alertTimestamp);
+        }
+
+        function showNotification(type, message) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const icon = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+            
+            const notification = document.createElement('div');
+            notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="${icon} me-2"></i>
+                    <span>${message}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Vérifier si l'alerte a été fermée récemment
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminId = {{ auth('admin')->id() ?? 0 }};
+            const dismissedTimestamp = localStorage.getItem('duplicate_alert_dismissed_' + adminId);
+            
+            if (dismissedTimestamp) {
+                const dismissedTime = new Date(parseInt(dismissedTimestamp));
+                const now = new Date();
+                const hoursSinceDismissed = (now - dismissedTime) / (1000 * 60 * 60);
+                
+                if (hoursSinceDismissed < 24) {
+                    const duplicateAlert = document.querySelector('.duplicate-alert');
+                    if (duplicateAlert) {
+                        duplicateAlert.style.display = 'none';
+                    }
+                } else {
+                    localStorage.removeItem('duplicate_alert_dismissed_' + adminId);
+                }
+            }
         });
 
         $(document).ready(function() {

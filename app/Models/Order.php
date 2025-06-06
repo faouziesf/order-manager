@@ -35,6 +35,9 @@ class Order extends Model
         'is_assigned',
         'is_suspended',
         'suspension_reason',
+        'is_duplicate',           // NOUVEAU
+        'reviewed_for_duplicates', // NOUVEAU
+        'duplicate_group_id',     // NOUVEAU
         'notes',
     ];
 
@@ -46,6 +49,8 @@ class Order extends Model
         'last_attempt_at' => 'datetime',
         'is_assigned' => 'boolean',
         'is_suspended' => 'boolean',
+        'is_duplicate' => 'boolean',           // NOUVEAU
+        'reviewed_for_duplicates' => 'boolean', // NOUVEAU
     ];
 
     /**
@@ -140,6 +145,55 @@ class Order extends Model
     public function scopeSuspended($query)
     {
         return $query->where('is_suspended', true);
+    }
+
+    // ======== NOUVEAUX SCOPES POUR LES DOUBLONS ========
+
+    /**
+     * Scope pour les commandes marquées comme doublons
+     */
+    public function scopeDuplicate($query)
+    {
+        return $query->where('is_duplicate', true);
+    }
+
+    /**
+     * Scope pour les commandes doubles non examinées
+     */
+    public function scopeUnreviewedDuplicates($query)
+    {
+        return $query->where('is_duplicate', true)
+                    ->where('reviewed_for_duplicates', false);
+    }
+
+    /**
+     * Scope pour les commandes doubles examinées
+     */
+    public function scopeReviewedDuplicates($query)
+    {
+        return $query->where('is_duplicate', true)
+                    ->where('reviewed_for_duplicates', true);
+    }
+
+    /**
+     * Scope pour les commandes fusionnables (nouvelles et datées)
+     */
+    public function scopeMergeable($query)
+    {
+        return $query->whereIn('status', ['nouvelle', 'datée'])
+                    ->where('is_duplicate', true)
+                    ->where('reviewed_for_duplicates', false);
+    }
+
+    /**
+     * Scope pour trouver les doublons d'un numéro de téléphone
+     */
+    public function scopeDuplicatesOf($query, $phone)
+    {
+        return $query->where(function($q) use ($phone) {
+            $q->where('customer_phone', $phone)
+              ->orWhere('customer_phone_2', $phone);
+        })->where('is_duplicate', true);
     }
 
     /**
@@ -487,5 +541,295 @@ class Order extends Model
     {
         return $query->where('status', 'ancienne')
             ->availableForQueue('old');
+    }
+
+    // ======== NOUVELLES MÉTHODES POUR LA GESTION DES DOUBLONS ========
+
+    /**
+     * Marquer la commande comme doublon
+     */
+    public function markAsDuplicate($groupId = null)
+    {
+        $this->update([
+            'is_duplicate' => true,
+            'duplicate_group_id' => $groupId ?: 'DUP_' . time() . '_' . $this->id
+        ]);
+        
+        $this->recordHistory(
+            'duplicate_detected',
+            'Commande marquée comme doublon'
+        );
+        
+        return $this;
+    }
+
+    /**
+     * Marquer la commande comme examinée pour doublons
+     */
+    public function markDuplicateAsReviewed($note = null)
+    {
+        $this->update(['reviewed_for_duplicates' => true]);
+        
+        $this->recordHistory(
+            'duplicate_review',
+            $note ?: 'Commande marquée comme examinée pour doublons'
+        );
+        
+        return $this;
+    }
+
+    /**
+     * Retirer le marquage de doublon
+     */
+    public function unmarkAsDuplicate()
+    {
+        $this->update([
+            'is_duplicate' => false,
+            'reviewed_for_duplicates' => false,
+            'duplicate_group_id' => null
+        ]);
+        
+        return $this;
+    }
+
+    /**
+     * Trouver toutes les commandes doubles de ce client
+     */
+    public function getDuplicateOrders()
+    {
+        return static::where('admin_id', $this->admin_id)
+            ->where(function($q) {
+                $q->where('customer_phone', $this->customer_phone);
+                if ($this->customer_phone_2) {
+                    $q->orWhere('customer_phone', $this->customer_phone_2)
+                      ->orWhere('customer_phone_2', $this->customer_phone)
+                      ->orWhere('customer_phone_2', $this->customer_phone_2);
+                }
+            })
+            ->where('id', '!=', $this->id)
+            ->where('is_duplicate', true)
+            ->get();
+    }
+
+    /**
+     * Vérifier si cette commande peut être fusionnée avec une autre
+     */
+    public function canMergeWith(Order $otherOrder)
+    {
+        // Même admin
+        if ($this->admin_id !== $otherOrder->admin_id) {
+            return false;
+        }
+        
+        // Statuts compatibles
+        $compatibleStatuses = [
+            ['nouvelle', 'nouvelle'],
+            ['datée', 'datée'],
+            ['nouvelle', 'datée'],
+            ['datée', 'nouvelle']
+        ];
+        
+        $statusPair = [$this->status, $otherOrder->status];
+        
+        foreach ($compatibleStatuses as $compatible) {
+            if (($statusPair[0] === $compatible[0] && $statusPair[1] === $compatible[1]) ||
+                ($statusPair[0] === $compatible[1] && $statusPair[1] === $compatible[0])) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Fusionner cette commande avec une autre
+     */
+    public function mergeWith(Order $otherOrder, $note = null)
+    {
+        if (!$this->canMergeWith($otherOrder)) {
+            throw new \Exception('Ces commandes ne peuvent pas être fusionnées');
+        }
+        
+        // Fusionner les informations client
+        $mergedNames = collect([$this->customer_name, $otherOrder->customer_name])
+            ->filter()
+            ->unique()
+            ->implode(' / ');
+            
+        $mergedAddresses = collect([$this->customer_address, $otherOrder->customer_address])
+            ->filter()
+            ->unique()
+            ->implode(' / ');
+        
+        // Fusionner les produits
+        foreach ($otherOrder->items as $item) {
+            $existingItem = $this->items->where('product_id', $item->product_id)->first();
+            
+            if ($existingItem) {
+                $existingItem->quantity += $item->quantity;
+                $existingItem->total_price += $item->total_price;
+                $existingItem->save();
+            } else {
+                $this->items()->create([
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'total_price' => $item->total_price
+                ]);
+            }
+        }
+        
+        // Mettre à jour les informations de cette commande
+        $this->update([
+            'customer_name' => $mergedNames,
+            'customer_address' => $mergedAddresses,
+            'total_price' => $this->items->sum('total_price') + $this->shipping_cost,
+            'reviewed_for_duplicates' => true,
+            'notes' => ($this->notes ? $this->notes . "\n" : "") . 
+                      "[FUSION " . now()->format('d/m/Y H:i') . "] " . 
+                      ($note ?: "Fusion avec commande #{$otherOrder->id}")
+        ]);
+        
+        // Enregistrer l'historique
+        $this->recordHistory(
+            'duplicate_merge',
+            "Fusion avec commande #{$otherOrder->id}",
+            [
+                'merged_order_id' => $otherOrder->id,
+                'total_price_before' => $this->getOriginal('total_price'),
+                'total_price_after' => $this->total_price,
+                'admin_note' => $note
+            ]
+        );
+        
+        // Supprimer l'autre commande
+        $otherOrder->delete();
+        
+        return $this;
+    }
+
+    /**
+     * Obtenir le nombre de commandes doubles pour ce numéro de téléphone
+     */
+    public function getDuplicateCount()
+    {
+        return static::where('admin_id', $this->admin_id)
+            ->where(function($q) {
+                $q->where('customer_phone', $this->customer_phone);
+                if ($this->customer_phone_2) {
+                    $q->orWhere('customer_phone', $this->customer_phone_2)
+                      ->orWhere('customer_phone_2', $this->customer_phone)
+                      ->orWhere('customer_phone_2', $this->customer_phone_2);
+                }
+            })
+            ->where('is_duplicate', true)
+            ->count();
+    }
+
+    /**
+     * Vérifier si ce numéro de téléphone a des doublons récents (non examinés)
+     */
+    public function hasRecentDuplicates()
+    {
+        return static::where('admin_id', $this->admin_id)
+            ->where(function($q) {
+                $q->where('customer_phone', $this->customer_phone);
+                if ($this->customer_phone_2) {
+                    $q->orWhere('customer_phone', $this->customer_phone_2)
+                      ->orWhere('customer_phone_2', $this->customer_phone)
+                      ->orWhere('customer_phone_2', $this->customer_phone_2);
+                }
+            })
+            ->where('is_duplicate', true)
+            ->where('reviewed_for_duplicates', false)
+            ->where('id', '!=', $this->id)
+            ->exists();
+    }
+
+    /**
+     * Méthodes statiques pour la détection des doublons
+     */
+    public static function detectDuplicatesForAdmin($adminId)
+    {
+        $orders = static::where('admin_id', $adminId)
+            ->whereIn('status', ['nouvelle', 'datée'])
+            ->get();
+        
+        $duplicatesFound = 0;
+        $processedPhones = [];
+        
+        foreach ($orders as $order1) {
+            if (in_array($order1->customer_phone, $processedPhones)) {
+                continue;
+            }
+            
+            $duplicateOrders = collect();
+            
+            foreach ($orders as $order2) {
+                if ($order1->id !== $order2->id && 
+                    (static::phoneMatches($order1->customer_phone, $order2->customer_phone) ||
+                     static::has8SuccessiveDigits($order1->customer_phone, $order2->customer_phone))) {
+                    
+                    $duplicateOrders->push($order2);
+                }
+            }
+            
+            if ($duplicateOrders->count() > 0) {
+                $duplicateOrders->push($order1);
+                $groupId = 'DUP_' . time() . '_' . $order1->id;
+                
+                foreach ($duplicateOrders as $dupOrder) {
+                    $dupOrder->markAsDuplicate($groupId);
+                }
+                
+                $duplicatesFound += $duplicateOrders->count();
+                $processedPhones[] = $order1->customer_phone;
+            }
+        }
+        
+        return $duplicatesFound;
+    }
+
+    /**
+     * Vérifier si deux numéros de téléphone correspondent exactement
+     */
+    public static function phoneMatches($phone1, $phone2)
+    {
+        return $phone1 === $phone2;
+    }
+
+    /**
+     * Vérifier si deux numéros ont 8 chiffres successifs identiques
+     */
+    public static function has8SuccessiveDigits($phone1, $phone2)
+    {
+        $digits1 = preg_replace('/\D/', '', $phone1);
+        $digits2 = preg_replace('/\D/', '', $phone2);
+        
+        if (strlen($digits1) < 8 || strlen($digits2) < 8) {
+            return false;
+        }
+        
+        for ($i = 0; $i <= strlen($digits1) - 8; $i++) {
+            $substring = substr($digits1, $i, 8);
+            if (strpos($digits2, $substring) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Scope pour compter les doublons non examinés d'un admin
+     */
+    public static function countUnreviewedDuplicatesForAdmin($adminId)
+    {
+        return static::where('admin_id', $adminId)
+            ->where('status', 'nouvelle')
+            ->where('is_duplicate', true)
+            ->where('reviewed_for_duplicates', false)
+            ->distinct('customer_phone')
+            ->count('customer_phone');
     }
 }

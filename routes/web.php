@@ -21,6 +21,7 @@ use App\Http\Controllers\SuperAdmin\DashboardController;
 use App\Http\Controllers\SuperAdmin\SettingController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use App\Http\Controllers\Admin\DuplicateOrdersController;
 
 // Route d'accueil
 Route::get('/', function () {
@@ -330,6 +331,41 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ]
         ];
     })->name('admin.debug-auth');
+
+    // ========================================
+    // GESTION DES COMMANDES DOUBLES
+    // ========================================
+    Route::prefix('duplicates')->name('duplicates.')->group(function () {
+        Route::get('/', [DuplicateOrdersController::class, 'index'])
+            ->name('index');
+        Route::get('/get', [DuplicateOrdersController::class, 'getDuplicates'])
+            ->name('get');
+        Route::get('/stats', [DuplicateOrdersController::class, 'getDashboardStats'])
+            ->name('stats');
+        Route::get('/history', [DuplicateOrdersController::class, 'getClientHistory'])
+            ->name('history');
+        Route::get('/detail/{phone}', [DuplicateOrdersController::class, 'clientDetail'])
+            ->name('detail');
+        
+        // Actions
+        Route::post('/check', [DuplicateOrdersController::class, 'checkAllDuplicates'])
+            ->name('check');
+        Route::post('/merge', [DuplicateOrdersController::class, 'mergeOrders'])
+            ->name('merge');
+        Route::post('/selective-merge', [DuplicateOrdersController::class, 'selectiveMerge'])
+            ->name('selective-merge');
+        Route::post('/mark-reviewed', [DuplicateOrdersController::class, 'markAsReviewed'])
+            ->name('mark-reviewed');
+        Route::post('/cancel', [DuplicateOrdersController::class, 'cancelOrder'])
+            ->name('cancel');
+        Route::post('/auto-merge', [DuplicateOrdersController::class, 'autoMergeDuplicates'])
+            ->name('auto-merge');
+        Route::post('/settings', [DuplicateOrdersController::class, 'updateSettings'])
+            ->name('settings');
+    });
+
+
+
 });
 
 // ========================================
