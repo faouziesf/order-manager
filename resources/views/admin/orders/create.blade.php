@@ -10,12 +10,13 @@
         --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
         --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        --doublons-gradient: linear-gradient(135deg, #d4a147 0%, #b8941f 100%);
         --glass-bg: rgba(255, 255, 255, 0.95);
         --shadow-elevated: 0 8px 25px -8px rgba(0, 0, 0, 0.12);
         --border-radius: 12px;
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        --cart-width-expanded: 400px; /* Variable for cart width */
-        --cart-width-collapsed: 230px; /* Variable for collapsed cart width */
+        --cart-width-expanded: 400px;
+        --cart-width-collapsed: 230px;
     }
 
     body {
@@ -68,7 +69,6 @@
     /* Layout Principal */
     .main-content {
         display: grid;
-        /* Form takes available space, cart column is auto-sized based on .cart-section width */
         grid-template-columns: 1fr auto; 
         gap: 2rem;
         padding: 2rem;
@@ -79,10 +79,64 @@
             grid-template-columns: 1fr;
         }
         .cart-section {
-            width: auto !important; /* Ensure it takes full width when stacked, overriding specific widths */
+            width: auto !important;
             position: static; 
             margin-top: 1rem;
         }
+    }
+
+    /* Alerte de doublons */
+    .duplicate-alert {
+        margin: 1rem 0;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 2px solid;
+        display: none;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .duplicate-alert.warning {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: #f59e0b;
+        color: #92400e;
+    }
+
+    .duplicate-alert.danger {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+        color: #dc2626;
+    }
+
+    .duplicate-alert.success {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: #10b981;
+        color: #059669;
+    }
+
+    .duplicate-alert-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .duplicate-alert-content {
+        font-size: 0.875rem;
+        line-height: 1.4;
+    }
+
+    .duplicate-alert-actions {
+        margin-top: 0.75rem;
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .duplicate-alert-actions .btn {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        border-radius: 6px;
     }
 
     /* Formulaire Client */
@@ -108,13 +162,39 @@
     .form-row { display: grid; gap: 1rem; margin-bottom: 1rem; }
     .form-row.cols-1 { grid-template-columns: 1fr; }
     .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
-    .form-group { display: flex; flex-direction: column; }
+    .form-group { display: flex; flex-direction: column; position: relative; }
     .form-label { font-weight: 600; color: #374151; margin-bottom: 0.375rem; font-size: 0.875rem; display: flex; align-items: center; gap: 0.375rem; }
     .form-label .required { color: #ef4444; font-size: 0.75rem; }
     .form-control { border: 2px solid #e5e7eb; border-radius: 8px; padding: 0.75rem; transition: var(--transition); font-size: 0.875rem; background: #fafafa; font-family: inherit; }
     .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); background: white; outline: none; }
     .form-control:invalid { border-color: #ef4444; }
+    .form-control.has-duplicates { border-color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
     .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25em 1.25em; padding-right: 2.5rem; }
+
+    /* Indicateur de vérification en temps réel */
+    .phone-validation-indicator {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.875rem;
+        display: none;
+    }
+
+    .phone-validation-indicator.checking {
+        display: block;
+        color: #6b7280;
+    }
+
+    .phone-validation-indicator.has-duplicates {
+        display: block;
+        color: #f59e0b;
+    }
+
+    .phone-validation-indicator.clean {
+        display: block;
+        color: #10b981;
+    }
 
     /* Section Panier */
     .cart-section {
@@ -124,11 +204,10 @@
         height: fit-content;
         position: sticky;
         top: 1rem;
-        width: var(--cart-width-expanded); /* Use variable for default width */
-        transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother transition for width */
+        width: var(--cart-width-expanded);
+        transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Class to apply when cart content (items/summary) is collapsed */
     .cart-section.cart-content-collapsed {
         width: var(--cart-width-collapsed);
     }
@@ -141,10 +220,10 @@
         align-items: center;
         justify-content: space-between;
         border-radius: var(--border-radius) var(--border-radius) 0 0;
-        overflow: hidden; /* To prevent text overflow issues during transition */
+        overflow: hidden;
     }
 
-    .cart-header h3 { margin: 0; font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; white-space: nowrap; /* Prevent text wrapping in header */ }
+    .cart-header h3 { margin: 0; font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; white-space: nowrap; }
     .cart-toggle-btn { background: transparent; border: none; color: white; font-size: 1.2rem; cursor: pointer; padding: 0.25rem; line-height: 1; border-radius: 4px; }
     .cart-toggle-btn:hover { background: rgba(255,255,255,0.1); }
 
@@ -198,6 +277,8 @@
     .priority-urgente.active { background: var(--warning-gradient); }
     .priority-vip { background: #fee2e2; color: #dc2626; }
     .priority-vip.active { background: var(--danger-gradient); }
+    .priority-doublons { background: rgba(212, 161, 71, 0.1); color: #d4a147; }
+    .priority-doublons.active { background: var(--doublons-gradient); }
 
     .action-buttons { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
     .btn-save { flex: 1; background: var(--success-gradient); color: white; border: none; border-radius: 8px; padding: 0.875rem 1.5rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
@@ -206,28 +287,28 @@
     .btn-cancel { background: #f3f4f6; color: #6b7280; border: none; border-radius: 8px; padding: 0.875rem 1.5rem; font-weight: 600; cursor: pointer; transition: var(--transition); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.875rem; }
     .btn-cancel:hover { background: #e5e7eb; color: #374151; }
 
-    /* Styles for controls when cart is collapsed to a narrower width */
+    .btn-primary { background: var(--primary-gradient); color: white; border: none; border-radius: 6px; padding: 0.375rem 0.75rem; font-weight: 500; cursor: pointer; transition: var(--transition); text-decoration: none; display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; }
+    .btn-outline { background: white; color: #6b7280; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.375rem 0.75rem; font-weight: 500; cursor: pointer; transition: var(--transition); text-decoration: none; display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; }
+
+    /* Styles for controls when cart is collapsed */
     .cart-section.cart-content-collapsed .order-controls {
-        padding: 1rem; /* Slightly reduce padding in collapsed state */
+        padding: 1rem;
     }
     .cart-section.cart-content-collapsed .action-buttons {
-        flex-direction: column; /* Stack buttons vertically */
-        align-items: stretch;   /* Make buttons take full width of the new narrow column */
+        flex-direction: column;
+        align-items: stretch;
     }
     .cart-section.cart-content-collapsed .action-buttons .btn-save,
     .cart-section.cart-content-collapsed .action-buttons .btn-cancel {
-        width: 100%; /* Ensure buttons fill the column */
+        width: 100%;
     }
-    /* Optional: Hide parts of cart header text if too long for collapsed state */
-    .cart-section.cart-content-collapsed .cart-header h3 > span:not(#cart-count) { /* Hides "Panier " text, keeps icon and count span */
-        /* display: none; */ /* Uncomment if header text causes overflow */
-    }
-
 
     /* Animations */
     @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .cart-item { animation: slideIn 0.3s ease-out; }
     .product-suggestions { animation: slideIn 0.2s ease-out; }
+    .checking { animation: pulse 1.5s infinite; }
 
     /* Loading state */
     .loading { position: relative; pointer-events: none; opacity: 0.7; }
@@ -241,7 +322,7 @@
         .form-body { padding: 1.25rem; }
         .form-row.cols-2 { grid-template-columns: 1fr; }
         .action-buttons,
-        .cart-section.cart-content-collapsed .action-buttons { /* Ensure stacked buttons on small screens regardless of collapse state */
+        .cart-section.cart-content-collapsed .action-buttons {
             flex-direction: column;
             align-items: stretch;
         }
@@ -251,6 +332,13 @@
         .action-buttons .btn-cancel {
              width: 100%;
         }
+    }
+
+    /* Checkbox styles */
+    .form-check-input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary);
     }
 </style>
 @endsection
@@ -287,12 +375,43 @@
                     <div class="form-row cols-2">
                         <div class="form-group">
                             <label for="customer_phone" class="form-label"><i class="fas fa-phone"></i> Téléphone Principal <span class="required">*</span></label>
-                            <input type="tel" class="form-control @error('customer_phone') is-invalid @enderror" id="customer_phone" name="customer_phone" value="{{ old('customer_phone') }}" placeholder="Ex: +216 XX XXX XXX" required autocomplete="tel">
+                            <div style="position: relative;">
+                                <input type="tel" class="form-control @error('customer_phone') is-invalid @enderror" id="customer_phone" name="customer_phone" value="{{ old('customer_phone') }}" placeholder="Ex: +216 XX XXX XXX" required autocomplete="tel">
+                                <div class="phone-validation-indicator" id="phone-indicator">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </div>
+                            </div>
                             @error('customer_phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            
+                            <!-- Alerte de doublons -->
+                            <div class="duplicate-alert" id="duplicate-alert">
+                                <div class="duplicate-alert-header">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span id="duplicate-alert-title">Doublons détectés</span>
+                                </div>
+                                <div class="duplicate-alert-content" id="duplicate-alert-content">
+                                    <!-- Contenu dynamique -->
+                                </div>
+                                <div class="duplicate-alert-actions">
+                                    <button type="button" class="btn btn-primary" id="view-duplicates-btn">
+                                        <i class="fas fa-eye"></i>
+                                        Voir les détails
+                                    </button>
+                                    <button type="button" class="btn btn-outline" onclick="dismissDuplicateAlert()">
+                                        <i class="fas fa-times"></i>
+                                        Ignorer
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="customer_phone_2" class="form-label"><i class="fas fa-phone-alt"></i> Téléphone Secondaire</label>
-                            <input type="text" class="form-control @error('customer_phone_2') is-invalid @enderror" id="customer_phone_2" name="customer_phone_2" value="{{ old('customer_phone_2') }}" placeholder="Téléphone alternatif" autocomplete="tel">
+                            <div style="position: relative;">
+                                <input type="text" class="form-control @error('customer_phone_2') is-invalid @enderror" id="customer_phone_2" name="customer_phone_2" value="{{ old('customer_phone_2') }}" placeholder="Téléphone alternatif" autocomplete="tel">
+                                <div class="phone-validation-indicator" id="phone2-indicator">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </div>
+                            </div>
                             @error('customer_phone_2') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
@@ -409,6 +528,8 @@
 $(document).ready(function() {
     let cart = [];
     let searchTimeout;
+    let phoneCheckTimeout;
+    let phone2CheckTimeout;
 
     const $cartSection = $('.cart-section'); 
     const $cartBody = $('.cart-body');
@@ -419,6 +540,125 @@ $(document).ready(function() {
     const $orderControls = $('.order-controls');
     const $toggleCartBtn = $('#cart-toggle-btn');
 
+    // =========================
+    // VÉRIFICATION DES DOUBLONS EN TEMPS RÉEL
+    // =========================
+    $('#customer_phone').on('input', function() {
+        const phone = $(this).val().trim();
+        clearTimeout(phoneCheckTimeout);
+        
+        if (phone.length >= 8) {
+            phoneCheckTimeout = setTimeout(() => {
+                checkPhoneForDuplicates(phone, 'customer_phone');
+            }, 500);
+        } else {
+            resetPhoneValidation('customer_phone');
+        }
+    });
+
+    $('#customer_phone_2').on('input', function() {
+        const phone = $(this).val().trim();
+        clearTimeout(phone2CheckTimeout);
+        
+        if (phone.length >= 8) {
+            phone2CheckTimeout = setTimeout(() => {
+                checkPhoneForDuplicates(phone, 'customer_phone_2');
+            }, 500);
+        } else {
+            resetPhoneValidation('customer_phone_2');
+        }
+    });
+
+    function checkPhoneForDuplicates(phone, fieldType) {
+        const indicator = fieldType === 'customer_phone' ? '#phone-indicator' : '#phone2-indicator';
+        const input = fieldType === 'customer_phone' ? '#customer_phone' : '#customer_phone_2';
+        
+        // Afficher l'indicateur de vérification
+        $(indicator).removeClass('has-duplicates clean').addClass('checking').show();
+        
+        $.get('/admin/duplicates/check-phone', { phone: phone })
+            .done(function(response) {
+                $(indicator).removeClass('checking');
+                
+                if (response.has_duplicates) {
+                    $(indicator).addClass('has-duplicates').html('<i class="fas fa-exclamation-triangle"></i>');
+                    $(input).addClass('has-duplicates');
+                    
+                    if (fieldType === 'customer_phone') {
+                        showDuplicateAlert(response);
+                    }
+                } else {
+                    $(indicator).addClass('clean').html('<i class="fas fa-check"></i>');
+                    $(input).removeClass('has-duplicates');
+                    
+                    if (fieldType === 'customer_phone') {
+                        hideDuplicateAlert();
+                    }
+                }
+            })
+            .fail(function() {
+                $(indicator).removeClass('checking').hide();
+                $(input).removeClass('has-duplicates');
+            });
+    }
+
+    function resetPhoneValidation(fieldType) {
+        const indicator = fieldType === 'customer_phone' ? '#phone-indicator' : '#phone2-indicator';
+        const input = fieldType === 'customer_phone' ? '#customer_phone' : '#customer_phone_2';
+        
+        $(indicator).removeClass('checking has-duplicates clean').hide();
+        $(input).removeClass('has-duplicates');
+        
+        if (fieldType === 'customer_phone') {
+            hideDuplicateAlert();
+        }
+    }
+
+    function showDuplicateAlert(response) {
+        const alert = $('#duplicate-alert');
+        const title = $('#duplicate-alert-title');
+        const content = $('#duplicate-alert-content');
+        const viewBtn = $('#view-duplicates-btn');
+        
+        // Déterminer le type d'alerte
+        let alertClass = 'warning';
+        if (response.marked_duplicates > 0) {
+            alertClass = 'danger';
+        }
+        
+        // Configurer l'alerte
+        alert.removeClass('warning danger success').addClass(alertClass);
+        
+        if (response.marked_duplicates > 0) {
+            title.text('⚠️ Doublons non révisés détectés');
+            content.html(`
+                <strong>${response.marked_duplicates} doublon(s) non révisé(s)</strong> trouvé(s) pour ce numéro.<br>
+                <em>Ces commandes nécessitent votre attention avant de créer une nouvelle commande.</em>
+            `);
+        } else {
+            title.text('⚠️ Commandes multiples détectées');
+            content.html(`
+                <strong>${response.total_orders} commande(s)</strong> trouvée(s) pour ce numéro.<br>
+                <em>Vérifiez s'il s'agit de doublons avant de continuer.</em>
+            `);
+        }
+        
+        // Configurer le bouton de visualisation
+        viewBtn.off('click').on('click', function() {
+            const phone = $('#customer_phone').val().trim();
+            window.open(`/admin/duplicates/detail/${encodeURIComponent(phone)}`, '_blank');
+        });
+        
+        alert.show();
+    }
+
+    function hideDuplicateAlert() {
+        $('#duplicate-alert').hide();
+    }
+
+    window.dismissDuplicateAlert = function() {
+        hideDuplicateAlert();
+    };
 
     // =========================
     // RECHERCHE DE PRODUITS
@@ -583,7 +823,7 @@ $(document).ready(function() {
         $orderControls.css('border-radius', ($cartBody.is(':hidden') && $cartSummary.is(':hidden')) ? '0 0 var(--border-radius) var(--border-radius)' : '0');
     }
     
-    var startCartCollapsed = false; // Set to true to start with cart collapsed
+    var startCartCollapsed = false;
 
     if (startCartCollapsed) {
         $cartBody.hide();
@@ -624,6 +864,14 @@ $(document).ready(function() {
         const phone = $('#customer_phone').val().trim();
         if (!phone) { errors.push('Le numéro de téléphone principal est obligatoire.'); }
         if (cart.length === 0) { errors.push('Veuillez ajouter au moins un produit à la commande.'); }
+
+        // Vérifier s'il y a des doublons non révisés
+        if ($('#duplicate-alert').is(':visible') && $('#duplicate-alert').hasClass('danger')) {
+            if (!confirm('⚠️ ATTENTION: Ce numéro possède des doublons non révisés.\n\nÊtes-vous sûr de vouloir créer une nouvelle commande ?\n\nIl est recommandé de traiter les doublons existants d\'abord.')) {
+                e.preventDefault();
+                return false;
+            }
+        }
 
         if (errors.length > 0) {
             e.preventDefault();

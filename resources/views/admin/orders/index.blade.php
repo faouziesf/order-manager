@@ -17,18 +17,19 @@
         --priority-vip: #ef4444;
     }
 
+    /* OPTIMISÉ DESKTOP: Espaces réduits */
     .search-container {
         background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
+        border-radius: 12px; /* Réduit de 16px */
+        padding: 18px; /* Réduit de 24px */
+        margin-bottom: 18px; /* Réduit de 24px */
         border: 1px solid rgba(102, 126, 234, 0.1);
     }
 
     .advanced-filters {
         display: none;
-        margin-top: 20px;
-        padding-top: 20px;
+        margin-top: 15px; /* Réduit de 20px */
+        padding-top: 15px; /* Réduit de 20px */
         border-top: 1px solid #e5e7eb;
     }
 
@@ -44,27 +45,27 @@
 
     .filter-row {
         display: flex;
-        gap: 16px;
+        gap: 12px; /* Réduit de 16px */
         flex-wrap: wrap;
         align-items: end;
     }
 
     .filter-group {
         flex: 1;
-        min-width: 200px;
+        min-width: 180px; /* Réduit de 200px */
     }
 
     .quick-stats {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Réduit de 200px */
+        gap: 12px; /* Réduit de 16px */
+        margin-bottom: 18px; /* Réduit de 24px */
     }
 
     .stat-card {
         background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
-        border-radius: 12px;
-        padding: 20px;
+        border-radius: 10px; /* Réduit de 12px */
+        padding: 15px; /* Réduit de 20px */
         text-align: center;
         border: 1px solid rgba(102, 126, 234, 0.1);
         transition: all 0.3s ease;
@@ -78,33 +79,33 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 4px;
+        height: 3px; /* Réduit de 4px */
         background: var(--gradient-bg);
     }
 
     .stat-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* Réduit l'ombre */
     }
 
     .stat-number {
-        font-size: 2rem;
+        font-size: 1.75rem; /* Réduit de 2rem */
         font-weight: 700;
         color: var(--primary-color);
-        margin-bottom: 4px;
+        margin-bottom: 3px; /* Réduit de 4px */
     }
 
     .stat-label {
         color: var(--text-muted);
         font-weight: 500;
-        font-size: 0.9rem;
+        font-size: 0.85rem; /* Réduit de 0.9rem */
     }
 
     .table-container {
         background: white;
-        border-radius: 16px;
+        border-radius: 12px; /* Réduit de 16px */
         overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 3px 5px rgba(0, 0, 0, 0.05); /* Réduit l'ombre */
     }
 
     .table {
@@ -114,16 +115,18 @@
     .table thead th {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         border: none;
-        padding: 16px 12px;
+        padding: 12px 10px; /* Réduit de 16px 12px */
         font-weight: 600;
         color: var(--text-color);
         white-space: nowrap;
+        font-size: 0.8rem; /* Réduit pour gagner espace */
     }
 
     .table tbody td {
-        padding: 16px 12px;
+        padding: 12px 10px; /* Réduit de 16px 12px */
         vertical-align: middle;
         border-bottom: 1px solid #f1f5f9;
+        font-size: 0.85rem; /* Réduit pour gagner espace */
     }
 
     .table tbody tr {
@@ -135,16 +138,36 @@
         transform: translateX(2px);
     }
 
+    /* NOUVEAU: Indicateur de doublons */
+    .duplicate-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.2rem 0.5rem;
+        background: linear-gradient(135deg, #d4a147 0%, #b8941f 100%);
+        color: white;
+        border-radius: 12px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        margin-left: 0.25rem;
+        box-shadow: 0 2px 4px rgba(212, 161, 71, 0.3);
+    }
+
+    .duplicate-indicator:hover {
+        transform: scale(1.05);
+        cursor: pointer;
+    }
+
     .status-badge {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.8rem;
+        padding: 5px 10px; /* Réduit de 6px 12px */
+        border-radius: 16px; /* Réduit de 20px */
+        font-size: 0.75rem; /* Réduit de 0.8rem */
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px; /* Réduit de 6px */
     }
 
     .status-nouvelle { background: rgba(107, 114, 128, 0.1); color: var(--status-nouvelle); }
@@ -155,9 +178,9 @@
     .status-livrée { background: rgba(139, 92, 246, 0.1); color: var(--status-livree); }
 
     .priority-badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
+        padding: 3px 7px; /* Réduit de 4px 8px */
+        border-radius: 10px; /* Réduit de 12px */
+        font-size: 0.7rem; /* Réduit de 0.75rem */
         font-weight: 600;
         text-transform: uppercase;
     }
@@ -168,14 +191,14 @@
 
     .action-buttons {
         display: flex;
-        gap: 6px;
+        gap: 4px; /* Réduit de 6px */
         align-items: center;
     }
 
     .btn-action {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
+        width: 32px; /* Réduit de 36px */
+        height: 32px; /* Réduit de 36px */
+        border-radius: 6px; /* Réduit de 8px */
         display: flex;
         align-items: center;
         justify-content: center;
@@ -183,6 +206,7 @@
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
+        font-size: 0.8rem; /* Réduit */
     }
 
     .btn-action::before {
@@ -203,7 +227,7 @@
 
     .btn-action:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15); /* Réduit l'ombre */
     }
 
     .btn-edit {
@@ -221,33 +245,46 @@
         color: #8b5cf6;
     }
 
+    /* NOUVEAU: Bouton duplicates */
+    .btn-duplicates {
+        background: rgba(212, 161, 71, 0.1);
+        color: #d4a147;
+    }
+
+    .btn-show {
+        background: rgba(6, 182, 212, 0.1);
+        color: #06b6d4;
+    }
+
     .order-id {
         font-family: 'JetBrains Mono', monospace;
         font-weight: 600;
         color: var(--primary-color);
+        font-size: 0.8rem; /* Réduit */
     }
 
     .customer-info {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 1px; /* Réduit de 2px */
     }
 
     .customer-name {
         font-weight: 600;
         color: var(--text-color);
+        font-size: 0.8rem; /* Réduit */
     }
 
     .customer-phone {
-        font-size: 0.85rem;
+        font-size: 0.75rem; /* Réduit de 0.85rem */
         color: var(--text-muted);
         font-family: 'JetBrains Mono', monospace;
     }
 
     .customer-address {
-        font-size: 0.8rem;
+        font-size: 0.7rem; /* Réduit de 0.8rem */
         color: var(--text-muted);
-        max-width: 200px;
+        max-width: 180px; /* Réduit de 200px */
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -257,20 +294,21 @@
         font-family: 'JetBrains Mono', monospace;
         font-weight: 600;
         color: var(--success-color);
+        font-size: 0.8rem; /* Réduit */
     }
 
     .attempts-badge {
         background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
         color: #dc2626;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
+        padding: 3px 7px; /* Réduit de 4px 8px */
+        border-radius: 10px; /* Réduit de 12px */
+        font-size: 0.7rem; /* Réduit de 0.75rem */
         font-weight: 600;
         font-family: 'JetBrains Mono', monospace;
     }
 
     .date-info {
-        font-size: 0.85rem;
+        font-size: 0.75rem; /* Réduit de 0.85rem */
         color: var(--text-muted);
     }
 
@@ -278,9 +316,9 @@
     .assignment-mode {
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
         border: 2px solid rgba(16, 185, 129, 0.3);
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 20px;
+        border-radius: 10px; /* Réduit de 12px */
+        padding: 12px 16px; /* Réduit de 16px 20px */
+        margin-bottom: 15px; /* Réduit de 20px */
         display: none;
     }
 
@@ -291,7 +329,7 @@
 
     .assignment-mode h6 {
         color: #059669;
-        margin-bottom: 12px;
+        margin-bottom: 10px; /* Réduit de 12px */
     }
 
     .table tbody tr.selected {
@@ -309,7 +347,7 @@
         display: none;
         align-items: center;
         justify-content: center;
-        border-radius: 16px;
+        border-radius: 12px; /* Réduit de 16px */
         backdrop-filter: blur(2px);
     }
 
@@ -318,10 +356,10 @@
     }
 
     .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid #f3f4f6;
-        border-top: 4px solid var(--primary-color);
+        width: 32px; /* Réduit de 40px */
+        height: 32px; /* Réduit de 40px */
+        border: 3px solid #f3f4f6; /* Réduit de 4px */
+        border-top: 3px solid var(--primary-color); /* Réduit de 4px */
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
@@ -334,8 +372,8 @@
     /* Modal amélioré pour l'historique */
     .modal-content {
         border: none;
-        border-radius: 12px;
-        box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.12);
+        border-radius: 10px; /* Réduit de 12px */
+        box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.12); /* Réduit l'ombre */
         overflow: hidden;
     }
 
@@ -343,22 +381,23 @@
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        padding: 1.25rem 1.5rem;
+        padding: 1rem 1.25rem; /* Réduit de 1.25rem 1.5rem */
     }
 
     .modal-header .modal-title {
         font-weight: 600;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.5rem; /* Réduit de 0.75rem */
+        font-size: 1rem; /* Réduit */
     }
 
     .modal-header .btn-close {
         background: rgba(255, 255, 255, 0.2);
         border-radius: 50%;
         opacity: 1;
-        width: 32px;
-        height: 32px;
+        width: 28px; /* Réduit de 32px */
+        height: 28px; /* Réduit de 32px */
         display: flex;
         align-items: center;
         justify-content: center;
@@ -369,7 +408,52 @@
     }
 
     .modal-body {
-        padding: 1.5rem;
+        padding: 1.25rem; /* Réduit de 1.5rem */
+    }
+
+    /* NOUVEAU: Modal pour duplicates */
+    .duplicates-modal .modal-dialog {
+        max-width: 800px;
+    }
+
+    .duplicates-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .duplicate-order-item {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .duplicate-order-item:hover {
+        background: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .duplicate-order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .duplicate-order-id {
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .duplicate-order-status {
+        font-size: 0.75rem;
+    }
+
+    .duplicate-order-details {
+        font-size: 0.8rem;
+        color: #6b7280;
     }
 
     /* Amélioration du Modal Historique */
@@ -380,11 +464,11 @@
 
     .history-item {
         position: relative;
-        padding: 1.5rem 0;
+        padding: 1.25rem 0; /* Réduit de 1.5rem */
         border-bottom: 1px solid #e5e7eb;
         display: flex;
         align-items: flex-start;
-        gap: 1rem;
+        gap: 0.875rem; /* Réduit de 1rem */
     }
 
     .history-item:last-child {
@@ -397,14 +481,14 @@
     }
 
     .history-icon {
-        width: 40px;
-        height: 40px;
+        width: 36px; /* Réduit de 40px */
+        height: 36px; /* Réduit de 40px */
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        font-size: 1rem;
+        font-size: 0.9rem; /* Réduit de 1rem */
         color: white;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
@@ -434,36 +518,36 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.4rem; /* Réduit de 0.5rem */
         flex-wrap: wrap;
-        gap: 0.5rem;
+        gap: 0.4rem; /* Réduit de 0.5rem */
     }
 
     .history-title {
         font-weight: 600;
         color: #374151;
-        font-size: 0.95rem;
+        font-size: 0.9rem; /* Réduit de 0.95rem */
         margin: 0;
     }
 
     .history-date {
-        font-size: 0.8rem;
+        font-size: 0.75rem; /* Réduit de 0.8rem */
         color: #6b7280;
         font-family: 'JetBrains Mono', monospace;
     }
 
     .history-description {
         color: #6b7280;
-        font-size: 0.875rem;
-        line-height: 1.5;
+        font-size: 0.8rem; /* Réduit de 0.875rem */
+        line-height: 1.4; /* Réduit de 1.5 */
         margin: 0;
     }
 
     .history-details {
-        margin-top: 0.75rem;
+        margin-top: 0.625rem; /* Réduit de 0.75rem */
         background: #f8fafc;
-        padding: 0.75rem;
-        border-radius: 8px;
+        padding: 0.625rem; /* Réduit de 0.75rem */
+        border-radius: 6px; /* Réduit de 8px */
         border-left: 3px solid #e5e7eb;
     }
 
@@ -471,7 +555,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.4rem; /* Réduit de 0.5rem */
     }
 
     .history-details .detail-row:last-child {
@@ -481,24 +565,24 @@
     .detail-label {
         font-weight: 600;
         color: #374151;
-        font-size: 0.8rem;
+        font-size: 0.75rem; /* Réduit de 0.8rem */
     }
 
     .detail-value {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 0.8rem;
+        font-size: 0.75rem; /* Réduit de 0.8rem */
         color: #6b7280;
     }
 
     .history-empty {
         text-align: center;
-        padding: 3rem 1rem;
+        padding: 2.5rem 1rem; /* Réduit de 3rem */
         color: #6b7280;
     }
 
     .history-empty i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
+        font-size: 2.5rem; /* Réduit de 3rem */
+        margin-bottom: 0.875rem; /* Réduit de 1rem */
         opacity: 0.3;
     }
 
@@ -536,7 +620,7 @@
         }
         
         .table-responsive {
-            font-size: 0.85rem;
+            font-size: 0.8rem; /* Réduit de 0.85rem */
         }
 
         .history-header {
@@ -547,7 +631,7 @@
         .history-details .detail-row {
             flex-direction: column;
             align-items: flex-start;
-            gap: 0.25rem;
+            gap: 0.2rem; /* Réduit de 0.25rem */
         }
     }
 </style>
@@ -556,22 +640,24 @@
 @section('content')
 <div class="container-fluid">
     <!-- En-tête avec actions principales -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3"> <!-- OPTIMISÉ: mb-4 → mb-3 -->
         <div>
-            <h2 class="h3 text-gradient mb-2">Gestion des Commandes</h2>
-            <p class="text-muted mb-0">
+            <h2 class="h4 text-gradient mb-1"> <!-- OPTIMISÉ: h3 → h4, mb-2 → mb-1 -->
+                <i class="fas fa-shopping-cart me-2"></i>Gestion des Commandes
+            </h2>
+            <p class="text-muted mb-0" style="font-size: 0.85rem;"> <!-- OPTIMISÉ: Taille réduite -->
                 <i class="fas fa-info-circle me-2"></i>
                 Total: {{ $totalOrders }} commandes
             </p>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.orders.create') }}" class="btn btn-primary">
+            <a href="{{ route('admin.orders.create') }}" class="btn btn-primary btn-sm"> <!-- OPTIMISÉ: btn-sm -->
                 <i class="fas fa-plus me-2"></i>Nouvelle Commande
             </a>
-            <button type="button" class="btn btn-success" id="assignmentModeBtn">
+            <button type="button" class="btn btn-success btn-sm" id="assignmentModeBtn"> <!-- OPTIMISÉ: btn-sm -->
                 <i class="fas fa-user-plus me-2"></i>Mode Assignation
             </button>
-            <button type="button" class="btn btn-secondary" onclick="location.reload()">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="location.reload()"> <!-- OPTIMISÉ: btn-sm -->
                 <i class="fas fa-sync-alt me-2"></i>Actualiser
             </button>
         </div>
@@ -602,19 +688,19 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h6><i class="fas fa-user-check me-2"></i>Mode Assignation Activé</h6>
-                <p class="mb-0 text-muted">Sélectionnez les commandes non assignées et choisissez un employé</p>
+                <p class="mb-0 text-muted" style="font-size: 0.8rem;">Sélectionnez les commandes non assignées et choisissez un employé</p> <!-- OPTIMISÉ: Taille réduite -->
             </div>
-            <div class="d-flex align-items-center gap-3">
-                <select class="form-select" id="assignEmployee" style="width: 200px;">
+            <div class="d-flex align-items-center gap-2"> <!-- OPTIMISÉ: gap-3 → gap-2 -->
+                <select class="form-select form-select-sm" id="assignEmployee" style="width: 180px;"> <!-- OPTIMISÉ: 200px → 180px + form-select-sm -->
                     <option value="">Choisir un employé</option>
                     @foreach(Auth::guard('admin')->user()->employees()->where('is_active', true)->get() as $employee)
                         <option value="{{ $employee->id }}">{{ $employee->name }}</option>
                     @endforeach
                 </select>
-                <button type="button" class="btn btn-success" id="performAssignment" disabled>
+                <button type="button" class="btn btn-success btn-sm" id="performAssignment" disabled> <!-- OPTIMISÉ: btn-sm -->
                     <i class="fas fa-check me-2"></i>Assigner (<span id="selectedCount">0</span>)
                 </button>
-                <button type="button" class="btn btn-outline-danger" id="cancelAssignment">
+                <button type="button" class="btn btn-outline-danger btn-sm" id="cancelAssignment"> <!-- OPTIMISÉ: btn-sm -->
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
             </div>
@@ -627,25 +713,25 @@
             <!-- Recherche principale -->
             <div class="row">
                 <div class="col-md-8">
-                    <label for="search" class="form-label">
+                    <label for="search" class="form-label" style="font-size: 0.85rem;"> <!-- OPTIMISÉ: Taille réduite -->
                         <i class="fas fa-search me-2"></i>Recherche
                     </label>
                     <input type="text" 
-                           class="form-control" 
+                           class="form-control form-control-sm" 
                            id="search" 
                            name="search" 
                            value="{{ request('search') }}" 
                            placeholder="ID, nom, téléphone, adresse..."
-                           autocomplete="off">
+                           autocomplete="off"> <!-- OPTIMISÉ: form-control-sm -->
                 </div>
                 <div class="col-md-4 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary btn-sm"> <!-- OPTIMISÉ: btn-sm -->
                         <i class="fas fa-search me-2"></i>Rechercher
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" id="toggleAdvancedFilters">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleAdvancedFilters"> <!-- OPTIMISÉ: btn-sm -->
                         <i class="fas fa-filter me-2"></i>Filtres Avancés
                     </button>
-                    <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-danger">
+                    <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-danger btn-sm"> <!-- OPTIMISÉ: btn-sm -->
                         <i class="fas fa-times me-2"></i>Reset
                     </a>
                 </div>
@@ -655,8 +741,8 @@
             <div class="advanced-filters" id="advancedFilters">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label for="status" class="form-label">Statut</label>
-                        <select class="form-select" id="status" name="status">
+                        <label for="status" class="form-label" style="font-size: 0.8rem;">Statut</label> <!-- OPTIMISÉ: Taille réduite -->
+                        <select class="form-select form-select-sm" id="status" name="status"> <!-- OPTIMISÉ: form-select-sm -->
                             <option value="">Tous les statuts</option>
                             <option value="nouvelle" {{ request('status') == 'nouvelle' ? 'selected' : '' }}>Nouvelle</option>
                             <option value="confirmée" {{ request('status') == 'confirmée' ? 'selected' : '' }}>Confirmée</option>
@@ -668,28 +754,29 @@
                     </div>
 
                     <div class="filter-group">
-                        <label for="priority" class="form-label">Priorité</label>
-                        <select class="form-select" id="priority" name="priority">
+                        <label for="priority" class="form-label" style="font-size: 0.8rem;">Priorité</label> <!-- OPTIMISÉ: Taille réduite -->
+                        <select class="form-select form-select-sm" id="priority" name="priority"> <!-- OPTIMISÉ: form-select-sm -->
                             <option value="">Toutes les priorités</option>
                             <option value="normale" {{ request('priority') == 'normale' ? 'selected' : '' }}>Normale</option>
                             <option value="urgente" {{ request('priority') == 'urgente' ? 'selected' : '' }}>Urgente</option>
                             <option value="vip" {{ request('priority') == 'vip' ? 'selected' : '' }}>VIP</option>
+                            <option value="Doublon" {{ request('priority') == 'Doublon' ? 'selected' : '' }}>Doublon</option>
                         </select>
                     </div>
 
                     <div class="filter-group">
-                        <label for="date_from" class="form-label">Date Début</label>
-                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ request('date_from') }}">
+                        <label for="date_from" class="form-label" style="font-size: 0.8rem;">Date Début</label> <!-- OPTIMISÉ: Taille réduite -->
+                        <input type="date" class="form-control form-control-sm" id="date_from" name="date_from" value="{{ request('date_from') }}"> <!-- OPTIMISÉ: form-control-sm -->
                     </div>
 
                     <div class="filter-group">
-                        <label for="date_to" class="form-label">Date Fin</label>
-                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ request('date_to') }}">
+                        <label for="date_to" class="form-label" style="font-size: 0.8rem;">Date Fin</label> <!-- OPTIMISÉ: Taille réduite -->
+                        <input type="date" class="form-control form-control-sm" id="date_to" name="date_to" value="{{ request('date_to') }}"> <!-- OPTIMISÉ: form-control-sm -->
                     </div>
 
                     <div class="filter-group">
-                        <label for="assigned" class="form-label">Assignation</label>
-                        <select class="form-select" id="assigned" name="assigned">
+                        <label for="assigned" class="form-label" style="font-size: 0.8rem;">Assignation</label> <!-- OPTIMISÉ: Taille réduite -->
+                        <select class="form-select form-select-sm" id="assigned" name="assigned"> <!-- OPTIMISÉ: form-select-sm -->
                             <option value="">Toutes</option>
                             <option value="yes" {{ request('assigned') == 'yes' ? 'selected' : '' }}>Assignées</option>
                             <option value="no" {{ request('assigned') == 'no' ? 'selected' : '' }}>Non Assignées</option>
@@ -707,15 +794,15 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table" id="ordersTable">
+            <table class="table table-sm" id="ordersTable"> <!-- OPTIMISÉ: table-sm -->
                 <thead>
                     <tr>
-                        <th width="50" id="selectAllColumn" style="display: none;">
+                        <th width="40" id="selectAllColumn" style="display: none;"> <!-- OPTIMISÉ: width réduit -->
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="selectAll">
+                                <input class="form-check-input form-check-input-sm" type="checkbox" id="selectAll"> <!-- OPTIMISÉ: form-check-input-sm -->
                             </div>
                         </th>
-                        <th>
+                        <th style="width: 80px;"> <!-- OPTIMISÉ: Largeur fixe réduite -->
                             <a href="{{ request()->fullUrlWithQuery(['sort' => 'id', 'order' => request('order') === 'asc' ? 'desc' : 'asc']) }}" 
                                class="text-decoration-none text-dark">
                                 ID
@@ -724,12 +811,12 @@
                                 @endif
                             </a>
                         </th>
-                        <th>Client</th>
-                        <th>Prix Total</th>
-                        <th>Statut</th>
-                        <th>Priorité</th>
-                        <th>Tentatives</th>
-                        <th>
+                        <th style="width: 200px;">Client</th> <!-- OPTIMISÉ: Largeur réduite -->
+                        <th style="width: 100px;">Prix Total</th> <!-- OPTIMISÉ: Largeur réduite -->
+                        <th style="width: 120px;">Statut</th> <!-- OPTIMISÉ: Largeur réduite -->
+                        <th style="width: 100px;">Priorité</th> <!-- OPTIMISÉ: Largeur réduite -->
+                        <th style="width: 80px;">Tentatives</th> <!-- OPTIMISÉ: Largeur réduite -->
+                        <th style="width: 100px;"> <!-- OPTIMISÉ: Largeur réduite -->
                             <a href="{{ request()->fullUrlWithQuery(['sort' => 'created_at', 'order' => request('order') === 'asc' ? 'desc' : 'asc']) }}" 
                                class="text-decoration-none text-dark">
                                 Date Création
@@ -738,7 +825,7 @@
                                 @endif
                             </a>
                         </th>
-                        <th>Actions</th>
+                        <th style="width: 160px;">Actions</th> <!-- OPTIMISÉ: Largeur réduite -->
                     </tr>
                 </thead>
                 <tbody id="ordersTableBody">
@@ -746,14 +833,22 @@
                         <tr data-order-id="{{ $order->id }}" class="{{ !$order->is_assigned ? 'unassigned-order' : '' }}">
                             <td class="select-column" style="display: none;">
                                 <div class="form-check">
-                                    <input class="form-check-input order-checkbox" 
+                                    <input class="form-check-input form-check-input-sm order-checkbox" 
                                            type="checkbox" 
                                            value="{{ $order->id }}"
-                                           {{ $order->is_assigned ? 'disabled' : '' }}>
+                                           {{ $order->is_assigned ? 'disabled' : '' }}> <!-- OPTIMISÉ: form-check-input-sm -->
                                 </div>
                             </td>
                             <td>
                                 <span class="order-id">#{{ str_pad($order->id, 6, '0', STR_PAD_LEFT) }}</span>
+                                {{-- NOUVEAU: Indicateur de doublon --}}
+                                @if($order->is_duplicate)
+                                    <span class="duplicate-indicator" 
+                                          onclick="showDuplicatesModal('{{ $order->customer_phone }}')"
+                                          title="Cette commande a des doublons - Cliquez pour voir">
+                                        <i class="fas fa-copy"></i>
+                                    </span>
+                                @endif
                             </td>
                             <td>
                                 <div class="customer-info">
@@ -778,7 +873,7 @@
                                     {{ number_format($order->total_price, 3) }} TND
                                 </div>
                                 @if($order->confirmed_price && $order->confirmed_price != $order->total_price)
-                                    <div class="text-success" style="font-size: 0.8rem;">
+                                    <div class="text-success" style="font-size: 0.7rem;"> <!-- OPTIMISÉ: Taille réduite -->
                                         Confirmé: {{ number_format($order->confirmed_price, 3) }} TND
                                     </div>
                                 @endif
@@ -810,7 +905,7 @@
                                 </span>
                                 @if($order->is_assigned)
                                     <div class="mt-1">
-                                        <small class="text-success">
+                                        <small class="text-success" style="font-size: 0.7rem;"> <!-- OPTIMISÉ: Taille réduite -->
                                             <i class="fas fa-user-check me-1"></i>Assignée
                                         </small>
                                     </div>
@@ -836,7 +931,7 @@
                                 </div>
                                 @if($order->daily_attempts_count > 0)
                                     <div class="mt-1">
-                                        <small class="text-muted">
+                                        <small class="text-muted" style="font-size: 0.65rem;"> <!-- OPTIMISÉ: Taille réduite -->
                                             Aujourd'hui: {{ $order->daily_attempts_count }}
                                         </small>
                                     </div>
@@ -846,11 +941,11 @@
                                 <div class="date-info">
                                     {{ $order->created_at->format('d/m/Y') }}
                                     <br>
-                                    <small class="text-muted">{{ $order->created_at->format('H:i') }}</small>
+                                    <small class="text-muted" style="font-size: 0.65rem;">{{ $order->created_at->format('H:i') }}</small> <!-- OPTIMISÉ: Taille réduite -->
                                 </div>
                                 @if($order->scheduled_date)
                                     <div class="mt-1">
-                                        <small class="text-warning">
+                                        <small class="text-warning" style="font-size: 0.65rem;"> <!-- OPTIMISÉ: Taille réduite -->
                                             <i class="fas fa-calendar me-1"></i>{{ $order->scheduled_date->format('d/m/Y') }}
                                         </small>
                                     </div>
@@ -858,12 +953,31 @@
                             </td>
                             <td>
                                 <div class="action-buttons">
+                                    {{-- NOUVEAU: Bouton show --}}
+                                    <button type="button" 
+                                            class="btn btn-action btn-show" 
+                                            title="Voir"
+                                            onclick="window.open('/admin/orders/{{ $order->id }}', '_blank')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    
                                     <button type="button" 
                                             class="btn btn-action btn-edit" 
                                             title="Modifier"
                                             onclick="window.location='/admin/orders/{{ $order->id }}/edit'">
                                         <i class="fas fa-edit"></i>
                                     </button>
+                                    
+                                    {{-- NOUVEAU: Bouton duplicates (si applicable) --}}
+                                    @if($order->is_duplicate)
+                                        <button type="button" 
+                                                class="btn btn-action btn-duplicates" 
+                                                title="Voir doublons"
+                                                onclick="window.open('/admin/duplicates/detail/{{ urlencode($order->customer_phone) }}', '_blank')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    @endif
+                                    
                                     <button type="button" 
                                             class="btn btn-action btn-history" 
                                             title="Historique"
@@ -881,12 +995,12 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-5">
+                            <td colspan="9" class="text-center py-4"> <!-- OPTIMISÉ: Padding réduit -->
                                 <div class="text-muted">
-                                    <i class="fas fa-inbox fa-3x mb-3"></i>
-                                    <h5>Aucune commande trouvée</h5>
-                                    <p>Aucune commande ne correspond à vos critères de recherche.</p>
-                                    <a href="{{ route('admin.orders.create') }}" class="btn btn-primary mt-3">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i> <!-- OPTIMISÉ: fa-3x → fa-2x -->
+                                    <h6>Aucune commande trouvée</h6> <!-- OPTIMISÉ: h5 → h6 -->
+                                    <p style="font-size: 0.85rem;">Aucune commande ne correspond à vos critères de recherche.</p> <!-- OPTIMISÉ: Taille réduite -->
+                                    <a href="{{ route('admin.orders.create') }}" class="btn btn-primary btn-sm mt-2"> <!-- OPTIMISÉ: mt-3 → mt-2 + btn-sm -->
                                         <i class="fas fa-plus me-2"></i>Créer une nouvelle commande
                                     </a>
                                 </div>
@@ -899,8 +1013,8 @@
 
         <!-- Pagination corrigée -->
         @if($orders->hasPages())
-            <div class="d-flex justify-content-between align-items-center p-3 bg-light">
-                <div class="text-muted">
+            <div class="d-flex justify-content-between align-items-center p-2 bg-light"> <!-- OPTIMISÉ: p-3 → p-2 -->
+                <div class="text-muted" style="font-size: 0.8rem;"> <!-- OPTIMISÉ: Taille réduite -->
                     Affichage de {{ $orders->firstItem() ?? 0 }} à {{ $orders->lastItem() ?? 0 }} 
                     sur {{ $orders->total() }} résultats
                 </div>
@@ -909,6 +1023,33 @@
                 </div>
             </div>
         @endif
+    </div>
+</div>
+
+{{-- NOUVEAU: Modal pour voir les doublons --}}
+<div class="modal fade duplicates-modal" id="duplicatesModal" tabindex="-1" aria-labelledby="duplicatesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="duplicatesModalLabel">
+                    <i class="fas fa-copy me-2"></i>Commandes en doublon
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>Client:</strong> <span id="duplicateClientPhone"></span>
+                </div>
+                <div class="duplicates-list" id="duplicatesList">
+                    <!-- Contenu chargé via AJAX -->
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-primary btn-sm" id="btnViewFullDuplicates">
+                        <i class="fas fa-external-link-alt me-2"></i>Voir détails complets
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -949,11 +1090,11 @@
                 </p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button> <!-- OPTIMISÉ: btn-sm -->
                 <form id="deleteForm" method="POST" style="display: inline;">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-danger btn-sm"> <!-- OPTIMISÉ: btn-sm -->
                         <i class="fas fa-trash me-2"></i>Supprimer
                     </button>
                 </form>
@@ -1237,6 +1378,80 @@ $(document).ready(function() {
 });
 
 // ================================
+// NOUVELLES FONCTIONS POUR DOUBLONS
+// ================================
+
+// NOUVEAU: Fonction pour afficher les doublons
+function showDuplicatesModal(customerPhone) {
+    $('#duplicateClientPhone').text(customerPhone);
+    $('#duplicatesModal').modal('show');
+    
+    // Charger les doublons via AJAX
+    $('#duplicatesList').html(`
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+            <p class="mt-2 mb-0 text-muted">Chargement des doublons...</p>
+        </div>
+    `);
+    
+    $.ajax({
+        url: '/admin/duplicates/history',
+        method: 'GET',
+        data: { customer_phone: customerPhone },
+        success: function(response) {
+            if (response.orders && response.orders.length > 0) {
+                let content = '';
+                response.orders.forEach(function(order) {
+                    const statusBadge = getStatusBadge(order.status);
+                    const isDuplicate = order.is_duplicate ? '<span class="badge bg-warning ms-2">Doublon</span>' : '';
+                    
+                    content += `
+                        <div class="duplicate-order-item">
+                            <div class="duplicate-order-header">
+                                <div class="duplicate-order-id">Commande #${order.id}${isDuplicate}</div>
+                                <div class="duplicate-order-status">${statusBadge}</div>
+                            </div>
+                            <div class="duplicate-order-details">
+                                <strong>Date:</strong> ${formatDateSimple(order.created_at)} | 
+                                <strong>Montant:</strong> ${parseFloat(order.total_price).toFixed(3)} TND | 
+                                <strong>Produits:</strong> ${order.items ? order.items.length : 0}
+                                ${order.notes ? '<br><strong>Notes:</strong> ' + order.notes.substring(0, 100) + (order.notes.length > 100 ? '...' : '') : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                $('#duplicatesList').html(content);
+                
+                // Configurer le bouton pour voir les détails complets
+                $('#btnViewFullDuplicates').off('click').on('click', function() {
+                    window.open(`/admin/duplicates/detail/${encodeURIComponent(customerPhone)}`, '_blank');
+                });
+            } else {
+                $('#duplicatesList').html(`
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-search fa-2x mb-2"></i>
+                        <h6>Aucun doublon trouvé</h6>
+                        <p>Aucune commande en doublon pour ce client.</p>
+                    </div>
+                `);
+            }
+        },
+        error: function() {
+            $('#duplicatesList').html(`
+                <div class="text-center text-danger py-4">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <h6>Erreur de chargement</h6>
+                    <p>Impossible de charger les doublons.</p>
+                </div>
+            `);
+        }
+    });
+}
+
+// ================================
 // FONCTIONS GLOBALES
 // ================================
 function showOrderHistory(orderId) {
@@ -1262,6 +1477,24 @@ function showOrderHistory(orderId) {
 function confirmDelete(orderId) {
     $('#deleteForm').attr('action', '/admin/orders/' + orderId);
     $('#deleteModal').modal('show');
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'nouvelle': '<span class="badge bg-info">Nouvelle</span>',
+        'confirmée': '<span class="badge bg-success">Confirmée</span>',
+        'annulée': '<span class="badge bg-danger">Annulée</span>',
+        'datée': '<span class="badge bg-warning">Datée</span>',
+        'en_route': '<span class="badge bg-primary">En route</span>',
+        'livrée': '<span class="badge bg-success">Livrée</span>'
+    };
+    
+    return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+}
+
+function formatDateSimple(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR');
 }
 </script>
 @endsection
