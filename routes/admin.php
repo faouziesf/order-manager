@@ -1,186 +1,254 @@
 <?php
 
-use App\Http\Controllers\Admin\AuthController;
-use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\DuplicateOrdersController;
+use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\ExaminationController;
+use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\LoginHistoryController;
+use App\Http\Controllers\Admin\ManagerController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProcessController;
-use App\Http\Controllers\Admin\Process\ExaminationController;
-use App\Http\Controllers\Admin\Process\SuspendedOrderController;
-use App\Http\Controllers\Admin\Process\StockReturnController;
-use App\Http\Controllers\Admin\ManagerController;
-use App\Http\Controllers\Admin\EmployeeController;
-use App\Http\Controllers\Admin\LoginHistoryController;
-use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\RestockController;
+use App\Http\Controllers\Admin\SettingController as AdminSettingController;
+use App\Http\Controllers\Admin\SuspendedController;
 use App\Http\Controllers\Admin\WooCommerceController;
-use App\Http\Controllers\Admin\SettingController;
 use Illuminate\Support\Facades\Route;
 
+// ========================================
+// ROUTES ADMIN
+// ========================================
 Route::prefix('admin')->name('admin.')->group(function () {
     // ========================================
     // AUTHENTIFICATION ADMIN
     // ========================================
-    Route::get('login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('login', [AuthController::class, 'login'])->name('login.submit');
-    Route::post('logout', [AuthController::class, 'logout'])->name('logout');
-    Route::get('expired', [AuthController::class, 'showExpiredPage'])->name('expired');
+    Route::get('login', [AdminAuthController::class, 'showLoginForm'])->name('login');
+    Route::post('login', [AdminAuthController::class, 'login'])->name('login.submit');
+    Route::post('logout', [AdminAuthController::class, 'logout'])->name('logout');
+    Route::get('expired', [AdminAuthController::class, 'showExpiredPage'])->name('expired');
     
     // ========================================
     // ROUTES PROTÉGÉES ADMIN
     // ========================================
     Route::middleware('auth:admin')->group(function () {
-        
         // Dashboard
-        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
-        Route::get('dashboard/stats', [DashboardController::class, 'getStats'])->name('dashboard.stats');
-        Route::get('dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chart-data');
+        Route::get('dashboard', function() {
+            $admin = auth('admin')->user();
+            if (!$admin->is_active || ($admin->expiry_date && $admin->expiry_date->isPast())) {
+                return redirect()->route('admin.expired');
+            }
+            return view('admin.dashboard');
+        })->name('dashboard');
         
         // ========================================
         // GESTION DES PRODUITS
         // ========================================
+        
+        // Routes spéciales AVANT la route resource (ORDRE CRITIQUE)
+        Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
+            ->name('products.review');
+        Route::get('products/kanban', [ProductController::class, 'kanban'])
+            ->name('products.kanban');
+        Route::get('products/live-search', [ProductController::class, 'liveSearch'])
+            ->name('products.live-search');
+        Route::get('products/stats', [ProductController::class, 'getStats'])
+            ->name('products.stats');
+        Route::get('products/realtime-stats', [ProductController::class, 'getRealtimeStats'])
+            ->name('products.realtime-stats');
+        Route::get('products/search', [ProductController::class, 'searchProducts'])
+            ->name('products.search');
+        
+        // Actions groupées AVANT resource
+        Route::post('products/mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])
+            ->name('products.mark-all-reviewed');
+        Route::post('products/bulk-activate', [ProductController::class, 'bulkActivate'])
+            ->name('products.bulk-activate');
+        Route::post('products/bulk-deactivate', [ProductController::class, 'bulkDeactivate'])
+            ->name('products.bulk-deactivate');
+        Route::delete('products/bulk-delete', [ProductController::class, 'bulkDelete'])
+            ->name('products.bulk-delete');
+        
+        // Actions sur des produits spécifiques AVANT resource
+        Route::post('products/{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])
+            ->name('products.mark-reviewed');
+        
+        // Route resource APRÈS toutes les routes spéciales
         Route::resource('products', ProductController::class);
-        Route::prefix('products')->name('products.')->group(function () {
-            // Actions spéciales
-            Route::get('review/list', [ProductController::class, 'reviewNewProducts'])->name('review');
-            Route::get('kanban/view', [ProductController::class, 'kanban'])->name('kanban');
-            Route::get('stats/realtime', [ProductController::class, 'getRealtimeStats'])->name('stats.realtime');
-            Route::get('search/live', [ProductController::class, 'liveSearch'])->name('search.live');
-            Route::get('search/api', [ProductController::class, 'searchProducts'])->name('search.api');
-            
-            // Actions en lot
-            Route::post('bulk/activate', [ProductController::class, 'bulkActivate'])->name('bulk.activate');
-            Route::post('bulk/deactivate', [ProductController::class, 'bulkDeactivate'])->name('bulk.deactivate');
-            Route::delete('bulk/delete', [ProductController::class, 'bulkDelete'])->name('bulk.delete');
-            Route::post('mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])->name('mark-all-reviewed');
-            Route::post('{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])->name('mark-reviewed');
-        });
         
         // ========================================
         // GESTION DES COMMANDES
         // ========================================
+        
+        // Routes spéciales AVANT le resource
+        Route::post('orders/bulk-assign', [OrderController::class, 'bulkAssign'])
+            ->name('orders.bulk-assign');
+        Route::post('orders/{order}/unassign', [OrderController::class, 'unassign'])
+            ->name('orders.unassign');
+        Route::get('orders/unassigned', [OrderController::class, 'unassigned'])
+            ->name('orders.unassigned');
+        Route::get('orders/{order}/history', [OrderController::class, 'showHistory'])
+            ->name('orders.history');
+        Route::get('orders/{order}/history-modal', [OrderController::class, 'getHistory'])
+            ->name('orders.history-modal');
+        Route::post('orders/{order}/record-attempt', [OrderController::class, 'recordAttempt'])
+            ->name('orders.recordAttempt');
+        Route::post('orders/{order}/quick-attempt', [OrderController::class, 'quickAttempt'])
+            ->name('orders.quick-attempt');
+        
+        // Routes pour l'interface de traitement
+        Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
+            ->name('orders.getRegions');
+        Route::get('orders/get-cities', [OrderController::class, 'getCities'])
+            ->name('orders.getCities');
+        Route::get('orders/search-products', [OrderController::class, 'searchProducts'])
+            ->name('orders.searchProducts');
+        
+        // CRUD de base
         Route::resource('orders', OrderController::class);
-        Route::prefix('orders')->name('orders.')->group(function () {
-            // Vues spécialisées
-            Route::get('unassigned/list', [OrderController::class, 'unassigned'])->name('unassigned');
-            
-            // Actions sur commandes
-            Route::post('{order}/unassign', [OrderController::class, 'unassign'])->name('unassign');
-            Route::post('bulk/assign', [OrderController::class, 'bulkAssign'])->name('bulk.assign');
-            Route::post('{order}/record-attempt', [OrderController::class, 'recordAttempt'])->name('record-attempt');
-            
-            // Historique
-            Route::get('{order}/history', [OrderController::class, 'showHistory'])->name('history');
-            Route::get('{order}/history/modal', [OrderController::class, 'getHistory'])->name('history.modal');
-            
-            // APIs pour recherche
-            Route::get('api/search-products', [OrderController::class, 'searchProducts'])->name('search-products');
-            Route::get('api/regions', [OrderController::class, 'getRegions'])->name('get-regions');
-            Route::get('api/cities', [OrderController::class, 'getCities'])->name('get-cities');
-        });
         
         // ========================================
         // TRAITEMENT DES COMMANDES
         // ========================================
-        Route::prefix('process')->name('process.')->group(function () {
-            // Interface principale de traitement
-            Route::get('/', [ProcessController::class, 'interface'])->name('interface');
-            Route::get('test', [ProcessController::class, 'test'])->name('test');
-            Route::get('counts', [ProcessController::class, 'getCounts'])->name('counts');
-            Route::get('{queue}', [ProcessController::class, 'getQueue'])
-                ->where('queue', 'standard|dated|old')
-                ->name('queue');
-            Route::post('action/{order}', [ProcessController::class, 'processAction'])->name('action');
-            
-            // Vues spécialisées des files
-            Route::get('standard', [ProcessController::class, 'standardQueue'])->name('standard');
-            Route::get('dated', [ProcessController::class, 'datedQueue'])->name('dated');
-            Route::get('old', [ProcessController::class, 'oldQueue'])->name('old');
-            
-            // Interface d'examen des commandes avec problèmes de stock
-            Route::prefix('examination')->name('examination.')->group(function () {
-                Route::get('/', [ExaminationController::class, 'index'])->name('index');
-                Route::get('orders', [ExaminationController::class, 'getOrders'])->name('orders');
-                Route::get('count', [ExaminationController::class, 'getCount'])->name('count');
-                Route::post('split/{order}', [ExaminationController::class, 'splitOrder'])->name('split');
-                Route::post('action/{order}', [ExaminationController::class, 'processAction'])->name('action');
-                Route::post('bulk/split', [ExaminationController::class, 'bulkSplit'])->name('bulk.split');
-                Route::post('bulk/cancel', [ExaminationController::class, 'bulkCancel'])->name('bulk.cancel');
-                Route::post('bulk/suspend', [ExaminationController::class, 'bulkSuspend'])->name('bulk.suspend');
-            });
-            
-            // Interface des commandes suspendues
-            Route::prefix('suspended')->name('suspended.')->group(function () {
-                Route::get('/', [SuspendedOrderController::class, 'index'])->name('index');
-                Route::get('orders', [SuspendedOrderController::class, 'getOrders'])->name('orders');
-                Route::get('count', [SuspendedOrderController::class, 'getCount'])->name('count');
-                Route::post('reactivate/{order}', [SuspendedOrderController::class, 'reactivate'])->name('reactivate');
-                Route::post('cancel/{order}', [SuspendedOrderController::class, 'cancel'])->name('cancel');
-                Route::post('bulk/reactivate', [SuspendedOrderController::class, 'bulkReactivate'])->name('bulk.reactivate');
-                Route::post('bulk/cancel', [SuspendedOrderController::class, 'bulkCancel'])->name('bulk.cancel');
-            });
-            
-            // Interface retour en stock
-            Route::prefix('stock-return')->name('stock-return.')->group(function () {
-                Route::get('/', [StockReturnController::class, 'interface'])->name('interface');
-                Route::get('orders', [StockReturnController::class, 'getOrders'])->name('orders');
-                Route::get('count', [StockReturnController::class, 'getCount'])->name('count');
-                Route::post('action/{order}', [StockReturnController::class, 'processAction'])->name('action');
-                Route::post('reactivate/{order}', [StockReturnController::class, 'reactivateOrder'])->name('reactivate');
-                Route::post('split/{order}', [StockReturnController::class, 'splitOrder'])->name('split');
-            });
+        
+        // Interface de traitement principal
+        Route::get('process', [ProcessController::class, 'interface'])
+            ->name('process.interface');
+        Route::get('process/test', [ProcessController::class, 'test'])
+            ->name('process.test');
+        Route::get('process/counts', [ProcessController::class, 'getCounts'])
+            ->name('process.getCounts');
+        Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
+            ->name('process.action');
+        
+        // Route API spécifique pour restock
+        Route::get('process/api/restock', [ProcessController::class, 'getQueue'])
+            ->defaults('queue', 'restock')
+            ->name('process.api.restock');
+        
+        // INTERFACE D'EXAMEN DES COMMANDES
+        Route::prefix('process/examination')->name('process.examination.')->group(function () {
+            Route::get('/', [ExaminationController::class, 'index'])->name('index');
+            Route::get('/orders', [ExaminationController::class, 'getOrders'])->name('orders');
+            Route::get('/count', [ExaminationController::class, 'getCount'])->name('count');
+            Route::post('/split/{order}', [ExaminationController::class, 'splitOrder'])->name('split');
+            Route::post('/action/{order}', [ExaminationController::class, 'processAction'])->name('action');
+            Route::post('/bulk-split', [ExaminationController::class, 'bulkSplit'])->name('bulk-split');
+            Route::post('/bulk-cancel', [ExaminationController::class, 'bulkCancel'])->name('bulk-cancel');
+            Route::post('/bulk-suspend', [ExaminationController::class, 'bulkSuspend'])->name('bulk-suspend');
         });
+        
+        // INTERFACE DES COMMANDES SUSPENDUES
+        Route::prefix('process/suspended')->name('process.suspended.')->group(function () {
+            Route::get('/', [SuspendedController::class, 'index'])->name('index');
+            Route::get('/orders', [SuspendedController::class, 'getOrders'])->name('orders');
+            Route::get('/count', [SuspendedController::class, 'getCount'])->name('count');
+            Route::post('/action/{order}', [SuspendedController::class, 'processAction'])->name('action');
+            Route::post('/bulk-reactivate', [SuspendedController::class, 'bulkReactivate'])->name('bulk-reactivate');
+            Route::post('/bulk-cancel', [SuspendedController::class, 'bulkCancel'])->name('bulk-cancel');
+        });
+        
+        // INTERFACE DE RETOUR EN STOCK
+        Route::prefix('process/restock')->name('process.restock.')->group(function () {
+            Route::get('/', [RestockController::class, 'index'])->name('index');
+            Route::get('/orders', [RestockController::class, 'getOrders'])->name('orders');
+            Route::get('/count', [RestockController::class, 'getCount'])->name('count');
+            Route::get('/stats', [RestockController::class, 'getStats'])->name('stats');
+            Route::post('/reactivate/{order}', [RestockController::class, 'reactivateOrder'])->name('reactivate');
+            Route::post('/bulk-reactivate', [RestockController::class, 'bulkReactivate'])->name('bulk-reactivate');
+        });
+        
+        // Route générique pour les autres onglets
+        Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
+            ->where('queue', 'standard|dated|old')
+            ->name('process.getQueue');
         
         // ========================================
         // GESTION DES UTILISATEURS
         // ========================================
         Route::resource('managers', ManagerController::class);
-        Route::prefix('managers')->name('managers.')->group(function () {
-            Route::patch('{manager}/toggle-active', [ManagerController::class, 'toggleActive'])->name('toggle-active');
-            Route::get('api/list', [ManagerController::class, 'getManagersForAdmin'])->name('api.list');
-        });
-        
+        Route::patch('managers/{manager}/toggle-active', [ManagerController::class, 'toggleActive'])
+            ->name('managers.toggle-active');
+        Route::get('api/managers', [ManagerController::class, 'getManagersForAdmin'])
+            ->name('api.managers');
+
         Route::resource('employees', EmployeeController::class);
-        Route::prefix('employees')->name('employees.')->group(function () {
-            Route::patch('{employee}/toggle-active', [EmployeeController::class, 'toggleActive'])->name('toggle-active');
-        });
-        
+        Route::patch('employees/{employee}/toggle-active', [EmployeeController::class, 'toggleActive'])
+            ->name('employees.toggle-active');
+
+        Route::get('login-history', [LoginHistoryController::class, 'index'])
+            ->name('login-history.index');
+        Route::get('login-history/{user_type}/{user_id}', [LoginHistoryController::class, 'show'])
+            ->name('login-history.show');
+
         // ========================================
-        // HISTORIQUE ET LOGS
+        // IMPORTATION ET INTÉGRATIONS
         // ========================================
-        Route::prefix('history')->name('history.')->group(function () {
-            Route::get('login', [LoginHistoryController::class, 'index'])->name('login.index');
-            Route::get('login/{user_type}/{user_id}', [LoginHistoryController::class, 'show'])->name('login.show');
-        });
-        
-        // ========================================
-        // IMPORTATION
-        // ========================================
-        Route::prefix('import')->name('import.')->group(function () {
-            Route::get('/', [ImportController::class, 'index'])->name('index');
-            Route::post('csv', [ImportController::class, 'importCsv'])->name('csv');
-            Route::post('xml', [ImportController::class, 'importXml'])->name('xml');
-        });
-        
-        // ========================================
-        // INTÉGRATIONS
-        // ========================================
+        Route::get('import', [ImportController::class, 'index'])->name('import.index');
+        Route::post('import/csv', [ImportController::class, 'importCsv'])->name('import.csv');
+        Route::post('import/xml', [ImportController::class, 'importXml'])->name('import.xml');
+
+        // Routes WooCommerce
         Route::prefix('woocommerce')->name('woocommerce.')->group(function () {
             Route::get('/', [WooCommerceController::class, 'index'])->name('index');
             Route::post('/', [WooCommerceController::class, 'store'])->name('store');
-            Route::get('sync', [WooCommerceController::class, 'sync'])->name('sync');
-            Route::post('test-connection', [WooCommerceController::class, 'testConnection'])->name('test-connection');
-            Route::get('stats', [WooCommerceController::class, 'syncStats'])->name('stats');
-            Route::post('toggle/{id}', [WooCommerceController::class, 'toggleIntegration'])->name('toggle');
-            Route::delete('{id}', [WooCommerceController::class, 'deleteIntegration'])->name('delete');
+            Route::get('/sync', [WooCommerceController::class, 'sync'])->name('sync');
+            Route::post('/test-connection', [WooCommerceController::class, 'testConnection'])->name('test-connection');
+            Route::get('/stats', [WooCommerceController::class, 'syncStats'])->name('stats');
+            Route::post('/toggle/{id}', [WooCommerceController::class, 'toggleIntegration'])->name('toggle');
+            Route::get('/delete/{id}', [WooCommerceController::class, 'deleteIntegration'])->name('delete');
+        });
+
+        Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');
+        
+        // ========================================
+        // GESTION DES COMMANDES DOUBLES
+        // ========================================
+        Route::prefix('duplicates')->name('duplicates.')->group(function () {
+            Route::get('/', [DuplicateOrdersController::class, 'index'])->name('index');
+            Route::get('/get', [DuplicateOrdersController::class, 'getDuplicates'])->name('get');
+            Route::get('/stats', [DuplicateOrdersController::class, 'getDashboardStats'])->name('stats');
+            Route::get('/history', [DuplicateOrdersController::class, 'getClientHistory'])->name('history');
+            Route::get('/detail/{phone}', [DuplicateOrdersController::class, 'clientDetail'])->name('detail');
+            Route::post('/check', [DuplicateOrdersController::class, 'checkAllDuplicates'])->name('check');
+            Route::post('/merge', [DuplicateOrdersController::class, 'mergeOrders'])->name('merge');
+            Route::post('/selective-merge', [DuplicateOrdersController::class, 'selectiveMerge'])->name('selective-merge');
+            Route::post('/mark-reviewed', [DuplicateOrdersController::class, 'markAsReviewed'])->name('mark-reviewed');
+            Route::post('/cancel', [DuplicateOrdersController::class, 'cancelOrder'])->name('cancel');
+            Route::post('/auto-merge', [DuplicateOrdersController::class, 'autoMergeDuplicates'])->name('auto-merge');
+            Route::post('/settings', [DuplicateOrdersController::class, 'updateSettings'])->name('settings');
         });
         
         // ========================================
         // PARAMÈTRES
         // ========================================
-        Route::prefix('settings')->name('settings.')->group(function () {
-            Route::get('/', [SettingController::class, 'index'])->name('index');
-            Route::post('/', [SettingController::class, 'store'])->name('store');
-        });
+        Route::get('settings', [AdminSettingController::class, 'index'])->name('settings.index');
+        Route::post('settings', [AdminSettingController::class, 'store'])->name('settings.store');
+        Route::get('settings/reset', [AdminSettingController::class, 'reset'])->name('settings.reset');
+        Route::get('settings/export', [AdminSettingController::class, 'export'])->name('settings.export');
+        Route::post('settings/import', [AdminSettingController::class, 'import'])->name('settings.import');
+        Route::get('settings/api/{key}', [AdminSettingController::class, 'getSetting'])->name('settings.get');
+        Route::post('settings/api/{key}', [AdminSettingController::class, 'setSetting'])->name('settings.set');
+        Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
+        
+        // ========================================
+        // DEBUG
+        // ========================================
+        Route::get('debug-auth', function() {
+            $admin = auth('admin')->user();
+            return [
+                'is_authenticated' => auth('admin')->check(),
+                'admin_id' => $admin ? $admin->id : null,
+                'admin_name' => $admin ? $admin->name : null,
+                'admin_class' => $admin ? get_class($admin) : null,
+                'admin_instance_check' => $admin instanceof \App\Models\Admin,
+                'gates' => [
+                    'view-process-interface' => \Gate::allows('view-process-interface', $admin),
+                    'view-examination' => \Gate::allows('view-examination', $admin),
+                    'view-suspended' => \Gate::allows('view-suspended', $admin),
+                    'view-restock' => \Gate::allows('view-restock', $admin),
+                ]
+            ];
+        })->name('debug-auth');
     });
 });
