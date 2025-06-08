@@ -49,16 +49,18 @@ class AdminController extends Controller
 
     public function store(Request $request)
     {
+        \Log::info('Tentative de création d\'admin:', $request->all());
+        
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:admins',
             'password' => 'required|string|min:8',
             'shop_name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
-            'max_managers' => 'nullable|integer|min:0|max:50',
-            'max_employees' => 'nullable|integer|min:0|max:100',
+            'max_managers' => 'nullable|integer|min:0|max:100',
+            'max_employees' => 'nullable|integer|min:0|max:1000',
             'expiry_date' => 'nullable|date|after:today',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable',
             'subscription_type' => 'nullable|in:trial,basic,premium,enterprise',
         ]);
 
@@ -71,26 +73,38 @@ class AdminController extends Controller
                 'password' => Hash::make($request->password),
                 'shop_name' => $request->shop_name,
                 'identifier' => $identifier,
-                'expiry_date' => $request->expiry_date,
                 'phone' => $request->phone,
+                'expiry_date' => $request->expiry_date,
                 'is_active' => $request->has('is_active'),
-                'max_managers' => $request->max_managers ?? 1,
-                'max_employees' => $request->max_employees ?? 2,
+                'max_managers' => (int) ($request->max_managers ?? 1),
+                'max_employees' => (int) ($request->max_employees ?? 2),
                 'subscription_type' => $request->subscription_type ?? 'trial',
-                'created_by_super_admin' => true
+                'created_by_super_admin' => true,
+                'total_orders' => 0,
+                'total_active_hours' => 0,
+                'total_revenue' => 0,
             ]);
+
+            \Log::info('Admin créé avec succès:', ['admin_id' => $admin->id]);
 
             // Créer une notification
             NotificationController::notifyAdminRegistered($admin);
 
-            // Envoyer un email de bienvenue (optionnel)
-            $this->sendWelcomeEmail($admin, $request->password);
+            // Envoyer un email de bienvenue si demandé
+            if ($request->has('send_welcome_email')) {
+                $this->sendWelcomeEmail($admin, $request->password);
+            }
 
             return redirect()->route('super-admin.admins.index')
                 ->with('success', 'Administrateur créé avec succès.');
 
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la création de l\'admin:', ['message' => $e->getMessage()]);
+            \Log::error('Erreur lors de la création de l\'admin:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $request->all()
+            ]);
+            
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Erreur lors de la création de l\'administrateur: ' . $e->getMessage());
@@ -139,38 +153,61 @@ class AdminController extends Controller
 
     public function update(Request $request, Admin $admin)
     {
+        // Debug pour voir ce qui est envoyé
+        \Log::info('Données reçues pour mise à jour:', $request->all());
+        
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('admins')->ignore($admin->id)],
             'shop_name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
-            'max_managers' => 'nullable|integer|min:0|max:50',
-            'max_employees' => 'nullable|integer|min:0|max:100',
+            'max_managers' => 'nullable|integer|min:0|max:100',
+            'max_employees' => 'nullable|integer|min:0|max:1000',
             'expiry_date' => 'nullable|date',
-            'is_active' => 'boolean',
             'subscription_type' => 'nullable|in:trial,basic,premium,enterprise',
+            'password' => 'nullable|string|min:8',
+            'is_active' => 'nullable|boolean',
         ]);
 
-        $data = [
-            'name' => $request->name,
-            'email' => $request->email,
-            'shop_name' => $request->shop_name,
-            'expiry_date' => $request->expiry_date,
-            'phone' => $request->phone,
-            'is_active' => $request->has('is_active'),
-            'max_managers' => $request->max_managers ?? 1,
-            'max_employees' => $request->max_employees ?? 2,
-            'subscription_type' => $request->subscription_type ?? 'trial',
-        ];
+        try {
+            $data = [
+                'name' => $request->name,
+                'email' => $request->email,
+                'shop_name' => $request->shop_name,
+                'phone' => $request->phone,
+                'max_managers' => (int) ($request->max_managers ?? 1),
+                'max_employees' => (int) ($request->max_employees ?? 2),
+                'subscription_type' => $request->subscription_type ?? 'trial',
+                'expiry_date' => $request->expiry_date,
+                'is_active' => $request->has('is_active') && $request->is_active == '1',
+            ];
 
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
+            // Ajouter le mot de passe seulement s'il est fourni
+            if ($request->filled('password')) {
+                $data['password'] = Hash::make($request->password);
+            }
+
+            \Log::info('Données à mettre à jour:', $data);
+            
+            $admin->update($data);
+            
+            \Log::info('Admin mis à jour avec succès:', ['admin_id' => $admin->id]);
+
+            return redirect()->route('super-admin.admins.index')
+                ->with('success', 'Administrateur mis à jour avec succès.');
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la mise à jour de l\'admin:', [
+                'admin_id' => $admin->id,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $request->all()
+            ]);
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage());
         }
-
-        $admin->update($data);
-
-        return redirect()->route('super-admin.admins.index')
-            ->with('success', 'Administrateur mis à jour avec succès.');
     }
 
     public function destroy(Admin $admin)
@@ -226,7 +263,7 @@ class AdminController extends Controller
         ]);
 
         $currentExpiry = $admin->expiry_date ?? now();
-        $newExpiry = Carbon::parse($currentExpiry)->addMonths($request->months);
+        $newExpiry = Carbon::parse($currentExpiry)->addMonths((int) $request->months);
 
         $admin->update(['expiry_date' => $newExpiry]);
 
@@ -318,7 +355,7 @@ class AdminController extends Controller
                     $admins = Admin::whereIn('id', $adminIds)->get();
                     foreach ($admins as $admin) {
                         $currentExpiry = $admin->expiry_date ?? now();
-                        $newExpiry = Carbon::parse($currentExpiry)->addMonths($request->months);
+                        $newExpiry = Carbon::parse($currentExpiry)->addMonths((int) $request->months);
                         $admin->update(['expiry_date' => $newExpiry]);
                     }
                     $message = count($adminIds) . ' abonnement(s) prolongé(s)';

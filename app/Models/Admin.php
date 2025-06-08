@@ -24,6 +24,11 @@ class Admin extends Authenticatable
         'max_employees',
         'total_orders',
         'total_active_hours',
+        'total_revenue',
+        'subscription_type',
+        'created_by_super_admin',
+        'last_login_at',
+        'ip_address',
     ];
 
     protected $hidden = [
@@ -36,6 +41,13 @@ class Admin extends Authenticatable
         'password' => 'hashed',
         'expiry_date' => 'date',
         'is_active' => 'boolean',
+        'created_by_super_admin' => 'boolean',
+        'last_login_at' => 'datetime',
+        'total_orders' => 'integer',
+        'total_active_hours' => 'integer',
+        'max_managers' => 'integer',
+        'max_employees' => 'integer',
+        'total_revenue' => 'decimal:2',
     ];
 
     // Relation avec les paramètres WooCommerce
@@ -68,5 +80,54 @@ class Admin extends Authenticatable
     public function loginHistory()
     {
         return $this->morphMany(LoginHistory::class, 'user');
+    }
+
+    // Accessors
+    public function getIsExpiredAttribute()
+    {
+        return $this->expiry_date && $this->expiry_date->isPast();
+    }
+
+    public function getIsExpiringSoonAttribute()
+    {
+        return $this->expiry_date && 
+               $this->expiry_date->isFuture() && 
+               $this->expiry_date->diffInDays() <= 7;
+    }
+
+    public function getDaysUntilExpiryAttribute()
+    {
+        if (!$this->expiry_date) return null;
+        
+        return $this->expiry_date->isFuture() 
+            ? $this->expiry_date->diffInDays() 
+            : -$this->expiry_date->diffInDays();
+    }
+
+    // Scopes
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    public function scopeExpired($query)
+    {
+        return $query->where('expiry_date', '<', now());
+    }
+
+    public function scopeExpiringSoon($query, $days = 7)
+    {
+        return $query->where('expiry_date', '<=', now()->addDays($days))
+                    ->where('expiry_date', '>=', now());
+    }
+
+    public function scopeBySubscription($query, $type)
+    {
+        return $query->where('subscription_type', $type);
     }
 }

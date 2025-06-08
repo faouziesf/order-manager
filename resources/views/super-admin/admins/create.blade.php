@@ -26,83 +26,109 @@
 
 @section('css')
 <style>
-    .form-wizard {
+    .creation-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .step-wizard {
         background: white;
         border-radius: 15px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         overflow: hidden;
     }
     
-    .wizard-steps {
-        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    .step-header {
+        background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
         color: white;
-        padding: 30px;
+        padding: 25px 30px;
+    }
+    
+    .step-progress {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
     }
     
     .step-item {
         display: flex;
         align-items: center;
-        margin-bottom: 20px;
-        opacity: 0.6;
-        transition: all 0.3s ease;
+        flex: 1;
+        position: relative;
     }
     
-    .step-item.active {
-        opacity: 1;
+    .step-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -25px;
+        width: 50px;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-50%);
+        z-index: 1;
     }
     
-    .step-item.completed {
-        opacity: 0.8;
+    .step-item.active:not(:last-child)::after {
+        background: rgba(255, 255, 255, 0.6);
     }
     
     .step-number {
-        width: 40px;
-        height: 40px;
+        width: 35px;
+        height: 35px;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.2);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 15px;
+        margin-right: 12px;
         font-weight: 600;
+        font-size: 16px;
         transition: all 0.3s ease;
+        z-index: 2;
+        position: relative;
     }
     
     .step-item.active .step-number {
         background: white;
-        color: var(--primary-color);
+        color: #4f46e5;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
     }
     
     .step-item.completed .step-number {
-        background: var(--success-color);
+        background: #10b981;
         color: white;
     }
     
-    .step-content {
-        flex: 1;
-    }
-    
-    .step-title {
-        font-weight: 600;
-        margin-bottom: 5px;
-    }
-    
-    .step-description {
-        font-size: 0.875rem;
+    .step-text {
+        font-size: 14px;
         opacity: 0.8;
     }
     
-    .wizard-content {
+    .step-item.active .step-text {
+        opacity: 1;
+        font-weight: 500;
+    }
+    
+    .step-title {
+        color: white;
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .step-content {
         padding: 40px;
     }
     
-    .form-section {
+    .form-step {
         display: none;
     }
     
-    .form-section.active {
+    .form-step.active {
         display: block;
-        animation: fadeInUp 0.5s ease-out;
+        animation: fadeInUp 0.4s ease-out;
     }
     
     @keyframes fadeInUp {
@@ -121,568 +147,539 @@
     }
     
     .form-floating .form-control {
-        border: 2px solid #e2e8f0;
+        border: 2px solid #e5e7eb;
         border-radius: 10px;
-        padding: 20px 15px 10px;
+        padding: 20px 15px 8px;
+        font-size: 16px;
+        transition: all 0.3s ease;
     }
     
     .form-floating .form-control:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
     }
     
     .form-floating label {
-        color: var(--secondary-color);
+        color: #6b7280;
         font-weight: 500;
+        font-size: 14px;
     }
     
-    .input-group-addon {
-        background: var(--light-color);
-        border: 2px solid #e2e8f0;
-        border-left: none;
-        border-radius: 0 10px 10px 0;
-        padding: 0 15px;
-        display: flex;
-        align-items: center;
+    .subscription-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin: 25px 0;
     }
     
-    .subscription-option {
-        border: 2px solid #e2e8f0;
+    .subscription-card {
+        border: 2px solid #e5e7eb;
         border-radius: 12px;
-        padding: 20px;
+        padding: 25px 20px;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
         background: white;
+        position: relative;
     }
     
-    .subscription-option:hover {
-        border-color: var(--primary-color);
+    .subscription-card:hover {
+        border-color: #4f46e5;
         transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     }
     
-    .subscription-option.selected {
-        border-color: var(--primary-color);
-        background: var(--primary-color);
+    .subscription-card.selected {
+        border-color: #4f46e5;
+        background: #f8faff;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(79, 70, 229, 0.15);
+    }
+    
+    .subscription-card.selected::before {
+        content: '✓';
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 24px;
+        height: 24px;
+        background: #10b981;
         color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
     }
     
     .subscription-icon {
         width: 50px;
         height: 50px;
         border-radius: 12px;
-        background: var(--light-color);
+        background: #f3f4f6;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 24px;
         margin: 0 auto 15px;
-        transition: all 0.3s ease;
+        color: #6b7280;
     }
     
-    .subscription-option.selected .subscription-icon {
-        background: rgba(255, 255, 255, 0.2);
+    .subscription-card.selected .subscription-icon {
+        background: #4f46e5;
         color: white;
     }
     
-    .feature-list {
+    .subscription-name {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #111827;
+    }
+    
+    .subscription-description {
+        font-size: 14px;
+        color: #6b7280;
+        margin-bottom: 15px;
+    }
+    
+    .subscription-features {
         list-style: none;
         padding: 0;
-        margin: 15px 0 0;
+        margin: 0;
     }
     
-    .feature-list li {
-        padding: 5px 0;
-        font-size: 0.875rem;
+    .subscription-features li {
+        font-size: 13px;
+        color: #6b7280;
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
-    .feature-list li i {
-        margin-right: 8px;
-        color: var(--success-color);
+    .subscription-features li i {
+        color: #10b981;
+        margin-right: 6px;
+        font-size: 12px;
     }
     
-    .subscription-option.selected .feature-list li i {
-        color: rgba(255, 255, 255, 0.8);
-    }
-    
-    .wizard-actions {
-        background: var(--light-color);
-        padding: 20px 40px;
+    .step-actions {
+        background: #f9fafb;
+        padding: 25px 40px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        border-top: 1px solid #e5e7eb;
     }
     
-    .form-summary {
-        background: var(--light-color);
+    .btn {
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+        background: #4f46e5;
+        border: none;
+    }
+    
+    .btn-primary:hover {
+        background: #3730a3;
+        transform: translateY(-1px);
+    }
+    
+    .summary-section {
+        background: #f9fafb;
         border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
+        padding: 25px;
+        margin-bottom: 25px;
     }
     
-    .summary-item {
+    .summary-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid #e2e8f0;
+        padding: 12px 0;
+        border-bottom: 1px solid #e5e7eb;
     }
     
-    .summary-item:last-child {
+    .summary-row:last-child {
         border-bottom: none;
     }
     
     .summary-label {
         font-weight: 500;
-        color: var(--secondary-color);
+        color: #374151;
     }
     
     .summary-value {
         font-weight: 600;
-        color: var(--dark-color);
+        color: #111827;
     }
     
     .password-strength {
-        margin-top: 10px;
+        margin-top: 8px;
     }
     
     .strength-meter {
         height: 4px;
-        background: #e2e8f0;
+        background: #e5e7eb;
         border-radius: 2px;
         overflow: hidden;
         margin-bottom: 5px;
     }
     
-    .strength-bar {
+    .strength-fill {
         height: 100%;
         transition: all 0.3s ease;
         border-radius: 2px;
     }
     
-    .strength-weak { background: var(--danger-color); width: 25%; }
-    .strength-fair { background: var(--warning-color); width: 50%; }
-    .strength-good { background: var(--info-color); width: 75%; }
-    .strength-strong { background: var(--success-color); width: 100%; }
+    .strength-weak { background: #ef4444; width: 25%; }
+    .strength-fair { background: #f59e0b; width: 50%; }
+    .strength-good { background: #3b82f6; width: 75%; }
+    .strength-strong { background: #10b981; width: 100%; }
     
-    .error-message {
-        color: var(--danger-color);
-        font-size: 0.875rem;
+    .error-text {
+        color: #ef4444;
+        font-size: 14px;
         margin-top: 5px;
         display: none;
     }
     
-    .success-animation {
-        text-align: center;
-        padding: 40px;
+    .form-check {
+        margin: 15px 0;
     }
     
-    .success-icon {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        background: var(--success-color);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 3rem;
-        margin: 0 auto 20px;
-        animation: bounceIn 0.6s ease-out;
+    .form-check-label {
+        font-weight: 500;
+        color: #374151;
     }
     
-    @keyframes bounceIn {
-        0% { transform: scale(0.3); opacity: 0; }
-        50% { transform: scale(1.05); }
-        70% { transform: scale(0.9); }
-        100% { transform: scale(1); opacity: 1; }
+    .limits-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 20px;
     }
 </style>
 @endsection
 
 @section('content')
-    <div class="form-wizard">
-        <div class="row g-0">
-            <!-- Wizard Steps -->
-            <div class="col-md-4">
-                <div class="wizard-steps">
+    <div class="creation-container">
+        <div class="step-wizard">
+            <!-- En-tête avec progression -->
+            <div class="step-header">
+                <div class="step-progress">
                     <div class="step-item active" data-step="1">
                         <div class="step-number">1</div>
-                        <div class="step-content">
-                            <div class="step-title">Informations personnelles</div>
-                            <div class="step-description">Nom, email, contact</div>
-                        </div>
+                        <div class="step-text">Informations personnelles<br><small>Nom, email, contact</small></div>
                     </div>
-                    
                     <div class="step-item" data-step="2">
                         <div class="step-number">2</div>
-                        <div class="step-content">
-                            <div class="step-title">Boutique & Accès</div>
-                            <div class="step-description">Boutique, mot de passe</div>
-                        </div>
+                        <div class="step-text">Boutique & Accès<br><small>Boutique, mot de passe</small></div>
                     </div>
-                    
                     <div class="step-item" data-step="3">
                         <div class="step-number">3</div>
-                        <div class="step-content">
-                            <div class="step-title">Abonnement</div>
-                            <div class="step-description">Type et limites</div>
-                        </div>
+                        <div class="step-text">Abonnement<br><small>Type et limites</small></div>
                     </div>
-                    
                     <div class="step-item" data-step="4">
                         <div class="step-number">4</div>
-                        <div class="step-content">
-                            <div class="step-title">Confirmation</div>
-                            <div class="step-description">Vérification et création</div>
-                        </div>
+                        <div class="step-text">Confirmation<br><small>Vérification et création</small></div>
                     </div>
                 </div>
+                <h2 class="step-title" id="stepTitle">Informations personnelles</h2>
             </div>
             
-            <!-- Wizard Content -->
-            <div class="col-md-8">
-                <form id="adminForm" action="{{ route('super-admin.admins.store') }}" method="POST">
-                    @csrf
-                    
-                    <div class="wizard-content">
-                        <!-- Step 1: Personal Information -->
-                        <div class="form-section active" data-step="1">
-                            <h4 class="mb-4">Informations personnelles</h4>
-                            
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="text" 
-                                               class="form-control @error('name') is-invalid @enderror" 
-                                               id="name" 
-                                               name="name" 
-                                               value="{{ old('name') }}" 
-                                               placeholder="Nom complet"
-                                               required>
-                                        <label for="name">Nom complet *</label>
-                                        @error('name')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="email" 
-                                               class="form-control @error('email') is-invalid @enderror" 
-                                               id="email" 
-                                               name="email" 
-                                               value="{{ old('email') }}" 
-                                               placeholder="Adresse email"
-                                               required>
-                                        <label for="email">Adresse email *</label>
-                                        @error('email')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                        <div class="error-message" id="emailError"></div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="tel" 
-                                               class="form-control @error('phone') is-invalid @enderror" 
-                                               id="phone" 
-                                               name="phone" 
-                                               value="{{ old('phone') }}" 
-                                               placeholder="Numéro de téléphone">
-                                        <label for="phone">Numéro de téléphone</label>
-                                        @error('phone')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Step 2: Shop & Access -->
-                        <div class="form-section" data-step="2">
-                            <h4 class="mb-4">Boutique & Accès</h4>
-                            
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="text" 
-                                               class="form-control @error('shop_name') is-invalid @enderror" 
-                                               id="shop_name" 
-                                               name="shop_name" 
-                                               value="{{ old('shop_name') }}" 
-                                               placeholder="Nom de la boutique"
-                                               required>
-                                        <label for="shop_name">Nom de la boutique *</label>
-                                        @error('shop_name')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="password" 
-                                               class="form-control @error('password') is-invalid @enderror" 
-                                               id="password" 
-                                               name="password" 
-                                               placeholder="Mot de passe"
-                                               required>
-                                        <label for="password">Mot de passe *</label>
-                                        @error('password')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                    
-                                    <div class="password-strength">
-                                        <div class="strength-meter">
-                                            <div class="strength-bar" id="strengthBar"></div>
-                                        </div>
-                                        <small class="text-muted" id="strengthText">Tapez un mot de passe</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="password" 
-                                               class="form-control" 
-                                               id="password_confirmation" 
-                                               name="password_confirmation" 
-                                               placeholder="Confirmer le mot de passe"
-                                               required>
-                                        <label for="password_confirmation">Confirmer le mot de passe *</label>
-                                        <div class="error-message" id="passwordMatchError"></div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="date" 
-                                               class="form-control @error('expiry_date') is-invalid @enderror" 
-                                               id="expiry_date" 
-                                               name="expiry_date" 
-                                               value="{{ old('expiry_date') }}" 
-                                               min="{{ date('Y-m-d') }}">
-                                        <label for="expiry_date">Date d'expiration</label>
-                                        @error('expiry_date')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                        <small class="text-muted">Laissez vide pour un accès illimité</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Step 3: Subscription -->
-                        <div class="form-section" data-step="3">
-                            <h4 class="mb-4">Type d'abonnement</h4>
-                            
-                            <div class="row g-4">
-                                <div class="col-md-6">
-                                    <div class="subscription-option" data-subscription="trial">
-                                        <div class="subscription-icon">
-                                            <i class="fas fa-play"></i>
-                                        </div>
-                                        <h6>Essai</h6>
-                                        <p class="text-muted mb-0">Accès limité pour tester</p>
-                                        <ul class="feature-list">
-                                            <li><i class="fas fa-check"></i> 1 Manager max</li>
-                                            <li><i class="fas fa-check"></i> 2 Employés max</li>
-                                            <li><i class="fas fa-check"></i> Support de base</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-6">
-                                    <div class="subscription-option" data-subscription="basic">
-                                        <div class="subscription-icon">
-                                            <i class="fas fa-user"></i>
-                                        </div>
-                                        <h6>Basic</h6>
-                                        <p class="text-muted mb-0">Pour petites équipes</p>
-                                        <ul class="feature-list">
-                                            <li><i class="fas fa-check"></i> 3 Managers max</li>
-                                            <li><i class="fas fa-check"></i> 10 Employés max</li>
-                                            <li><i class="fas fa-check"></i> Support prioritaire</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-6">
-                                    <div class="subscription-option" data-subscription="premium">
-                                        <div class="subscription-icon">
-                                            <i class="fas fa-crown"></i>
-                                        </div>
-                                        <h6>Premium</h6>
-                                        <p class="text-muted mb-0">Pour équipes moyennes</p>
-                                        <ul class="feature-list">
-                                            <li><i class="fas fa-check"></i> 10 Managers max</li>
-                                            <li><i class="fas fa-check"></i> 50 Employés max</li>
-                                            <li><i class="fas fa-check"></i> Analytics avancées</li>
-                                            <li><i class="fas fa-check"></i> Support 24/7</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-6">
-                                    <div class="subscription-option" data-subscription="enterprise">
-                                        <div class="subscription-icon">
-                                            <i class="fas fa-building"></i>
-                                        </div>
-                                        <h6>Enterprise</h6>
-                                        <p class="text-muted mb-0">Pour grandes entreprises</p>
-                                        <ul class="feature-list">
-                                            <li><i class="fas fa-check"></i> Managers illimités</li>
-                                            <li><i class="fas fa-check"></i> Employés illimités</li>
-                                            <li><i class="fas fa-check"></i> Toutes les fonctionnalités</li>
-                                            <li><i class="fas fa-check"></i> Support dédié</li>
-                                        </ul>
-                                    </div>
+            <!-- Contenu des étapes -->
+            <form id="adminForm" action="{{ route('super-admin.admins.store') }}" method="POST">
+                @csrf
+                
+                <div class="step-content">
+                    <!-- Étape 1: Informations personnelles -->
+                    <div class="form-step active" data-step="1">
+                        <div class="row g-4">
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="text" 
+                                           class="form-control @error('name') is-invalid @enderror" 
+                                           id="name" 
+                                           name="name" 
+                                           value="{{ old('name') }}" 
+                                           placeholder="Nom complet"
+                                           required>
+                                    <label for="name">Nom complet *</label>
+                                    @error('name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
                             
-                            <input type="hidden" name="subscription_type" id="subscription_type" value="trial">
-                            
-                            <div class="row g-3 mt-4">
-                                <div class="col-md-6">
-                                    <div class="form-floating">
-                                        <input type="number" 
-                                               class="form-control" 
-                                               id="max_managers" 
-                                               name="max_managers" 
-                                               value="1" 
-                                               min="1" 
-                                               max="100">
-                                        <label for="max_managers">Nombre max de managers</label>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-6">
-                                    <div class="form-floating">
-                                        <input type="number" 
-                                               class="form-control" 
-                                               id="max_employees" 
-                                               name="max_employees" 
-                                               value="2" 
-                                               min="1" 
-                                               max="1000">
-                                        <label for="max_employees">Nombre max d'employés</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Step 4: Confirmation -->
-                        <div class="form-section" data-step="4">
-                            <h4 class="mb-4">Confirmation</h4>
-                            
-                            <div class="form-summary">
-                                <h6 class="mb-3">Résumé des informations</h6>
-                                
-                                <div class="summary-item">
-                                    <span class="summary-label">Nom complet</span>
-                                    <span class="summary-value" id="summary-name">-</span>
-                                </div>
-                                
-                                <div class="summary-item">
-                                    <span class="summary-label">Email</span>
-                                    <span class="summary-value" id="summary-email">-</span>
-                                </div>
-                                
-                                <div class="summary-item">
-                                    <span class="summary-label">Téléphone</span>
-                                    <span class="summary-value" id="summary-phone">-</span>
-                                </div>
-                                
-                                <div class="summary-item">
-                                    <span class="summary-label">Boutique</span>
-                                    <span class="summary-value" id="summary-shop">-</span>
-                                </div>
-                                
-                                <div class="summary-item">
-                                    <span class="summary-label">Type d'abonnement</span>
-                                    <span class="summary-value" id="summary-subscription">-</span>
-                                </div>
-                                
-                                <div class="summary-item">
-                                    <span class="summary-label">Managers max</span>
-                                    <span class="summary-value" id="summary-managers">-</span>
-                                </div>
-                                
-                                <div class="summary-item">
-                                    <span class="summary-label">Employés max</span>
-                                    <span class="summary-value" id="summary-employees">-</span>
-                                </div>
-                                
-                                <div class="summary-item">
-                                    <span class="summary-label">Date d'expiration</span>
-                                    <span class="summary-value" id="summary-expiry">-</span>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="email" 
+                                           class="form-control @error('email') is-invalid @enderror" 
+                                           id="email" 
+                                           name="email" 
+                                           value="{{ old('email') }}" 
+                                           placeholder="Adresse email"
+                                           required>
+                                    <label for="email">Adresse email *</label>
+                                    @error('email')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="error-text" id="emailError"></div>
                                 </div>
                             </div>
                             
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
-                                <label class="form-check-label" for="is_active">
-                                    <strong>Activer le compte immédiatement</strong>
-                                    <br><small class="text-muted">L'administrateur pourra se connecter dès la création</small>
-                                </label>
-                            </div>
-                            
-                            <div class="form-check mt-3">
-                                <input class="form-check-input" type="checkbox" id="send_welcome_email" name="send_welcome_email" checked>
-                                <label class="form-check-label" for="send_welcome_email">
-                                    <strong>Envoyer un email de bienvenue</strong>
-                                    <br><small class="text-muted">L'administrateur recevra ses identifiants par email</small>
-                                </label>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="tel" 
+                                           class="form-control @error('phone') is-invalid @enderror" 
+                                           id="phone" 
+                                           name="phone" 
+                                           value="{{ old('phone') }}" 
+                                           placeholder="Numéro de téléphone">
+                                    <label for="phone">Numéro de téléphone (optionnel)</label>
+                                    @error('phone')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Wizard Actions -->
-                    <div class="wizard-actions">
-                        <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display: none;">
-                            <i class="fas fa-arrow-left me-2"></i>Précédent
-                        </button>
-                        
-                        <div class="ms-auto d-flex gap-2">
-                            <button type="button" class="btn btn-primary" id="nextBtn">
-                                Suivant <i class="fas fa-arrow-right ms-2"></i>
-                            </button>
-                            <button type="submit" class="btn btn-success" id="submitBtn" style="display: none;">
-                                <i class="fas fa-check me-2"></i>Créer l'administrateur
-                            </button>
+                    <!-- Étape 2: Boutique & Accès -->
+                    <div class="form-step" data-step="2">
+                        <div class="row g-4">
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="text" 
+                                           class="form-control @error('shop_name') is-invalid @enderror" 
+                                           id="shop_name" 
+                                           name="shop_name" 
+                                           value="{{ old('shop_name') }}" 
+                                           placeholder="Nom de la boutique"
+                                           required>
+                                    <label for="shop_name">Nom de la boutique *</label>
+                                    @error('shop_name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="password" 
+                                           class="form-control @error('password') is-invalid @enderror" 
+                                           id="password" 
+                                           name="password" 
+                                           placeholder="Mot de passe"
+                                           required>
+                                    <label for="password">Mot de passe *</label>
+                                    @error('password')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="password-strength">
+                                    <div class="strength-meter">
+                                        <div class="strength-fill" id="strengthFill"></div>
+                                    </div>
+                                    <small class="text-muted" id="strengthText">Choisissez un mot de passe fort</small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="password_confirmation" 
+                                           name="password_confirmation" 
+                                           placeholder="Confirmer le mot de passe"
+                                           required>
+                                    <label for="password_confirmation">Confirmer le mot de passe *</label>
+                                    <div class="error-text" id="passwordMatchError"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="date" 
+                                           class="form-control @error('expiry_date') is-invalid @enderror" 
+                                           id="expiry_date" 
+                                           name="expiry_date" 
+                                           value="{{ old('expiry_date') }}" 
+                                           min="{{ date('Y-m-d') }}">
+                                    <label for="expiry_date">Date d'expiration (optionnel)</label>
+                                    @error('expiry_date')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">Laissez vide pour un accès illimité</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Success Modal -->
-    <div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-body">
-                    <div class="success-animation">
-                        <div class="success-icon">
-                            <i class="fas fa-check"></i>
+                    
+                    <!-- Étape 3: Abonnement -->
+                    <div class="form-step" data-step="3">
+                        <h5 class="mb-4">Choisissez le type d'abonnement</h5>
+                        
+                        <div class="subscription-grid">
+                            <div class="subscription-card selected" data-subscription="trial">
+                                <div class="subscription-icon">
+                                    <i class="fas fa-play"></i>
+                                </div>
+                                <div class="subscription-name">Essai Gratuit</div>
+                                <div class="subscription-description">Parfait pour commencer</div>
+                                <ul class="subscription-features">
+                                    <li><i class="fas fa-check"></i> 1 Manager maximum</li>
+                                    <li><i class="fas fa-check"></i> 2 Employés maximum</li>
+                                    <li><i class="fas fa-check"></i> Support par email</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="subscription-card" data-subscription="basic">
+                                <div class="subscription-icon">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="subscription-name">Basic</div>
+                                <div class="subscription-description">Pour petites équipes</div>
+                                <ul class="subscription-features">
+                                    <li><i class="fas fa-check"></i> 3 Managers maximum</li>
+                                    <li><i class="fas fa-check"></i> 10 Employés maximum</li>
+                                    <li><i class="fas fa-check"></i> Support prioritaire</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="subscription-card" data-subscription="premium">
+                                <div class="subscription-icon">
+                                    <i class="fas fa-crown"></i>
+                                </div>
+                                <div class="subscription-name">Premium</div>
+                                <div class="subscription-description">Pour équipes moyennes</div>
+                                <ul class="subscription-features">
+                                    <li><i class="fas fa-check"></i> 10 Managers maximum</li>
+                                    <li><i class="fas fa-check"></i> 50 Employés maximum</li>
+                                    <li><i class="fas fa-check"></i> Analytics avancées</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="subscription-card" data-subscription="enterprise">
+                                <div class="subscription-icon">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <div class="subscription-name">Enterprise</div>
+                                <div class="subscription-description">Pour grandes entreprises</div>
+                                <ul class="subscription-features">
+                                    <li><i class="fas fa-check"></i> Managers illimités</li>
+                                    <li><i class="fas fa-check"></i> Employés illimités</li>
+                                    <li><i class="fas fa-check"></i> Support dédié</li>
+                                </ul>
+                            </div>
                         </div>
-                        <h4 class="text-success mb-3">Administrateur créé avec succès !</h4>
-                        <p class="text-muted mb-4">L'administrateur a été créé et peut maintenant accéder à la plateforme.</p>
-                        <div class="d-flex gap-2 justify-content-center">
-                            <a href="{{ route('super-admin.admins.index') }}" class="btn btn-outline-primary">
-                                <i class="fas fa-list me-2"></i>Voir la liste
-                            </a>
-                            <a href="{{ route('super-admin.admins.create') }}" class="btn btn-primary">
-                                <i class="fas fa-plus me-2"></i>Créer un autre
-                            </a>
+                        
+                        <input type="hidden" name="subscription_type" id="subscription_type" value="trial">
+                        
+                        <div class="limits-grid">
+                            <div class="form-floating">
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="max_managers" 
+                                       name="max_managers" 
+                                       value="1" 
+                                       min="1" 
+                                       max="100">
+                                <label for="max_managers">Nombre max de managers</label>
+                            </div>
+                            
+                            <div class="form-floating">
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="max_employees" 
+                                       name="max_employees" 
+                                       value="2" 
+                                       min="1" 
+                                       max="1000">
+                                <label for="max_employees">Nombre max d'employés</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Étape 4: Confirmation -->
+                    <div class="form-step" data-step="4">
+                        <h5 class="mb-4">Vérifiez les informations</h5>
+                        
+                        <div class="summary-section">
+                            <div class="summary-row">
+                                <span class="summary-label">Nom complet</span>
+                                <span class="summary-value" id="summary-name">-</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Email</span>
+                                <span class="summary-value" id="summary-email">-</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Téléphone</span>
+                                <span class="summary-value" id="summary-phone">-</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Boutique</span>
+                                <span class="summary-value" id="summary-shop">-</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Type d'abonnement</span>
+                                <span class="summary-value" id="summary-subscription">-</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Managers maximum</span>
+                                <span class="summary-value" id="summary-managers">-</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Employés maximum</span>
+                                <span class="summary-value" id="summary-employees">-</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Date d'expiration</span>
+                                <span class="summary-value" id="summary-expiry">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                            <label class="form-check-label" for="is_active">
+                                Activer le compte immédiatement
+                            </label>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="send_welcome_email" name="send_welcome_email" checked>
+                            <label class="form-check-label" for="send_welcome_email">
+                                Envoyer un email de bienvenue avec les identifiants
+                            </label>
                         </div>
                     </div>
                 </div>
-            </div>
+                
+                <!-- Actions -->
+                <div class="step-actions">
+                    <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display: none;">
+                        <i class="fas fa-arrow-left me-2"></i>Précédent
+                    </button>
+                    
+                    <div class="ms-auto d-flex gap-3">
+                        <button type="button" class="btn btn-primary" id="nextBtn">
+                            Suivant <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                        <button type="submit" class="btn btn-success" id="submitBtn" style="display: none;">
+                            <i class="fas fa-check me-2"></i>Créer l'administrateur
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 @endsection
@@ -693,49 +690,52 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentStep = 1;
     const totalSteps = 4;
     
-    // Elements
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    const form = document.getElementById('adminForm');
+    const stepTitles = {
+        1: 'Informations personnelles',
+        2: 'Boutique et Accès',
+        3: 'Type d abonnement',
+        4: 'Confirmation'
+    };
     
-    // Initialize
+    // Initialisation
     setupEventListeners();
-    updateWizard();
+    updateStepDisplay();
+    selectSubscription('trial');
     
     function setupEventListeners() {
-        // Navigation buttons
-        nextBtn.addEventListener('click', nextStep);
-        prevBtn.addEventListener('click', prevStep);
+        // Navigation
+        document.getElementById('nextBtn').addEventListener('click', nextStep);
+        document.getElementById('prevBtn').addEventListener('click', prevStep);
         
-        // Subscription selection
-        document.querySelectorAll('.subscription-option').forEach(option => {
-            option.addEventListener('click', function() {
+        // Sélection d'abonnement
+        document.querySelectorAll('.subscription-card').forEach(card => {
+            card.addEventListener('click', function() {
                 selectSubscription(this.dataset.subscription);
             });
         });
         
-        // Form validation
+        // Validation
         document.getElementById('email').addEventListener('blur', validateEmail);
         document.getElementById('password').addEventListener('input', checkPasswordStrength);
         document.getElementById('password_confirmation').addEventListener('input', checkPasswordMatch);
         
-        // Form inputs for summary
-        ['name', 'email', 'phone', 'shop_name'].forEach(field => {
-            document.getElementById(field).addEventListener('input', updateSummary);
+        // Mise à jour du résumé
+        ['name', 'email', 'phone', 'shop_name', 'expiry_date'].forEach(field => {
+            const element = document.getElementById(field);
+            if (element) {
+                element.addEventListener('input', updateSummary);
+            }
         });
         
-        document.getElementById('expiry_date').addEventListener('change', updateSummary);
-        
-        // Form submission
-        form.addEventListener('submit', handleSubmit);
+        // Soumission du formulaire
+        document.getElementById('adminForm').addEventListener('submit', handleSubmit);
     }
     
     function nextStep() {
         if (validateCurrentStep()) {
             if (currentStep < totalSteps) {
                 currentStep++;
-                updateWizard();
+                updateStepDisplay();
                 updateSummary();
             }
         }
@@ -744,40 +744,56 @@ document.addEventListener('DOMContentLoaded', function() {
     function prevStep() {
         if (currentStep > 1) {
             currentStep--;
-            updateWizard();
+            updateStepDisplay();
         }
     }
     
-    function updateWizard() {
-        // Update steps
-        document.querySelectorAll('.step-item').forEach(step => {
-            const stepNumber = parseInt(step.dataset.step);
-            step.classList.remove('active', 'completed');
+    function updateStepDisplay() {
+        // Mettre à jour les indicateurs d'étapes
+        document.querySelectorAll('.step-item').forEach(item => {
+            const stepNum = parseInt(item.dataset.step);
+            item.classList.remove('active', 'completed');
             
-            if (stepNumber === currentStep) {
-                step.classList.add('active');
-            } else if (stepNumber < currentStep) {
-                step.classList.add('completed');
+            if (stepNum === currentStep) {
+                item.classList.add('active');
+            } else if (stepNum < currentStep) {
+                item.classList.add('completed');
             }
         });
         
-        // Update form sections
-        document.querySelectorAll('.form-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
+        // Mettre à jour le titre
+        const titleElement = document.getElementById('stepTitle');
+        if (titleElement) {
+            titleElement.textContent = stepTitles[currentStep];
+        }
         
-        // Update buttons
-        prevBtn.style.display = currentStep > 1 ? 'block' : 'none';
-        nextBtn.style.display = currentStep < totalSteps ? 'block' : 'none';
-        submitBtn.style.display = currentStep === totalSteps ? 'block' : 'none';
+        // Mettre à jour les sections de formulaire
+        document.querySelectorAll('.form-step').forEach(step => {
+            step.classList.remove('active');
+        });
+        const currentSection = document.querySelector(`[data-step="${currentStep}"]`);
+        if (currentSection) {
+            currentSection.classList.add('active');
+        }
+        
+        // Mettre à jour les boutons
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        if (prevBtn) prevBtn.style.display = currentStep > 1 ? 'block' : 'none';
+        if (nextBtn) nextBtn.style.display = currentStep < totalSteps ? 'block' : 'none';
+        if (submitBtn) submitBtn.style.display = currentStep === totalSteps ? 'block' : 'none';
     }
     
     function validateCurrentStep() {
         let valid = true;
         const currentSection = document.querySelector(`[data-step="${currentStep}"]`);
-        const requiredFields = currentSection.querySelectorAll('[required]');
         
+        if (!currentSection) return false;
+        
+        // Valider les champs requis
+        const requiredFields = currentSection.querySelectorAll('[required]');
         requiredFields.forEach(field => {
             if (!field.value.trim()) {
                 field.classList.add('is-invalid');
@@ -787,11 +803,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Step-specific validation
+        // Validations spécifiques par étape
         if (currentStep === 1) {
             valid = valid && validateEmail();
         } else if (currentStep === 2) {
-            valid = valid && checkPasswordMatch() && checkPasswordStrength();
+            const passwordStrength = checkPasswordStrength();
+            const passwordMatch = checkPasswordMatch();
+            valid = valid && passwordMatch && passwordStrength >= 2;
         }
         
         return valid;
@@ -802,8 +820,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const emailError = document.getElementById('emailError');
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         
+        if (!email || !emailError) return true;
+        
         if (email.value && !emailRegex.test(email.value)) {
-            emailError.textContent = 'Format d\'email invalide';
+            emailError.textContent = 'Format d email invalide';
             emailError.style.display = 'block';
             email.classList.add('is-invalid');
             return false;
@@ -816,8 +836,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function checkPasswordStrength() {
         const password = document.getElementById('password');
-        const strengthBar = document.getElementById('strengthBar');
+        const strengthFill = document.getElementById('strengthFill');
         const strengthText = document.getElementById('strengthText');
+        
+        if (!password || !strengthFill || !strengthText) return 0;
         
         const value = password.value;
         let strength = 0;
@@ -851,16 +873,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
         }
         
-        strengthBar.className = `strength-bar ${className}`;
+        strengthFill.className = `strength-fill ${className}`;
         strengthText.textContent = text;
         
-        return strength >= 3;
+        return strength;
     }
     
     function checkPasswordMatch() {
         const password = document.getElementById('password');
         const confirmation = document.getElementById('password_confirmation');
         const error = document.getElementById('passwordMatchError');
+        
+        if (!password || !confirmation || !error) return true;
         
         if (confirmation.value && password.value !== confirmation.value) {
             error.textContent = 'Les mots de passe ne correspondent pas';
@@ -875,16 +899,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function selectSubscription(type) {
-        // Update visual selection
-        document.querySelectorAll('.subscription-option').forEach(option => {
-            option.classList.remove('selected');
+        // Mettre à jour la sélection visuelle
+        document.querySelectorAll('.subscription-card').forEach(card => {
+            card.classList.remove('selected');
         });
-        document.querySelector(`[data-subscription="${type}"]`).classList.add('selected');
+        const selectedCard = document.querySelector(`[data-subscription="${type}"]`);
+        if (selectedCard) {
+            selectedCard.classList.add('selected');
+        }
         
-        // Update hidden input
-        document.getElementById('subscription_type').value = type;
+        // Mettre à jour le champ caché
+        const subscriptionField = document.getElementById('subscription_type');
+        if (subscriptionField) {
+            subscriptionField.value = type;
+        }
         
-        // Update limits based on subscription
+        // Mettre à jour les limites
         const limits = {
             trial: { managers: 1, employees: 2 },
             basic: { managers: 3, employees: 10 },
@@ -892,27 +922,54 @@ document.addEventListener('DOMContentLoaded', function() {
             enterprise: { managers: 100, employees: 1000 }
         };
         
-        document.getElementById('max_managers').value = limits[type].managers;
-        document.getElementById('max_employees').value = limits[type].employees;
+        const managersField = document.getElementById('max_managers');
+        const employeesField = document.getElementById('max_employees');
+        
+        if (limits[type] && managersField && employeesField) {
+            managersField.value = limits[type].managers;
+            employeesField.value = limits[type].employees;
+        }
         
         updateSummary();
     }
     
     function updateSummary() {
         if (currentStep === 4) {
-            document.getElementById('summary-name').textContent = document.getElementById('name').value || '-';
-            document.getElementById('summary-email').textContent = document.getElementById('email').value || '-';
-            document.getElementById('summary-phone').textContent = document.getElementById('phone').value || 'Non renseigné';
-            document.getElementById('summary-shop').textContent = document.getElementById('shop_name').value || '-';
+            const summaryElements = {
+                'summary-name': document.getElementById('name')?.value || '-',
+                'summary-email': document.getElementById('email')?.value || '-',
+                'summary-phone': document.getElementById('phone')?.value || 'Non renseigné',
+                'summary-shop': document.getElementById('shop_name')?.value || '-',
+                'summary-managers': document.getElementById('max_managers')?.value || '-',
+                'summary-employees': document.getElementById('max_employees')?.value || '-'
+            };
             
-            const subscription = document.getElementById('subscription_type').value;
-            document.getElementById('summary-subscription').textContent = subscription.charAt(0).toUpperCase() + subscription.slice(1);
+            Object.keys(summaryElements).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = summaryElements[id];
+                }
+            });
             
-            document.getElementById('summary-managers').textContent = document.getElementById('max_managers').value;
-            document.getElementById('summary-employees').textContent = document.getElementById('max_employees').value;
+            const subscription = document.getElementById('subscription_type')?.value || 'trial';
+            const subscriptionNames = {
+                trial: 'Essai Gratuit',
+                basic: 'Basic',
+                premium: 'Premium',
+                enterprise: 'Enterprise'
+            };
             
-            const expiryDate = document.getElementById('expiry_date').value;
-            document.getElementById('summary-expiry').textContent = expiryDate ? new Date(expiryDate).toLocaleDateString('fr-FR') : 'Illimité';
+            const summarySubscription = document.getElementById('summary-subscription');
+            if (summarySubscription) {
+                summarySubscription.textContent = subscriptionNames[subscription];
+            }
+            
+            const expiryDate = document.getElementById('expiry_date')?.value;
+            const summaryExpiry = document.getElementById('summary-expiry');
+            if (summaryExpiry) {
+                summaryExpiry.textContent = expiryDate ? 
+                    new Date(expiryDate).toLocaleDateString('fr-FR') : 'Illimité';
+            }
         }
     }
     
@@ -923,38 +980,17 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Show loading state
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Création en cours...';
-        submitBtn.disabled = true;
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Création en cours...';
+            submitBtn.disabled = true;
+        }
         
-        // Submit form
-        const formData = new FormData(form);
-        
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('[name="_token"]').value
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                new bootstrap.Modal(document.getElementById('successModal')).show();
-            } else {
-                throw new Error(data.message || 'Erreur lors de la création');
-            }
-        })
-        .catch(error => {
-            alert('Erreur: ' + error.message);
-            submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Créer l\'administrateur';
-            submitBtn.disabled = false;
-        });
+        // Soumettre le formulaire normalement
+        setTimeout(() => {
+            e.target.submit();
+        }, 500);
     }
-    
-    // Initialize subscription selection
-    selectSubscription('trial');
 });
 </script>
 @endsection
