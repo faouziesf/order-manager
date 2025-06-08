@@ -36,7 +36,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-
+            
             \App\Http\Middleware\SyncWooCommerceStatusMiddleware::class,
         ],
 
@@ -66,11 +66,15 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        
+        // Middlewares personnalisés existants
         'super-admin' => \App\Http\Middleware\EnsureSuperAdminAccess::class,
         'admin' => \App\Http\Middleware\EnsureAdminAccess::class,
         'manager' => \App\Http\Middleware\EnsureManagerAccess::class,
         'employee' => \App\Http\Middleware\EnsureEmployeeAccess::class,
         'check-admin-expiry' => \App\Http\Middleware\CheckAdminExpiry::class,
+        
+        // Nouveau middleware pour vérifier si le super admin est actif
+        'super-admin.active' => \App\Http\Middleware\SuperAdminActive::class,
     ];
-    
 }

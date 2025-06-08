@@ -7,6 +7,7 @@ use App\Http\Controllers\SuperAdmin\SettingController;
 use App\Http\Controllers\SuperAdmin\AnalyticsController;
 use App\Http\Controllers\SuperAdmin\ReportController;
 use App\Http\Controllers\SuperAdmin\SystemController;
+use App\Http\Controllers\SuperAdmin\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -14,88 +15,111 @@ use Illuminate\Support\Facades\Route;
 // ========================================
 Route::prefix('super-admin')->name('super-admin.')->group(function () {
     // ========================================
-    // AUTHENTIFICATION
+    // AUTHENTIFICATION (non protégées)
     // ========================================
     Route::get('login', [SuperAdminAuthController::class, 'showLoginForm'])->name('login');
     Route::post('login', [SuperAdminAuthController::class, 'login'])->name('login.submit');
     
     // ========================================
-    // ROUTES PROTÉGÉES
+    // ROUTES PROTÉGÉES PAR AUTHENTIFICATION
     // ========================================
-    Route::middleware('auth:super-admin')->group(function () {
+    Route::middleware(['auth:super-admin', \App\Http\Middleware\SuperAdminActive::class])->group(function () {
+        
+        // Déconnexion
         Route::post('logout', [SuperAdminAuthController::class, 'logout'])->name('logout');
         
         // ========================================
-        // DASHBOARD ET ANALYTICS
+        // DASHBOARD PRINCIPAL
         // ========================================
-        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('dashboard', [DashboardController::class, 'index']);
         
-        // API pour le dashboard en temps réel
-        Route::get('api/dashboard/stats', [DashboardController::class, 'getRealtimeStats'])->name('api.dashboard.stats');
-        Route::get('api/dashboard/charts', [DashboardController::class, 'getChartData'])->name('api.dashboard.charts');
-        Route::get('api/dashboard/activity', [DashboardController::class, 'getRecentActivity'])->name('api.dashboard.activity');
-        
-        // Analytics avancées
-        Route::prefix('analytics')->name('analytics.')->group(function () {
-            Route::get('/', [AnalyticsController::class, 'index'])->name('index');
-            Route::get('/performance', [AnalyticsController::class, 'performance'])->name('performance');
-            Route::get('/trends', [AnalyticsController::class, 'trends'])->name('trends');
-            Route::get('/usage', [AnalyticsController::class, 'usage'])->name('usage');
-            Route::get('/revenue', [AnalyticsController::class, 'revenue'])->name('revenue');
-            
-            // API pour les analytics
-            Route::get('/api/performance-data', [AnalyticsController::class, 'getPerformanceData'])->name('api.performance');
-            Route::get('/api/trends-data', [AnalyticsController::class, 'getTrendsData'])->name('api.trends');
-            Route::get('/api/usage-data', [AnalyticsController::class, 'getUsageData'])->name('api.usage');
-            Route::get('/api/revenue-data', [AnalyticsController::class, 'getRevenueData'])->name('api.revenue');
+        // APIs temps réel pour le dashboard
+        Route::prefix('api')->name('api.')->group(function () {
+            Route::get('dashboard/stats', [DashboardController::class, 'getRealtimeStats'])->name('dashboard.stats');
+            Route::get('dashboard/charts', [DashboardController::class, 'getChartData'])->name('dashboard.charts');
+            Route::get('dashboard/activity', [DashboardController::class, 'getRecentActivity'])->name('dashboard.activity');
+            Route::get('dashboard/alerts', [DashboardController::class, 'getAlerts'])->name('dashboard.alerts');
         });
         
         // ========================================
-        // GESTION DES ADMINS
+        // GESTION DES ADMINISTRATEURS
         // ========================================
-        Route::resource('admins', AdminController::class);
-        Route::patch('admins/{admin}/toggle-active', [AdminController::class, 'toggleActive'])
-            ->name('admins.toggle-active');
+        Route::prefix('admins')->name('admins.')->group(function () {
+            // CRUD de base
+            Route::get('/', [AdminController::class, 'index'])->name('index');
+            Route::get('create', [AdminController::class, 'create'])->name('create');
+            Route::post('/', [AdminController::class, 'store'])->name('store');
+            Route::get('{admin}', [AdminController::class, 'show'])->name('show');
+            Route::get('{admin}/edit', [AdminController::class, 'edit'])->name('edit');
+            Route::put('{admin}', [AdminController::class, 'update'])->name('update');
+            Route::delete('{admin}', [AdminController::class, 'destroy'])->name('destroy');
+            
+            // Actions spécifiques
+            Route::patch('{admin}/toggle-active', [AdminController::class, 'toggleActive'])->name('toggle-active');
+            Route::patch('{admin}/extend-subscription', [AdminController::class, 'extendSubscription'])->name('extend-subscription');
+            Route::post('{admin}/reset-password', [AdminController::class, 'resetPassword'])->name('reset-password');
+            Route::get('{admin}/activity-log', [AdminController::class, 'activityLog'])->name('activity-log');
+            Route::get('{admin}/statistics', [AdminController::class, 'statistics'])->name('statistics');
+            
+            // Actions en lot
+            Route::post('bulk-actions', [AdminController::class, 'bulkActions'])->name('bulk-actions');
+            
+            // Export des données
+            Route::get('export/csv', [AdminController::class, 'exportCsv'])->name('export.csv');
+            Route::get('export/excel', [AdminController::class, 'exportExcel'])->name('export.excel');
+            Route::get('export/pdf', [AdminController::class, 'exportPdf'])->name('export.pdf');
+            
+            // API pour recherche et filtrage
+            Route::get('api/search', [AdminController::class, 'search'])->name('api.search');
+            Route::get('api/statistics', [AdminController::class, 'getStatistics'])->name('api.statistics');
+        });
         
-        // Actions en lot pour les admins
-        Route::post('admins/bulk-activate', [AdminController::class, 'bulkActivate'])
-            ->name('admins.bulk-activate');
-        Route::post('admins/bulk-deactivate', [AdminController::class, 'bulkDeactivate'])
-            ->name('admins.bulk-deactivate');
-        Route::post('admins/bulk-extend', [AdminController::class, 'bulkExtend'])
-            ->name('admins.bulk-extend');
-        Route::delete('admins/bulk-delete', [AdminController::class, 'bulkDelete'])
-            ->name('admins.bulk-delete');
-        
-        // Export des données admins
-        Route::get('admins/export/csv', [AdminController::class, 'exportCsv'])
-            ->name('admins.export.csv');
-        Route::get('admins/export/excel', [AdminController::class, 'exportExcel'])
-            ->name('admins.export.excel');
-        Route::get('admins/export/pdf', [AdminController::class, 'exportPdf'])
-            ->name('admins.export.pdf');
-        
-        // API pour la recherche et filtrage
-        Route::get('api/admins/search', [AdminController::class, 'search'])
-            ->name('api.admins.search');
-        Route::get('api/admins/stats', [AdminController::class, 'getStats'])
-            ->name('api.admins.stats');
+        // ========================================
+        // ANALYTICS ET RAPPORTS
+        // ========================================
+        Route::prefix('analytics')->name('analytics.')->group(function () {
+            Route::get('/', [AnalyticsController::class, 'index'])->name('index');
+            Route::get('performance', [AnalyticsController::class, 'performance'])->name('performance');
+            Route::get('usage', [AnalyticsController::class, 'usage'])->name('usage');
+            Route::get('trends', [AnalyticsController::class, 'trends'])->name('trends');
+            Route::get('geographic', [AnalyticsController::class, 'geographic'])->name('geographic');
+            
+            // APIs pour les données analytiques
+            Route::prefix('api')->name('api.')->group(function () {
+                Route::get('performance-data', [AnalyticsController::class, 'getPerformanceData'])->name('performance');
+                Route::get('usage-data', [AnalyticsController::class, 'getUsageData'])->name('usage');
+                Route::get('trends-data', [AnalyticsController::class, 'getTrendsData'])->name('trends');
+                Route::get('geographic-data', [AnalyticsController::class, 'getGeographicData'])->name('geographic');
+            });
+        });
         
         // ========================================
         // RAPPORTS
         // ========================================
         Route::prefix('reports')->name('reports.')->group(function () {
             Route::get('/', [ReportController::class, 'index'])->name('index');
-            Route::get('/performance', [ReportController::class, 'performance'])->name('performance');
-            Route::get('/activity', [ReportController::class, 'activity'])->name('activity');
-            Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
-            Route::get('/custom', [ReportController::class, 'custom'])->name('custom');
+            Route::get('admin-activity', [ReportController::class, 'adminActivity'])->name('admin-activity');
+            Route::get('system-usage', [ReportController::class, 'systemUsage'])->name('system-usage');
+            Route::get('performance', [ReportController::class, 'performance'])->name('performance');
+            Route::get('custom', [ReportController::class, 'custom'])->name('custom');
             
-            // Génération de rapports
-            Route::post('/generate', [ReportController::class, 'generate'])->name('generate');
-            Route::get('/download/{report}', [ReportController::class, 'download'])->name('download');
-            Route::get('/scheduled', [ReportController::class, 'scheduled'])->name('scheduled');
-            Route::post('/schedule', [ReportController::class, 'schedule'])->name('schedule');
+            // Génération et téléchargement
+            Route::post('generate', [ReportController::class, 'generate'])->name('generate');
+            Route::get('download/{report}', [ReportController::class, 'download'])->name('download');
+            Route::get('scheduled', [ReportController::class, 'scheduled'])->name('scheduled');
+            Route::post('schedule', [ReportController::class, 'schedule'])->name('schedule');
+        });
+        
+        // ========================================
+        // NOTIFICATIONS
+        // ========================================
+        Route::prefix('notifications')->name('notifications.')->group(function () {
+            Route::get('/', [NotificationController::class, 'index'])->name('index');
+            Route::post('mark-read/{notification}', [NotificationController::class, 'markAsRead'])->name('mark-read');
+            Route::post('mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+            Route::delete('{notification}', [NotificationController::class, 'destroy'])->name('destroy');
+            Route::get('api/unread-count', [NotificationController::class, 'getUnreadCount'])->name('api.unread-count');
         });
         
         // ========================================
@@ -103,51 +127,45 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
         // ========================================
         Route::prefix('system')->name('system.')->group(function () {
             Route::get('/', [SystemController::class, 'index'])->name('index');
-            Route::get('/logs', [SystemController::class, 'logs'])->name('logs');
-            Route::get('/backup', [SystemController::class, 'backup'])->name('backup');
-            Route::get('/maintenance', [SystemController::class, 'maintenance'])->name('maintenance');
-            Route::get('/security', [SystemController::class, 'security'])->name('security');
+            Route::get('health', [SystemController::class, 'health'])->name('health');
+            Route::get('logs', [SystemController::class, 'logs'])->name('logs');
+            Route::get('backups', [SystemController::class, 'backups'])->name('backups');
+            Route::get('maintenance', [SystemController::class, 'maintenance'])->name('maintenance');
             
             // Actions système
-            Route::post('/backup/create', [SystemController::class, 'createBackup'])->name('backup.create');
-            Route::post('/maintenance/toggle', [SystemController::class, 'toggleMaintenance'])->name('maintenance.toggle');
-            Route::post('/cache/clear', [SystemController::class, 'clearCache'])->name('cache.clear');
-            Route::post('/logs/clear', [SystemController::class, 'clearLogs'])->name('logs.clear');
+            Route::post('backup/create', [SystemController::class, 'createBackup'])->name('backup.create');
+            Route::post('maintenance/toggle', [SystemController::class, 'toggleMaintenance'])->name('maintenance.toggle');
+            Route::post('cache/clear', [SystemController::class, 'clearCache'])->name('cache.clear');
+            Route::post('logs/clear', [SystemController::class, 'clearLogs'])->name('logs.clear');
             
-            // Monitoring système
-            Route::get('/api/health', [SystemController::class, 'getHealthStatus'])->name('api.health');
-            Route::get('/api/performance', [SystemController::class, 'getPerformanceMetrics'])->name('api.performance');
+            // API système
+            Route::prefix('api')->name('api.')->group(function () {
+                Route::get('health-status', [SystemController::class, 'getHealthStatus'])->name('health-status');
+                Route::get('performance-metrics', [SystemController::class, 'getPerformanceMetrics'])->name('performance-metrics');
+                Route::get('disk-usage', [SystemController::class, 'getDiskUsage'])->name('disk-usage');
+            });
         });
         
         // ========================================
-        // PARAMÈTRES GLOBAUX
+        // PARAMÈTRES
         // ========================================
         Route::prefix('settings')->name('settings.')->group(function () {
             Route::get('/', [SettingController::class, 'index'])->name('index');
-            Route::post('/', [SettingController::class, 'update'])->name('update');
-            
-            // Catégories de paramètres
-            Route::get('/general', [SettingController::class, 'general'])->name('general');
-            Route::get('/security', [SettingController::class, 'security'])->name('security');
-            Route::get('/notifications', [SettingController::class, 'notifications'])->name('notifications');
-            Route::get('/integrations', [SettingController::class, 'integrations'])->name('integrations');
-            Route::get('/appearance', [SettingController::class, 'appearance'])->name('appearance');
-            
-            // Sauvegarde et restauration des paramètres
-            Route::get('/export', [SettingController::class, 'export'])->name('export');
-            Route::post('/import', [SettingController::class, 'import'])->name('import');
-            Route::post('/reset', [SettingController::class, 'reset'])->name('reset');
+            Route::post('update', [SettingController::class, 'update'])->name('update');
+            Route::get('security', [SettingController::class, 'security'])->name('security');
+            Route::post('security/update', [SettingController::class, 'updateSecurity'])->name('security.update');
+            Route::get('notifications', [SettingController::class, 'notifications'])->name('notifications');
+            Route::post('notifications/update', [SettingController::class, 'updateNotifications'])->name('notifications.update');
         });
         
         // ========================================
-        // NOTIFICATIONS ET ALERTES
+        // PROFILE SUPER ADMIN
         // ========================================
-        Route::prefix('notifications')->name('notifications.')->group(function () {
-            Route::get('/', [SystemController::class, 'notifications'])->name('index');
-            Route::post('/mark-read/{notification}', [SystemController::class, 'markAsRead'])->name('mark-read');
-            Route::post('/mark-all-read', [SystemController::class, 'markAllAsRead'])->name('mark-all-read');
-            Route::delete('/delete/{notification}', [SystemController::class, 'deleteNotification'])->name('delete');
-            Route::get('/api/unread-count', [SystemController::class, 'getUnreadCount'])->name('api.unread-count');
+        Route::prefix('profile')->name('profile.')->group(function () {
+            Route::get('/', [SuperAdminAuthController::class, 'profile'])->name('index');
+            Route::put('update', [SuperAdminAuthController::class, 'updateProfile'])->name('update');
+            Route::put('password', [SuperAdminAuthController::class, 'updatePassword'])->name('password');
+            Route::post('avatar', [SuperAdminAuthController::class, 'uploadAvatar'])->name('avatar');
         });
     });
 });
