@@ -29,7 +29,7 @@ class LoginController extends Controller
         $user = null;
         $guard = $request->user_type;
 
-        // Vérifier les identifiants en fonction du type d'utilisateur
+        // Récupérer l'utilisateur selon le type
         switch ($guard) {
             case 'admin':
                 $user = Admin::where('email', $request->email)->first();
@@ -42,36 +42,35 @@ class LoginController extends Controller
                 break;
         }
 
+        // Vérification des identifiants
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Les informations d\'identification fournies sont incorrectes.'],
             ]);
         }
 
+        // Vérifications spécifiques selon le type d'utilisateur
+        $validationResult = $this->validateUserAccount($user, $guard);
+        
+        if (!$validationResult['valid']) {
+            return redirect()->route('expired')->with([
+                'expired_reason' => $validationResult['reason'],
+                'user_name' => $user->name,
+                'user_email' => $user->email,
+                'user_type' => $guard
+            ]);
+        }
+
         // Connecter l'utilisateur avec le garde approprié
         Auth::guard($guard)->login($user, $request->filled('remember'));
 
-        // Vérifications supplémentaires pour les admins
-        if ($guard === 'admin') {
-            // Si l'administrateur n'est pas actif ou a expiré, rediriger vers la page d'expiration
-            if (!$user->is_active || ($user->expiry_date && $user->expiry_date->isPast())) {
-                return redirect()->route('expired');
-            }
-        }
-
         // Rediriger vers le tableau de bord approprié
-        switch ($guard) {
-            case 'admin':
-                return redirect()->route('admin.dashboard');
-            case 'manager':
-                return redirect()->route('manager.dashboard');
-            case 'employee':
-                return redirect()->route('employee.dashboard');
-        }
+        return $this->redirectToDashboard($guard);
     }
 
     public function logout(Request $request)
     {
+        // Détecter et déconnecter le bon garde
         if (Auth::guard('admin')->check()) {
             Auth::guard('admin')->logout();
         } elseif (Auth::guard('manager')->check()) {
@@ -89,5 +88,93 @@ class LoginController extends Controller
     public function showExpiredPage()
     {
         return view('auth.expired');
+    }
+
+    /**
+     * Valider le compte utilisateur selon son type
+     */
+    private function validateUserAccount($user, string $userType): array
+    {
+        switch ($userType) {
+            case 'admin':
+                return $this->validateAdminAccount($user);
+            case 'manager':
+                return $this->validateManagerAccount($user);
+            case 'employee':
+                return $this->validateEmployeeAccount($user);
+            default:
+                return ['valid' => false, 'reason' => 'invalid_type'];
+        }
+    }
+
+    /**
+     * Valider un compte administrateur
+     */
+    private function validateAdminAccount(Admin $admin): array
+    {
+        if (!$admin->is_active) {
+            return ['valid' => false, 'reason' => 'inactive'];
+        }
+
+        if ($admin->expiry_date && $admin->expiry_date->isPast()) {
+            return ['valid' => false, 'reason' => 'expired'];
+        }
+
+        return ['valid' => true, 'reason' => null];
+    }
+
+    /**
+     * Valider un compte manager
+     */
+    private function validateManagerAccount(Manager $manager): array
+    {
+        // Vérifier si le manager est actif
+        if (!$manager->is_active) {
+            return ['valid' => false, 'reason' => 'inactive'];
+        }
+
+        // Vérifier si l'admin parent est toujours valide
+        $admin = $manager->admin;
+        if (!$admin || !$admin->is_active || ($admin->expiry_date && $admin->expiry_date->isPast())) {
+            return ['valid' => false, 'reason' => 'admin_expired'];
+        }
+
+        return ['valid' => true, 'reason' => null];
+    }
+
+    /**
+     * Valider un compte employé
+     */
+    private function validateEmployeeAccount(Employee $employee): array
+    {
+        // Vérifier si l'employé est actif
+        if (!$employee->is_active) {
+            return ['valid' => false, 'reason' => 'inactive'];
+        }
+
+        // Vérifier si l'admin parent est toujours valide
+        $admin = $employee->admin;
+        if (!$admin || !$admin->is_active || ($admin->expiry_date && $admin->expiry_date->isPast())) {
+            return ['valid' => false, 'reason' => 'admin_expired'];
+        }
+
+        return ['valid' => true, 'reason' => null];
+    }
+
+    /**
+     * Rediriger vers le bon tableau de bord
+     */
+    private function redirectToDashboard(string $guard)
+    {
+        switch ($guard) {
+            case 'admin':
+                return redirect()->route('admin.dashboard');
+            case 'manager':
+                return redirect()->route('manager.dashboard');
+            case 'employee':
+                return redirect()->route('employee.dashboard');
+            default:
+                return redirect()->route('login');
+        }
     }
 }

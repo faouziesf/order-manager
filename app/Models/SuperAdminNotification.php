@@ -79,11 +79,15 @@ class SuperAdminNotification extends Model
             'admin_registered' => 'fas fa-user-plus',
             'admin_expired' => 'fas fa-exclamation-triangle',
             'admin_expiring' => 'fas fa-clock',
+            'admin_inactive' => 'fas fa-user-slash',
             'high_order_volume' => 'fas fa-chart-line',
             'system' => 'fas fa-cog',
             'security' => 'fas fa-shield-alt',
             'backup' => 'fas fa-download',
             'maintenance' => 'fas fa-tools',
+            'performance' => 'fas fa-tachometer-alt',
+            'disk_space' => 'fas fa-hdd',
+            'database' => 'fas fa-database',
             'default' => 'fas fa-bell'
         ];
 
@@ -116,6 +120,47 @@ class SuperAdminNotification extends Model
         return $badges[$this->priority] ?? 'badge-primary';
     }
 
+    public function getTypeNameAttribute()
+    {
+        $types = [
+            'admin_registered' => 'Administrateur inscrit',
+            'admin_expired' => 'Administrateur expiré',
+            'admin_expiring' => 'Administrateur expire bientôt',
+            'admin_inactive' => 'Administrateur inactif',
+            'high_order_volume' => 'Volume de commandes élevé',
+            'system' => 'Système',
+            'security' => 'Sécurité',
+            'backup' => 'Sauvegarde',
+            'maintenance' => 'Maintenance',
+            'performance' => 'Performance',
+            'disk_space' => 'Espace disque',
+            'database' => 'Base de données'
+        ];
+
+        return $types[$this->type] ?? ucfirst($this->type);
+    }
+
+    public function getPriorityNameAttribute()
+    {
+        $priorities = [
+            'low' => 'Faible',
+            'medium' => 'Moyenne',
+            'high' => 'Élevée'
+        ];
+
+        return $priorities[$this->priority] ?? ucfirst($this->priority);
+    }
+
+    public function getFormattedDateAttribute()
+    {
+        return $this->created_at->format('d/m/Y H:i');
+    }
+
+    public function getShortMessageAttribute()
+    {
+        return \Str::limit($this->message, 100);
+    }
+
     // Methods
     public function markAsRead()
     {
@@ -125,6 +170,16 @@ class SuperAdminNotification extends Model
     public function markAsUnread()
     {
         $this->update(['read_at' => null]);
+    }
+
+    public function isRecent($hours = 24)
+    {
+        return $this->created_at->gte(now()->subHours($hours));
+    }
+
+    public function isOld($days = 30)
+    {
+        return $this->created_at->lte(now()->subDays($days));
     }
 
     // Static methods pour les types de notifications
@@ -139,7 +194,10 @@ class SuperAdminNotification extends Model
             'system' => 'Système',
             'security' => 'Sécurité',
             'backup' => 'Sauvegarde',
-            'maintenance' => 'Maintenance'
+            'maintenance' => 'Maintenance',
+            'performance' => 'Performance',
+            'disk_space' => 'Espace disque',
+            'database' => 'Base de données'
         ];
     }
 
@@ -152,14 +210,31 @@ class SuperAdminNotification extends Model
         ];
     }
 
+    public static function getUnreadCount()
+    {
+        return static::whereNull('read_at')->count();
+    }
+
+    public static function getTodayCount()
+    {
+        return static::whereDate('created_at', today())->count();
+    }
+
+    public static function getImportantCount()
+    {
+        return static::where('priority', 'high')->count();
+    }
+
     // Boot method pour les événements
     protected static function boot()
     {
         parent::boot();
 
-        // Nettoyer automatiquement les anciennes notifications (plus de 30 jours)
+        // Nettoyer automatiquement les anciennes notifications (plus de 60 jours)
         static::creating(function ($notification) {
-            self::where('created_at', '<', now()->subDays(30))->delete();
+            if (rand(1, 100) === 1) { // 1% de chance à chaque création
+                self::where('created_at', '<', now()->subDays(60))->delete();
+            }
         });
     }
 }

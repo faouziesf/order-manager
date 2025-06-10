@@ -1,7 +1,5 @@
 <?php
 
-// Fichier: app/Services/NotificationService.php
-
 namespace App\Services;
 
 use App\Models\SuperAdminNotification;
@@ -37,7 +35,6 @@ class NotificationService
         'low' => 'Faible',
         'medium' => 'Moyenne',
         'high' => 'Élevée',
-        'critical' => 'Critique'
     ];
 
     /**
@@ -186,7 +183,7 @@ class NotificationService
 
     public function notifyDiskSpaceWarning(float $percentage): SuperAdminNotification
     {
-        $priority = $percentage >= 90 ? 'critical' : ($percentage >= 80 ? 'high' : 'medium');
+        $priority = $percentage >= 90 ? 'high' : ($percentage >= 80 ? 'high' : 'medium');
         
         return $this->create(
             'disk_space',
@@ -223,19 +220,6 @@ class NotificationService
                     'scheduled_date' => $scheduledDate->toISOString(),
                     'duration' => $duration
                 ]
-            ]
-        );
-    }
-
-    public function notifyPerformanceIssue(string $issue, array $metrics): SuperAdminNotification
-    {
-        return $this->create(
-            'performance',
-            'Problème de performance détecté',
-            "Problème de performance : {$issue}",
-            [
-                'priority' => 'medium',
-                'data' => array_merge(['issue' => $issue], $metrics)
             ]
         );
     }
@@ -295,7 +279,6 @@ class NotificationService
                 'total' => SuperAdminNotification::count(),
                 'unread' => SuperAdminNotification::whereNull('read_at')->count(),
                 'important' => SuperAdminNotification::where('priority', 'high')->count(),
-                'critical' => SuperAdminNotification::where('priority', 'critical')->count(),
                 'today' => SuperAdminNotification::whereDate('created_at', today())->count(),
             ];
         });
@@ -389,8 +372,8 @@ class NotificationService
             if (!$existingNotification) {
                 $notifications[] = $this->notifyAdminExpired($admin);
                 
-                // Désactiver automatiquement l'admin expiré
-                $admin->update(['is_active' => false]);
+                // Optionnel : Désactiver automatiquement l'admin expiré
+                // $admin->update(['is_active' => false]);
             }
         }
 

@@ -40,6 +40,30 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
             Route::get('dashboard/charts', [DashboardController::class, 'getChartData'])->name('dashboard.charts');
             Route::get('dashboard/activity', [DashboardController::class, 'getRecentActivity'])->name('dashboard.activity');
             Route::get('dashboard/alerts', [DashboardController::class, 'getAlerts'])->name('dashboard.alerts');
+            
+            // APIs pour les notifications
+            Route::prefix('notifications')->name('notifications.')->group(function () {
+                // Récupérer les notifications récentes pour le dropdown
+                Route::get('recent', [NotificationController::class, 'getRecentNotifications'])->name('recent');
+                
+                // Obtenir les statistiques de notifications
+                Route::get('stats', [NotificationController::class, 'getNotificationStats'])->name('stats');
+                
+                // Marquer plusieurs notifications comme lues
+                Route::post('mark-multiple-read', [NotificationController::class, 'markMultipleAsRead'])->name('mark-multiple-read');
+                
+                // Supprimer plusieurs notifications
+                Route::delete('delete-multiple', [NotificationController::class, 'deleteMultiple'])->name('delete-multiple');
+                
+                // Nettoyage des anciennes notifications
+                Route::post('cleanup', [NotificationController::class, 'cleanupOldNotifications'])->name('cleanup');
+                
+                // Export des notifications
+                Route::get('export', [NotificationController::class, 'exportNotifications'])->name('export');
+                
+                // Créer une notification de test (développement uniquement)
+                Route::post('test', [NotificationController::class, 'createTestNotification'])->name('test');
+            });
         });
         
         // ========================================

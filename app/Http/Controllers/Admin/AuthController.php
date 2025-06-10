@@ -25,18 +25,25 @@ class AuthController extends Controller
 
         $admin = Admin::where('email', $request->email)->first();
 
+        // Vérification des identifiants
         if (!$admin || !Hash::check($request->password, $admin->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Les informations d\'identification fournies sont incorrectes.'],
             ]);
         }
 
-        Auth::guard('admin')->login($admin, $request->filled('remember'));
-
-        // Si l'administrateur n'est pas actif ou a expiré, rediriger vers la page d'expiration
-        if (!$admin->is_active || ($admin->expiry_date && $admin->expiry_date->isPast())) {
-            return redirect()->route('admin.expired');
+        // VERIFICATION CRITIQUE : Bloquer AVANT la connexion si le compte est inactif ou expiré
+        if (!$this->isAccountValid($admin)) {
+            // Ne pas connecter l'utilisateur, rediriger directement
+            return redirect()->route('admin.expired')->with([
+                'expired_reason' => $this->getExpiredReason($admin),
+                'admin_name' => $admin->name,
+                'admin_email' => $admin->email
+            ]);
         }
+
+        // Seulement si le compte est valide, procéder à la connexion
+        Auth::guard('admin')->login($admin, $request->filled('remember'));
 
         return redirect()->route('admin.dashboard');
     }
@@ -48,12 +55,45 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Correction ici : rediriger vers 'login' au lieu de 'admin.login'
         return redirect()->route('login');
     }
 
     public function showExpiredPage()
     {
         return view('admin.auth.expired');
+    }
+
+    /**
+     * Vérifier si le compte administrateur est valide
+     */
+    private function isAccountValid(Admin $admin): bool
+    {
+        // Vérifier si le compte est actif
+        if (!$admin->is_active) {
+            return false;
+        }
+
+        // Vérifier si le compte n'est pas expiré
+        if ($admin->expiry_date && $admin->expiry_date->isPast()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Obtenir la raison de l'expiration
+     */
+    private function getExpiredReason(Admin $admin): string
+    {
+        if (!$admin->is_active) {
+            return 'inactive';
+        }
+
+        if ($admin->expiry_date && $admin->expiry_date->isPast()) {
+            return 'expired';
+        }
+
+        return 'unknown';
     }
 }

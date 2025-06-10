@@ -3,18 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') - Order Manager</title>
     
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Custom CSS -->
     <style>
         :root {
             --primary-color: #4f46e5;
@@ -632,10 +630,8 @@
     @yield('css')
 </head>
 <body>
-    <!-- Overlay for mobile -->
     <div class="sidebar-overlay d-md-none" id="sidebarOverlay"></div>
     
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a href="{{ route('super-admin.dashboard') }}" class="logo">
@@ -651,9 +647,7 @@
         </div>
     </div>
     
-    <!-- Main Content -->
     <div class="main-content" id="mainContent">
-        <!-- Header -->
         <div class="header">
             <div class="header-left">
                 <button class="sidebar-toggle" id="sidebarToggle">
@@ -666,13 +660,10 @@
             </div>
             
             <div class="header-right">
-                <div class="header-icon" id="notificationToggle" title="Notifications">
-                    <i class="fas fa-bell"></i>
-                    @if($unreadNotifications = \App\Models\SuperAdminNotification::whereNull('read_at')->count())
-                        <span class="notification-badge">{{ $unreadNotifications }}</span>
-                    @endif
-                </div>
-                
+                <x-super-admin.notification-bell 
+                    :autoRefresh="true" 
+                    :refreshInterval="30" />
+
                 <div class="header-icon" title="Paramètres">
                     <i class="fas fa-cog"></i>
                 </div>
@@ -705,16 +696,13 @@
             </div>
         </div>
         
-        <!-- Content -->
         <div class="content">
-            <!-- Page Header -->
             @hasSection('page-header')
                 <div class="page-header fade-in">
                     @yield('page-header')
                 </div>
             @endif
             
-            <!-- Flash Messages -->
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible fade show fade-in" role="alert">
                     <i class="fas fa-check-circle me-2"></i>
@@ -747,17 +735,14 @@
                 </div>
             @endif
             
-            <!-- Main Content -->
             <div class="fade-in">
                 @yield('content')
             </div>
         </div>
     </div>
     
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Custom JS -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');

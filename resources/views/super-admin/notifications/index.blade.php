@@ -189,11 +189,14 @@
         flex-shrink: 0;
     }
 
-    .icon-admin { background: #dbeafe; color: #3b82f6; }
+    .icon-admin_registered { background: #dbeafe; color: #3b82f6; }
+    .icon-admin_expired { background: #fee2e2; color: #ef4444; }
+    .icon-admin_expiring { background: #fef3c7; color: #f59e0b; }
     .icon-system { background: #f3f4f6; color: #6b7280; }
     .icon-security { background: #fee2e2; color: #ef4444; }
     .icon-backup { background: #d1fae5; color: #10b981; }
-    .icon-warning { background: #fef3c7; color: #f59e0b; }
+    .icon-maintenance { background: #e0e7ff; color: #6366f1; }
+    .icon-high_order_volume { background: #dbeafe; color: #3b82f6; }
 
     .notification-content {
         flex: 1;
@@ -202,7 +205,7 @@
 
     .notification-header {
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 8px;
     }
@@ -251,6 +254,9 @@
         margin-left: 15px;
         opacity: 0;
         transition: opacity 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
     }
 
     .notification-item:hover .notification-actions {
@@ -270,7 +276,6 @@
         color: #6b7280;
         cursor: pointer;
         transition: all 0.3s ease;
-        margin-bottom: 5px;
     }
 
     .action-btn:hover {
@@ -374,8 +379,8 @@
             opacity: 1;
             margin-left: 0;
             margin-top: 15px;
-            display: flex;
-            gap: 10px;
+            flex-direction: row;
+            justify-content: center;
         }
     }
 </style>
@@ -542,7 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Marquer une notification comme lue
     window.markAsRead = function(notificationId) {
-        fetch(`{{ route('super-admin.notifications.mark-read', '') }}/${notificationId}`, {
+        fetch(`/super-admin/notifications/mark-read/${notificationId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -576,7 +581,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        fetch(`{{ route('super-admin.notifications.destroy', '') }}/${notificationId}`, {
+        fetch(`/super-admin/notifications/${notificationId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -606,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Marquer toutes les notifications comme lues
     window.markAllAsRead = function() {
-        fetch('{{ route('super-admin.notifications.mark-all-read') }}', {
+        fetch('/super-admin/notifications/mark-all-read', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -650,7 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Mettre à jour les compteurs
     function updateNotificationCounts() {
-        fetch('{{ route('super-admin.notifications.api.unread-count') }}')
+        fetch('/super-admin/notifications/api/unread-count')
         .then(response => response.json())
         .then(data => {
             const unreadElement = document.getElementById('unreadCount');
@@ -687,17 +692,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => toast.remove(), 300);
             }
         }, 5000);
-    }
-    
-    // Gestion du scroll infini (optionnel)
-    const notificationsList = document.getElementById('notificationsList');
-    if (notificationsList) {
-        notificationsList.addEventListener('scroll', function() {
-            if (this.scrollTop + this.clientHeight >= this.scrollHeight - 100) {
-                // Charger plus de notifications si nécessaire
-                // loadMoreNotifications();
-            }
-        });
     }
 });
 

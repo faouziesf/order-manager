@@ -1,130 +1,128 @@
-{{-- Fichier: resources/views/components/super-admin/notification-bell.blade.php --}}
-
+{{-- Composant notification bell pour la navbar --}}
 @props([
-    'size' => 'md',           // sm, md, lg
-    'showCount' => true,      // Afficher le compteur
-    'showDropdown' => true,   // Afficher le dropdown
-    'maxItems' => 5,          // Nombre max d'items dans le dropdown
-    'autoRefresh' => true,    // Actualisation automatique
-    'refreshInterval' => 30   // Intervalle en secondes
+    'size' => 'md',
+    'showCount' => true,
+    'autoRefresh' => true,
+    'refreshInterval' => 30
 ])
 
-<div class="notification-bell-component" data-auto-refresh="{{ $autoRefresh }}" data-refresh-interval="{{ $refreshInterval }}">
-    @if($showDropdown)
-        <!-- Version avec dropdown -->
-        <div class="dropdown notification-dropdown">
-            <button class="btn notification-bell-btn notification-bell-{{ $size }}" 
-                    type="button" 
-                    id="notificationBellDropdown" 
-                    data-bs-toggle="dropdown" 
-                    aria-expanded="false"
-                    title="Notifications">
+<div class="notification-bell-wrapper" data-auto-refresh="{{ $autoRefresh }}" data-refresh-interval="{{ $refreshInterval }}">
+    <div class="dropdown">
+        <button class="notification-bell-trigger btn btn-link p-0" 
+                type="button" 
+                id="notificationBellDropdown" 
+                data-bs-toggle="dropdown" 
+                aria-expanded="false"
+                title="Notifications">
+            <div class="notification-bell-icon">
                 <i class="fas fa-bell"></i>
                 @if($showCount)
-                    <span class="notification-count-badge" id="notificationCountBadge">0</span>
+                    @php
+                        $unreadCount = \App\Models\SuperAdminNotification::whereNull('read_at')->count();
+                    @endphp
+                    @if($unreadCount > 0)
+                        <span class="notification-bell-badge" id="notificationBellBadge">{{ $unreadCount }}</span>
+                    @else
+                        <span class="notification-bell-badge" id="notificationBellBadge" style="display: none;">0</span>
+                    @endif
                 @endif
-            </button>
+            </div>
+        </button>
+        
+        <div class="dropdown-menu dropdown-menu-end notification-bell-dropdown" 
+             aria-labelledby="notificationBellDropdown">
             
-            <div class="dropdown-menu dropdown-menu-end notification-dropdown-menu" 
-                 aria-labelledby="notificationBellDropdown">
-                
-                <!-- Header du dropdown -->
-                <div class="notification-dropdown-header">
-                    <h6 class="mb-0">Notifications</h6>
-                    <div class="dropdown-header-actions">
-                        <button class="btn btn-sm btn-link text-white" onclick="markAllNotificationsAsRead()" title="Tout marquer comme lu">
-                            <i class="fas fa-check-double"></i>
-                        </button>
-                        <button class="btn btn-sm btn-link text-white" onclick="refreshNotificationDropdown()" title="Actualiser">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Filtres rapides -->
-                <div class="notification-quick-filters">
-                    <button class="filter-tab active" data-filter="all">Toutes</button>
-                    <button class="filter-tab" data-filter="unread">Non lues</button>
-                    <button class="filter-tab" data-filter="important">Importantes</button>
-                </div>
-                
-                <!-- Liste des notifications -->
-                <div class="notification-dropdown-list" id="notificationDropdownList">
-                    <div class="notification-loading-state">
-                        <div class="loading-spinner"></div>
-                        <span>Chargement...</span>
-                    </div>
-                </div>
-                
-                <!-- Footer du dropdown -->
-                <div class="notification-dropdown-footer">
-                    <a href="{{ route('super-admin.notifications.index') }}" class="btn btn-primary btn-sm w-100">
-                        <i class="fas fa-list me-1"></i>
-                        Voir toutes les notifications
-                    </a>
+            <!-- Header -->
+            <div class="notification-bell-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-bell me-2"></i>
+                    Notifications
+                </h6>
+                <div class="notification-bell-actions">
+                    <button class="btn btn-sm btn-link text-white p-1" 
+                            onclick="markAllNotificationsAsRead()" 
+                            title="Tout marquer comme lu">
+                        <i class="fas fa-check-double"></i>
+                    </button>
+                    <button class="btn btn-sm btn-link text-white p-1" 
+                            onclick="refreshNotificationBell()" 
+                            title="Actualiser">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
                 </div>
             </div>
+            
+            <!-- Quick filters -->
+            <div class="notification-bell-filters">
+                <button class="filter-tab active" data-filter="all">Toutes</button>
+                <button class="filter-tab" data-filter="unread">Non lues</button>
+                <button class="filter-tab" data-filter="important">Importantes</button>
+            </div>
+            
+            <!-- Loading state -->
+            <div class="notification-bell-loading" id="notificationBellLoading">
+                <div class="d-flex align-items-center justify-content-center py-4">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    <span>Chargement...</span>
+                </div>
+            </div>
+            
+            <!-- Notifications list -->
+            <div class="notification-bell-list" id="notificationBellList" style="display: none;">
+                <!-- Les notifications seront chargées ici via JavaScript -->
+            </div>
+            
+            <!-- Empty state -->
+            <div class="notification-bell-empty" id="notificationBellEmpty" style="display: none;">
+                <div class="text-center py-4">
+                    <i class="fas fa-bell-slash text-muted mb-2" style="font-size: 2rem;"></i>
+                    <p class="text-muted mb-0">Aucune notification</p>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="notification-bell-footer">
+                <a href="{{ route('super-admin.notifications.index') }}" class="btn btn-primary btn-sm w-100">
+                    <i class="fas fa-list me-1"></i>
+                    Voir toutes les notifications
+                </a>
+            </div>
         </div>
-    @else
-        <!-- Version simple (lien vers la page des notifications) -->
-        <a href="{{ route('super-admin.notifications.index') }}" 
-           class="btn notification-bell-btn notification-bell-{{ $size }}"
-           title="Notifications">
-            <i class="fas fa-bell"></i>
-            @if($showCount)
-                <span class="notification-count-badge" id="notificationCountBadge">0</span>
-            @endif
-        </a>
-    @endif
+    </div>
 </div>
 
 <style>
-/* Styles pour le composant notification bell */
-.notification-bell-component {
+/* Styles pour le notification bell */
+.notification-bell-wrapper {
     position: relative;
 }
 
-.notification-bell-btn {
+.notification-bell-trigger {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.notification-bell-icon {
     position: relative;
-    border: none;
-    background: transparent;
-    color: #6b7280;
-    transition: all 0.3s ease;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-/* Tailles du bouton */
-.notification-bell-sm {
-    padding: 6px 8px;
-    font-size: 14px;
-}
-
-.notification-bell-md {
-    padding: 8px 12px;
-    font-size: 16px;
-}
-
-.notification-bell-lg {
-    padding: 10px 15px;
     font-size: 18px;
+    color: #6b7280;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
-.notification-bell-btn:hover {
-    color: #4f46e5;
+.notification-bell-icon:hover {
     background: rgba(79, 70, 229, 0.1);
-    transform: translateY(-1px);
+    color: #4f46e5;
 }
 
-.notification-bell-btn:focus {
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-    outline: none;
-}
-
-/* Badge de compteur */
-.notification-count-badge {
+.notification-bell-badge {
     position: absolute;
     top: -2px;
     right: -2px;
@@ -133,8 +131,8 @@
     border-radius: 50%;
     font-size: 10px;
     font-weight: 600;
-    min-width: 16px;
-    height: 16px;
+    min-width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -142,20 +140,12 @@
     border: 2px solid white;
 }
 
-.notification-count-badge:empty,
-.notification-count-badge[data-count="0"] {
-    display: none;
-}
-
-/* Animation pour le badge */
 @keyframes notificationPulse {
-    0% { transform: scale(1); }
+    0%, 100% { transform: scale(1); }
     50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
 }
 
-/* Dropdown menu */
-.notification-dropdown-menu {
+.notification-bell-dropdown {
     width: 380px;
     max-height: 500px;
     padding: 0;
@@ -166,8 +156,7 @@
     margin-top: 8px;
 }
 
-/* Header du dropdown */
-.notification-dropdown-header {
+.notification-bell-header {
     background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
     color: white;
     padding: 20px;
@@ -176,31 +165,34 @@
     align-items: center;
 }
 
-.notification-dropdown-header h6 {
+.notification-bell-header h6 {
     color: white;
     font-weight: 600;
     margin: 0;
 }
 
-.dropdown-header-actions {
+.notification-bell-actions {
     display: flex;
     gap: 5px;
 }
 
-.dropdown-header-actions .btn {
-    padding: 4px 6px;
+.notification-bell-actions .btn {
     color: rgba(255, 255, 255, 0.8);
-    border-radius: 4px;
+    border-radius: 6px;
     transition: all 0.3s ease;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.dropdown-header-actions .btn:hover {
+.notification-bell-actions .btn:hover {
     color: white;
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* Filtres rapides */
-.notification-quick-filters {
+.notification-bell-filters {
     display: flex;
     background: #f9fafb;
     border-bottom: 1px solid #e5e7eb;
@@ -224,36 +216,12 @@
     color: white;
 }
 
-/* Liste des notifications */
-.notification-dropdown-list {
+.notification-bell-list {
     max-height: 300px;
     overflow-y: auto;
 }
 
-/* État de chargement */
-.notification-loading-state {
-    padding: 40px 20px;
-    text-align: center;
-    color: #6b7280;
-}
-
-.loading-spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #f3f4f6;
-    border-top: 2px solid #4f46e5;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 10px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Item de notification dans le dropdown */
-.notification-dropdown-item {
+.notification-bell-item {
     padding: 15px 20px;
     border-bottom: 1px solid #f3f4f6;
     cursor: pointer;
@@ -264,20 +232,20 @@
     align-items: flex-start;
 }
 
-.notification-dropdown-item:hover {
+.notification-bell-item:hover {
     background: #f9fafb;
 }
 
-.notification-dropdown-item:last-child {
+.notification-bell-item:last-child {
     border-bottom: none;
 }
 
-.notification-dropdown-item.unread {
+.notification-bell-item.unread {
     background: linear-gradient(90deg, #fef7ff 0%, #ffffff 100%);
     border-left: 3px solid #4f46e5;
 }
 
-.notification-dropdown-item.unread::before {
+.notification-bell-item.unread::before {
     content: '';
     position: absolute;
     top: 18px;
@@ -288,8 +256,7 @@
     border-radius: 50%;
 }
 
-/* Icône de notification */
-.notification-dropdown-icon {
+.notification-bell-item-icon {
     width: 32px;
     height: 32px;
     border-radius: 8px;
@@ -300,13 +267,12 @@
     flex-shrink: 0;
 }
 
-/* Contenu de notification */
-.notification-dropdown-content {
+.notification-bell-item-content {
     flex: 1;
     min-width: 0;
 }
 
-.notification-dropdown-title {
+.notification-bell-item-title {
     font-size: 13px;
     font-weight: 600;
     color: #111827;
@@ -318,7 +284,7 @@
     overflow: hidden;
 }
 
-.notification-dropdown-message {
+.notification-bell-item-message {
     font-size: 12px;
     color: #6b7280;
     margin: 0 0 6px 0;
@@ -329,55 +295,54 @@
     overflow: hidden;
 }
 
-.notification-dropdown-time {
+.notification-bell-item-time {
     font-size: 10px;
     color: #9ca3af;
 }
 
-/* Footer du dropdown */
-.notification-dropdown-footer {
+.notification-bell-footer {
     padding: 15px 20px;
     background: #f9fafb;
     border-top: 1px solid #e5e7eb;
 }
 
-/* État vide */
-.notification-empty-state {
-    padding: 40px 20px;
+.notification-bell-loading,
+.notification-bell-empty {
+    padding: 20px;
     text-align: center;
     color: #6b7280;
 }
 
-.notification-empty-state i {
-    font-size: 32px;
-    margin-bottom: 15px;
-    color: #d1d5db;
-}
+/* Icons par type */
+.icon-admin_registered { background: #dbeafe; color: #3b82f6; }
+.icon-admin_expired { background: #fee2e2; color: #ef4444; }
+.icon-admin_expiring { background: #fef3c7; color: #f59e0b; }
+.icon-admin_inactive { background: #f3f4f6; color: #6b7280; }
+.icon-high_order_volume { background: #dbeafe; color: #3b82f6; }
+.icon-system { background: #f3f4f6; color: #6b7280; }
+.icon-security { background: #fee2e2; color: #ef4444; }
+.icon-backup { background: #d1fae5; color: #10b981; }
+.icon-maintenance { background: #e0e7ff; color: #6366f1; }
+.icon-performance { background: #fef3c7; color: #f59e0b; }
+.icon-disk_space { background: #fee2e2; color: #ef4444; }
+.icon-database { background: #dbeafe; color: #3b82f6; }
 
 /* Responsive */
 @media (max-width: 768px) {
-    .notification-dropdown-menu {
+    .notification-bell-dropdown {
         width: 320px;
         left: -280px !important;
         max-height: 400px;
     }
     
-    .notification-dropdown-header {
+    .notification-bell-header {
         padding: 15px;
     }
     
-    .notification-dropdown-item {
+    .notification-bell-item {
         padding: 12px 15px;
     }
 }
-
-/* Classes pour les icônes par type */
-.icon-admin { background: #dbeafe; color: #3b82f6; }
-.icon-system { background: #f3f4f6; color: #6b7280; }
-.icon-security { background: #fee2e2; color: #ef4444; }
-.icon-backup { background: #d1fae5; color: #10b981; }
-.icon-warning { background: #fef3c7; color: #f59e0b; }
-.icon-maintenance { background: #e0e7ff; color: #6366f1; }
 </style>
 
 <script>
@@ -386,76 +351,104 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeNotificationBell() {
-    const component = document.querySelector('.notification-bell-component');
-    if (!component) return;
+    const wrapper = document.querySelector('.notification-bell-wrapper');
+    if (!wrapper) return;
     
-    const autoRefresh = component.dataset.autoRefresh === 'true';
-    const refreshInterval = parseInt(component.dataset.refreshInterval) * 1000;
+    const autoRefresh = wrapper.dataset.autoRefresh === 'true';
+    const refreshInterval = parseInt(wrapper.dataset.refreshInterval) * 1000;
     
     // Charger les notifications au démarrage
-    loadNotificationData();
+    loadNotificationBellData();
     
     // Actualisation automatique
     if (autoRefresh) {
-        setInterval(loadNotificationData, refreshInterval);
+        setInterval(loadNotificationBellData, refreshInterval);
     }
     
     // Gestionnaires d'événements pour les filtres
     setupFilterHandlers();
+    
+    // Charger les notifications quand le dropdown s'ouvre
+    const dropdown = document.getElementById('notificationBellDropdown');
+    if (dropdown) {
+        dropdown.addEventListener('shown.bs.dropdown', function() {
+            loadNotificationBellData();
+        });
+    }
 }
 
-function loadNotificationData() {
+function loadNotificationBellData() {
     fetch('/super-admin/api/notifications/recent')
         .then(response => response.json())
         .then(data => {
-            updateNotificationCount(data.unread_count || 0);
-            if (document.getElementById('notificationDropdownList')) {
-                updateDropdownNotifications(data.notifications || []);
-            }
+            updateNotificationBellBadge(data.unread_count || 0);
+            updateNotificationBellList(data.notifications || []);
         })
         .catch(error => {
             console.error('Erreur lors du chargement des notifications:', error);
+            showNotificationBellError();
         });
 }
 
-function updateNotificationCount(count) {
-    const badge = document.getElementById('notificationCountBadge');
+function updateNotificationBellBadge(count) {
+    const badge = document.getElementById('notificationBellBadge');
     if (badge) {
         badge.textContent = count;
-        badge.setAttribute('data-count', count);
         badge.style.display = count > 0 ? 'flex' : 'none';
     }
 }
 
-function updateDropdownNotifications(notifications) {
-    const container = document.getElementById('notificationDropdownList');
-    if (!container) return;
+function updateNotificationBellList(notifications) {
+    const loading = document.getElementById('notificationBellLoading');
+    const list = document.getElementById('notificationBellList');
+    const empty = document.getElementById('notificationBellEmpty');
+    
+    if (loading) loading.style.display = 'none';
     
     if (notifications.length === 0) {
-        container.innerHTML = `
-            <div class="notification-empty-state">
-                <i class="fas fa-bell-slash"></i>
-                <div>Aucune notification</div>
-            </div>
-        `;
+        if (list) list.style.display = 'none';
+        if (empty) empty.style.display = 'block';
         return;
     }
     
-    const html = notifications.slice(0, 5).map(notification => `
-        <div class="notification-dropdown-item ${notification.read_at ? '' : 'unread'}" 
-             onclick="handleNotificationClick(${notification.id})">
-            <div class="notification-dropdown-icon icon-${notification.type}">
-                <i class="${getNotificationIcon(notification.type)}"></i>
+    if (empty) empty.style.display = 'none';
+    if (list) {
+        list.style.display = 'block';
+        list.innerHTML = notifications.slice(0, 5).map(notification => `
+            <div class="notification-bell-item ${notification.read_at ? '' : 'unread'}" 
+                 onclick="handleNotificationBellClick(${notification.id})">
+                <div class="notification-bell-item-icon icon-${notification.type}">
+                    <i class="${getNotificationIcon(notification.type)}"></i>
+                </div>
+                <div class="notification-bell-item-content">
+                    <div class="notification-bell-item-title">${notification.title}</div>
+                    <div class="notification-bell-item-message">${notification.message}</div>
+                    <div class="notification-bell-item-time">${notification.time_ago}</div>
+                </div>
             </div>
-            <div class="notification-dropdown-content">
-                <div class="notification-dropdown-title">${notification.title}</div>
-                <div class="notification-dropdown-message">${notification.message}</div>
-                <div class="notification-dropdown-time">${notification.time_ago}</div>
-            </div>
-        </div>
-    `).join('');
+        `).join('');
+    }
+}
+
+function showNotificationBellError() {
+    const loading = document.getElementById('notificationBellLoading');
+    const list = document.getElementById('notificationBellList');
+    const empty = document.getElementById('notificationBellEmpty');
     
-    container.innerHTML = html;
+    if (loading) loading.style.display = 'none';
+    if (list) list.style.display = 'none';
+    if (empty) {
+        empty.style.display = 'block';
+        empty.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle text-warning mb-2" style="font-size: 2rem;"></i>
+                <p class="text-muted mb-2">Erreur de chargement</p>
+                <button onclick="loadNotificationBellData()" class="btn btn-sm btn-primary">
+                    Réessayer
+                </button>
+            </div>
+        `;
+    }
 }
 
 function setupFilterHandlers() {
@@ -464,16 +457,14 @@ function setupFilterHandlers() {
             document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
             
-            // Ici vous pouvez ajouter la logique de filtrage
             const filter = this.dataset.filter;
-            filterDropdownNotifications(filter);
+            filterNotificationBellItems(filter);
         });
     });
 }
 
-function filterDropdownNotifications(filter) {
-    // Logique de filtrage des notifications dans le dropdown
-    const items = document.querySelectorAll('.notification-dropdown-item');
+function filterNotificationBellItems(filter) {
+    const items = document.querySelectorAll('.notification-bell-item');
     items.forEach(item => {
         let show = true;
         
@@ -482,7 +473,7 @@ function filterDropdownNotifications(filter) {
                 show = item.classList.contains('unread');
                 break;
             case 'important':
-                // Vous pouvez ajouter un attribut data-priority aux items
+                // Vous pouvez ajouter un attribut data-priority
                 show = item.dataset.priority === 'high';
                 break;
             default:
@@ -493,9 +484,15 @@ function filterDropdownNotifications(filter) {
     });
 }
 
-function handleNotificationClick(notificationId) {
+function handleNotificationBellClick(notificationId) {
     // Marquer comme lue et rediriger
     markNotificationAsRead(notificationId);
+    
+    // Fermer le dropdown
+    const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('notificationBellDropdown'));
+    if (dropdown) dropdown.hide();
+    
+    // Rediriger vers la page des notifications
     window.location.href = '/super-admin/notifications';
 }
 
@@ -510,7 +507,7 @@ function markNotificationAsRead(notificationId) {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            loadNotificationData(); // Recharger les données
+            loadNotificationBellData();
         }
     })
     .catch(error => console.error('Erreur:', error));
@@ -526,7 +523,8 @@ function markAllNotificationsAsRead() {
     })
     .then(response => {
         if (response.ok) {
-            loadNotificationData();
+            loadNotificationBellData();
+            
             // Fermer le dropdown
             const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('notificationBellDropdown'));
             if (dropdown) dropdown.hide();
@@ -535,8 +533,16 @@ function markAllNotificationsAsRead() {
     .catch(error => console.error('Erreur:', error));
 }
 
-function refreshNotificationDropdown() {
-    loadNotificationData();
+function refreshNotificationBell() {
+    const loading = document.getElementById('notificationBellLoading');
+    const list = document.getElementById('notificationBellList');
+    const empty = document.getElementById('notificationBellEmpty');
+    
+    if (loading) loading.style.display = 'block';
+    if (list) list.style.display = 'none';
+    if (empty) empty.style.display = 'none';
+    
+    loadNotificationBellData();
 }
 
 function getNotificationIcon(type) {
@@ -544,12 +550,21 @@ function getNotificationIcon(type) {
         'admin_registered': 'fas fa-user-plus',
         'admin_expired': 'fas fa-exclamation-triangle',
         'admin_expiring': 'fas fa-clock',
+        'admin_inactive': 'fas fa-user-slash',
         'high_order_volume': 'fas fa-chart-line',
         'system': 'fas fa-cog',
         'security': 'fas fa-shield-alt',
         'backup': 'fas fa-download',
-        'maintenance': 'fas fa-tools'
+        'maintenance': 'fas fa-tools',
+        'performance': 'fas fa-tachometer-alt',
+        'disk_space': 'fas fa-hdd',
+        'database': 'fas fa-database'
     };
     return icons[type] || 'fas fa-bell';
 }
+
+// Exposer les fonctions globalement
+window.loadNotificationBellData = loadNotificationBellData;
+window.markAllNotificationsAsRead = markAllNotificationsAsRead;
+window.refreshNotificationBell = refreshNotificationBell;
 </script>
