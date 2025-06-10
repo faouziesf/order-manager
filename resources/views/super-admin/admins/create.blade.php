@@ -120,14 +120,19 @@
     
     .step-content {
         padding: 40px;
+        min-height: 400px;
     }
     
+    /* Correction critique : s'assurer que les étapes s'affichent */
     .form-step {
-        display: none;
+        display: none !important;
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
     
     .form-step.active {
-        display: block;
+        display: block !important;
+        opacity: 1;
         animation: fadeInUp 0.4s ease-out;
     }
     
@@ -365,10 +370,13 @@
         gap: 20px;
         margin-top: 20px;
     }
+
 </style>
 @endsection
 
 @section('content')
+
+
     <div class="creation-container">
         <div class="step-wizard">
             <!-- En-tête avec progression -->
@@ -400,7 +408,7 @@
                 
                 <div class="step-content">
                     <!-- Étape 1: Informations personnelles -->
-                    <div class="form-step active" data-step="1">
+                    <div class="form-step show-step" data-step="1">
                         <div class="row g-4">
                             <div class="col-12">
                                 <div class="form-floating">
@@ -687,25 +695,75 @@
 @section('js')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Script de création admin chargé');
+    
     let currentStep = 1;
     const totalSteps = 4;
     
     const stepTitles = {
         1: 'Informations personnelles',
-        2: 'Boutique et Accès',
+        2: 'Boutique et Accès', 
         3: 'Type d abonnement',
         4: 'Confirmation'
     };
     
+    // Fonction pour afficher les informations de debug
+    function updateDebugInfo() {
+        const debugStep = document.getElementById('debugStep');
+        const debugActive = document.getElementById('debugActive');
+        const activeStep = document.querySelector('.form-step.active');
+        
+        if (debugStep) debugStep.textContent = currentStep;
+        if (debugActive) debugActive.textContent = activeStep ? activeStep.getAttribute('data-step') : 'none';
+    }
+    
+    // Initialisation forcée de l'affichage
+    function forceShowFirstStep() {
+        console.log('Forçage de l\'affichage de la première étape');
+        
+        // Masquer toutes les étapes
+        document.querySelectorAll('.form-step').forEach(step => {
+            step.classList.remove('active', 'show-step');
+            step.style.display = 'none';
+        });
+        
+        // Afficher la première étape
+        const firstStep = document.querySelector('[data-step="1"]');
+        if (firstStep) {
+            firstStep.classList.add('active', 'show-step');
+            firstStep.style.display = 'block';
+            console.log('Première étape affichée');
+        }
+        
+        updateDebugInfo();
+    }
+    
     // Initialisation
     setupEventListeners();
+    forceShowFirstStep();
     updateStepDisplay();
     selectSubscription('trial');
     
     function setupEventListeners() {
+        console.log('Configuration des événements');
+        
         // Navigation
-        document.getElementById('nextBtn').addEventListener('click', nextStep);
-        document.getElementById('prevBtn').addEventListener('click', prevStep);
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                nextStep();
+            });
+        }
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                prevStep();
+            });
+        }
         
         // Sélection d'abonnement
         document.querySelectorAll('.subscription-card').forEach(card => {
@@ -715,9 +773,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Validation
-        document.getElementById('email').addEventListener('blur', validateEmail);
-        document.getElementById('password').addEventListener('input', checkPasswordStrength);
-        document.getElementById('password_confirmation').addEventListener('input', checkPasswordMatch);
+        const emailField = document.getElementById('email');
+        const passwordField = document.getElementById('password');
+        const confirmationField = document.getElementById('password_confirmation');
+        
+        if (emailField) emailField.addEventListener('blur', validateEmail);
+        if (passwordField) passwordField.addEventListener('input', checkPasswordStrength);
+        if (confirmationField) confirmationField.addEventListener('input', checkPasswordMatch);
         
         // Mise à jour du résumé
         ['name', 'email', 'phone', 'shop_name', 'expiry_date'].forEach(field => {
@@ -728,27 +790,38 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Soumission du formulaire
-        document.getElementById('adminForm').addEventListener('submit', handleSubmit);
+        const form = document.getElementById('adminForm');
+        if (form) {
+            form.addEventListener('submit', handleSubmit);
+        }
     }
     
     function nextStep() {
+        console.log('Passage à l étape suivante');
+        
         if (validateCurrentStep()) {
             if (currentStep < totalSteps) {
                 currentStep++;
                 updateStepDisplay();
                 updateSummary();
+                updateDebugInfo();
             }
         }
     }
     
     function prevStep() {
+        console.log('Retour à l étape précédente');
+        
         if (currentStep > 1) {
             currentStep--;
             updateStepDisplay();
+            updateDebugInfo();
         }
     }
     
     function updateStepDisplay() {
+        console.log('Mise à jour de l affichage de l étape:', currentStep);
+        
         // Mettre à jour les indicateurs d'étapes
         document.querySelectorAll('.step-item').forEach(item => {
             const stepNum = parseInt(item.dataset.step);
@@ -767,13 +840,19 @@ document.addEventListener('DOMContentLoaded', function() {
             titleElement.textContent = stepTitles[currentStep];
         }
         
-        // Mettre à jour les sections de formulaire
+        // Mettre à jour les sections de formulaire - méthode corrigée
         document.querySelectorAll('.form-step').forEach(step => {
-            step.classList.remove('active');
+            step.classList.remove('active', 'show-step');
+            step.style.display = 'none';
         });
-        const currentSection = document.querySelector(`[data-step="${currentStep}"]`);
+        
+        const currentSection = document.querySelector(`.form-step[data-step="${currentStep}"]`);
         if (currentSection) {
-            currentSection.classList.add('active');
+            currentSection.classList.add('active', 'show-step');
+            currentSection.style.display = 'block';
+            console.log('Section affichée pour l étape:', currentStep);
+        } else {
+            console.error('Section non trouvée pour l étape:', currentStep);
         }
         
         // Mettre à jour les boutons
@@ -788,7 +867,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function validateCurrentStep() {
         let valid = true;
-        const currentSection = document.querySelector(`[data-step="${currentStep}"]`);
+        const currentSection = document.querySelector(`.form-step[data-step="${currentStep}"]`);
         
         if (!currentSection) return false;
         

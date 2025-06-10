@@ -54,4 +54,13 @@ class Kernel extends ConsoleKernel
 
         require base_path('routes/console.php');
     }
+
+    protected $commands = [
+        \App\Console\Commands\CheckExpiringAdmins::class,
+        \App\Console\Commands\CleanupNotifications::class,
+        \App\Console\Commands\NotificationStats::class,
+        \App\Console\Commands\CreateTestNotifications::class,
+        \App\Console\Commands\SendNotificationReport::class,
+        \App\Console\Commands\NotificationSchedulerStatus::class,
+    ];
 }
