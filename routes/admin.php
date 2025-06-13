@@ -27,24 +27,24 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('login', [AdminAuthController::class, 'login'])->name('login.submit');
     Route::post('logout', [AdminAuthController::class, 'logout'])->name('logout');
     Route::get('expired', [AdminAuthController::class, 'showExpiredPage'])->name('expired');
-    
+
     // ========================================
     // ROUTES PROTÉGÉES ADMIN
     // ========================================
     Route::middleware('auth:admin')->group(function () {
         // Dashboard
-        Route::get('dashboard', function() {
+        Route::get('dashboard', function () {
             $admin = auth('admin')->user();
             if (!$admin->is_active || ($admin->expiry_date && $admin->expiry_date->isPast())) {
                 return redirect()->route('admin.expired');
             }
             return view('admin.dashboard');
         })->name('dashboard');
-        
+
         // ========================================
         // GESTION DES PRODUITS
         // ========================================
-        
+
         // Routes spéciales AVANT la route resource (ORDRE CRITIQUE)
         Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
             ->name('products.review');
@@ -58,7 +58,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('products.realtime-stats');
         Route::get('products/search', [ProductController::class, 'searchProducts'])
             ->name('products.search');
-        
+
         // Actions groupées AVANT resource
         Route::post('products/mark-all-reviewed', [ProductController::class, 'markAllAsReviewed'])
             ->name('products.mark-all-reviewed');
@@ -68,18 +68,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('products.bulk-deactivate');
         Route::delete('products/bulk-delete', [ProductController::class, 'bulkDelete'])
             ->name('products.bulk-delete');
-        
+
         // Actions sur des produits spécifiques AVANT resource
         Route::post('products/{product}/mark-reviewed', [ProductController::class, 'markAsReviewed'])
             ->name('products.mark-reviewed');
-        
+
         // Route resource APRÈS toutes les routes spéciales
         Route::resource('products', ProductController::class);
-        
+
         // ========================================
         // GESTION DES COMMANDES
         // ========================================
-        
+
         // Routes spéciales AVANT le resource
         Route::post('orders/bulk-assign', [OrderController::class, 'bulkAssign'])
             ->name('orders.bulk-assign');
@@ -95,7 +95,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('orders.recordAttempt');
         Route::post('orders/{order}/quick-attempt', [OrderController::class, 'quickAttempt'])
             ->name('orders.quick-attempt');
-        
+
         // Routes pour l'interface de traitement
         Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
             ->name('orders.getRegions');
@@ -103,14 +103,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('orders.getCities');
         Route::get('orders/search-products', [OrderController::class, 'searchProducts'])
             ->name('orders.searchProducts');
-        
+
         // CRUD de base
         Route::resource('orders', OrderController::class);
-        
+
         // ========================================
         // TRAITEMENT DES COMMANDES
         // ========================================
-        
+
         // Interface de traitement principal
         Route::get('process', [ProcessController::class, 'interface'])
             ->name('process.interface');
@@ -120,12 +120,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('process.getCounts');
         Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
             ->name('process.action');
-        
+
         // Route API spécifique pour restock
         Route::get('process/api/restock', [ProcessController::class, 'getQueue'])
             ->defaults('queue', 'restock')
             ->name('process.api.restock');
-        
+
         // INTERFACE D'EXAMEN DES COMMANDES
         Route::prefix('process/examination')->name('process.examination.')->group(function () {
             Route::get('/', [ExaminationController::class, 'index'])->name('index');
@@ -137,7 +137,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/bulk-cancel', [ExaminationController::class, 'bulkCancel'])->name('bulk-cancel');
             Route::post('/bulk-suspend', [ExaminationController::class, 'bulkSuspend'])->name('bulk-suspend');
         });
-        
+
         // INTERFACE DES COMMANDES SUSPENDUES
         Route::prefix('process/suspended')->name('process.suspended.')->group(function () {
             Route::get('/', [SuspendedController::class, 'index'])->name('index');
@@ -147,7 +147,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/bulk-reactivate', [SuspendedController::class, 'bulkReactivate'])->name('bulk-reactivate');
             Route::post('/bulk-cancel', [SuspendedController::class, 'bulkCancel'])->name('bulk-cancel');
         });
-        
+
         // INTERFACE DE RETOUR EN STOCK
         Route::prefix('process/restock')->name('process.restock.')->group(function () {
             Route::get('/', [RestockController::class, 'index'])->name('index');
@@ -157,12 +157,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/reactivate/{order}', [RestockController::class, 'reactivateOrder'])->name('reactivate');
             Route::post('/bulk-reactivate', [RestockController::class, 'bulkReactivate'])->name('bulk-reactivate');
         });
-        
+
         // Route générique pour les autres onglets
         Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
             ->where('queue', 'standard|dated|old')
             ->name('process.getQueue');
-        
+
         // ========================================
         // GESTION DES UTILISATEURS
         // ========================================
@@ -200,7 +200,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');
-        
+
         // ========================================
         // GESTION DES COMMANDES DOUBLES
         // ========================================
@@ -219,7 +219,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/settings', [DuplicateOrdersController::class, 'updateSettings'])->name('settings');
             Route::post('/clean-data', [DuplicateOrdersController::class, 'cleanData'])->name('clean-data');
         });
-        
+
         // ========================================
         // PARAMÈTRES
         // ========================================
@@ -231,11 +231,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/api/{key}', [AdminSettingController::class, 'getSetting'])->name('settings.get');
         Route::post('settings/api/{key}', [AdminSettingController::class, 'setSetting'])->name('settings.set');
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
-        
+
         // ========================================
         // DEBUG
         // ========================================
-        Route::get('debug-auth', function() {
+        Route::get('debug-auth', function () {
             $admin = auth('admin')->user();
             return [
                 'is_authenticated' => auth('admin')->check(),
@@ -251,5 +251,72 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ]
             ];
         })->name('debug-auth');
+        // ========================================
+        // GESTION DES LIVRAISONS
+        // ========================================
+        Route::prefix('delivery')->name('delivery.')->group(function () {
+            // Configuration page
+            Route::get('configuration', [App\Http\Controllers\Admin\DeliveryController::class, 'configuration'])
+                ->name('configuration');
+            Route::post('configuration', [App\Http\Controllers\Admin\DeliveryController::class, 'updateConfiguration'])
+                ->name('configuration.update');
+
+            // Management page
+            Route::get('management', [App\Http\Controllers\Admin\DeliveryController::class, 'management'])
+                ->name('management');
+            Route::post('management', [App\Http\Controllers\Admin\DeliveryController::class, 'updateManagement'])
+                ->name('management.update');
+
+            // Additional routes you might need later
+            Route::get('zones', [App\Http\Controllers\Admin\DeliveryController::class, 'zones'])
+                ->name('zones');
+            Route::get('tarifs', [App\Http\Controllers\Admin\DeliveryController::class, 'tarifs'])
+                ->name('tarifs');
+        });
+        // Add this section in your routes/admin.php file, within the authenticated admin middleware group
+        // Place it after the existing route groups (around line 150-160)
+
+        // ========================================
+        // GESTION DES LIVRAISONS
+        // ========================================
+        Route::prefix('delivery')->name('delivery.')->group(function () {
+            // Configuration page
+            Route::get('configuration', [App\Http\Controllers\Admin\DeliveryController::class, 'configuration'])
+                ->name('configuration');
+            Route::post('configuration', [App\Http\Controllers\Admin\DeliveryController::class, 'updateConfiguration'])
+                ->name('configuration.update');
+
+            // Management page
+            Route::get('management', [App\Http\Controllers\Admin\DeliveryController::class, 'management'])
+                ->name('management');
+            Route::post('management', [App\Http\Controllers\Admin\DeliveryController::class, 'updateManagement'])
+                ->name('management.update');
+
+            // FParcel API connection routes
+            Route::get('status', [App\Http\Controllers\Admin\DeliveryController::class, 'getConnectionStatus'])
+                ->name('status');
+            Route::post('connect', [App\Http\Controllers\Admin\DeliveryController::class, 'connectToFParcel'])
+                ->name('connect');
+            Route::post('test', [App\Http\Controllers\Admin\DeliveryController::class, 'testConnection'])
+                ->name('test');
+            Route::post('disconnect', [App\Http\Controllers\Admin\DeliveryController::class, 'disconnect'])
+                ->name('disconnect');
+            Route::post('refresh-token', [App\Http\Controllers\Admin\DeliveryController::class, 'refreshToken'])
+                ->name('refresh-token');
+
+            // Synchronization routes
+            Route::post('sync-payment-methods', [App\Http\Controllers\Admin\DeliveryController::class, 'syncPaymentMethods'])
+                ->name('sync-payment-methods');
+            Route::post('sync-drop-points', [App\Http\Controllers\Admin\DeliveryController::class, 'syncDropPoints'])
+                ->name('sync-drop-points');
+            Route::post('sync-anomaly-reasons', [App\Http\Controllers\Admin\DeliveryController::class, 'syncAnomalyReasons'])
+                ->name('sync-anomaly-reasons');
+
+            // Additional utility routes
+            Route::get('zones', [App\Http\Controllers\Admin\DeliveryController::class, 'zones'])
+                ->name('zones');
+            Route::get('tarifs', [App\Http\Controllers\Admin\DeliveryController::class, 'tarifs'])
+                ->name('tarifs');
+        });
     });
 });

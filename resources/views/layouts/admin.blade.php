@@ -9,8 +9,10 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 
     <style>
@@ -121,7 +123,7 @@
             overflow-y: auto !important;
         }
 
-        .content-expanded ~ .modal,
+        .content-expanded~.modal,
         body:has(.sidebar-collapsed) .modal {
             padding: 40px 40px 40px calc(var(--sidebar-collapsed-width) + 60px) !important;
         }
@@ -133,7 +135,7 @@
         .modal.show {
             display: flex !important;
         }
-        
+
         .modal-dialog {
             z-index: 99999 !important;
             position: relative !important;
@@ -179,17 +181,17 @@
             .modal {
                 padding: 20px !important;
             }
-            
+
             .modal-dialog {
                 min-width: 90% !important;
                 max-width: 95% !important;
             }
-            
+
             .modal-lg .modal-dialog {
                 min-width: 90% !important;
                 max-width: 95% !important;
             }
-            
+
             .modal-sm .modal-dialog {
                 min-width: 85% !important;
                 max-width: 90% !important;
@@ -200,12 +202,12 @@
             .modal {
                 padding: 15px !important;
             }
-            
+
             .modal-dialog {
                 min-width: 95% !important;
                 max-width: 98% !important;
             }
-            
+
             .modal-lg .modal-dialog,
             .modal-sm .modal-dialog {
                 min-width: 95% !important;
@@ -314,14 +316,29 @@
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
         }
 
         @keyframes loading {
-            0% { width: 0%; }
-            50% { width: 70%; }
-            100% { width: 100%; }
+            0% {
+                width: 0%;
+            }
+
+            50% {
+                width: 70%;
+            }
+
+            100% {
+                width: 100%;
+            }
         }
 
         body.modal-open .page-loader {
@@ -383,7 +400,8 @@
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            max-height: calc(100vh - 48px); /* Ajusté sans brand */
+            max-height: calc(100vh - 48px);
+            /* Ajusté sans brand */
         }
 
         /* Scrollbar personnalisé pour la sidebar */
@@ -663,7 +681,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: 
+            background:
                 radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
                 radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 50%),
                 radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
@@ -867,7 +885,7 @@
 
         .notification-badge .badge {
             position: absolute;
-            
+
             right: -0px;
             background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%);
             color: white;
@@ -885,8 +903,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
         }
 
         /* Content Container */
@@ -1049,8 +1074,13 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         @keyframes slideUp {
@@ -1058,6 +1088,7 @@
                 opacity: 0;
                 transform: translateY(30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -1069,6 +1100,7 @@
                 opacity: 0;
                 transform: translateY(-30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -1337,8 +1369,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Tooltip pour sidebar collapsed */
@@ -1389,7 +1426,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="sidebar" id="sidebar">
         <ul class="sidebar-menu">
             <!-- Dashboard -->
@@ -1406,7 +1443,8 @@
 
             <!-- Traitement (avec doublons) -->
             <li class="sidebar-item">
-                <a href="#" class="sidebar-link {{ request()->routeIs('admin.process*') || request()->routeIs('admin.duplicates*') ? 'active' : '' }}"
+                <a href="#"
+                    class="sidebar-link {{ request()->routeIs('admin.process*') || request()->routeIs('admin.duplicates*') ? 'active' : '' }}"
                     data-target="processSubmenu" data-tooltip="Traitement">
                     <div class="sidebar-icon">
                         <i class="fas fa-headset"></i>
@@ -1416,7 +1454,8 @@
                         <i class="fas fa-chevron-down"></i>
                     </span>
                 </a>
-                <ul class="sidebar-submenu {{ request()->routeIs('admin.process*') || request()->routeIs('admin.duplicates*') ? 'show' : '' }}" id="processSubmenu">
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.process*') || request()->routeIs('admin.duplicates*') ? 'show' : '' }}"
+                    id="processSubmenu">
                     <!-- Interface principale -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.interface') }}"
@@ -1424,7 +1463,7 @@
                             <i class="fas fa-phone"></i>Interface principale
                         </a>
                     </li>
-                    
+
                     <!-- Commandes doubles -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.duplicates.index') }}"
@@ -1446,21 +1485,22 @@
                                     $duplicate_count = 0;
                                 }
                             @endphp
-                            @if($duplicate_count > 0)
+                            @if ($duplicate_count > 0)
                                 <span class="badge badge-doublé ms-1">{{ $duplicate_count }}</span>
                             @endif
                         </a>
                     </li>
-                    
+
                     <!-- Examen stock -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.examination.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.process.examination.*') ? 'active' : '' }}">
                             <i class="fas fa-exclamation-triangle"></i>Examen stock
-                            <span class="badge bg-warning ms-1" id="examination-count-badge" style="display: none;"></span>
+                            <span class="badge bg-warning ms-1" id="examination-count-badge"
+                                style="display: none;"></span>
                         </a>
                     </li>
-                    
+
                     <!-- Commandes suspendues -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.suspended.index') }}"
@@ -1469,7 +1509,7 @@
                             <span class="badge bg-purple ms-1" id="suspended-count-badge" style="display: none;"></span>
                         </a>
                     </li>
-                    
+
                     <!-- Retour en stock -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.process.restock.index') }}"
@@ -1507,15 +1547,44 @@
                             <i class="fas fa-plus"></i>Ajouter un produit
                         </a>
                     </li>
-                    @if(auth('admin')->user()->products()->where('needs_review', true)->count() > 0)
+                    @if (auth('admin')->user()->products()->where('needs_review', true)->count() > 0)
+                        <li class="sidebar-submenu-item">
+                            <a href="{{ route('admin.products.review') }}"
+                                class="sidebar-submenu-link {{ request()->routeIs('admin.products.review') ? 'active' : '' }}">
+                                <i class="fas fa-eye"></i>Examiner
+                                <span
+                                    class="badge bg-warning ms-1">{{ auth('admin')->user()->products()->where('needs_review', true)->count() }}</span>
+                            </a>
+                        </li>
+                    @endif
+                </ul>
+            </li>
+            <!-- Livraison -->
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link {{ request()->routeIs('admin.delivery.*') ? 'active' : '' }}"
+                    data-target="deliverySubmenu" data-tooltip="Livraison">
+                    <div class="sidebar-icon">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <span class="sidebar-text">Livraison</span>
+                    <span class="sidebar-badge">
+                        <i class="fas fa-chevron-down"></i>
+                    </span>
+                </a>
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.delivery.*') ? 'show' : '' }}"
+                    id="deliverySubmenu">
                     <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.products.review') }}"
-                            class="sidebar-submenu-link {{ request()->routeIs('admin.products.review') ? 'active' : '' }}">
-                            <i class="fas fa-eye"></i>Examiner 
-                            <span class="badge bg-warning ms-1">{{ auth('admin')->user()->products()->where('needs_review', true)->count() }}</span>
+                        <a href="{{ route('admin.delivery.configuration') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.configuration') ? 'active' : '' }}">
+                            <i class="fas fa-cog"></i>Configuration
                         </a>
                     </li>
-                    @endif
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.delivery.management') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.management') ? 'active' : '' }}">
+                            <i class="fas fa-list"></i>Gestion
+                        </a>
+                    </li>
                 </ul>
             </li>
 
@@ -1531,7 +1600,8 @@
                         <i class="fas fa-chevron-down"></i>
                     </span>
                 </a>
-                <ul class="sidebar-submenu {{ request()->routeIs('admin.orders*') ? 'show' : '' }}" id="ordersSubmenu">
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.orders*') ? 'show' : '' }}"
+                    id="ordersSubmenu">
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.orders.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
@@ -1549,7 +1619,8 @@
 
             <!-- Utilisateurs -->
             <li class="sidebar-item">
-                <a href="#" class="sidebar-link {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') ? 'active' : '' }}"
+                <a href="#"
+                    class="sidebar-link {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') ? 'active' : '' }}"
                     data-target="usersSubmenu" data-tooltip="Utilisateurs">
                     <div class="sidebar-icon">
                         <i class="fas fa-users"></i>
@@ -1559,7 +1630,8 @@
                         <i class="fas fa-chevron-down"></i>
                     </span>
                 </a>
-                <ul class="sidebar-submenu {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') ? 'show' : '' }}" id="usersSubmenu">
+                <ul class="sidebar-submenu {{ request()->routeIs('admin.managers*') || request()->routeIs('admin.employees*') ? 'show' : '' }}"
+                    id="usersSubmenu">
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.managers.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.managers*') ? 'active' : '' }}">
@@ -1637,7 +1709,7 @@
                 <button class="btn me-3" id="sidebarToggle">
                     <i class="fas fa-bars"></i>
                 </button>
-                
+
                 <div class="brand-header">
                     <div class="brand-icon">
                         <i class="fas fa-shopping-cart"></i>
@@ -1648,32 +1720,36 @@
 
             <div class="d-flex align-items-center gap-3">
                 @php
-                    $pending_products_count = Auth::guard('admin')->user()->products()->where('needs_review', true)->count();
+                    $pending_products_count = Auth::guard('admin')
+                        ->user()
+                        ->products()
+                        ->where('needs_review', true)
+                        ->count();
                 @endphp
-                
-                @if($pending_products_count > 0)
-                <div class="dropdown">
-                    <button class="btn notification-badge" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-bell"></i>
-                        <span class="badge">{{ $pending_products_count }}</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li>
-                            <div class="dropdown-header">
-                                <i class="fas fa-bell me-2"></i>Notifications
-                            </div>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="{{ route('admin.products.review') }}">
-                                <i class="fas fa-exclamation-triangle text-warning"></i>
-                                <div>
-                                    <strong>{{ $pending_products_count }} produit(s) à examiner</strong>
-                                    <br><small class="text-muted">Produits créés automatiquement</small>
+
+                @if ($pending_products_count > 0)
+                    <div class="dropdown">
+                        <button class="btn notification-badge" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-bell"></i>
+                            <span class="badge">{{ $pending_products_count }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <div class="dropdown-header">
+                                    <i class="fas fa-bell me-2"></i>Notifications
                                 </div>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('admin.products.review') }}">
+                                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                                    <div>
+                                        <strong>{{ $pending_products_count }} produit(s) à examiner</strong>
+                                        <br><small class="text-muted">Produits créés automatiquement</small>
+                                    </div>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 @endif
 
                 <div class="dropdown">
@@ -1701,7 +1777,9 @@
                                 </div>
                             </div>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li>
                             <a class="dropdown-item" href="{{ route('admin.settings.index') }}">
                                 <i class="fas fa-cog"></i>
@@ -1714,7 +1792,9 @@
                                 <span>Historique</span>
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li>
                             <form action="{{ route('admin.logout') }}" method="POST" class="d-inline w-100">
                                 @csrf
@@ -1730,7 +1810,7 @@
         </nav>
 
         <div class="main-content animate-fade-in">
-            @if($pending_products_count > 0)
+            @if ($pending_products_count > 0)
                 <div class="alert alert-warning alert-dismissible fade show animate-slide-down" role="alert">
                     <div class="d-flex align-items-start">
                         <div class="me-3">
@@ -1741,7 +1821,8 @@
                                 <i class="fas fa-eye me-2"></i>Nouveaux produits à examiner
                             </h5>
                             <p class="mb-2">
-                                {{ $pending_products_count }} produit(s) créé(s) automatiquement lors d'importations nécessite(nt) votre attention.
+                                {{ $pending_products_count }} produit(s) créé(s) automatiquement lors d'importations
+                                nécessite(nt) votre attention.
                             </p>
                             <a href="{{ route('admin.products.review') }}" class="btn btn-warning btn-sm">
                                 <i class="fas fa-eye me-2"></i>Examiner maintenant
@@ -1770,7 +1851,7 @@
                 }
             @endphp
 
-            @if($duplicate_count > 0)
+            @if ($duplicate_count > 0)
                 <div class="alert duplicate-alert alert-dismissible fade show animate-slide-down" role="alert">
                     <div class="d-flex align-items-start">
                         <div class="me-3">
@@ -1778,28 +1859,33 @@
                         </div>
                         <div class="flex-grow-1">
                             <h5 class="mb-2">
-                                <i class="fas fa-exclamation-triangle me-2" style="color: var(--duplicate-color);"></i>
+                                <i class="fas fa-exclamation-triangle me-2"
+                                    style="color: var(--duplicate-color);"></i>
                                 <strong>Commandes en double détectées</strong>
                                 <span class="badge badge-doublé ms-1">
                                     {{ $duplicate_count }} {{ $duplicate_count > 1 ? 'clients' : 'client' }}
                                 </span>
                             </h5>
                             <p class="mb-2">
-                                <strong>{{ $duplicate_count }}</strong> {{ $duplicate_count > 1 ? 'clients ont' : 'client a' }} des commandes en double qui nécessitent votre attention.
+                                <strong>{{ $duplicate_count }}</strong>
+                                {{ $duplicate_count > 1 ? 'clients ont' : 'client a' }} des commandes en double qui
+                                nécessitent votre attention.
                                 Ces commandes peuvent être fusionnées ou marquées comme examinées.
                             </p>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('admin.duplicates.index') }}" class="btn btn-sm badge-doublé" 
-                                   style="background: linear-gradient(135deg, var(--duplicate-color) 0%, var(--duplicate-color-dark) 100%); color: white; border: none;">
+                                <a href="{{ route('admin.duplicates.index') }}" class="btn btn-sm badge-doublé"
+                                    style="background: linear-gradient(135deg, var(--duplicate-color) 0%, var(--duplicate-color-dark) 100%); color: white; border: none;">
                                     <i class="fas fa-eye me-2"></i>Examiner maintenant
                                 </a>
-                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="quickCheckDuplicates()">
+                                <button type="button" class="btn btn-sm btn-outline-warning"
+                                    onclick="quickCheckDuplicates()">
                                     <i class="fas fa-search me-2"></i>Vérifier doublons
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" onclick="dismissDuplicateAlert()"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"
+                        onclick="dismissDuplicateAlert()"></button>
                 </div>
             @endif
 
@@ -1862,11 +1948,11 @@
     <script>
         $(document).ready(function() {
             // ===== SOLUTION DÉFINITIVE POUR LES MODALES =====
-            
+
             function ultimateCleanup() {
                 $('.modal-backdrop').remove();
                 $('.modal').removeClass('show').hide().css('display', 'none');
-                
+
                 $('body')
                     .removeClass('modal-open')
                     .css({
@@ -1875,7 +1961,7 @@
                         'margin-right': ''
                     })
                     .removeAttr('style');
-                
+
                 console.log('🧹 Nettoyage complet effectué');
             }
 
@@ -1900,7 +1986,8 @@
             });
 
             setInterval(function() {
-                if ($('.modal.show').length === 0 && ($('.modal-backdrop').length > 0 || $('body').hasClass('modal-open'))) {
+                if ($('.modal.show').length === 0 && ($('.modal-backdrop').length > 0 || $('body').hasClass(
+                        'modal-open'))) {
                     console.log('🔍 Éléments bloquants détectés - nettoyage automatique');
                     ultimateCleanup();
                 }
@@ -1909,7 +1996,7 @@
             window.ultimateCleanup = ultimateCleanup;
 
             // ===== SOLUTION DÉFINITIVE POUR LE SIDEBAR =====
-            
+
             const sidebar = $('#sidebar');
             const content = $('#content');
             const sidebarToggle = $('#sidebarToggle');
@@ -1917,15 +2004,15 @@
             function handleSubmenuDisplay() {
                 const isCollapsed = sidebar.hasClass('sidebar-collapsed');
                 const isMobile = window.innerWidth <= 768;
-                
+
                 if (isCollapsed && !isMobile) {
                     $('.sidebar-item').each(function() {
                         const item = $(this);
                         const submenu = item.find('.sidebar-submenu');
-                        
+
                         if (submenu.length > 0) {
                             item.off('mouseenter.collapsed mouseleave.collapsed');
-                            
+
                             item.on({
                                 'mouseenter.collapsed': function() {
                                     clearTimeout(item.data('hideTimeout'));
@@ -1947,7 +2034,7 @@
                                     item.data('hideTimeout', hideTimeout);
                                 }
                             });
-                            
+
                             submenu.on({
                                 'mouseenter.collapsed': function() {
                                     clearTimeout(item.data('hideTimeout'));
@@ -1993,7 +2080,7 @@
                         content.removeClass('content-expanded');
                     }
                 }
-                
+
                 setTimeout(handleSubmenuDisplay, 100);
             }
 
@@ -2005,16 +2092,16 @@
 
             sidebarToggle.on('click', function() {
                 const isMobile = window.innerWidth <= 768;
-                
+
                 if (isMobile) {
                     sidebar.toggleClass('sidebar-collapsed');
                 } else {
                     const isNowCollapsed = !sidebar.hasClass('sidebar-collapsed');
                     localStorage.setItem('sidebarCollapsed', isNowCollapsed.toString());
-                    
+
                     sidebar.toggleClass('sidebar-collapsed');
                     content.toggleClass('content-expanded');
-                    
+
                     setTimeout(handleSubmenuDisplay, 100);
                 }
             });
@@ -2026,30 +2113,32 @@
                 const targetId = link.attr('data-target');
                 const submenu = $('#' + targetId);
                 const chevron = link.find('.fa-chevron-down, .fa-chevron-up');
-                
+
                 link.on('click', function(e) {
                     const isCollapsed = sidebar.hasClass('sidebar-collapsed');
                     const isMobile = window.innerWidth <= 768;
-                    
+
                     if (isCollapsed && !isMobile) {
                         return;
                     }
-                    
+
                     e.preventDefault();
-                    
+
                     $('.sidebar-submenu.show').not(submenu).removeClass('show').each(function() {
-                        const otherChevron = $(this).prev('[data-target]').find('.fa-chevron-up');
-                        otherChevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                        const otherChevron = $(this).prev('[data-target]').find(
+                            '.fa-chevron-up');
+                        otherChevron.removeClass('fa-chevron-up').addClass(
+                            'fa-chevron-down');
                     });
-                    
+
                     submenu.toggleClass('show');
-                    
+
                     if (submenu.hasClass('show')) {
                         chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
                     } else {
                         chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
                     }
-                    
+
                     const isExpanded = submenu.hasClass('show');
                     link.attr('aria-expanded', isExpanded);
                 });
@@ -2105,7 +2194,7 @@
                     e.preventDefault();
                     sidebarToggle.click();
                 }
-                
+
                 if (e.key === 'Escape') {
                     $('.modal.show').modal('hide');
                     $('.dropdown-menu.show').dropdown('hide');
@@ -2138,7 +2227,8 @@
             if ('performance' in window) {
                 $(window).on('load', function() {
                     setTimeout(() => {
-                        const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
+                        const loadTime = performance.timing.loadEventEnd - performance.timing
+                            .navigationStart;
                         console.log('Page loaded in', loadTime, 'ms');
                     }, 0);
                 });
@@ -2191,48 +2281,48 @@
         function quickCheckDuplicates() {
             const button = event.target;
             const originalHtml = button.innerHTML;
-            
+
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Vérification...';
             button.disabled = true;
-            
-            fetch('{{ route("admin.duplicates.check") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                button.innerHTML = originalHtml;
-                button.disabled = false;
-                
-                if (data.success) {
-                    showNotification('success', data.message);
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    showNotification('error', data.message || 'Erreur lors de la vérification');
-                }
-            })
-            .catch(error => {
-                button.innerHTML = originalHtml;
-                button.disabled = false;
-                showNotification('error', 'Erreur lors de la vérification des doublons');
-                console.error('Erreur:', error);
-            });
+
+            fetch('{{ route('admin.duplicates.check') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
+
+                    if (data.success) {
+                        showNotification('success', data.message);
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        showNotification('error', data.message || 'Erreur lors de la vérification');
+                    }
+                })
+                .catch(error => {
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
+                    showNotification('error', 'Erreur lors de la vérification des doublons');
+                    console.error('Erreur:', error);
+                });
         }
 
         function dismissDuplicateAlert() {
             const alertTimestamp = new Date().getTime();
-            localStorage.setItem('duplicate_alert_dismissed_{{ auth("admin")->id() ?? 0 }}', alertTimestamp);
+            localStorage.setItem('duplicate_alert_dismissed_{{ auth('admin')->id() ?? 0 }}', alertTimestamp);
         }
 
         function showNotification(type, message) {
             const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
             const icon = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
-            
+
             const notification = document.createElement('div');
             notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
             notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
@@ -2243,9 +2333,9 @@
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
-            
+
             document.body.appendChild(notification);
-            
+
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.remove();
@@ -2257,12 +2347,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             const adminId = {{ auth('admin')->id() ?? 0 }};
             const dismissedTimestamp = localStorage.getItem('duplicate_alert_dismissed_' + adminId);
-            
+
             if (dismissedTimestamp) {
                 const dismissedTime = new Date(parseInt(dismissedTimestamp));
                 const now = new Date();
                 const hoursSinceDismissed = (now - dismissedTime) / (1000 * 60 * 60);
-                
+
                 if (hoursSinceDismissed < 24) {
                     const duplicateAlert = document.querySelector('.duplicate-alert');
                     if (duplicateAlert) {
@@ -2282,7 +2372,7 @@
                     .done(function(data) {
                         const count = data.count || 0;
                         const badge = $('#examination-count-badge');
-                        
+
                         if (count > 0) {
                             badge.text(count).show();
                         } else {
@@ -2292,13 +2382,13 @@
                     .fail(function() {
                         $('#examination-count-badge').hide();
                     });
-                
+
                 // Compteur des commandes suspendues
                 $.get('/admin/process/suspended/count')
                     .done(function(data) {
                         const count = data.count || 0;
                         const badge = $('#suspended-count-badge');
-                        
+
                         if (count > 0) {
                             badge.text(count).show();
                         } else {
@@ -2308,13 +2398,13 @@
                     .fail(function() {
                         $('#suspended-count-badge').hide();
                     });
-                
+
                 // Compteur de retour en stock
                 $.get('/admin/process/restock/count')
                     .done(function(data) {
                         const count = data.count || 0;
                         const badge = $('#restock-count-badge');
-                        
+
                         if (count > 0) {
                             badge.text(count).show();
                         } else {
@@ -2325,14 +2415,13 @@
                         $('#restock-count-badge').hide();
                     });
             }
-            
+
             // Charger les compteurs au démarrage
             loadProcessingCounts();
-            
+
             // Actualiser les compteurs toutes les 30 secondes
             setInterval(loadProcessingCounts, 30000);
         });
-                
     </script>
 
     @yield('scripts')
