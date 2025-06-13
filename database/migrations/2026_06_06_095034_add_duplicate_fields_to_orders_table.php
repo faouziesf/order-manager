@@ -13,13 +13,48 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->boolean('is_duplicate')->default(false)->after('is_suspended');
-            $table->boolean('reviewed_for_duplicates')->default(false)->after('is_duplicate');
-            $table->string('duplicate_group_id')->nullable()->after('reviewed_for_duplicates');
+            // Vérifier si les colonnes n'existent pas déjà avant de les ajouter
+            if (!Schema::hasColumn('orders', 'is_duplicate')) {
+                $table->boolean('is_duplicate')->default(false)->after('is_suspended');
+            }
+            
+            if (!Schema::hasColumn('orders', 'reviewed_for_duplicates')) {
+                $table->boolean('reviewed_for_duplicates')->default(false)->after('is_duplicate');
+            }
+            
+            if (!Schema::hasColumn('orders', 'duplicate_group_id')) {
+                $table->string('duplicate_group_id')->nullable()->after('reviewed_for_duplicates');
+            }
         });
 
-        // Ajouter les nouvelles actions dans order_history
-        if (DB::getDriverName() === 'sqlite') {
+        // Ajouter les nouvelles actions dans order_history seulement si nécessaire
+        $existingActions = DB::select("PRAGMA table_info(order_history)");
+        $actionColumn = collect($existingActions)->firstWhere('name', 'action');
+        
+        // Vérifier si les nouvelles actions existent déjà
+        $hasNewActions = false;
+        if ($actionColumn) {
+            $sampleOrderHistory = DB::table('order_history')->first();
+            if ($sampleOrderHistory) {
+                try {
+                    // Tenter d'insérer une action de test pour voir si elle est acceptée
+                    DB::table('order_history')->insert([
+                        'order_id' => 999999, // ID qui n'existe pas
+                        'action' => 'duplicate_detected',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    // Si ça marche, supprimer l'enregistrement de test
+                    DB::table('order_history')->where('order_id', 999999)->delete();
+                    $hasNewActions = true;
+                } catch (\Exception $e) {
+                    // Les nouvelles actions n'existent pas encore
+                    $hasNewActions = false;
+                }
+            }
+        }
+
+        if (!$hasNewActions && DB::getDriverName() === 'sqlite') {
             // Pour SQLite, recréer la table avec les nouvelles actions
             Schema::create('order_history_temp', function (Blueprint $table) {
                 $table->id();
@@ -59,22 +94,25 @@ return new class extends Migration
             // Supprimer l'ancienne table et renommer
             Schema::dropIfExists('order_history');
             Schema::rename('order_history_temp', 'order_history');
-        } else {
-            // Pour MySQL/PostgreSQL
-            DB::statement("ALTER TABLE order_history MODIFY COLUMN action ENUM('création', 'modification', 'confirmation', 'annulation', 'datation', 'tentative', 'livraison', 'assignation', 'désassignation', 'en_route', 'suspension', 'réactivation', 'changement_statut', 'duplicate_detected', 'duplicate_review', 'duplicate_merge', 'duplicate_ignore', 'duplicate_cancel')");
         }
 
-        // Ajouter le paramètre de délai auto-fusion par défaut
+        // Ajouter le paramètre de délai auto-fusion par défaut si il n'existe pas
         if (Schema::hasTable('admin_settings')) {
-            DB::table('admin_settings')->insertOrIgnore([
-                'admin_id' => 1, // Sera mis à jour pour chaque admin
-                'setting_key' => 'duplicate_auto_merge_delay_hours',
-                'setting_value' => '2',
-                'setting_type' => 'integer',
-                'description' => 'Délai en heures pour la fusion automatique des commandes doubles',
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            $existingSetting = DB::table('admin_settings')
+                ->where('setting_key', 'duplicate_auto_merge_delay_hours')
+                ->first();
+                
+            if (!$existingSetting) {
+                DB::table('admin_settings')->insert([
+                    'admin_id' => 1, // Sera mis à jour pour chaque admin
+                    'setting_key' => 'duplicate_auto_merge_delay_hours',
+                    'setting_value' => '2',
+                    'setting_type' => 'integer',
+                    'description' => 'Délai en heures pour la fusion automatique des commandes doubles',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
         }
     }
 
@@ -84,7 +122,16 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn(['is_duplicate', 'reviewed_for_duplicates', 'duplicate_group_id']);
+            // Vérifier avant de supprimer
+            if (Schema::hasColumn('orders', 'duplicate_group_id')) {
+                $table->dropColumn('duplicate_group_id');
+            }
+            if (Schema::hasColumn('orders', 'reviewed_for_duplicates')) {
+                $table->dropColumn('reviewed_for_duplicates');
+            }
+            if (Schema::hasColumn('orders', 'is_duplicate')) {
+                $table->dropColumn('is_duplicate');
+            }
         });
 
         // Restaurer les actions dans order_history
@@ -120,8 +167,6 @@ return new class extends Migration
 
             Schema::dropIfExists('order_history');
             Schema::rename('order_history_temp', 'order_history');
-        } else {
-            DB::statement("ALTER TABLE order_history MODIFY COLUMN action ENUM('création', 'modification', 'confirmation', 'annulation', 'datation', 'tentative', 'livraison', 'assignation', 'désassignation', 'en_route', 'suspension', 'réactivation', 'changement_statut')");
         }
 
         // Supprimer le paramètre

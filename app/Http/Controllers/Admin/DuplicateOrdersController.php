@@ -401,36 +401,90 @@ class DuplicateOrdersController extends Controller
         ]);
     }
 
+
     /**
      * Page détaillée pour un client
      */
     public function clientDetail($phone)
     {
-        $adminId = auth('admin')->id();
-        
-        $orders = Order::where('admin_id', $adminId)
-            ->where(function($q) use ($phone) {
-                $q->where('customer_phone', $phone)
-                  ->orWhere('customer_phone_2', $phone);
-            })
-            ->with(['items.product', 'history'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        try {
+            $adminId = auth('admin')->id();
+            
+            $orders = Order::where('admin_id', $adminId)
+                ->where(function($q) use ($phone) {
+                    $q->where('customer_phone', $phone)
+                    ->orWhere('customer_phone_2', $phone);
+                })
+                ->with(['items.product', 'history'])
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-        if ($orders->isEmpty()) {
-            abort(404, 'Aucune commande trouvée pour ce numéro');
+            if ($orders->isEmpty()) {
+                abort(404, 'Aucune commande trouvée pour ce numéro');
+            }
+
+            $duplicateOrders = $orders->where('is_duplicate', true);
+            
+            // Calculer toutes les statistiques nécessaires
+            $stats = [
+                'total_orders' => $orders->count(),
+                'duplicate_orders' => $duplicateOrders->count(),
+                'total_spent' => $orders->where('status', '!=', 'annulée')->sum('total_price'),
+                'cancelled_orders' => $orders->whereIn('status', ['annulée', 'cancelled', 'annulee'])->count(), // ← AJOUT DE CETTE LIGNE
+                'confirmed_orders' => $orders->whereIn('status', ['confirmée', 'confirmed', 'confirmee'])->count(),
+                'new_orders' => $orders->whereIn('status', ['nouvelle', 'pending', 'new'])->count(),
+                'delivered_orders' => $orders->whereIn('status', ['livrée', 'completed', 'delivered', 'livree'])->count(),
+                'first_order' => $orders->min('created_at'),
+                'last_order' => $orders->max('created_at'),
+                'avg_order_value' => $orders->count() > 0 ? $orders->sum('total_price') / $orders->count() : 0
+            ];
+
+            // Calculer les produits les plus commandés
+            $topProducts = $this->calculateTopProducts($orders);
+
+            return view('admin.duplicates.client-detail', compact('orders', 'phone', 'stats', 'topProducts'));
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur dans clientDetail: ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors du chargement des données du client');
+        }
+    }
+
+    /**
+     * Calculer les produits les plus commandés
+     */
+    private function calculateTopProducts($orders)
+    {
+        $topProducts = [];
+        
+        foreach ($orders as $order) {
+            if (!$order->items) continue;
+            
+            foreach ($order->items as $item) {
+                if (!$item->product) continue;
+                
+                $productName = $item->product->name ?? 'Produit supprimé';
+                
+                if (!isset($topProducts[$productName])) {
+                    $topProducts[$productName] = [
+                        'quantity' => 0,
+                        'orders_count' => 0,
+                        'total_value' => 0,
+                    ];
+                }
+                
+                $topProducts[$productName]['quantity'] += (int) $item->quantity;
+                $topProducts[$productName]['orders_count']++;
+                $topProducts[$productName]['total_value'] += (float) $item->total_price;
+            }
         }
 
-        $duplicateOrders = $orders->where('is_duplicate', true);
-        $stats = [
-            'total_orders' => $orders->count(),
-            'duplicate_orders' => $duplicateOrders->count(),
-            'total_spent' => $orders->where('status', '!=', 'annulée')->sum('total_price'),
-            'first_order' => $orders->min('created_at'),
-            'last_order' => $orders->max('created_at')
-        ];
+        // Trier par quantité décroissante et prendre les 5 premiers
+        uasort($topProducts, function($a, $b) {
+            return $b['quantity'] <=> $a['quantity'];
+        });
 
-        return view('admin.duplicates.client-detail', compact('orders', 'phone', 'stats'));
+        return array_slice($topProducts, 0, 5, true);
     }
 
     /**
