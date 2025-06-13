@@ -25,7 +25,7 @@ class DuplicateMaintenanceCommand extends Command
     /**
      * The console command description.
      */
-    protected $description = 'Maintenance et gestion automatique des commandes en double';
+    protected $description = 'Maintenance et gestion automatique des commandes en double (tous statuts)';
 
     /**
      * Execute the console command.
@@ -89,6 +89,7 @@ class DuplicateMaintenanceCommand extends Command
 
     /**
      * Afficher les statistiques des doublons
+     * MODIFICATION: Statistiques étendues pour tous les statuts
      */
     private function showStats($adminId)
     {
@@ -99,12 +100,33 @@ class DuplicateMaintenanceCommand extends Command
         $this->table(
             ['Métrique', 'Valeur'],
             [
-                ['Commandes doubles non examinées', $stats['total_duplicates']],
+                ['Commandes doubles non examinées (TOUS STATUTS)', $stats['total_duplicates']],
+                ['Commandes doubles fusionnables (nouvelle/datée)', $stats['mergeable_duplicates'] ?? 0],
+                ['Commandes doubles non fusionnables (autres statuts)', $stats['non_mergeable_duplicates'] ?? 0],
                 ['Clients uniques avec doublons', $stats['unique_clients']],
                 ['Commandes fusionnées aujourd\'hui', $stats['merged_today']],
                 ['Délai auto-fusion (heures)', $stats['auto_merge_delay']]
             ]
         );
+
+        // NOUVELLES STATISTIQUES: Répartition par statut
+        $this->info("\n🔍 Répartition des doublons par statut:");
+        $statusStats = $this->getDuplicateStatsByStatus($adminId);
+        
+        if (!empty($statusStats)) {
+            $statusTableData = [];
+            foreach ($statusStats as $status => $count) {
+                $isMergeable = in_array($status, ['nouvelle', 'datée']) ? '✅' : '❌';
+                $statusTableData[] = [$status, $count, $isMergeable];
+            }
+            
+            $this->table(
+                ['Statut', 'Nombre de doublons', 'Fusionnable'],
+                $statusTableData
+            );
+        } else {
+            $this->line("Aucun doublon trouvé.");
+        }
 
         // Statistiques détaillées
         $duplicateGroups = Order::where('admin_id', $adminId)
@@ -112,27 +134,33 @@ class DuplicateMaintenanceCommand extends Command
             ->where('reviewed_for_duplicates', false)
             ->select('customer_phone')
             ->selectRaw('COUNT(*) as count')
+            ->selectRaw('GROUP_CONCAT(DISTINCT status ORDER BY status) as statuses')
             ->groupBy('customer_phone')
             ->orderByDesc('count')
             ->limit(10)
             ->get();
 
         if ($duplicateGroups->count() > 0) {
-            $this->info("🔍 Top 10 des clients avec le plus de doublons:");
+            $this->info("\n🔍 Top 10 des clients avec le plus de doublons:");
             $tableData = [];
             foreach ($duplicateGroups as $group) {
-                $tableData[] = [$group->customer_phone, $group->count];
+                $tableData[] = [
+                    $group->customer_phone, 
+                    $group->count,
+                    $group->statuses
+                ];
             }
-            $this->table(['Téléphone', 'Nombre de doublons'], $tableData);
+            $this->table(['Téléphone', 'Nombre de doublons', 'Statuts'], $tableData);
         }
     }
 
     /**
      * Scanner et détecter les doublons
+     * MODIFICATION: Scan maintenant TOUS les statuts
      */
     private function scanForDuplicates($adminId)
     {
-        $this->info("🔍 Scan des doublons en cours...");
+        $this->info("🔍 Scan des doublons en cours (TOUS STATUTS)...");
         
         $bar = $this->output->createProgressBar(100);
         $bar->start();
@@ -144,7 +172,8 @@ class DuplicateMaintenanceCommand extends Command
             $this->newLine();
 
             if ($result['success']) {
-                $this->info("✅ Scan terminé: {$result['duplicates_found']} doublons détectés dans {$result['groups_created']} groupes");
+                $this->info("✅ Scan terminé: {$result['duplicates_found']} doublons détectés dans {$result['groups_created']} groupes (tous statuts)");
+                $this->line("ℹ️  Note: Seules les commandes 'nouvelle' et 'datée' peuvent être fusionnées automatiquement");
             } else {
                 $this->error("❌ Erreur lors du scan: " . $result['error']);
             }
@@ -163,16 +192,20 @@ class DuplicateMaintenanceCommand extends Command
 
     /**
      * Effectuer la fusion automatique
+     * REMARQUE: Ne fusionne que les commandes nouvelle/datée
      */
     private function performAutoMerge($adminId)
     {
-        $this->info("🔗 Fusion automatique en cours...");
+        $this->info("🔗 Fusion automatique en cours (commandes nouvelle/datée seulement)...");
 
         try {
             $result = $this->autoMergeDuplicates($adminId);
 
             if ($result['success']) {
                 $this->info("✅ Fusion terminée: {$result['merged_count']} commandes fusionnées dans {$result['groups_processed']} groupes");
+                if ($result['merged_count'] == 0) {
+                    $this->line("ℹ️  Aucune commande fusionnable trouvée (seules les commandes 'nouvelle' et 'datée' peuvent être fusionnées)");
+                }
             } else {
                 $this->error("❌ Erreur lors de la fusion: " . $result['error']);
             }
@@ -189,6 +222,7 @@ class DuplicateMaintenanceCommand extends Command
 
     /**
      * Nettoyer les anciens marquages de doublons
+     * MODIFICATION: Nettoyage adapté pour tous les statuts
      */
     private function cleanOldDuplicates($adminId)
     {
@@ -213,21 +247,65 @@ class DuplicateMaintenanceCommand extends Command
                 }
             }
 
-            // Nettoyer les marquages de doublons pour les commandes annulées ou livrées
-            $cleanedStatusCount = Order::where('admin_id', $adminId)
+            // MODIFICATION: Nettoyer les marquages pour les commandes où tous les doublons sont dans des statuts finaux
+            $additionalCleaned = 0;
+            $duplicateGroups = Order::where('admin_id', $adminId)
                 ->where('is_duplicate', true)
-                ->whereNotIn('status', ['nouvelle', 'datée'])
-                ->update([
-                    'is_duplicate' => false,
-                    'reviewed_for_duplicates' => false,
-                    'duplicate_group_id' => null
-                ]);
+                ->where('reviewed_for_duplicates', false)
+                ->select('customer_phone')
+                ->groupBy('customer_phone')
+                ->get();
 
-            $totalCleaned = $cleanedCount + $cleanedStatusCount;
-            $this->info("✅ Nettoyage terminé: {$totalCleaned} marquages de doublons supprimés");
+            foreach ($duplicateGroups as $group) {
+                $groupOrders = Order::where('admin_id', $adminId)
+                    ->where('customer_phone', $group->customer_phone)
+                    ->where('is_duplicate', true)
+                    ->get();
+
+                // Si toutes les commandes du groupe sont dans des statuts finaux, marquer comme examiné
+                $finalStatuses = ['livrée', 'annulée', 'cancelled', 'delivered', 'completed'];
+                $allInFinalStatus = $groupOrders->every(function($order) use ($finalStatuses) {
+                    return in_array($order->status, $finalStatuses);
+                });
+
+                if ($allInFinalStatus) {
+                    foreach ($groupOrders as $order) {
+                        $order->update(['reviewed_for_duplicates' => true]);
+                        $order->recordHistory(
+                            'duplicate_review',
+                            'Groupe de doublons automatiquement marqué comme examiné (tous en statut final)'
+                        );
+                    }
+                    $additionalCleaned += $groupOrders->count();
+                }
+            }
+
+            $totalCleaned = $cleanedCount + $additionalCleaned;
+            $this->info("✅ Nettoyage terminé: {$totalCleaned} marquages de doublons nettoyés");
+            
+            if ($cleanedCount > 0) {
+                $this->line("  - {$cleanedCount} doublons orphelins supprimés");
+            }
+            if ($additionalCleaned > 0) {
+                $this->line("  - {$additionalCleaned} doublons en statut final marqués comme examinés");
+            }
             
         } catch (\Exception $e) {
             $this->error("❌ Erreur lors du nettoyage: " . $e->getMessage());
         }
+    }
+
+    /**
+     * NOUVELLE MÉTHODE: Obtenir les statistiques détaillées par statut
+     */
+    private function getDuplicateStatsByStatus($adminId)
+    {
+        return Order::where('admin_id', $adminId)
+            ->where('is_duplicate', true)
+            ->where('reviewed_for_duplicates', false)
+            ->groupBy('status')
+            ->selectRaw('status, COUNT(*) as count')
+            ->pluck('count', 'status')
+            ->toArray();
     }
 }

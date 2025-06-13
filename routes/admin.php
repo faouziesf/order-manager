@@ -217,6 +217,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/cancel', [DuplicateOrdersController::class, 'cancelOrder'])->name('cancel');
             Route::post('/auto-merge', [DuplicateOrdersController::class, 'autoMergeDuplicates'])->name('auto-merge');
             Route::post('/settings', [DuplicateOrdersController::class, 'updateSettings'])->name('settings');
+            Route::post('/clean-data', [DuplicateOrdersController::class, 'cleanData'])->name('clean-data');
         });
         
         // ========================================

@@ -101,6 +101,8 @@
 
     .stat-icon.orders { background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); }
     .stat-icon.duplicates { background: linear-gradient(135deg, var(--doublons) 0%, #b8941f 100%); }
+    .stat-icon.mergeable { background: linear-gradient(135deg, var(--success) 0%, #059669 100%); }
+    .stat-icon.non-mergeable { background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%); }
     .stat-icon.money { background: linear-gradient(135deg, var(--success) 0%, #059669 100%); }
     .stat-icon.cancelled { background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%); }
 
@@ -136,7 +138,7 @@
         padding: 1.25rem 1.5rem;
         border-bottom: 1px solid var(--gray-200);
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: center;
     }
 
@@ -225,6 +227,34 @@
         background: rgba(212, 161, 71, 0.1);
         border: 1px solid rgba(212, 161, 71, 0.3);
         color: var(--doublons);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.5rem 0;
+    }
+
+    .mergeable-indicator {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: var(--success);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.5rem 0;
+    }
+
+    .non-mergeable-indicator {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: var(--danger);
         padding: 0.5rem 1rem;
         border-radius: 8px;
         font-size: 0.875rem;
@@ -453,6 +483,43 @@
         color: #0369a1;
     }
 
+    /* Status breakdown */
+    .status-breakdown {
+        padding: 1.5rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .status-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .status-item:last-child {
+        border-bottom: none;
+    }
+
+    .status-name {
+        font-weight: 500;
+        color: var(--gray-800);
+        font-size: 0.875rem;
+    }
+
+    .status-stats {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        font-size: 0.75rem;
+        color: var(--gray-600);
+    }
+
+    .status-count {
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
     @media (max-width: 1024px) {
         .content-grid {
             grid-template-columns: 1fr;
@@ -502,7 +569,7 @@
                     </div>
                     <p style="margin: 0; opacity: 0.8;">
                         <i class="fas fa-copy me-2"></i>
-                        Gestion détaillée des commandes doubles
+                        Gestion détaillée des commandes doubles (tous statuts)
                     </p>
                 </div>
                 <div class="text-end">
@@ -513,7 +580,7 @@
         </div>
     </div>
 
-    <!-- Statistiques -->
+    <!-- Statistiques étendues -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon orders">
@@ -529,6 +596,22 @@
             </div>
             <div class="stat-number">{{ $stats['duplicate_orders'] }}</div>
             <div class="stat-label">Doublons Détectés</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon mergeable">
+                <i class="fas fa-compress-arrows-alt"></i>
+            </div>
+            <div class="stat-number">{{ $stats['mergeable_duplicates'] ?? 0 }}</div>
+            <div class="stat-label">Doublons Fusionnables</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon non-mergeable">
+                <i class="fas fa-ban"></i>
+            </div>
+            <div class="stat-number">{{ $stats['non_mergeable_duplicates'] ?? 0 }}</div>
+            <div class="stat-label">Non-Fusionnables</div>
         </div>
 
         <div class="stat-card">
@@ -548,21 +631,29 @@
         </div>
     </div>
 
-    <!-- Actions groupées -->
-    @if($orders->where('is_duplicate', true)->where('reviewed_for_duplicates', false)->count() > 1)
+    <!-- Actions groupées - Mise à jour pour ne traiter que les fusionnables -->
+    @php
+        $mergeableOrders = $orders->whereIn('status', ['nouvelle', 'datée'])->where('is_duplicate', true)->where('reviewed_for_duplicates', false);
+    @endphp
+    
+    @if($mergeableOrders->count() > 1)
     <div class="bulk-actions">
         <h4>
             <i class="fas fa-tasks"></i>
             Actions Groupées
         </h4>
+        <div class="alert" style="background: rgba(59, 130, 246, 0.1); color: #1e40af; border: 1px solid rgba(59, 130, 246, 0.3); margin-bottom: 1rem;">
+            <i class="fas fa-info-circle"></i>
+            Seules les commandes "nouvelle" et "datée" peuvent être fusionnées. Les autres statuts seront marqués comme examinés.
+        </div>
         <div class="bulk-buttons">
             <button class="btn btn-success" onclick="mergeSelectedOrders()">
                 <i class="fas fa-compress-arrows-alt"></i>
-                Fusionner les Sélectionnées
+                Fusionner les Sélectionnées ({{ $mergeableOrders->count() }} éligibles)
             </button>
             <button class="btn btn-warning" onclick="markSelectedAsReviewed()">
                 <i class="fas fa-check"></i>
-                Marquer comme Examinées
+                Marquer Toutes comme Examinées
             </button>
             <button class="btn btn-danger" onclick="cancelSelectedOrders()">
                 <i class="fas fa-times"></i>
@@ -619,6 +710,19 @@
                                     Doublon en attente d'examen
                                 @endif
                             </div>
+                            
+                            {{-- Indicateur de fusionnabilité --}}
+                            @if(in_array($order->status, ['nouvelle', 'datée']))
+                                <div class="mergeable-indicator">
+                                    <i class="fas fa-compress-arrows-alt"></i>
+                                    Commande fusionnable
+                                </div>
+                            @else
+                                <div class="non-mergeable-indicator">
+                                    <i class="fas fa-ban"></i>
+                                    Non fusionnable (statut: {{ $order->status }})
+                                </div>
+                            @endif
                         @endif
                     </div>
                     
@@ -690,6 +794,12 @@
                             <i class="fas fa-check"></i>
                             Marquer Examiné
                         </button>
+                        @if(in_array($order->status, ['nouvelle', 'datée']))
+                            <button class="btn btn-warning" onclick="showMergeInfo('{{ $order->customer_phone }}')">
+                                <i class="fas fa-compress-arrows-alt"></i>
+                                Fusionner
+                            </button>
+                        @endif
                         <button class="btn btn-danger" onclick="cancelOrder({{ $order->id }})">
                             <i class="fas fa-times"></i>
                             Annuler
@@ -724,6 +834,30 @@
                     <div><strong>Panier moyen :</strong> {{ number_format($stats['avg_order_value'], 2) }} TND</div>
                 </div>
             </div>
+
+            {{-- Nouvelle section: Répartition par statut --}}
+            @if(isset($stats['status_breakdown']) && !empty($stats['status_breakdown']))
+            <div class="status-breakdown">
+                <h5 style="margin: 0 0 1rem 0; color: var(--gray-800);">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Répartition par statut
+                </h5>
+                @foreach($stats['status_breakdown'] as $status => $statusInfo)
+                    <div class="status-item">
+                        <div class="status-name">
+                            <span class="status-badge status-{{ $status }}">{{ ucfirst($status) }}</span>
+                        </div>
+                        <div class="status-stats">
+                            <div class="status-count">{{ $statusInfo['count'] }} commande(s)</div>
+                            <div>{{ number_format($statusInfo['total_value'], 2) }} TND</div>
+                            @if($statusInfo['duplicate_count'] > 0)
+                                <div style="color: var(--doublons);">{{ $statusInfo['duplicate_count'] }} doublon(s)</div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @endif
 
             @if(!empty($topProducts))
             <div class="top-products">
@@ -831,19 +965,25 @@ $(document).ready(function() {
     };
 
     window.mergeSelectedOrders = function() {
-        if (selectedOrders.size < 2) {
-            alert('Veuillez sélectionner au moins 2 commandes pour la fusion.');
+        // Compter seulement les commandes fusionnables sélectionnées
+        const mergeableSelected = Array.from(selectedOrders).filter(orderId => {
+            const orderCard = $(`.order-card[data-order-id="${orderId}"]`);
+            return orderCard.find('.mergeable-indicator').length > 0;
+        });
+
+        if (mergeableSelected.length < 2) {
+            alert('Veuillez sélectionner au moins 2 commandes fusionnables (nouvelle/datée) pour la fusion.');
             return;
         }
 
-        if (!confirm(`Fusionner ${selectedOrders.size} commandes sélectionnées ?`)) {
+        if (!confirm(`Fusionner ${mergeableSelected.length} commandes fusionnables sélectionnées ?`)) {
             return;
         }
 
         const note = prompt('Note pour cette fusion (optionnel):');
         
         $.post('{{ route("admin.duplicates.selective-merge") }}', {
-            order_ids: Array.from(selectedOrders),
+            order_ids: mergeableSelected,
             note: note,
             _token: $('meta[name="csrf-token"]').attr('content')
         })
@@ -937,6 +1077,55 @@ $(document).ready(function() {
         })
         .fail(function() {
             alert('Erreur lors du marquage');
+        });
+    };
+
+    window.showMergeInfo = function(phone) {
+        // Afficher les détails des commandes fusionnables
+        $.get('{{ route("admin.duplicates.history") }}', {
+            customer_phone: phone
+        })
+        .done(function(response) {
+            const mergeableOrders = response.orders.filter(order => 
+                (order.status === 'nouvelle' || order.status === 'datée') && 
+                order.is_duplicate && 
+                !order.reviewed_for_duplicates
+            );
+
+            if (mergeableOrders.length < 2) {
+                alert('Moins de 2 commandes fusionnables trouvées.');
+                return;
+            }
+
+            let message = `Commandes fusionnables trouvées (${mergeableOrders.length}):\n\n`;
+            mergeableOrders.forEach(order => {
+                message += `- Commande #${order.id} (${order.status}) - ${parseFloat(order.total_price).toFixed(3)} TND\n`;
+            });
+            message += '\nVoulez-vous procéder à la fusion ?';
+
+            if (confirm(message)) {
+                const note = prompt('Note pour cette fusion (optionnel):');
+                
+                $.post('{{ route("admin.duplicates.merge") }}', {
+                    customer_phone: phone,
+                    note: note,
+                    _token: $('meta[name="csrf-token"]').attr('content')
+                })
+                .done(function(response) {
+                    if (response.success) {
+                        alert('Fusion réalisée avec succès !');
+                        location.reload();
+                    } else {
+                        alert('Erreur: ' + response.message);
+                    }
+                })
+                .fail(function() {
+                    alert('Erreur lors de la fusion');
+                });
+            }
+        })
+        .fail(function() {
+            alert('Erreur lors du chargement des détails');
         });
     };
 
