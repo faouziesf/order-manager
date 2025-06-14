@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use App\Models\AdminSetting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+
+use App\Http\Controllers\Controller;
+
+use Illuminate\Support\Facades\Http;
+
 use Exception;
 
 class DeliveryController extends Controller
@@ -570,6 +574,254 @@ class DeliveryController extends Controller
         } catch (Exception $e) {
             Log::error('FParcel tracking error: ' . $e->getMessage());
             throw $e;
+        }
+    }
+
+    // Add these imports at the top of your DeliveryController if not already present
+
+    // Updated methods to work with your existing AdminSetting model:
+
+    /**
+     * Get API parameters configuration
+     */
+    public function getParameters()
+    {
+        try {
+            $admin = auth('admin')->user();
+
+            // Default parameters
+            $defaultParameters = [
+                'enl_contact_nom' => '',
+                'enl_contact_prenom' => '',
+                'enl_adresse' => '',
+                'enl_code_postal' => '',
+                'enl_portable' => '',
+                'enl_mail' => '',
+                'default_mr_code' => '',
+                'default_pos_allow_open' => '0',
+                'default_pos_valid' => '1',
+                'default_nb_piece' => '1',
+                'default_time_from' => '08:00',
+                'default_time_to' => '18:00',
+                'default_poids' => '',
+                'default_valeur' => '',
+                'default_pos_link_img' => '',
+            ];
+
+            // Get saved parameters using your existing model structure
+            $parameters = [];
+            foreach ($defaultParameters as $key => $defaultValue) {
+                $settingKey = "delivery_param_{$key}";
+                $value = AdminSetting::getForAdmin($admin->id, $settingKey, $defaultValue);
+                $parameters[$key] = $value;
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $parameters
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error getting delivery parameters: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => true, // Return success with defaults to avoid frontend errors
+                'data' => [
+                    'enl_contact_nom' => '',
+                    'enl_contact_prenom' => '',
+                    'enl_adresse' => '',
+                    'enl_code_postal' => '',
+                    'enl_portable' => '',
+                    'enl_mail' => '',
+                    'default_mr_code' => '',
+                    'default_pos_allow_open' => '0',
+                    'default_pos_valid' => '1',
+                    'default_nb_piece' => '1',
+                    'default_time_from' => '08:00',
+                    'default_time_to' => '18:00',
+                    'default_poids' => '',
+                    'default_valeur' => '',
+                    'default_pos_link_img' => '',
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * Save API parameters configuration
+     */
+    public function saveParameters(Request $request)
+    {
+        try {
+            $admin = auth('admin')->user();
+
+            // Validate the input
+            $validatedData = $request->validate([
+                'enl_contact_nom' => 'nullable|string|max:255',
+                'enl_contact_prenom' => 'nullable|string|max:255',
+                'enl_adresse' => 'nullable|string|max:500',
+                'enl_code_postal' => 'nullable|string|max:10',
+                'enl_portable' => 'nullable|string|max:20',
+                'enl_mail' => 'nullable|email|max:255',
+                'default_mr_code' => 'nullable|string|max:50',
+                'default_pos_allow_open' => 'nullable|in:0,1',
+                'default_pos_valid' => 'nullable|in:0,1',
+                'default_nb_piece' => 'nullable|integer|min:1',
+                'default_time_from' => 'nullable|string',
+                'default_time_to' => 'nullable|string',
+                'default_poids' => 'nullable|numeric|min:0',
+                'default_valeur' => 'nullable|numeric|min:0',
+                'default_pos_link_img' => 'nullable|url|max:500',
+            ]);
+
+            // Store the configuration using your existing model structure
+            foreach ($validatedData as $key => $value) {
+                $settingKey = "delivery_param_{$key}";
+                $description = "Paramètre de livraison FParcel: {$key}";
+
+                // Determine if this should be encrypted (email and sensitive data)
+                $isEncrypted = in_array($key, ['enl_mail', 'enl_portable']);
+
+                AdminSetting::setForAdmin(
+                    $admin->id,
+                    $settingKey,
+                    $value ?? '',
+                    'string',
+                    $isEncrypted,
+                    $description
+                );
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuration sauvegardée avec succès'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error saving delivery parameters: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la sauvegarde: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Test API parameters configuration
+     */
+    public function testParameters(Request $request)
+    {
+        try {
+            $admin = auth('admin')->user();
+
+            // Get FParcel token (you'll need to implement this based on how you store tokens)
+            $token = AdminSetting::getForAdmin($admin->id, 'fparcel_token');
+
+            if (!$token) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token FParcel non disponible. Veuillez vous connecter d\'abord.'
+                ]);
+            }
+
+            // Validate required sender information
+            $requiredFields = ['enl_contact_nom', 'enl_contact_prenom', 'enl_adresse', 'enl_code_postal'];
+            $missingFields = [];
+
+            foreach ($requiredFields as $field) {
+                if (empty($request->input($field))) {
+                    $missingFields[] = $field;
+                }
+            }
+
+            if (!empty($missingFields)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Champs obligatoires manquants: ' . implode(', ', $missingFields)
+                ]);
+            }
+
+            // Build test data structure for FParcel API
+            $testData = [
+                'TOKEN' => $token,
+                'ENL_CONTACT_NOM' => $request->input('enl_contact_nom'),
+                'ENL_CONTACT_PRENOM' => $request->input('enl_contact_prenom'),
+                'ENL_ADRESSE' => $request->input('enl_adresse'),
+                'ENL_PORTABLE' => $request->input('enl_portable'),
+                'ENL_MAIL' => $request->input('enl_mail'),
+                'ENL_CODE_POSTAL' => $request->input('enl_code_postal'),
+                // Test recipient data
+                'LIV_CONTACT_NOM' => 'Test',
+                'LIV_CONTACT_PRENOM' => 'Destinataire',
+                'LIV_ADRESSE' => 'Adresse test',
+                'LIV_PORTABLE' => '0123456789',
+                'LIV_MAIL' => 'test@example.com',
+                'LIV_CODE_POSTAL' => '1000',
+                'POIDS' => $request->input('default_poids', 1),
+                'VALEUR' => $request->input('default_valeur', 10),
+                'COD' => '0',
+                'RTRNCONTENU' => '',
+                'POSNBPIECE' => $request->input('default_nb_piece', 1),
+                'DATE_ENLEVEMENT' => date('d/m/Y'),
+                'POSITION_TIME_LIV_DISPO_FROM' => $request->input('default_time_from', '08:00'),
+                'POSITION_TIME_LIV_DISPO_TO' => $request->input('default_time_to', '18:00'),
+                'REFERENCE' => 'TEST-' . time(),
+                'ORDER_NUMBER' => 'TEST-ORDER-' . time(),
+                'MR_CODE' => $request->input('default_mr_code', ''),
+                'POS_VALID' => '0', // Always create test positions as temporary
+                'POS_ALLOW_OPEN' => $request->input('default_pos_allow_open', '0'),
+                'POS_LINK_IMG' => $request->input('default_pos_link_img', ''),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuration valide ! Les paramètres sont correctement formatés.',
+                'preview' => $testData // Show what would be sent to FParcel
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error testing delivery parameters: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du test: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get synchronized payment methods
+     */
+    public function getPaymentMethods()
+    {
+        try {
+            $admin = auth('admin')->user();
+
+            // Try to get payment methods from database (assuming you'll create this table)
+            try {
+                $paymentMethods = DB::table('fparcel_payment_methods')
+                    ->where('admin_id', $admin->id)
+                    ->where('is_active', true)
+                    ->select('code', 'name')
+                    ->get();
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $paymentMethods->toArray()
+                ]);
+            } catch (\Exception $e) {
+                // If table doesn't exist yet, return empty array
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'Aucun mode de règlement synchronisé. Veuillez synchroniser d\'abord.'
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error getting payment methods: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement des modes de règlement: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

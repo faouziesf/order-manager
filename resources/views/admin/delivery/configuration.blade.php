@@ -277,6 +277,39 @@
                 padding: 1.5rem;
             }
         }
+
+        .card {
+            border: 2px solid var(--gray-200);
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+        }
+
+        .text-muted {
+            color: var(--gray-600) !important;
+            font-size: 0.75rem;
     </style>
 @endsection
 
@@ -485,6 +518,262 @@
                         Paramètres
                     </button>
                 </div>
+            </div>
+        </div>
+        <div class="config-section" id="api-parameters" style="display: none;">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-code"></i>
+                    Configuration des paramètres d'envoi
+                </h3>
+            </div>
+
+            <div style="padding: 1.5rem;">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Configurez les valeurs par défaut qui seront utilisées lors de la création des positions de
+                        livraison via l'API FParcel.</span>
+                </div>
+
+                <form id="api-parameters-form">
+                    <!-- Informations Expéditeur -->
+                    <div class="card mb-4"
+                        style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
+                        <div class="card-header"
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
+                            <h5 class="mb-0"
+                                style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-user-tie text-primary"></i>
+                                Informations Expéditeur (par défaut)
+                            </h5>
+                        </div>
+                        <div class="card-body" style="padding: 1.5rem;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="enl_contact_nom">
+                                            <i class="fas fa-user me-2"></i>Nom de l'expéditeur
+                                        </label>
+                                        <input type="text" class="form-control" id="enl_contact_nom"
+                                            name="enl_contact_nom" placeholder="Nom de l'expéditeur">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="enl_contact_prenom">
+                                            <i class="fas fa-user me-2"></i>Prénom de l'expéditeur
+                                        </label>
+                                        <input type="text" class="form-control" id="enl_contact_prenom"
+                                            name="enl_contact_prenom" placeholder="Prénom de l'expéditeur">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label" for="enl_adresse">
+                                            <i class="fas fa-map-marker-alt me-2"></i>Adresse d'enlèvement
+                                        </label>
+                                        <textarea class="form-control" id="enl_adresse" name="enl_adresse" rows="2"
+                                            placeholder="Adresse complète d'enlèvement"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label" for="enl_code_postal">
+                                            <i class="fas fa-mail-bulk me-2"></i>Code postal
+                                        </label>
+                                        <input type="text" class="form-control" id="enl_code_postal"
+                                            name="enl_code_postal" placeholder="Code postal">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label" for="enl_portable">
+                                            <i class="fas fa-mobile-alt me-2"></i>Téléphone portable
+                                        </label>
+                                        <input type="tel" class="form-control" id="enl_portable" name="enl_portable"
+                                            placeholder="Numéro de téléphone">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="form-label" for="enl_mail">
+                                            <i class="fas fa-envelope me-2"></i>Email
+                                        </label>
+                                        <input type="email" class="form-control" id="enl_mail" name="enl_mail"
+                                            placeholder="Adresse email">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paramètres de livraison -->
+                    <div class="card mb-4"
+                        style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
+                        <div class="card-header"
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
+                            <h5 class="mb-0"
+                                style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-truck text-success"></i>
+                                Paramètres de livraison par défaut
+                            </h5>
+                        </div>
+                        <div class="card-body" style="padding: 1.5rem;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_mr_code">
+                                            <i class="fas fa-credit-card me-2"></i>Mode de règlement par défaut
+                                        </label>
+                                        <select class="form-control" id="default_mr_code" name="default_mr_code">
+                                            <option value="">Sélectionner un mode de règlement</option>
+                                        </select>
+                                        <small class="text-muted">Les modes de règlement sont synchronisés depuis
+                                            FParcel</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_pos_allow_open">
+                                            <i class="fas fa-box-open me-2"></i>Autoriser l'ouverture du colis
+                                        </label>
+                                        <select class="form-control" id="default_pos_allow_open"
+                                            name="default_pos_allow_open">
+                                            <option value="0">Non - Ouverture interdite</option>
+                                            <option value="1">Oui - Ouverture autorisée</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_pos_valid">
+                                            <i class="fas fa-check-circle me-2"></i>Validation automatique
+                                        </label>
+                                        <select class="form-control" id="default_pos_valid" name="default_pos_valid">
+                                            <option value="0">Non - Position temporaire</option>
+                                            <option value="1" selected>Oui - Position validée</option>
+                                        </select>
+                                        <small class="text-muted">Si "Non", la position devra être validée
+                                            manuellement</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_nb_piece">
+                                            <i class="fas fa-boxes me-2"></i>Nombre de pièces par défaut
+                                        </label>
+                                        <input type="number" class="form-control" id="default_nb_piece"
+                                            name="default_nb_piece" value="1" min="1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Horaires de livraison -->
+                    <div class="card mb-4"
+                        style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
+                        <div class="card-header"
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
+                            <h5 class="mb-0"
+                                style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-clock text-warning"></i>
+                                Horaires de disponibilité par défaut
+                            </h5>
+                        </div>
+                        <div class="card-body" style="padding: 1.5rem;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_time_from">
+                                            <i class="fas fa-clock me-2"></i>Disponible à partir de
+                                        </label>
+                                        <input type="time" class="form-control" id="default_time_from"
+                                            name="default_time_from" value="08:00">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_time_to">
+                                            <i class="fas fa-clock me-2"></i>Disponible jusqu'à
+                                        </label>
+                                        <input type="time" class="form-control" id="default_time_to"
+                                            name="default_time_to" value="18:00">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paramètres avancés -->
+                    <div class="card mb-4"
+                        style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
+                        <div class="card-header"
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
+                            <h5 class="mb-0"
+                                style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-cogs text-info"></i>
+                                Paramètres avancés
+                            </h5>
+                        </div>
+                        <div class="card-body" style="padding: 1.5rem;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_poids">
+                                            <i class="fas fa-weight me-2"></i>Poids par défaut (kg)
+                                        </label>
+                                        <input type="number" step="0.1" class="form-control" id="default_poids"
+                                            name="default_poids" placeholder="Poids en kg">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_valeur">
+                                            <i class="fas fa-euro-sign me-2"></i>Valeur déclarée par défaut (€)
+                                        </label>
+                                        <input type="number" step="0.01" class="form-control" id="default_valeur"
+                                            name="default_valeur" placeholder="Valeur en euros">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label" for="default_pos_link_img">
+                                            <i class="fas fa-image me-2"></i>URL de l'image par défaut
+                                        </label>
+                                        <input type="url" class="form-control" id="default_pos_link_img"
+                                            name="default_pos_link_img" placeholder="https://exemple.com/image.jpg">
+                                        <small class="text-muted">URL de l'image représentant le contenu du colis</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Sauvegarder la configuration
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="loadDefaultParameters()">
+                            <i class="fas fa-sync"></i>
+                            Recharger
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="testApiParameters()">
+                            <i class="fas fa-vial"></i>
+                            Tester la configuration
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -747,6 +1036,140 @@
                     alert.fadeOut();
                 }, 5000);
             }
+        }
+
+        function loadPaymentMethods() {
+            $.get('{{ route('admin.delivery.payment-methods') }}')
+                .done(function(response) {
+                    if (response.success) {
+                        const select = $('#default_mr_code');
+                        select.empty().append('<option value="">Sélectionner un mode de règlement</option>');
+
+                        response.data.forEach(function(method) {
+                            select.append(`<option value="${method.code}">${method.name}</option>`);
+                        });
+                    }
+                })
+                .fail(function() {
+                    showAlert('warning', 'Impossible de charger les modes de règlement');
+                });
+        }
+
+        // Enhanced showConnectedState function
+        function showConnectedState(data) {
+            $('#connection-status')
+                .removeClass('disconnected')
+                .addClass('connected')
+                .html('<i class="fas fa-check-circle"></i><span>Connecté au service FParcel</span>');
+
+            $('#connection-form').hide();
+            $('#connection-info').show();
+            $('#delivery-settings').show();
+            $('#api-parameters').show(); // Show the new parameters section
+
+            if (data.token) {
+                $('#current-token').text(data.token);
+            }
+            if (data.updated_at) {
+                $('#token-updated').text(new Date(data.updated_at).toLocaleString('fr-FR'));
+            }
+
+            // Load payment methods and default parameters
+            loadPaymentMethods();
+            loadDefaultParameters();
+        }
+
+        // Enhanced showDisconnectedState function
+        function showDisconnectedState() {
+            $('#connection-status')
+                .removeClass('connected')
+                .addClass('disconnected')
+                .html('<i class="fas fa-times-circle"></i><span>Non connecté au service FParcel</span>');
+
+            $('#connection-form').show();
+            $('#connection-info').hide();
+            $('#delivery-settings').hide();
+            $('#api-parameters').hide(); // Hide the parameters section
+        }
+
+        // Save API parameters
+        $('#api-parameters-form').on('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
+
+            $.post('{{ route('admin.delivery.save-parameters') }}', formData)
+                .done(function(response) {
+                    if (response.success) {
+                        showAlert('success', 'Configuration sauvegardée avec succès');
+                    } else {
+                        showAlert('danger', response.message || 'Erreur lors de la sauvegarde');
+                    }
+                })
+                .fail(function() {
+                    showAlert('danger', 'Erreur lors de la sauvegarde de la configuration');
+                });
+        });
+
+        // Load default parameters
+        function loadDefaultParameters() {
+            $.get('{{ route('admin.delivery.get-parameters') }}')
+                .done(function(response) {
+                    if (response.success && response.data) {
+                        const data = response.data;
+                        Object.keys(data).forEach(function(key) {
+                            const element = document.getElementById(key);
+                            if (element) {
+                                element.value = data[key] || '';
+                            }
+                        });
+                        showAlert('success', 'Configuration chargée');
+                    }
+                })
+                .fail(function() {
+                    showAlert('warning', 'Impossible de charger la configuration');
+                });
+        }
+
+        // Test API parameters
+        function testApiParameters() {
+            const formData = new FormData(document.getElementById('api-parameters-form'));
+            formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
+
+            showAlert('info', 'Test de la configuration en cours...');
+
+            $.post('{{ route('admin.delivery.test-parameters') }}', formData)
+                .done(function(response) {
+                    if (response.success) {
+                        showAlert('success', 'Configuration valide ! Prêt pour la création de positions.');
+                    } else {
+                        showAlert('danger', response.message || 'Configuration invalide');
+                    }
+                })
+                .fail(function() {
+                    showAlert('danger', 'Erreur lors du test de la configuration');
+                });
+        }
+
+        // Enhanced syncPaymentMethods function
+        function syncPaymentMethods() {
+            showAlert('info', 'Synchronisation des modes de règlement...');
+
+            $.post('{{ route('admin.delivery.sync-payment-methods') }}', {
+                    _token: $('meta[name="csrf-token"]').attr('content')
+                })
+                .done(function(response) {
+                    if (response.success) {
+                        showAlert('success', `${response.count} modes de règlement synchronisés`);
+                        loadPaymentMethods(); // Reload the payment methods dropdown
+                    } else {
+                        showAlert('danger', response.message || 'Erreur lors de la synchronisation');
+                    }
+                })
+                .fail(function() {
+                    showAlert('danger', 'Erreur lors de la synchronisation des modes de règlement');
+                });
         }
     </script>
 @endsection

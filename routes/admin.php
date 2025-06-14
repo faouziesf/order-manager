@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\RestockController;
 use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\SuspendedController;
 use App\Http\Controllers\Admin\WooCommerceController;
+use App\Http\Controllers\Admin\DeliveryController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -233,6 +234,59 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
+        // GESTION DES LIVRAISONS
+        // ========================================
+        Route::prefix('delivery')->name('delivery.')->group(function () {
+            // Configuration page
+            Route::get('configuration', [DeliveryController::class, 'configuration'])
+                ->name('configuration');
+            Route::post('configuration', [DeliveryController::class, 'updateConfiguration'])
+                ->name('configuration.update');
+
+            // Management page
+            Route::get('management', [DeliveryController::class, 'management'])
+                ->name('management');
+            Route::post('management', [DeliveryController::class, 'updateManagement'])
+                ->name('management.update');
+
+            // FParcel API connection routes
+            Route::get('status', [DeliveryController::class, 'getConnectionStatus'])
+                ->name('status');
+            Route::post('connect', [DeliveryController::class, 'connectToFParcel'])
+                ->name('connect');
+            Route::post('test', [DeliveryController::class, 'testConnection'])
+                ->name('test');
+            Route::post('disconnect', [DeliveryController::class, 'disconnect'])
+                ->name('disconnect');
+            Route::post('refresh-token', [DeliveryController::class, 'refreshToken'])
+                ->name('refresh-token');
+
+            // Synchronization routes
+            Route::post('sync-payment-methods', [DeliveryController::class, 'syncPaymentMethods'])
+                ->name('sync-payment-methods');
+            Route::post('sync-drop-points', [DeliveryController::class, 'syncDropPoints'])
+                ->name('sync-drop-points');
+            Route::post('sync-anomaly-reasons', [DeliveryController::class, 'syncAnomalyReasons'])
+                ->name('sync-anomaly-reasons');
+
+            // API Parameters configuration routes
+            Route::post('save-parameters', [DeliveryController::class, 'saveParameters'])
+                ->name('save-parameters');
+            Route::get('get-parameters', [DeliveryController::class, 'getParameters'])
+                ->name('get-parameters');
+            Route::post('test-parameters', [DeliveryController::class, 'testParameters'])
+                ->name('test-parameters');
+            Route::get('payment-methods', [DeliveryController::class, 'getPaymentMethods'])
+                ->name('payment-methods');
+
+            // Additional utility routes
+            Route::get('zones', [DeliveryController::class, 'zones'])
+                ->name('zones');
+            Route::get('tarifs', [DeliveryController::class, 'tarifs'])
+                ->name('tarifs');
+        });
+
+        // ========================================
         // DEBUG
         // ========================================
         Route::get('debug-auth', function () {
@@ -251,72 +305,5 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ]
             ];
         })->name('debug-auth');
-        // ========================================
-        // GESTION DES LIVRAISONS
-        // ========================================
-        Route::prefix('delivery')->name('delivery.')->group(function () {
-            // Configuration page
-            Route::get('configuration', [App\Http\Controllers\Admin\DeliveryController::class, 'configuration'])
-                ->name('configuration');
-            Route::post('configuration', [App\Http\Controllers\Admin\DeliveryController::class, 'updateConfiguration'])
-                ->name('configuration.update');
-
-            // Management page
-            Route::get('management', [App\Http\Controllers\Admin\DeliveryController::class, 'management'])
-                ->name('management');
-            Route::post('management', [App\Http\Controllers\Admin\DeliveryController::class, 'updateManagement'])
-                ->name('management.update');
-
-            // Additional routes you might need later
-            Route::get('zones', [App\Http\Controllers\Admin\DeliveryController::class, 'zones'])
-                ->name('zones');
-            Route::get('tarifs', [App\Http\Controllers\Admin\DeliveryController::class, 'tarifs'])
-                ->name('tarifs');
-        });
-        // Add this section in your routes/admin.php file, within the authenticated admin middleware group
-        // Place it after the existing route groups (around line 150-160)
-
-        // ========================================
-        // GESTION DES LIVRAISONS
-        // ========================================
-        Route::prefix('delivery')->name('delivery.')->group(function () {
-            // Configuration page
-            Route::get('configuration', [App\Http\Controllers\Admin\DeliveryController::class, 'configuration'])
-                ->name('configuration');
-            Route::post('configuration', [App\Http\Controllers\Admin\DeliveryController::class, 'updateConfiguration'])
-                ->name('configuration.update');
-
-            // Management page
-            Route::get('management', [App\Http\Controllers\Admin\DeliveryController::class, 'management'])
-                ->name('management');
-            Route::post('management', [App\Http\Controllers\Admin\DeliveryController::class, 'updateManagement'])
-                ->name('management.update');
-
-            // FParcel API connection routes
-            Route::get('status', [App\Http\Controllers\Admin\DeliveryController::class, 'getConnectionStatus'])
-                ->name('status');
-            Route::post('connect', [App\Http\Controllers\Admin\DeliveryController::class, 'connectToFParcel'])
-                ->name('connect');
-            Route::post('test', [App\Http\Controllers\Admin\DeliveryController::class, 'testConnection'])
-                ->name('test');
-            Route::post('disconnect', [App\Http\Controllers\Admin\DeliveryController::class, 'disconnect'])
-                ->name('disconnect');
-            Route::post('refresh-token', [App\Http\Controllers\Admin\DeliveryController::class, 'refreshToken'])
-                ->name('refresh-token');
-
-            // Synchronization routes
-            Route::post('sync-payment-methods', [App\Http\Controllers\Admin\DeliveryController::class, 'syncPaymentMethods'])
-                ->name('sync-payment-methods');
-            Route::post('sync-drop-points', [App\Http\Controllers\Admin\DeliveryController::class, 'syncDropPoints'])
-                ->name('sync-drop-points');
-            Route::post('sync-anomaly-reasons', [App\Http\Controllers\Admin\DeliveryController::class, 'syncAnomalyReasons'])
-                ->name('sync-anomaly-reasons');
-
-            // Additional utility routes
-            Route::get('zones', [App\Http\Controllers\Admin\DeliveryController::class, 'zones'])
-                ->name('zones');
-            Route::get('tarifs', [App\Http\Controllers\Admin\DeliveryController::class, 'tarifs'])
-                ->name('tarifs');
-        });
     });
 });
