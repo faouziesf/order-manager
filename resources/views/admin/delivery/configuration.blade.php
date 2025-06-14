@@ -75,6 +75,121 @@
             margin: 0;
         }
 
+        /* Company Selection Styles */
+        .company-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem;
+        }
+
+        .company-card {
+            background: white;
+            border: 3px solid var(--gray-200);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .company-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .company-card.selected {
+            border-color: var(--success);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.1) 100%);
+        }
+
+        .company-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .company-card.selected .company-logo {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+        }
+
+        .company-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .company-description {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .company-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
+        }
+
+        .company-features li {
+            padding: 0.25rem 0;
+            color: var(--gray-600);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .company-features li i {
+            color: var(--success);
+            width: 16px;
+        }
+
+        .breadcrumb-nav {
+            background: var(--gray-100);
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .breadcrumb-item {
+            color: var(--gray-600);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .breadcrumb-item:hover {
+            color: var(--primary);
+        }
+
+        .breadcrumb-item.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .breadcrumb-separator {
+            color: var(--gray-400);
+        }
+
         .connection-status {
             padding: 1rem;
             border-radius: 8px;
@@ -268,16 +383,6 @@
             margin-top: 1rem;
         }
 
-        @media (max-width: 768px) {
-            .config-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .page-header {
-                padding: 1.5rem;
-            }
-        }
-
         .card {
             border: 2px solid var(--gray-200);
             border-radius: var(--border-radius);
@@ -301,15 +406,22 @@
             padding: 1.5rem;
         }
 
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
-        }
-
         .text-muted {
             color: var(--gray-600) !important;
             font-size: 0.75rem;
+        }
+
+        @media (max-width: 768px) {
+
+            .config-grid,
+            .company-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                padding: 1.5rem;
+            }
+        }
     </style>
 @endsection
 
@@ -326,455 +438,535 @@
                             Configuration des Livraisons
                         </h1>
                         <p style="margin: 0; opacity: 0.8; font-size: 1.125rem;">
-                            Connectez-vous à votre service de livraison FParcel
+                            Choisissez et configurez votre service de livraison
                         </p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Section de connexion FParcel -->
-        <div class="config-section">
+        <!-- Breadcrumb Navigation (hidden initially) -->
+        <div class="breadcrumb-nav" id="breadcrumb-nav" style="display: none;">
+            <a class="breadcrumb-item" onclick="showCompanySelection()">
+                <i class="fas fa-building"></i>
+                Sélection du transporteur
+            </a>
+            <span class="breadcrumb-separator">
+                <i class="fas fa-chevron-right"></i>
+            </span>
+            <span class="breadcrumb-item active" id="selected-company-name">
+                Configuration
+            </span>
+        </div>
+
+        <!-- Company Selection Section -->
+        <div class="config-section" id="company-selection">
             <div class="section-header">
                 <h3 class="section-title">
-                    <i class="fas fa-plug"></i>
-                    Connexion au service FParcel
+                    <i class="fas fa-building"></i>
+                    Sélectionnez votre transporteur
                 </h3>
             </div>
 
-            <div style="padding: 1.5rem;">
-                <!-- Statut de connexion -->
-                <div id="connection-status" class="connection-status disconnected">
-                    <i class="fas fa-times-circle"></i>
-                    <span>Non connecté au service FParcel</span>
+            <div class="company-grid">
+                <!-- FParcel Card -->
+                <div class="company-card" data-company="fparcel" onclick="selectCompany('fparcel')">
+                    <div class="company-logo">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <h4 class="company-name">FParcel</h4>
+                    <p class="company-description">
+                        Solution de livraison complète avec tracking en temps réel et gestion avancée des colis
+                    </p>
+                    <ul class="company-features">
+                        <li><i class="fas fa-check"></i> Tracking en temps réel</li>
+                        <li><i class="fas fa-check"></i> API complète</li>
+                        <li><i class="fas fa-check"></i> Gestion des anomalies</li>
+                        <li><i class="fas fa-check"></i> Points de dépôt</li>
+                        <li><i class="fas fa-check"></i> Étiquettes personnalisées</li>
+                        <li><i class="fas fa-check"></i> Modes de règlement multiples</li>
+                    </ul>
                 </div>
 
-                <!-- Alertes -->
-                <div id="alerts-container"></div>
+                <!-- Placeholder for future companies -->
+                <div class="company-card" style="opacity: 0.5; cursor: not-allowed;">
+                    <div class="company-logo" style="background: var(--gray-600);">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <h4 class="company-name">Autres transporteurs</h4>
+                    <p class="company-description">
+                        D'autres solutions de transport seront bientôt disponibles
+                    </p>
+                    <ul class="company-features">
+                        <li><i class="fas fa-clock"></i> Prochainement disponible</li>
+                        <li><i class="fas fa-clock"></i> En cours de développement</li>
+                    </ul>
+                </div>
+            </div>
 
-                <!-- Formulaire de connexion -->
-                <div id="connection-form">
-                    <form id="fparcel-connect-form">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label" for="fparcel_username">
-                                        <i class="fas fa-user me-2"></i>Nom d'utilisateur FParcel
-                                    </label>
-                                    <input type="text" class="form-control" id="fparcel_username" name="username"
-                                        required autocomplete="username" placeholder="Votre nom d'utilisateur FParcel">
+            <div style="padding: 0 2rem 2rem;">
+                <div class="d-flex justify-content-center">
+                    <button type="button" class="btn btn-primary" id="continue-btn" disabled
+                        onclick="proceedToConfiguration()">
+                        <i class="fas fa-arrow-right"></i>
+                        Continuer avec la configuration
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- FParcel Configuration Section -->
+        <div id="fparcel-configuration" style="display: none;">
+
+            <!-- Section de connexion FParcel -->
+            <div class="config-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-plug"></i>
+                        Connexion au service FParcel
+                    </h3>
+                </div>
+
+                <div style="padding: 1.5rem;">
+                    <!-- Statut de connexion -->
+                    <div id="connection-status" class="connection-status disconnected">
+                        <i class="fas fa-times-circle"></i>
+                        <span>Non connecté au service FParcel</span>
+                    </div>
+
+                    <!-- Alertes -->
+                    <div id="alerts-container"></div>
+
+                    <!-- Formulaire de connexion -->
+                    <div id="connection-form">
+                        <form id="fparcel-connect-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="fparcel_username">
+                                            <i class="fas fa-user me-2"></i>Nom d'utilisateur FParcel
+                                        </label>
+                                        <input type="text" class="form-control" id="fparcel_username" name="username"
+                                            required autocomplete="username" placeholder="Votre nom d'utilisateur FParcel">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="fparcel_password">
+                                            <i class="fas fa-lock me-2"></i>Mot de passe FParcel
+                                        </label>
+                                        <input type="password" class="form-control" id="fparcel_password" name="password"
+                                            required autocomplete="current-password"
+                                            placeholder="Votre mot de passe FParcel">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label" for="fparcel_password">
-                                        <i class="fas fa-lock me-2"></i>Mot de passe FParcel
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-server me-2"></i>Environnement
+                                </label>
+                                <div>
+                                    <label style="margin-right: 1rem; font-weight: normal;">
+                                        <input type="radio" name="environment" value="test" checked
+                                            style="margin-right: 0.5rem;">
+                                        Test (http://fparcel.net:59)
                                     </label>
-                                    <input type="password" class="form-control" id="fparcel_password" name="password"
-                                        required autocomplete="current-password" placeholder="Votre mot de passe FParcel">
+                                    <label style="font-weight: normal;">
+                                        <input type="radio" name="environment" value="prod"
+                                            style="margin-right: 0.5rem;">
+                                        Production (https://admin.fparcel.net)
+                                    </label>
                                 </div>
+                                <small class="text-muted">Utilisez l'environnement de test pour les essais, production pour
+                                    l'utilisation réelle.</small>
                             </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary" id="connect-btn">
+                                    <i class="fas fa-plug"></i>
+                                    Se connecter
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="testConnection()">
+                                    <i class="fas fa-vial"></i>
+                                    Tester la connexion
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Informations de connexion (visible après connexion) -->
+                    <div id="connection-info" style="display: none;">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            Connecté avec succès au service FParcel
                         </div>
 
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-server me-2"></i>Environnement
-                            </label>
-                            <div>
-                                <label style="margin-right: 1rem; font-weight: normal;">
-                                    <input type="radio" name="environment" value="test" checked
-                                        style="margin-right: 0.5rem;">
-                                    Test (http://fparcel.net:59)
-                                </label>
-                                <label style="font-weight: normal;">
-                                    <input type="radio" name="environment" value="prod" style="margin-right: 0.5rem;">
-                                    Production (https://admin.fparcel.net)
-                                </label>
-                            </div>
-                            <small class="text-muted">Utilisez l'environnement de test pour les essais, production pour
-                                l'utilisation réelle.</small>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary" id="connect-btn">
-                                <i class="fas fa-plug"></i>
-                                Se connecter
+                        <div class="d-flex gap-2 mb-3">
+                            <button type="button" class="btn btn-danger" onclick="disconnect()">
+                                <i class="fas fa-times"></i>
+                                Se déconnecter
                             </button>
-                            <button type="button" class="btn btn-secondary" onclick="testConnection()">
+                            <button type="button" class="btn btn-info" onclick="refreshToken()">
+                                <i class="fas fa-refresh"></i>
+                                Actualiser le token
+                            </button>
+                        </div>
+
+                        <div class="token-info">
+                            <strong>Token actuel:</strong>
+                            <div id="current-token">Chargement...</div>
+                            <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--gray-600);">
+                                <strong>Dernière mise à jour:</strong> <span id="token-updated">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration des paramètres (visible après connexion) -->
+            <div class="config-section" id="delivery-settings" style="display: none;">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-cogs"></i>
+                        Paramètres de livraison
+                    </h3>
+                </div>
+
+                <div class="config-grid">
+                    <div class="config-item">
+                        <h5>
+                            <i class="fas fa-dollar-sign text-success"></i>
+                            Modes de règlement
+                        </h5>
+                        <p>Synchronisez et configurez les modes de règlement disponibles</p>
+                        <button class="btn btn-success" onclick="syncPaymentMethods()">
+                            <i class="fas fa-sync"></i>
+                            Synchroniser
+                        </button>
+                    </div>
+
+                    <div class="config-item">
+                        <h5>
+                            <i class="fas fa-building text-info"></i>
+                            Points de dépôt
+                        </h5>
+                        <p>Gérez la liste des agences et points de dépôt</p>
+                        <button class="btn btn-info" onclick="syncDropPoints()">
+                            <i class="fas fa-download"></i>
+                            Synchroniser
+                        </button>
+                    </div>
+
+                    <div class="config-item">
+                        <h5>
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            Motifs d'anomalies
+                        </h5>
+                        <p>Synchronisez la liste des motifs d'anomalies</p>
+                        <button class="btn btn-warning" onclick="syncAnomalyReasons()">
+                            <i class="fas fa-list"></i>
+                            Synchroniser
+                        </button>
+                    </div>
+
+                    <div class="config-item">
+                        <h5>
+                            <i class="fas fa-tag text-primary"></i>
+                            Étiquettes
+                        </h5>
+                        <p>Configurez les paramètres d'impression des étiquettes</p>
+                        <button class="btn btn-primary" onclick="configureLabels()">
+                            <i class="fas fa-print"></i>
+                            Configurer
+                        </button>
+                    </div>
+
+                    <div class="config-item">
+                        <h5>
+                            <i class="fas fa-map-marker-alt text-danger"></i>
+                            Zones de livraison
+                        </h5>
+                        <p>Configurez vos zones de livraison et les tarifs associés</p>
+                        <button class="btn btn-danger" onclick="configureZones()">
+                            <i class="fas fa-cog"></i>
+                            Configurer
+                        </button>
+                    </div>
+
+                    <div class="config-item">
+                        <h5>
+                            <i class="fas fa-clock text-secondary"></i>
+                            Paramètres généraux
+                        </h5>
+                        <p>Configurez les horaires de livraison et autres paramètres</p>
+                        <button class="btn btn-secondary" onclick="configureGeneral()">
+                            <i class="fas fa-sliders-h"></i>
+                            Paramètres
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration des paramètres d'envoi -->
+            <div class="config-section" id="api-parameters" style="display: none;">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-code"></i>
+                        Configuration des paramètres d'envoi
+                    </h3>
+                </div>
+
+                <div style="padding: 1.5rem;">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Configurez les valeurs par défaut qui seront utilisées lors de la création des positions de
+                            livraison via l'API FParcel.</span>
+                    </div>
+
+                    <form id="api-parameters-form">
+                        <!-- Informations Expéditeur -->
+                        <div class="card mb-4"
+                            style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
+                            <div class="card-header"
+                                style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
+                                <h5 class="mb-0"
+                                    style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-user-tie text-primary"></i>
+                                    Informations Expéditeur (par défaut)
+                                </h5>
+                            </div>
+                            <div class="card-body" style="padding: 1.5rem;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="enl_contact_nom">
+                                                <i class="fas fa-user me-2"></i>Nom de l'expéditeur
+                                            </label>
+                                            <input type="text" class="form-control" id="enl_contact_nom"
+                                                name="enl_contact_nom" placeholder="Nom de l'expéditeur">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="enl_contact_prenom">
+                                                <i class="fas fa-user me-2"></i>Prénom de l'expéditeur
+                                            </label>
+                                            <input type="text" class="form-control" id="enl_contact_prenom"
+                                                name="enl_contact_prenom" placeholder="Prénom de l'expéditeur">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label class="form-label" for="enl_adresse">
+                                                <i class="fas fa-map-marker-alt me-2"></i>Adresse d'enlèvement
+                                            </label>
+                                            <textarea class="form-control" id="enl_adresse" name="enl_adresse" rows="2"
+                                                placeholder="Adresse complète d'enlèvement"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label" for="enl_code_postal">
+                                                <i class="fas fa-mail-bulk me-2"></i>Code postal
+                                            </label>
+                                            <input type="text" class="form-control" id="enl_code_postal"
+                                                name="enl_code_postal" placeholder="Code postal">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label" for="enl_portable">
+                                                <i class="fas fa-mobile-alt me-2"></i>Téléphone portable
+                                            </label>
+                                            <input type="tel" class="form-control" id="enl_portable"
+                                                name="enl_portable" placeholder="Numéro de téléphone">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label" for="enl_mail">
+                                                <i class="fas fa-envelope me-2"></i>Email
+                                            </label>
+                                            <input type="email" class="form-control" id="enl_mail" name="enl_mail"
+                                                placeholder="Adresse email">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Paramètres de livraison -->
+                        <div class="card mb-4"
+                            style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
+                            <div class="card-header"
+                                style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
+                                <h5 class="mb-0"
+                                    style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-truck text-success"></i>
+                                    Paramètres de livraison par défaut
+                                </h5>
+                            </div>
+                            <div class="card-body" style="padding: 1.5rem;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_mr_code">
+                                                <i class="fas fa-credit-card me-2"></i>Mode de règlement par défaut
+                                            </label>
+                                            <select class="form-control" id="default_mr_code" name="default_mr_code">
+                                                <option value="">Sélectionner un mode de règlement</option>
+                                            </select>
+                                            <small class="text-muted">Les modes de règlement sont synchronisés depuis
+                                                FParcel</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_pos_allow_open">
+                                                <i class="fas fa-box-open me-2"></i>Autoriser l'ouverture du colis
+                                            </label>
+                                            <select class="form-control" id="default_pos_allow_open"
+                                                name="default_pos_allow_open">
+                                                <option value="0">Non - Ouverture interdite</option>
+                                                <option value="1">Oui - Ouverture autorisée</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_pos_valid">
+                                                <i class="fas fa-check-circle me-2"></i>Validation automatique
+                                            </label>
+                                            <select class="form-control" id="default_pos_valid" name="default_pos_valid">
+                                                <option value="0">Non - Position temporaire</option>
+                                                <option value="1" selected>Oui - Position validée</option>
+                                            </select>
+                                            <small class="text-muted">Si "Non", la position devra être validée
+                                                manuellement</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_nb_piece">
+                                                <i class="fas fa-boxes me-2"></i>Nombre de pièces par défaut
+                                            </label>
+                                            <input type="number" class="form-control" id="default_nb_piece"
+                                                name="default_nb_piece" value="1" min="1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Horaires de livraison -->
+                        <div class="card mb-4"
+                            style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
+                            <div class="card-header"
+                                style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
+                                <h5 class="mb-0"
+                                    style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-clock text-warning"></i>
+                                    Horaires de disponibilité par défaut
+                                </h5>
+                            </div>
+                            <div class="card-body" style="padding: 1.5rem;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_time_from">
+                                                <i class="fas fa-clock me-2"></i>Disponible à partir de
+                                            </label>
+                                            <input type="time" class="form-control" id="default_time_from"
+                                                name="default_time_from" value="08:00">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_time_to">
+                                                <i class="fas fa-clock me-2"></i>Disponible jusqu'à
+                                            </label>
+                                            <input type="time" class="form-control" id="default_time_to"
+                                                name="default_time_to" value="18:00">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Paramètres avancés -->
+                        <div class="card mb-4"
+                            style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
+                            <div class="card-header"
+                                style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
+                                <h5 class="mb-0"
+                                    style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-cogs text-info"></i>
+                                    Paramètres avancés
+                                </h5>
+                            </div>
+                            <div class="card-body" style="padding: 1.5rem;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_poids">
+                                                <i class="fas fa-weight me-2"></i>Poids par défaut (kg)
+                                            </label>
+                                            <input type="number" step="0.1" class="form-control" id="default_poids"
+                                                name="default_poids" placeholder="Poids en kg">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_valeur">
+                                                <i class="fas fa-euro-sign me-2"></i>Valeur déclarée par défaut (€)
+                                            </label>
+                                            <input type="number" step="0.01" class="form-control"
+                                                id="default_valeur" name="default_valeur" placeholder="Valeur en euros">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label class="form-label" for="default_pos_link_img">
+                                                <i class="fas fa-image me-2"></i>URL de l'image par défaut
+                                            </label>
+                                            <input type="url" class="form-control" id="default_pos_link_img"
+                                                name="default_pos_link_img" placeholder="https://exemple.com/image.jpg">
+                                            <small class="text-muted">URL de l'image représentant le contenu du
+                                                colis</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                Sauvegarder la configuration
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="loadDefaultParameters()">
+                                <i class="fas fa-sync"></i>
+                                Recharger
+                            </button>
+                            <button type="button" class="btn btn-info" onclick="testApiParameters()">
                                 <i class="fas fa-vial"></i>
-                                Tester la connexion
+                                Tester la configuration
                             </button>
                         </div>
                     </form>
                 </div>
-
-                <!-- Informations de connexion (visible après connexion) -->
-                <div id="connection-info" style="display: none;">
-                    <div class="alert alert-success">
-                        <i class="fas fa-check-circle"></i>
-                        Connecté avec succès au service FParcel
-                    </div>
-
-                    <div class="d-flex gap-2 mb-3">
-                        <button type="button" class="btn btn-danger" onclick="disconnect()">
-                            <i class="fas fa-times"></i>
-                            Se déconnecter
-                        </button>
-                        <button type="button" class="btn btn-info" onclick="refreshToken()">
-                            <i class="fas fa-refresh"></i>
-                            Actualiser le token
-                        </button>
-                    </div>
-
-                    <div class="token-info">
-                        <strong>Token actuel:</strong>
-                        <div id="current-token">Chargement...</div>
-                        <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--gray-600);">
-                            <strong>Dernière mise à jour:</strong> <span id="token-updated">-</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Configuration des paramètres (visible après connexion) -->
-        <div class="config-section" id="delivery-settings" style="display: none;">
-            <div class="section-header">
-                <h3 class="section-title">
-                    <i class="fas fa-cogs"></i>
-                    Paramètres de livraison
-                </h3>
             </div>
 
-            <div class="config-grid">
-                <div class="config-item">
-                    <h5>
-                        <i class="fas fa-dollar-sign text-success"></i>
-                        Modes de règlement
-                    </h5>
-                    <p>Synchronisez et configurez les modes de règlement disponibles</p>
-                    <button class="btn btn-success" onclick="syncPaymentMethods()">
-                        <i class="fas fa-sync"></i>
-                        Synchroniser
-                    </button>
-                </div>
-
-                <div class="config-item">
-                    <h5>
-                        <i class="fas fa-building text-info"></i>
-                        Points de dépôt
-                    </h5>
-                    <p>Gérez la liste des agences et points de dépôt</p>
-                    <button class="btn btn-info" onclick="syncDropPoints()">
-                        <i class="fas fa-download"></i>
-                        Synchroniser
-                    </button>
-                </div>
-
-                <div class="config-item">
-                    <h5>
-                        <i class="fas fa-exclamation-triangle text-warning"></i>
-                        Motifs d'anomalies
-                    </h5>
-                    <p>Synchronisez la liste des motifs d'anomalies</p>
-                    <button class="btn btn-warning" onclick="syncAnomalyReasons()">
-                        <i class="fas fa-list"></i>
-                        Synchroniser
-                    </button>
-                </div>
-
-                <div class="config-item">
-                    <h5>
-                        <i class="fas fa-tag text-primary"></i>
-                        Étiquettes
-                    </h5>
-                    <p>Configurez les paramètres d'impression des étiquettes</p>
-                    <button class="btn btn-primary" onclick="configureLabels()">
-                        <i class="fas fa-print"></i>
-                        Configurer
-                    </button>
-                </div>
-
-                <div class="config-item">
-                    <h5>
-                        <i class="fas fa-map-marker-alt text-danger"></i>
-                        Zones de livraison
-                    </h5>
-                    <p>Configurez vos zones de livraison et les tarifs associés</p>
-                    <button class="btn btn-danger" onclick="configureZones()">
-                        <i class="fas fa-cog"></i>
-                        Configurer
-                    </button>
-                </div>
-
-                <div class="config-item">
-                    <h5>
-                        <i class="fas fa-clock text-secondary"></i>
-                        Paramètres généraux
-                    </h5>
-                    <p>Configurez les horaires de livraison et autres paramètres</p>
-                    <button class="btn btn-secondary" onclick="configureGeneral()">
-                        <i class="fas fa-sliders-h"></i>
-                        Paramètres
-                    </button>
-                </div>
-            </div>
-        </div>
-        <div class="config-section" id="api-parameters" style="display: none;">
-            <div class="section-header">
-                <h3 class="section-title">
-                    <i class="fas fa-code"></i>
-                    Configuration des paramètres d'envoi
-                </h3>
-            </div>
-
-            <div style="padding: 1.5rem;">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    <span>Configurez les valeurs par défaut qui seront utilisées lors de la création des positions de
-                        livraison via l'API FParcel.</span>
-                </div>
-
-                <form id="api-parameters-form">
-                    <!-- Informations Expéditeur -->
-                    <div class="card mb-4"
-                        style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
-                        <div class="card-header"
-                            style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
-                            <h5 class="mb-0"
-                                style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-user-tie text-primary"></i>
-                                Informations Expéditeur (par défaut)
-                            </h5>
-                        </div>
-                        <div class="card-body" style="padding: 1.5rem;">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="enl_contact_nom">
-                                            <i class="fas fa-user me-2"></i>Nom de l'expéditeur
-                                        </label>
-                                        <input type="text" class="form-control" id="enl_contact_nom"
-                                            name="enl_contact_nom" placeholder="Nom de l'expéditeur">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="enl_contact_prenom">
-                                            <i class="fas fa-user me-2"></i>Prénom de l'expéditeur
-                                        </label>
-                                        <input type="text" class="form-control" id="enl_contact_prenom"
-                                            name="enl_contact_prenom" placeholder="Prénom de l'expéditeur">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label class="form-label" for="enl_adresse">
-                                            <i class="fas fa-map-marker-alt me-2"></i>Adresse d'enlèvement
-                                        </label>
-                                        <textarea class="form-control" id="enl_adresse" name="enl_adresse" rows="2"
-                                            placeholder="Adresse complète d'enlèvement"></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label class="form-label" for="enl_code_postal">
-                                            <i class="fas fa-mail-bulk me-2"></i>Code postal
-                                        </label>
-                                        <input type="text" class="form-control" id="enl_code_postal"
-                                            name="enl_code_postal" placeholder="Code postal">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label class="form-label" for="enl_portable">
-                                            <i class="fas fa-mobile-alt me-2"></i>Téléphone portable
-                                        </label>
-                                        <input type="tel" class="form-control" id="enl_portable" name="enl_portable"
-                                            placeholder="Numéro de téléphone">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label class="form-label" for="enl_mail">
-                                            <i class="fas fa-envelope me-2"></i>Email
-                                        </label>
-                                        <input type="email" class="form-control" id="enl_mail" name="enl_mail"
-                                            placeholder="Adresse email">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Paramètres de livraison -->
-                    <div class="card mb-4"
-                        style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
-                        <div class="card-header"
-                            style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
-                            <h5 class="mb-0"
-                                style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-truck text-success"></i>
-                                Paramètres de livraison par défaut
-                            </h5>
-                        </div>
-                        <div class="card-body" style="padding: 1.5rem;">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_mr_code">
-                                            <i class="fas fa-credit-card me-2"></i>Mode de règlement par défaut
-                                        </label>
-                                        <select class="form-control" id="default_mr_code" name="default_mr_code">
-                                            <option value="">Sélectionner un mode de règlement</option>
-                                        </select>
-                                        <small class="text-muted">Les modes de règlement sont synchronisés depuis
-                                            FParcel</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_pos_allow_open">
-                                            <i class="fas fa-box-open me-2"></i>Autoriser l'ouverture du colis
-                                        </label>
-                                        <select class="form-control" id="default_pos_allow_open"
-                                            name="default_pos_allow_open">
-                                            <option value="0">Non - Ouverture interdite</option>
-                                            <option value="1">Oui - Ouverture autorisée</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_pos_valid">
-                                            <i class="fas fa-check-circle me-2"></i>Validation automatique
-                                        </label>
-                                        <select class="form-control" id="default_pos_valid" name="default_pos_valid">
-                                            <option value="0">Non - Position temporaire</option>
-                                            <option value="1" selected>Oui - Position validée</option>
-                                        </select>
-                                        <small class="text-muted">Si "Non", la position devra être validée
-                                            manuellement</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_nb_piece">
-                                            <i class="fas fa-boxes me-2"></i>Nombre de pièces par défaut
-                                        </label>
-                                        <input type="number" class="form-control" id="default_nb_piece"
-                                            name="default_nb_piece" value="1" min="1">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Horaires de livraison -->
-                    <div class="card mb-4"
-                        style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
-                        <div class="card-header"
-                            style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
-                            <h5 class="mb-0"
-                                style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-clock text-warning"></i>
-                                Horaires de disponibilité par défaut
-                            </h5>
-                        </div>
-                        <div class="card-body" style="padding: 1.5rem;">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_time_from">
-                                            <i class="fas fa-clock me-2"></i>Disponible à partir de
-                                        </label>
-                                        <input type="time" class="form-control" id="default_time_from"
-                                            name="default_time_from" value="08:00">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_time_to">
-                                            <i class="fas fa-clock me-2"></i>Disponible jusqu'à
-                                        </label>
-                                        <input type="time" class="form-control" id="default_time_to"
-                                            name="default_time_to" value="18:00">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Paramètres avancés -->
-                    <div class="card mb-4"
-                        style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
-                        <div class="card-header"
-                            style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
-                            <h5 class="mb-0"
-                                style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-cogs text-info"></i>
-                                Paramètres avancés
-                            </h5>
-                        </div>
-                        <div class="card-body" style="padding: 1.5rem;">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_poids">
-                                            <i class="fas fa-weight me-2"></i>Poids par défaut (kg)
-                                        </label>
-                                        <input type="number" step="0.1" class="form-control" id="default_poids"
-                                            name="default_poids" placeholder="Poids en kg">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_valeur">
-                                            <i class="fas fa-euro-sign me-2"></i>Valeur déclarée par défaut (€)
-                                        </label>
-                                        <input type="number" step="0.01" class="form-control" id="default_valeur"
-                                            name="default_valeur" placeholder="Valeur en euros">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label class="form-label" for="default_pos_link_img">
-                                            <i class="fas fa-image me-2"></i>URL de l'image par défaut
-                                        </label>
-                                        <input type="url" class="form-control" id="default_pos_link_img"
-                                            name="default_pos_link_img" placeholder="https://exemple.com/image.jpg">
-                                        <small class="text-muted">URL de l'image représentant le contenu du colis</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Boutons d'action -->
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i>
-                            Sauvegarder la configuration
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="loadDefaultParameters()">
-                            <i class="fas fa-sync"></i>
-                            Recharger
-                        </button>
-                        <button type="button" class="btn btn-info" onclick="testApiParameters()">
-                            <i class="fas fa-vial"></i>
-                            Tester la configuration
-                        </button>
-                    </div>
-                </form>
-            </div>
         </div>
 
     </div>
@@ -782,12 +974,63 @@
 
 @section('scripts')
     <script>
+        let selectedCompany = null;
+        let isConnected = false;
+
         $(document).ready(function() {
             console.log('Configuration des livraisons chargée');
 
-            // Vérifier le statut de connexion au chargement
-            checkConnectionStatus();
+            // Always show company selection first
+            showCompanySelection();
         });
+
+        // Company Selection Functions
+        function selectCompany(company) {
+            selectedCompany = company;
+
+            // Remove selected class from all cards
+            $('.company-card').removeClass('selected');
+
+            // Add selected class to clicked card
+            $(`.company-card[data-company="${company}"]`).addClass('selected');
+
+            // Enable continue button
+            $('#continue-btn').prop('disabled', false);
+        }
+
+        function proceedToConfiguration() {
+            if (!selectedCompany) return;
+
+            // Hide company selection
+            $('#company-selection').hide();
+
+            // Show breadcrumb
+            $('#breadcrumb-nav').show();
+            $('#selected-company-name').text(`Configuration ${selectedCompany.toUpperCase()}`);
+
+            // Show specific configuration
+            if (selectedCompany === 'fparcel') {
+                $('#fparcel-configuration').show();
+
+                // Check if already connected to FParcel
+                checkConnectionStatus();
+            }
+        }
+
+        function showCompanySelection() {
+            // Hide all configuration sections
+            $('#fparcel-configuration').hide();
+            $('#breadcrumb-nav').hide();
+
+            // Show company selection
+            $('#company-selection').show();
+
+            // Reset selection state
+            selectedCompany = null;
+            isConnected = false;
+            $('.company-card').removeClass('selected');
+            $('#continue-btn').prop('disabled', true);
+        }
 
         // Vérifier le statut de connexion
         function checkConnectionStatus() {
@@ -806,14 +1049,19 @@
 
         // Afficher l'état connecté
         function showConnectedState(data) {
+            isConnected = true;
+
             $('#connection-status')
                 .removeClass('disconnected')
                 .addClass('connected')
-                .html('<i class="fas fa-check-circle"></i><span>Connecté au service FParcel</span>');
+                .html(
+                    '<i class="fas fa-check-circle"></i><span>Connecté au service FParcel</span><small style="margin-left: 10px; opacity: 0.7;">(Connexion persistante)</small>'
+                    );
 
             $('#connection-form').hide();
             $('#connection-info').show();
             $('#delivery-settings').show();
+            $('#api-parameters').show(); // Show the new parameters section
 
             if (data.token) {
                 $('#current-token').text(data.token);
@@ -821,10 +1069,16 @@
             if (data.updated_at) {
                 $('#token-updated').text(new Date(data.updated_at).toLocaleString('fr-FR'));
             }
+
+            // Load payment methods and default parameters
+            loadPaymentMethods();
+            loadDefaultParameters();
         }
 
         // Afficher l'état déconnecté
         function showDisconnectedState() {
+            isConnected = false;
+
             $('#connection-status')
                 .removeClass('connected')
                 .addClass('disconnected')
@@ -833,6 +1087,7 @@
             $('#connection-form').show();
             $('#connection-info').hide();
             $('#delivery-settings').hide();
+            $('#api-parameters').hide(); // Hide the parameters section
         }
 
         // Gérer la soumission du formulaire de connexion
@@ -856,7 +1111,8 @@
                 })
                 .done(function(response) {
                     if (response.success) {
-                        showAlert('success', 'Connexion réussie ! Token récupéré et sauvegardé.');
+                        showAlert('success', 'Connexion réussie et sauvegardée ! Vous resterez connecté.');
+                        isConnected = true;
                         showConnectedState(response.data);
                     } else {
                         showAlert('danger', response.message || 'Erreur lors de la connexion');
@@ -918,7 +1174,10 @@
                 .done(function(response) {
                     if (response.success) {
                         showAlert('success', 'Déconnexion réussie');
-                        showDisconnectedState();
+                        isConnected = false;
+                        selectedCompany = null;
+                        // Return to company selection after disconnect
+                        showCompanySelection();
                     } else {
                         showAlert('danger', response.message || 'Erreur lors de la déconnexion');
                     }
@@ -947,7 +1206,7 @@
                 });
         }
 
-        // Fonctions de configuration
+        // Enhanced syncPaymentMethods function
         function syncPaymentMethods() {
             showAlert('info', 'Synchronisation des modes de règlement...');
 
@@ -957,6 +1216,7 @@
                 .done(function(response) {
                     if (response.success) {
                         showAlert('success', `${response.count} modes de règlement synchronisés`);
+                        loadPaymentMethods(); // Reload the payment methods dropdown
                     } else {
                         showAlert('danger', response.message || 'Erreur lors de la synchronisation');
                     }
@@ -1014,30 +1274,7 @@
             showAlert('info', 'Configuration générale - Fonctionnalité à venir');
         }
 
-        // Afficher une alerte
-        function showAlert(type, message) {
-            const alertClass = `alert-${type}`;
-            const iconClass = type === 'success' ? 'fa-check-circle' :
-                type === 'danger' ? 'fa-exclamation-circle' :
-                type === 'info' ? 'fa-info-circle' : 'fa-exclamation-triangle';
-
-            const alert = $(`
-        <div class="alert ${alertClass}">
-            <i class="fas ${iconClass}"></i>
-            <span>${message}</span>
-        </div>
-    `);
-
-            $('#alerts-container').empty().append(alert);
-
-            // Auto-hide success alerts
-            if (type === 'success') {
-                setTimeout(() => {
-                    alert.fadeOut();
-                }, 5000);
-            }
-        }
-
+        // Load payment methods when connected
         function loadPaymentMethods() {
             $.get('{{ route('admin.delivery.payment-methods') }}')
                 .done(function(response) {
@@ -1053,43 +1290,6 @@
                 .fail(function() {
                     showAlert('warning', 'Impossible de charger les modes de règlement');
                 });
-        }
-
-        // Enhanced showConnectedState function
-        function showConnectedState(data) {
-            $('#connection-status')
-                .removeClass('disconnected')
-                .addClass('connected')
-                .html('<i class="fas fa-check-circle"></i><span>Connecté au service FParcel</span>');
-
-            $('#connection-form').hide();
-            $('#connection-info').show();
-            $('#delivery-settings').show();
-            $('#api-parameters').show(); // Show the new parameters section
-
-            if (data.token) {
-                $('#current-token').text(data.token);
-            }
-            if (data.updated_at) {
-                $('#token-updated').text(new Date(data.updated_at).toLocaleString('fr-FR'));
-            }
-
-            // Load payment methods and default parameters
-            loadPaymentMethods();
-            loadDefaultParameters();
-        }
-
-        // Enhanced showDisconnectedState function
-        function showDisconnectedState() {
-            $('#connection-status')
-                .removeClass('connected')
-                .addClass('disconnected')
-                .html('<i class="fas fa-times-circle"></i><span>Non connecté au service FParcel</span>');
-
-            $('#connection-form').show();
-            $('#connection-info').hide();
-            $('#delivery-settings').hide();
-            $('#api-parameters').hide(); // Hide the parameters section
         }
 
         // Save API parameters
@@ -1152,24 +1352,28 @@
                 });
         }
 
-        // Enhanced syncPaymentMethods function
-        function syncPaymentMethods() {
-            showAlert('info', 'Synchronisation des modes de règlement...');
+        // Afficher une alerte
+        function showAlert(type, message) {
+            const alertClass = `alert-${type}`;
+            const iconClass = type === 'success' ? 'fa-check-circle' :
+                type === 'danger' ? 'fa-exclamation-circle' :
+                type === 'info' ? 'fa-info-circle' : 'fa-exclamation-triangle';
 
-            $.post('{{ route('admin.delivery.sync-payment-methods') }}', {
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                })
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', `${response.count} modes de règlement synchronisés`);
-                        loadPaymentMethods(); // Reload the payment methods dropdown
-                    } else {
-                        showAlert('danger', response.message || 'Erreur lors de la synchronisation');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors de la synchronisation des modes de règlement');
-                });
+            const alert = $(`
+        <div class="alert ${alertClass}">
+            <i class="fas ${iconClass}"></i>
+            <span>${message}</span>
+        </div>
+    `);
+
+            $('#alerts-container').empty().append(alert);
+
+            // Auto-hide success alerts
+            if (type === 'success') {
+                setTimeout(() => {
+                    alert.fadeOut();
+                }, 5000);
+            }
         }
     </script>
 @endsection
