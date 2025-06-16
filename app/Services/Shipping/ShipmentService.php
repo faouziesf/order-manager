@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Admin;
 use App\Models\Shipment;
+use App\Models\ShipmentStatusHistory;
 use App\Models\BLTemplate;
 use App\Services\Shipping\ShippingServiceFactory;
 use Illuminate\Support\Facades\Cache;
@@ -55,30 +56,9 @@ class ShipmentService
     /**
      * Suivre toutes les expéditions nécessitant un suivi
      */
-    public function trackAllShipments(array $filters = []): array
+    public function trackAllShipments(): array
     {
-        $query = Shipment::needsTracking()->with(['pickup.deliveryConfiguration', 'order']);
-
-        // Appliquer les filtres
-        if (!empty($filters['admin_id'])) {
-            $query->where('admin_id', $filters['admin_id']);
-        }
-
-        if (!empty($filters['carrier'])) {
-            $query->whereHas('pickup', function($q) use ($filters) {
-                $q->where('carrier_slug', $filters['carrier']);
-            });
-        }
-
-        if (!empty($filters['pickup_id'])) {
-            $query->where('pickup_id', $filters['pickup_id']);
-        }
-
-        if (!empty($filters['limit'])) {
-            $query->limit($filters['limit']);
-        }
-
-        $shipments = $query->orderBy('carrier_last_status_update', 'asc')->get();
+        $shipments = Shipment::needsTracking()->with(['pickup.deliveryConfiguration'])->get();
         
         $results = [
             'total' => $shipments->count(),
@@ -92,14 +72,13 @@ class ShipmentService
                 $oldStatus = $shipment->status;
                 $trackingData = $this->trackShipment($shipment);
                 
-                if ($trackingData && $shipment->fresh()->status !== $oldStatus) {
+                if ($trackingData && $shipment->status !== $oldStatus) {
                     $results['updated']++;
                     $results['details'][] = [
                         'shipment_id' => $shipment->id,
                         'pos_barcode' => $shipment->pos_barcode,
-                        'order_id' => $shipment->order_id,
                         'old_status' => $oldStatus,
-                        'new_status' => $shipment->fresh()->status,
+                        'new_status' => $shipment->status,
                     ];
                 }
 
@@ -151,7 +130,6 @@ class ShipmentService
             'by_carrier' => [],
             'delivery_performance' => [],
             'recent_activity' => [],
-            'trends' => [],
         ];
 
         // Statistiques par statut
@@ -161,12 +139,10 @@ class ShipmentService
             ->pluck('count', 'status')
             ->toArray();
 
-        foreach (Shipment::getStatusOptions() as $status => $label) {
+        foreach (Shipment::class::STATUS_LABELS as $status => $label) {
             $stats['by_status'][$status] = [
                 'label' => $label,
                 'count' => $statusCounts[$status] ?? 0,
-                'percentage' => $stats['total_shipments'] > 0 ? 
-                    round((($statusCounts[$status] ?? 0) / $stats['total_shipments']) * 100, 1) : 0,
             ];
         }
 
@@ -186,9 +162,6 @@ class ShipmentService
         // Activité récente
         $stats['recent_activity'] = $this->getRecentShipmentActivity($admin, 10);
 
-        // Tendances (évolution sur les 7 derniers jours)
-        $stats['trends'] = $this->calculateTrends($admin, $days);
-
         return $stats;
     }
 
@@ -198,15 +171,11 @@ class ShipmentService
     public function searchShipments(Admin $admin, array $filters): \Illuminate\Database\Eloquent\Builder
     {
         $query = Shipment::where('admin_id', $admin->id)
-            ->with(['order', 'pickup.deliveryConfiguration']);
+            ->with(['order', 'pickup.deliveryConfiguration', 'statusHistory']);
 
         // Filtre par statut
         if (!empty($filters['status'])) {
-            if (is_array($filters['status'])) {
-                $query->whereIn('status', $filters['status']);
-            } else {
-                $query->where('status', $filters['status']);
-            }
+            $query->where('status', $filters['status']);
         }
 
         // Filtre par transporteur
@@ -254,20 +223,6 @@ class ShipmentService
             $query->whereJsonContains('recipient_info->governorate', $filters['governorate']);
         }
 
-        // Filtre par enlèvement
-        if (!empty($filters['pickup_id'])) {
-            $query->where('pickup_id', $filters['pickup_id']);
-        }
-
-        // Filtre par valeur
-        if (!empty($filters['min_value'])) {
-            $query->where('value', '>=', $filters['min_value']);
-        }
-
-        if (!empty($filters['max_value'])) {
-            $query->where('value', '<=', $filters['max_value']);
-        }
-
         return $query->orderBy('created_at', 'desc');
     }
 
@@ -289,9 +244,7 @@ class ShipmentService
             'return_reasons' => [],
             'by_carrier' => [],
             'by_governorate' => [],
-            'by_time_period' => [],
             'return_rate' => 0,
-            'average_return_time' => null,
         ];
 
         // Grouper par transporteur
@@ -306,13 +259,6 @@ class ShipmentService
                 return $group->count();
             })->toArray();
 
-        // Analyser par période (par semaine)
-        $analysis['by_time_period'] = $returns->groupBy(function($shipment) {
-            return $shipment->created_at->startOfWeek()->format('Y-m-d');
-        })->map(function($group) {
-            return $group->count();
-        })->toArray();
-
         // Calculer le taux de retour
         $totalShipments = Shipment::where('admin_id', $admin->id)
             ->where('created_at', '>=', $startDate)
@@ -322,67 +268,7 @@ class ShipmentService
             $analysis['return_rate'] = round(($returns->count() / $totalShipments) * 100, 2);
         }
 
-        // Temps moyen de retour (depuis la création jusqu'au retour)
-        $returnTimes = $returns->filter(function($shipment) {
-            return $shipment->carrier_last_status_update;
-        })->map(function($shipment) {
-            return $shipment->created_at->diffInDays($shipment->carrier_last_status_update);
-        });
-
-        if ($returnTimes->count() > 0) {
-            $analysis['average_return_time'] = round($returnTimes->average(), 1);
-        }
-
         return $analysis;
-    }
-
-    /**
-     * Obtenir le tableau de bord des expéditions en temps réel
-     */
-    public function getRealtimeDashboard(Admin $admin): array
-    {
-        return Cache::remember("shipment_dashboard_{$admin->id}", 60, function () use ($admin) {
-            return [
-                'active_shipments' => Shipment::where('admin_id', $admin->id)
-                    ->active()
-                    ->count(),
-                'delivered_today' => Shipment::where('admin_id', $admin->id)
-                    ->where('status', Shipment::STATUS_DELIVERED)
-                    ->whereDate('delivered_at', today())
-                    ->count(),
-                'in_transit' => Shipment::where('admin_id', $admin->id)
-                    ->where('status', Shipment::STATUS_IN_TRANSIT)
-                    ->count(),
-                'pending_pickup' => Shipment::where('admin_id', $admin->id)
-                    ->where('status', Shipment::STATUS_VALIDATED)
-                    ->count(),
-                'problems' => Shipment::where('admin_id', $admin->id)
-                    ->whereIn('status', [Shipment::STATUS_ANOMALY, Shipment::STATUS_IN_RETURN])
-                    ->count(),
-                'total_value_in_transit' => Shipment::where('admin_id', $admin->id)
-                    ->active()
-                    ->sum('value'),
-            ];
-        });
-    }
-
-    /**
-     * Marquer manuellement une expédition comme livrée
-     */
-    public function markAsDelivered(Shipment $shipment, string $notes = null): void
-    {
-        if ($shipment->status === Shipment::STATUS_DELIVERED) {
-            throw new \Exception('Cette expédition est déjà marquée comme livrée.');
-        }
-
-        $shipment->markAsDelivered($notes);
-
-        Log::info('Shipment manually marked as delivered', [
-            'shipment_id' => $shipment->id,
-            'order_id' => $shipment->order_id,
-            'pos_barcode' => $shipment->pos_barcode,
-            'notes' => $notes,
-        ]);
     }
 
     /**
@@ -400,13 +286,27 @@ class ShipmentService
                 'carrier_last_status_update' => now(),
             ]);
 
-            // Le logging est déjà géré dans le modèle Shipment
+            // Enregistrer dans l'historique
+            ShipmentStatusHistory::create([
+                'shipment_id' => $shipment->id,
+                'carrier_status_code' => $trackingData['status'],
+                'carrier_status_label' => $trackingData['carrier_status_label'] ?? null,
+                'internal_status' => $newStatus,
+            ]);
+
+            // Mettre à jour la commande si livré
+            if ($newStatus === Shipment::STATUS_DELIVERED && $shipment->order) {
+                $shipment->order->update([
+                    'status' => 'livrée',
+                    'delivered_at' => now(),
+                ]);
+            }
+
             Log::info('Shipment status updated', [
                 'shipment_id' => $shipment->id,
                 'pos_barcode' => $shipment->pos_barcode,
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
-                'carrier_status' => $trackingData['status'],
             ]);
         }
     }
@@ -436,11 +336,7 @@ class ShipmentService
     {
         $shipments = Shipment::where('admin_id', $admin->id)
             ->where('created_at', '>=', $startDate)
-            ->whereIn('status', [
-                Shipment::STATUS_DELIVERED, 
-                Shipment::STATUS_IN_RETURN, 
-                Shipment::STATUS_ANOMALY
-            ])
+            ->whereIn('status', [Shipment::STATUS_DELIVERED, Shipment::STATUS_IN_RETURN, Shipment::STATUS_ANOMALY])
             ->get();
 
         $performance = [
@@ -448,7 +344,6 @@ class ShipmentService
             'return_rate' => 0,
             'anomaly_rate' => 0,
             'average_delivery_time' => null,
-            'on_time_delivery' => 0,
         ];
 
         if ($shipments->count() > 0) {
@@ -484,50 +379,24 @@ class ShipmentService
      */
     private function getRecentShipmentActivity(Admin $admin, int $limit): array
     {
-        return Shipment::where('admin_id', $admin->id)
-            ->with(['order'])
-            ->whereNotNull('carrier_last_status_update')
-            ->orderBy('carrier_last_status_update', 'desc')
+        return ShipmentStatusHistory::whereHas('shipment', function($q) use ($admin) {
+                $q->where('admin_id', $admin->id);
+            })
+            ->with(['shipment.order'])
+            ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get()
-            ->map(function($shipment) {
+            ->map(function($history) {
                 return [
-                    'date' => $shipment->carrier_last_status_update,
-                    'shipment_id' => $shipment->id,
-                    'order_number' => $shipment->order_number,
-                    'customer_name' => $shipment->customer_name,
-                    'status' => $shipment->status,
-                    'status_label' => $shipment->status_label,
-                    'pos_barcode' => $shipment->pos_barcode,
-                    'carrier' => $shipment->carrier_name,
+                    'date' => $history->created_at,
+                    'shipment_id' => $history->shipment_id,
+                    'order_number' => $history->shipment->order_number,
+                    'customer_name' => $history->shipment->order->customer_name ?? 'N/A',
+                    'status' => $history->internal_status,
+                    'status_label' => $history->human_status,
                 ];
             })
             ->toArray();
-    }
-
-    /**
-     * Calculer les tendances
-     */
-    private function calculateTrends(Admin $admin, int $days): array
-    {
-        $periods = [];
-        $periodDays = max(1, intval($days / 7)); // Diviser en 7 périodes
-
-        for ($i = 0; $i < 7; $i++) {
-            $endDate = now()->subDays($i * $periodDays);
-            $startDate = $endDate->copy()->subDays($periodDays);
-            
-            $count = Shipment::where('admin_id', $admin->id)
-                ->whereBetween('created_at', [$startDate, $endDate])
-                ->count();
-                
-            $periods[] = [
-                'period' => $startDate->format('M d'),
-                'count' => $count,
-            ];
-        }
-
-        return array_reverse($periods);
     }
 
     /**
@@ -553,23 +422,17 @@ class ShipmentService
         // Cette méthode utiliserait une librairie de génération PDF
         // comme TCPDF ou DomPDF pour créer le bordereau
         
-        // Pour l'instant, retourner une version JSON des données
+        $pdf = app('dompdf.wrapper');
+        
         $data = [
-            'template' => $template->template_name,
-            'shipment' => [
-                'pos_barcode' => $shipment->pos_barcode,
-                'return_barcode' => $shipment->return_barcode,
-                'order_number' => $shipment->order_number,
-                'weight' => $shipment->weight,
-                'value' => $shipment->value,
-                'pieces' => $shipment->nb_pieces,
-            ],
-            'customer' => $shipment->recipient_info,
-            'sender' => $shipment->sender_info,
+            'shipment' => $shipment,
+            'template' => $template,
             'config' => $template->layout_config,
-            'generated_at' => now(),
         ];
         
-        return json_encode($data, JSON_PRETTY_PRINT);
+        $html = view('admin.delivery.bl-template', $data)->render();
+        $pdf->loadHTML($html);
+        
+        return $pdf->output();
     }
 }

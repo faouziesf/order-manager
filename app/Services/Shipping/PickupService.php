@@ -78,7 +78,7 @@ class PickupService
     /**
      * Valider un enlèvement
      */
-    public function validatePickup(Pickup $pickup): array
+    public function validatePickup(Pickup $pickup): bool
     {
         if ($pickup->status !== Pickup::STATUS_DRAFT) {
             throw new \Exception('Seuls les enlèvements en brouillon peuvent être validés.');
@@ -89,45 +89,24 @@ class PickupService
         }
 
         return DB::transaction(function () use ($pickup) {
-            $results = [
-                'success_count' => 0,
-                'error_count' => 0,
-                'errors' => [],
-                'shipments' => [],
-            ];
+            $errors = [];
+            $successCount = 0;
 
             foreach ($pickup->shipments as $shipment) {
                 try {
                     $shipment->createWithCarrier();
-                    $results['success_count']++;
-                    $results['shipments'][] = [
-                        'id' => $shipment->id,
-                        'order_id' => $shipment->order_id,
-                        'pos_barcode' => $shipment->pos_barcode,
-                        'status' => 'success',
-                    ];
+                    $successCount++;
                 } catch (\Exception $e) {
-                    $results['error_count']++;
-                    $error = "Commande #{$shipment->order_id}: " . $e->getMessage();
-                    $results['errors'][] = $error;
-                    $results['shipments'][] = [
-                        'id' => $shipment->id,
-                        'order_id' => $shipment->order_id,
-                        'pos_barcode' => null,
-                        'status' => 'error',
-                        'error' => $e->getMessage(),
-                    ];
-                    
+                    $errors[] = "Expédition #{$shipment->order_id}: " . $e->getMessage();
                     Log::error('Shipment creation failed', [
                         'shipment_id' => $shipment->id,
                         'order_id' => $shipment->order_id,
-                        'pickup_id' => $pickup->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            if ($results['success_count'] > 0) {
+            if ($successCount > 0) {
                 $pickup->update([
                     'status' => Pickup::STATUS_VALIDATED,
                     'validated_at' => now(),
@@ -135,62 +114,48 @@ class PickupService
 
                 Log::info('Pickup validated', [
                     'pickup_id' => $pickup->id,
-                    'success_count' => $results['success_count'],
-                    'error_count' => $results['error_count'],
+                    'success_count' => $successCount,
+                    'error_count' => count($errors),
                 ]);
-            } else {
-                throw new \Exception('Aucune expédition n\'a pu être créée: ' . implode(', ', $results['errors']));
+
+                return true;
             }
 
-            return $results;
+            throw new \Exception('Aucune expédition n\'a pu être créée: ' . implode(', ', $errors));
         });
     }
 
     /**
      * Ajouter des commandes à un enlèvement existant
      */
-    public function addOrdersToPickup(Pickup $pickup, array $orderIds): array
+    public function addOrdersToPickup(Pickup $pickup, array $orderIds): int
     {
         if ($pickup->status !== Pickup::STATUS_DRAFT) {
             throw new \Exception('Seuls les enlèvements en brouillon peuvent être modifiés.');
         }
 
-        $results = [
-            'added_count' => 0,
-            'skipped_count' => 0,
-            'errors' => [],
-        ];
+        $addedCount = 0;
 
         foreach ($orderIds as $orderId) {
-            try {
-                $order = Order::where('id', $orderId)
-                    ->where('admin_id', $pickup->admin_id)
-                    ->where('status', 'confirmée')
-                    ->first();
+            $order = Order::where('id', $orderId)
+                ->where('admin_id', $pickup->admin_id)
+                ->where('status', 'confirmée')
+                ->first();
 
-                if (!$order) {
-                    $results['skipped_count']++;
-                    $results['errors'][] = "Commande #{$orderId} introuvable ou non confirmée";
-                    continue;
-                }
-
-                // Vérifier si la commande n'a pas déjà une expédition
-                if ($order->shipments()->whereNotNull('pickup_id')->exists()) {
-                    $results['skipped_count']++;
-                    $results['errors'][] = "Commande #{$orderId} déjà assignée à un enlèvement";
-                    continue;
-                }
-
-                $this->createShipmentForOrder($pickup, $order);
-                $results['added_count']++;
-                
-            } catch (\Exception $e) {
-                $results['skipped_count']++;
-                $results['errors'][] = "Commande #{$orderId}: " . $e->getMessage();
+            if (!$order) {
+                continue;
             }
+
+            // Vérifier si la commande n'a pas déjà une expédition
+            if ($order->shipments()->whereNotNull('pickup_id')->exists()) {
+                continue;
+            }
+
+            $this->createShipmentForOrder($pickup, $order);
+            $addedCount++;
         }
 
-        return $results;
+        return $addedCount;
     }
 
     /**
@@ -205,13 +170,6 @@ class PickupService
         if ($shipment->pickup_id !== $pickup->id) {
             throw new \Exception('Cette expédition n\'appartient pas à cet enlèvement.');
         }
-
-        // Enregistrer dans l'historique de la commande
-        $shipment->order->recordHistory(
-            'shipment_removed',
-            "Expédition supprimée de l'enlèvement #{$pickup->id}",
-            ['pickup_id' => $pickup->id, 'shipment_id' => $shipment->id]
-        );
 
         $shipment->delete();
     }
@@ -239,63 +197,7 @@ class PickupService
             $pickup->deliveryConfiguration
         );
 
-        try {
-            $result = $service->getMassLabels($posBarcodes);
-            
-            // Enregistrer dans l'historique
-            foreach ($pickup->shipments()->whereNotNull('pos_barcode')->get() as $shipment) {
-                $shipment->order->recordHistory(
-                    'tracking_updated',
-                    "Étiquettes générées pour l'enlèvement #{$pickup->id}",
-                    [
-                        'pickup_id' => $pickup->id,
-                        'labels_count' => count($posBarcodes),
-                        'generated_at' => now(),
-                    ]
-                );
-            }
-            
-            return $result;
-            
-        } catch (\Exception $e) {
-            Log::error('Label generation failed', [
-                'pickup_id' => $pickup->id,
-                'pos_barcodes' => $posBarcodes,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Générer le manifeste pour un enlèvement
-     */
-    public function generateManifest(Pickup $pickup): array
-    {
-        if ($pickup->status !== Pickup::STATUS_VALIDATED) {
-            throw new \Exception('L\'enlèvement doit être validé pour générer le manifeste.');
-        }
-
-        $shipments = $pickup->shipments()->whereNotNull('pos_barcode')->get();
-        
-        if ($shipments->isEmpty()) {
-            throw new \Exception('Aucune expédition à inclure dans le manifeste.');
-        }
-
-        $manifestData = [
-            'pickup' => $pickup,
-            'shipments' => $shipments,
-            'total_weight' => $shipments->sum('weight'),
-            'total_value' => $shipments->sum('value'),
-            'total_cod' => $shipments->sum('cod_amount'),
-            'pickup_address' => $pickup->pickupAddress,
-            'carrier_config' => $pickup->deliveryConfiguration,
-            'generated_at' => now(),
-        ];
-
-        // Ici on pourrait utiliser une vue PDF ou un générateur de manifeste
-        // Pour l'instant, retourner les données
-        return $manifestData;
+        return $service->getMassLabels($posBarcodes);
     }
 
     /**
@@ -307,7 +209,6 @@ class PickupService
             'updated_count' => 0,
             'error_count' => 0,
             'errors' => [],
-            'status_changes' => [],
         ];
 
         foreach ($pickup->shipments as $shipment) {
@@ -315,15 +216,8 @@ class PickupService
                 $oldStatus = $shipment->status;
                 $shipment->trackStatus();
                 
-                if ($shipment->fresh()->status !== $oldStatus) {
+                if ($shipment->status !== $oldStatus) {
                     $results['updated_count']++;
-                    $results['status_changes'][] = [
-                        'shipment_id' => $shipment->id,
-                        'order_id' => $shipment->order_id,
-                        'old_status' => $oldStatus,
-                        'new_status' => $shipment->fresh()->status,
-                        'pos_barcode' => $shipment->pos_barcode,
-                    ];
                 }
             } catch (\Exception $e) {
                 $results['error_count']++;
@@ -332,16 +226,8 @@ class PickupService
         }
 
         // Mettre à jour le statut de l'enlèvement
-        $oldPickupStatus = $pickup->status;
         $pickup->updateStatus();
         $pickup->checkForProblems();
-        
-        if ($pickup->fresh()->status !== $oldPickupStatus) {
-            $results['pickup_status_changed'] = [
-                'old_status' => $oldPickupStatus,
-                'new_status' => $pickup->fresh()->status,
-            ];
-        }
 
         return $results;
     }
@@ -353,7 +239,6 @@ class PickupService
     {
         $query = Order::where('admin_id', $admin->id)
             ->where('status', 'confirmée')
-            ->where('is_suspended', false)
             ->whereDoesntHave('shipments', function($q) {
                 $q->whereNotNull('pickup_id');
             });
@@ -383,15 +268,6 @@ class PickupService
             $query->where('total_price', '<=', $filters['max_amount']);
         }
 
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function($q) use ($search) {
-                $q->where('customer_name', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%")
-                  ->orWhere('id', $search);
-            });
-        }
-
         return $query->orderBy('created_at', 'desc');
     }
 
@@ -405,44 +281,20 @@ class PickupService
         $baseQuery = Pickup::where('admin_id', $admin->id)
             ->where('created_at', '>=', $startDate);
 
-        $stats = [
+        return [
             'total_pickups' => (clone $baseQuery)->count(),
-            'draft_pickups' => (clone $baseQuery)->where('status', Pickup::STATUS_DRAFT)->count(),
             'validated_pickups' => (clone $baseQuery)->where('status', Pickup::STATUS_VALIDATED)->count(),
             'picked_up_pickups' => (clone $baseQuery)->where('status', Pickup::STATUS_PICKED_UP)->count(),
             'problem_pickups' => (clone $baseQuery)->where('status', Pickup::STATUS_PROBLEM)->count(),
-            'total_shipments' => 0,
-            'delivered_shipments' => 0,
-            'by_carrier' => [],
-            'average_validation_time' => null,
-            'delivery_rate' => 0,
+            'total_shipments' => Shipment::whereHas('pickup', function($q) use ($admin, $startDate) {
+                $q->where('admin_id', $admin->id)->where('created_at', '>=', $startDate);
+            })->count(),
+            'delivered_shipments' => Shipment::whereHas('pickup', function($q) use ($admin, $startDate) {
+                $q->where('admin_id', $admin->id)->where('created_at', '>=', $startDate);
+            })->where('status', Shipment::STATUS_DELIVERED)->count(),
+            'average_validation_time' => $this->calculateAverageValidationTime($admin, $startDate),
+            'delivery_rate' => $this->calculateDeliveryRate($admin, $startDate),
         ];
-
-        // Statistiques des expéditions
-        $shipmentsQuery = Shipment::whereHas('pickup', function($q) use ($admin, $startDate) {
-            $q->where('admin_id', $admin->id)->where('created_at', '>=', $startDate);
-        });
-
-        $stats['total_shipments'] = $shipmentsQuery->count();
-        $stats['delivered_shipments'] = (clone $shipmentsQuery)->where('status', Shipment::STATUS_DELIVERED)->count();
-
-        // Statistiques par transporteur
-        $stats['by_carrier'] = Pickup::where('admin_id', $admin->id)
-            ->where('created_at', '>=', $startDate)
-            ->groupBy('carrier_slug')
-            ->selectRaw('carrier_slug, count(*) as count')
-            ->pluck('count', 'carrier_slug')
-            ->toArray();
-
-        // Temps moyen de validation
-        $stats['average_validation_time'] = $this->calculateAverageValidationTime($admin, $startDate);
-
-        // Taux de livraison
-        if ($stats['total_shipments'] > 0) {
-            $stats['delivery_rate'] = round(($stats['delivered_shipments'] / $stats['total_shipments']) * 100, 2);
-        }
-
-        return $stats;
     }
 
     /**
@@ -479,7 +331,7 @@ class PickupService
     {
         $totalWeight = 0;
         
-        foreach ($order->items as $item) {
+        foreach ($order->orderItems as $item) {
             $itemWeight = $item->product->weight ?? 0.5; // 500g par défaut
             $totalWeight += $itemWeight * $item->quantity;
         }
@@ -510,54 +362,22 @@ class PickupService
     }
 
     /**
-     * Supprimer un enlèvement (seulement en brouillon)
+     * Calculer le taux de livraison
      */
-    public function deletePickup(Pickup $pickup): void
+    private function calculateDeliveryRate(Admin $admin, Carbon $startDate): float
     {
-        if ($pickup->status !== Pickup::STATUS_DRAFT) {
-            throw new \Exception('Seuls les enlèvements en brouillon peuvent être supprimés.');
+        $totalShipments = Shipment::whereHas('pickup', function($q) use ($admin, $startDate) {
+            $q->where('admin_id', $admin->id)->where('created_at', '>=', $startDate);
+        })->count();
+
+        if ($totalShipments === 0) {
+            return 0;
         }
 
-        DB::transaction(function () use ($pickup) {
-            // Supprimer les expéditions
-            foreach ($pickup->shipments as $shipment) {
-                $shipment->order->recordHistory(
-                    'shipment_removed',
-                    "Enlèvement #{$pickup->id} supprimé",
-                    ['pickup_id' => $pickup->id]
-                );
-            }
-            
-            $pickup->shipments()->delete();
-            $pickup->delete();
-        });
-    }
+        $deliveredShipments = Shipment::whereHas('pickup', function($q) use ($admin, $startDate) {
+            $q->where('admin_id', $admin->id)->where('created_at', '>=', $startDate);
+        })->where('status', Shipment::STATUS_DELIVERED)->count();
 
-    /**
-     * Dupliquer un enlèvement
-     */
-    public function duplicatePickup(Pickup $pickup): Pickup
-    {
-        return DB::transaction(function () use ($pickup) {
-            $newPickup = Pickup::create([
-                'admin_id' => $pickup->admin_id,
-                'carrier_slug' => $pickup->carrier_slug,
-                'delivery_configuration_id' => $pickup->delivery_configuration_id,
-                'pickup_address_id' => $pickup->pickup_address_id,
-                'pickup_date' => $pickup->pickup_date,
-                'status' => Pickup::STATUS_DRAFT,
-            ]);
-
-            // Dupliquer les expéditions (seulement si les commandes sont encore disponibles)
-            foreach ($pickup->shipments as $shipment) {
-                if ($shipment->order->status === 'confirmée' && 
-                    !$shipment->order->shipments()->whereNotNull('pickup_id')->exists()) {
-                    
-                    $this->createShipmentForOrder($newPickup, $shipment->order);
-                }
-            }
-
-            return $newPickup;
-        });
+        return round(($deliveredShipments / $totalShipments) * 100, 2);
     }
 }

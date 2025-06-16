@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Shipment extends Model
@@ -47,7 +46,10 @@ class Shipment extends Model
         'carrier_last_status_update' => 'datetime',
     ];
 
-    // Constants
+    // ========================================
+    // CONSTANTES
+    // ========================================
+    
     const STATUS_CREATED = 'created';
     const STATUS_VALIDATED = 'validated';
     const STATUS_PICKED_UP_BY_CARRIER = 'picked_up_by_carrier';
@@ -57,7 +59,10 @@ class Shipment extends Model
     const STATUS_IN_RETURN = 'in_return';
     const STATUS_ANOMALY = 'anomaly';
 
-    // Relations
+    // ========================================
+    // RELATIONS
+    // ========================================
+    
     public function admin(): BelongsTo
     {
         return $this->belongsTo(Admin::class);
@@ -73,12 +78,10 @@ class Shipment extends Model
         return $this->belongsTo(Pickup::class);
     }
 
-    public function statusHistory(): HasMany
-    {
-        return $this->hasMany(ShipmentStatusHistory::class);
-    }
-
-    // Accessors
+    // ========================================
+    // ACCESSORS
+    // ========================================
+    
     public function getStatusLabelAttribute(): string
     {
         return match($this->status) {
@@ -115,11 +118,65 @@ class Shipment extends Model
             return null;
         }
 
-        // URL de tracking pour Fparcel (exemple)
+        // URL de tracking pour Fparcel
         return "https://tracking.fparcel.com/{$this->pos_barcode}";
     }
 
-    // Methods
+    public function getCarrierNameAttribute(): string
+    {
+        return $this->pickup->carrier_slug ?? 'N/A';
+    }
+
+    public function getCustomerNameAttribute(): string
+    {
+        return $this->recipient_info['name'] ?? $this->order->customer_name ?? 'N/A';
+    }
+
+    public function getCustomerPhoneAttribute(): string
+    {
+        return $this->recipient_info['phone'] ?? $this->order->customer_phone ?? 'N/A';
+    }
+
+    public function getCustomerAddressAttribute(): string
+    {
+        return $this->recipient_info['address'] ?? $this->order->customer_address ?? 'N/A';
+    }
+
+    public function getDaysInTransitAttribute(): ?int
+    {
+        if ($this->status === self::STATUS_DELIVERED && $this->delivered_at) {
+            return $this->created_at->diffInDays($this->delivered_at);
+        }
+        
+        if (in_array($this->status, [self::STATUS_IN_TRANSIT, self::STATUS_PICKED_UP_BY_CARRIER])) {
+            return $this->created_at->diffInDays(now());
+        }
+        
+        return null;
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_VALIDATED,
+            self::STATUS_PICKED_UP_BY_CARRIER,
+            self::STATUS_IN_TRANSIT
+        ]);
+    }
+
+    public function getIsCompletedAttribute(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_DELIVERED,
+            self::STATUS_CANCELLED,
+            self::STATUS_IN_RETURN
+        ]);
+    }
+
+    // ========================================
+    // MÉTHODES
+    // ========================================
+    
     public function createWithCarrier(): bool
     {
         if (!$this->pickup || !$this->pickup->deliveryConfiguration) {
@@ -139,6 +196,13 @@ class Shipment extends Model
                 'status' => self::STATUS_VALIDATED,
                 'fparcel_data' => $result,
             ]);
+
+            // Mettre à jour la commande
+            $this->order->markAsShipped(
+                $this->pos_barcode,
+                $this->pickup->carrier_slug,
+                "Expédition créée via {$this->pickup->carrier_slug}"
+            );
 
             $this->logStatusChange(self::STATUS_CREATED, self::STATUS_VALIDATED);
             
@@ -178,17 +242,34 @@ class Shipment extends Model
                         $trackingData['status_label'] ?? null
                     );
 
-                    // Mettre à jour la commande si livré
-                    if ($newStatus === self::STATUS_DELIVERED && $this->order) {
-                        $this->order->update([
-                            'status' => 'livrée',
-                            'delivered_at' => now(),
-                        ]);
-                    }
+                    // Mettre à jour la commande selon le nouveau statut
+                    $this->updateOrderStatus($newStatus, $trackingData);
                 }
             }
         } catch (\Exception $e) {
             \Log::error('Shipment tracking failed: ' . $e->getMessage());
+        }
+    }
+
+    private function updateOrderStatus(string $shipmentStatus, array $trackingData): void
+    {
+        $orderStatus = match($shipmentStatus) {
+            self::STATUS_PICKED_UP_BY_CARRIER => 'expédiée',
+            self::STATUS_IN_TRANSIT => 'en_transit',
+            self::STATUS_DELIVERED => 'livrée',
+            self::STATUS_IN_RETURN => 'en_retour',
+            self::STATUS_ANOMALY => 'anomalie_livraison',
+            default => null,
+        };
+
+        if ($orderStatus) {
+            $this->order->updateDeliveryStatus(
+                $orderStatus,
+                $trackingData['status'] ?? null,
+                $trackingData['status_label'] ?? null,
+                "Mise à jour automatique du suivi",
+                $this->pos_barcode
+            );
         }
     }
 
@@ -213,11 +294,34 @@ class Shipment extends Model
         ?string $carrierCode = null,
         ?string $carrierLabel = null
     ): void {
-        $this->statusHistory()->create([
-            'carrier_status_code' => $carrierCode,
-            'carrier_status_label' => $carrierLabel,
-            'internal_status' => $newStatus,
-        ]);
+        // Utiliser OrderHistory comme demandé
+        $action = match($newStatus) {
+            self::STATUS_VALIDATED => 'shipment_validated',
+            self::STATUS_PICKED_UP_BY_CARRIER => 'picked_up_by_carrier',
+            self::STATUS_IN_TRANSIT => 'in_transit',
+            self::STATUS_DELIVERED => 'livraison',
+            self::STATUS_IN_RETURN => 'in_return',
+            self::STATUS_ANOMALY => 'delivery_anomaly',
+            default => 'tracking_updated',
+        };
+
+        $this->order->recordHistory(
+            $action,
+            "Statut expédition mis à jour: {$this->status_label}",
+            [
+                'shipment_id' => $this->id,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'carrier_status_code' => $carrierCode,
+                'carrier_status_label' => $carrierLabel,
+            ],
+            $oldStatus,
+            $newStatus,
+            $carrierCode,
+            $carrierLabel,
+            $this->pos_barcode,
+            $this->carrier_name
+        );
     }
 
     private function generateReturnBarcode(string $posBarcode): string
@@ -225,7 +329,58 @@ class Shipment extends Model
         return 'RET_' . $posBarcode . '_' . Str::random(6);
     }
 
-    // Scopes
+    public function cancel(string $reason = null): void
+    {
+        $oldStatus = $this->status;
+        
+        $this->update([
+            'status' => self::STATUS_CANCELLED,
+            'delivery_notes' => $reason,
+        ]);
+
+        $this->order->recordHistory(
+            'changement_statut',
+            $reason ?: 'Expédition annulée',
+            [
+                'shipment_id' => $this->id,
+                'cancelled_reason' => $reason,
+            ],
+            $oldStatus,
+            'annulée'
+        );
+    }
+
+    public function markAsDelivered(string $notes = null): void
+    {
+        $oldStatus = $this->status;
+        
+        $this->update([
+            'status' => self::STATUS_DELIVERED,
+            'delivered_at' => now(),
+            'delivery_notes' => $notes,
+        ]);
+
+        $this->order->updateDeliveryStatus(
+            'livrée',
+            '7',
+            'Colis livré',
+            $notes ?: 'Livraison confirmée manuellement',
+            $this->pos_barcode
+        );
+    }
+
+    public function getTrackingHistory(): array
+    {
+        return $this->order->getDeliveryHistory()
+            ->where('tracking_number', $this->pos_barcode)
+            ->get()
+            ->toArray();
+    }
+
+    // ========================================
+    // SCOPES
+    // ========================================
+    
     public function scopeByStatus($query, string $status)
     {
         return $query->where('status', $status);
@@ -253,5 +408,76 @@ class Shipment extends Model
     public function scopeInReturn($query)
     {
         return $query->where('status', self::STATUS_IN_RETURN);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', [
+            self::STATUS_VALIDATED,
+            self::STATUS_PICKED_UP_BY_CARRIER,
+            self::STATUS_IN_TRANSIT
+        ]);
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->whereIn('status', [
+            self::STATUS_DELIVERED,
+            self::STATUS_CANCELLED,
+            self::STATUS_IN_RETURN
+        ]);
+    }
+
+    public function scopeWithTracking($query)
+    {
+        return $query->whereNotNull('pos_barcode');
+    }
+
+    public function scopeByCarrier($query, string $carrier)
+    {
+        return $query->whereHas('pickup', function($q) use ($carrier) {
+            $q->where('carrier_slug', $carrier);
+        });
+    }
+
+    public function scopeRecent($query, int $days = 30)
+    {
+        return $query->where('created_at', '>=', now()->subDays($days));
+    }
+
+    // ========================================
+    // MÉTHODES STATIQUES
+    // ========================================
+    
+    public static function getStatusOptions(): array
+    {
+        return [
+            self::STATUS_CREATED => 'Créé',
+            self::STATUS_VALIDATED => 'Validé',
+            self::STATUS_PICKED_UP_BY_CARRIER => 'Récupéré par transporteur',
+            self::STATUS_IN_TRANSIT => 'En transit',
+            self::STATUS_DELIVERED => 'Livré',
+            self::STATUS_CANCELLED => 'Annulé',
+            self::STATUS_IN_RETURN => 'En retour',
+            self::STATUS_ANOMALY => 'Anomalie',
+        ];
+    }
+
+    public static function getActiveStatuses(): array
+    {
+        return [
+            self::STATUS_VALIDATED,
+            self::STATUS_PICKED_UP_BY_CARRIER,
+            self::STATUS_IN_TRANSIT,
+        ];
+    }
+
+    public static function getCompletedStatuses(): array
+    {
+        return [
+            self::STATUS_DELIVERED,
+            self::STATUS_CANCELLED,
+            self::STATUS_IN_RETURN,
+        ];
     }
 }

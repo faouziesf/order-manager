@@ -16,6 +16,9 @@ use App\Http\Controllers\Admin\SuspendedController;
 use App\Http\Controllers\Admin\WooCommerceController;
 use App\Http\Controllers\Admin\DeliveryController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\PickupAddressController;  
+use App\Http\Controllers\Admin\BLTemplateController;
+
 
 // ========================================
 // ROUTES ADMIN
@@ -237,53 +240,90 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // GESTION DES LIVRAISONS
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
-            // Configuration page
+            // Page de configuration principale
             Route::get('configuration', [DeliveryController::class, 'configuration'])
                 ->name('configuration');
-            Route::post('configuration', [DeliveryController::class, 'updateConfiguration'])
+            
+            // Gestion des configurations de transporteurs
+            Route::post('configuration', [DeliveryController::class, 'storeConfiguration'])
+                ->name('configuration.store');
+            Route::patch('configuration/{config}', [DeliveryController::class, 'updateConfiguration'])
                 ->name('configuration.update');
-
-            // Management page
-            Route::get('management', [DeliveryController::class, 'management'])
-                ->name('management');
-            Route::post('management', [DeliveryController::class, 'updateManagement'])
-                ->name('management.update');
-
-            // FParcel API connection routes
-            Route::get('status', [DeliveryController::class, 'getConnectionStatus'])
-                ->name('status');
-            Route::post('connect', [DeliveryController::class, 'connectToFParcel'])
-                ->name('connect');
-            Route::post('test', [DeliveryController::class, 'testConnection'])
-                ->name('test');
-            Route::post('disconnect', [DeliveryController::class, 'disconnect'])
-                ->name('disconnect');
-            Route::post('refresh-token', [DeliveryController::class, 'refreshToken'])
-                ->name('refresh-token');
-
-            // Synchronization routes
-            Route::post('sync-payment-methods', [DeliveryController::class, 'syncPaymentMethods'])
-                ->name('sync-payment-methods');
-            Route::post('sync-drop-points', [DeliveryController::class, 'syncDropPoints'])
-                ->name('sync-drop-points');
-            Route::post('sync-anomaly-reasons', [DeliveryController::class, 'syncAnomalyReasons'])
-                ->name('sync-anomaly-reasons');
-
-            // API Parameters configuration routes
-            Route::post('save-parameters', [DeliveryController::class, 'saveParameters'])
-                ->name('save-parameters');
-            Route::get('get-parameters', [DeliveryController::class, 'getParameters'])
-                ->name('get-parameters');
-            Route::post('test-parameters', [DeliveryController::class, 'testParameters'])
-                ->name('test-parameters');
-            Route::get('payment-methods', [DeliveryController::class, 'getPaymentMethods'])
-                ->name('payment-methods');
-
-            // Additional utility routes
-            Route::get('zones', [DeliveryController::class, 'zones'])
-                ->name('zones');
-            Route::get('tarifs', [DeliveryController::class, 'tarifs'])
-                ->name('tarifs');
+            Route::delete('configuration/{config}', [DeliveryController::class, 'deleteConfiguration'])
+                ->name('configuration.delete');
+            Route::post('configuration/{config}/test', [DeliveryController::class, 'testConnection'])
+                ->name('configuration.test');
+            Route::post('configuration/{config}/refresh-token', [DeliveryController::class, 'refreshToken'])
+                ->name('configuration.refresh-token');
+            Route::post('configuration/{config}/toggle', [DeliveryController::class, 'toggleConfiguration'])
+                ->name('configuration.toggle');
+            
+            // Gestion des adresses d'enlèvement
+            Route::post('pickup-addresses', [DeliveryController::class, 'storePickupAddress'])
+                ->name('pickup-addresses.store');
+            Route::delete('pickup-addresses/{address}', [DeliveryController::class, 'deletePickupAddress'])
+                ->name('pickup-addresses.delete');
+            
+            // Préparation d'enlèvement
+            Route::get('preparation', [DeliveryController::class, 'preparation'])
+                ->name('preparation');
+            Route::get('preparation/orders', [DeliveryController::class, 'getAvailableOrders'])
+                ->name('preparation.orders');
+            Route::post('preparation', [DeliveryController::class, 'createPickup'])
+                ->name('preparation.store');
+            
+            // Gestion des enlèvements
+            Route::get('pickups', [DeliveryController::class, 'pickups'])
+                ->name('pickups');
+            Route::get('pickups/{pickup}', [DeliveryController::class, 'showPickup'])
+                ->name('pickups.show');
+            Route::post('pickups/{pickup}/validate', [DeliveryController::class, 'validatePickup'])
+                ->name('pickups.validate');
+            Route::post('pickups/{pickup}/labels', [DeliveryController::class, 'generateLabels'])
+                ->name('pickups.labels');
+            Route::post('pickups/{pickup}/manifest', [DeliveryController::class, 'generateManifest'])
+                ->name('pickups.manifest');
+            Route::post('pickups/{pickup}/refresh', [DeliveryController::class, 'refreshStatus'])
+                ->name('pickups.refresh');
+            Route::delete('pickups/{pickup}', [DeliveryController::class, 'destroyPickup'])
+                ->name('pickups.destroy');
+            
+            // Gestion des expéditions
+            Route::get('shipments', [DeliveryController::class, 'shipments'])
+                ->name('shipments');
+            Route::get('shipments/{shipment}', [DeliveryController::class, 'showShipment'])
+                ->name('shipments.show');
+            Route::post('shipments/{shipment}/track', [DeliveryController::class, 'trackShipment'])
+                ->name('shipments.track');
+            Route::post('shipments/{shipment}/mark-delivered', [DeliveryController::class, 'markDelivered'])
+                ->name('shipments.mark-delivered');
+            
+            // Adresses d'enlèvement (page dédiée)
+            Route::resource('pickup-addresses', PickupAddressController::class)
+                ->except(['show']);
+            Route::patch('pickup-addresses/{address}/toggle', [PickupAddressController::class, 'toggleStatus'])
+                ->name('pickup-addresses.toggle');
+            Route::patch('pickup-addresses/{address}/set-default', [PickupAddressController::class, 'setDefault'])
+                ->name('pickup-addresses.set-default');
+            
+            // Templates BL
+            Route::resource('bl-templates', BLTemplateController::class);
+            Route::post('bl-templates/{template}/duplicate', [BLTemplateController::class, 'duplicate'])
+                ->name('bl-templates.duplicate');
+            Route::patch('bl-templates/{template}/set-default', [BLTemplateController::class, 'setDefault'])
+                ->name('bl-templates.set-default');
+            
+            // Statistiques
+            Route::get('stats', [DeliveryController::class, 'stats'])
+                ->name('stats');
+            
+            // APIs utilitaires
+            Route::get('api/carriers', [DeliveryController::class, 'getCarriers'])
+                ->name('api.carriers');
+            Route::get('api/stats', [DeliveryController::class, 'getApiStats'])
+                ->name('api.stats');
+            Route::post('api/track-all', [DeliveryController::class, 'trackAllShipments'])
+                ->name('api.track-all');
         });
 
         // ========================================

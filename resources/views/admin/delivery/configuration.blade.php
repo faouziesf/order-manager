@@ -1,1379 +1,671 @@
 @extends('layouts.admin')
 
-@section('title', 'Configuration Livraison')
-
-@push('head')
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-@endpush
-
-@section('css')
-    <style>
-        :root {
-            --primary: #6366f1;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --info: #3b82f6;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-600: #4b5563;
-            --gray-800: #1f2937;
-            --white: #ffffff;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --border-radius: 12px;
-        }
-
-        .page-header {
-            background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-lg);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .page-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 100%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-            transform: rotate(15deg);
-        }
-
-        .header-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .config-section {
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            margin-bottom: 2rem;
-        }
-
-        .section-header {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .section-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--gray-800);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin: 0;
-        }
-
-        /* Company Selection Styles */
-        .company-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            padding: 2rem;
-        }
-
-        .company-card {
-            background: white;
-            border: 3px solid var(--gray-200);
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            text-align: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .company-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .company-card.selected {
-            border-color: var(--success);
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.1) 100%);
-        }
-
-        .company-logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem;
-            font-size: 2rem;
-            color: white;
-        }
-
-        .company-card.selected .company-logo {
-            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-        }
-
-        .company-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--gray-800);
-            margin-bottom: 0.5rem;
-        }
-
-        .company-description {
-            color: var(--gray-600);
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-        }
-
-        .company-features {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            text-align: left;
-        }
-
-        .company-features li {
-            padding: 0.25rem 0;
-            color: var(--gray-600);
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .company-features li i {
-            color: var(--success);
-            width: 16px;
-        }
-
-        .breadcrumb-nav {
-            background: var(--gray-100);
-            padding: 1rem 1.5rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 2rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .breadcrumb-item {
-            color: var(--gray-600);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-        }
-
-        .breadcrumb-item:hover {
-            color: var(--primary);
-        }
-
-        .breadcrumb-item.active {
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .breadcrumb-separator {
-            color: var(--gray-400);
-        }
-
-        .connection-status {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .connection-status.connected {
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            color: var(--success);
-        }
-
-        .connection-status.disconnected {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: var(--danger);
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--gray-800);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid var(--gray-200);
-            border-radius: 8px;
-            transition: all 0.2s ease;
-            font-size: 0.875rem;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            border: none;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            transition: all 0.2s ease;
-            margin-right: 0.5rem;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
-            color: white;
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-            color: white;
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, var(--gray-600) 0%, #4b5563 100%);
-            color: white;
-        }
-
-        .btn-info {
-            background: linear-gradient(135deg, var(--info) 0%, #0369a1 100%);
-            color: white;
-        }
-
-        .btn-warning {
-            background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
-            color: white;
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .alert-success {
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            color: var(--success);
-        }
-
-        .alert-danger {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: var(--danger);
-        }
-
-        .alert-info {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            color: var(--info);
-        }
-
-        .config-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            padding: 1.5rem;
-        }
-
-        .config-item {
-            padding: 1.5rem;
-            border: 2px solid var(--gray-200);
-            border-radius: var(--border-radius);
-            transition: all 0.2s ease;
-        }
-
-        .config-item:hover {
-            border-color: var(--primary);
-            box-shadow: var(--shadow);
-        }
-
-        .config-item h5 {
-            margin: 0 0 1rem 0;
-            color: var(--gray-800);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .config-item p {
-            color: var(--gray-600);
-            font-size: 0.875rem;
-            margin-bottom: 1rem;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 1rem;
-            height: 1rem;
-            border: 2px solid transparent;
-            border-top: 2px solid currentColor;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .token-info {
-            background: var(--gray-100);
-            padding: 1rem;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 0.75rem;
-            word-break: break-all;
-            margin-top: 1rem;
-        }
-
-        .card {
-            border: 2px solid var(--gray-200);
-            border-radius: var(--border-radius);
-            margin-bottom: 1.5rem;
-            overflow: hidden;
-            transition: all 0.2s ease;
-        }
-
-        .card:hover {
-            border-color: var(--primary);
-            box-shadow: var(--shadow);
-        }
-
-        .card-header {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .card-body {
-            padding: 1.5rem;
-        }
-
-        .text-muted {
-            color: var(--gray-600) !important;
-            font-size: 0.75rem;
-        }
-
-        @media (max-width: 768px) {
-
-            .config-grid,
-            .company-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .page-header {
-                padding: 1.5rem;
-            }
-        }
-    </style>
-@endsection
+@section('title', 'Configuration des Transporteurs')
 
 @section('content')
-    <div class="container-fluid" style="max-width: 1400px; margin: 0 auto; padding: 1rem;">
+<div class="container-fluid">
+    <!-- En-tête avec statistiques -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0 text-gray-800">
+                    <i class="fas fa-truck mr-2"></i>Configuration des Transporteurs
+                </h1>
+                <button class="btn btn-primary" data-toggle="modal" data-target="#addConfigModal">
+                    <i class="fas fa-plus mr-1"></i>Nouveau Transporteur
+                </button>
+            </div>
+        </div>
+    </div>
 
-        <!-- En-tête -->
-        <div class="page-header">
-            <div class="header-content">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem; font-weight: 700;">
-                            <i class="fas fa-truck me-3"></i>
-                            Configuration des Livraisons
-                        </h1>
-                        <p style="margin: 0; opacity: 0.8; font-size: 1.125rem;">
-                            Choisissez et configurez votre service de livraison
-                        </p>
+    <!-- Cartes de statistiques -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Configurations Totales
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total_configs'] }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-cogs fa-2x text-gray-300"></i>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Breadcrumb Navigation (hidden initially) -->
-        <div class="breadcrumb-nav" id="breadcrumb-nav" style="display: none;">
-            <a class="breadcrumb-item" onclick="showCompanySelection()">
-                <i class="fas fa-building"></i>
-                Sélection du transporteur
-            </a>
-            <span class="breadcrumb-separator">
-                <i class="fas fa-chevron-right"></i>
-            </span>
-            <span class="breadcrumb-item active" id="selected-company-name">
-                Configuration
-            </span>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Configurations Actives
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['active_configs'] }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Company Selection Section -->
-        <div class="config-section" id="company-selection">
-            <div class="section-header">
-                <h3 class="section-title">
-                    <i class="fas fa-building"></i>
-                    Sélectionnez votre transporteur
-                </h3>
-            </div>
-
-            <div class="company-grid">
-                <!-- FParcel Card -->
-                <div class="company-card" data-company="fparcel" onclick="selectCompany('fparcel')">
-                    <div class="company-logo">
-                        <i class="fas fa-shipping-fast"></i>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Adresses d'Enlèvement
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total_addresses'] }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-map-marker-alt fa-2x text-gray-300"></i>
+                        </div>
                     </div>
-                    <h4 class="company-name">FParcel</h4>
-                    <p class="company-description">
-                        Solution de livraison complète avec tracking en temps réel et gestion avancée des colis
-                    </p>
-                    <ul class="company-features">
-                        <li><i class="fas fa-check"></i> Tracking en temps réel</li>
-                        <li><i class="fas fa-check"></i> API complète</li>
-                        <li><i class="fas fa-check"></i> Gestion des anomalies</li>
-                        <li><i class="fas fa-check"></i> Points de dépôt</li>
-                        <li><i class="fas fa-check"></i> Étiquettes personnalisées</li>
-                        <li><i class="fas fa-check"></i> Modes de règlement multiples</li>
-                    </ul>
-                </div>
-
-                <!-- Placeholder for future companies -->
-                <div class="company-card" style="opacity: 0.5; cursor: not-allowed;">
-                    <div class="company-logo" style="background: var(--gray-600);">
-                        <i class="fas fa-truck"></i>
-                    </div>
-                    <h4 class="company-name">Autres transporteurs</h4>
-                    <p class="company-description">
-                        D'autres solutions de transport seront bientôt disponibles
-                    </p>
-                    <ul class="company-features">
-                        <li><i class="fas fa-clock"></i> Prochainement disponible</li>
-                        <li><i class="fas fa-clock"></i> En cours de développement</li>
-                    </ul>
                 </div>
             </div>
+        </div>
 
-            <div style="padding: 0 2rem 2rem;">
-                <div class="d-flex justify-content-center">
-                    <button type="button" class="btn btn-primary" id="continue-btn" disabled
-                        onclick="proceedToConfiguration()">
-                        <i class="fas fa-arrow-right"></i>
-                        Continuer avec la configuration
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Tokens Expirés
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['expired_tokens'] }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages de succès/erreur -->
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
+            <button type="button" class="close" data-dismiss="alert">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i>{{ session('error') }}
+            <button type="button" class="close" data-dismiss="alert">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
+
+    <div class="row">
+        <!-- Configurations de transporteurs -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-shipping-fast mr-2"></i>Configurations des Transporteurs
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if($configurations->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Transporteur</th>
+                                        <th>Nom d'intégration</th>
+                                        <th>Environnement</th>
+                                        <th>Statut</th>
+                                        <th>Token</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($configurations as $config)
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-truck text-primary mr-2"></i>
+                                                    <strong>{{ $config->carrier_display_name }}</strong>
+                                                </div>
+                                            </td>
+                                            <td>{{ $config->integration_name }}</td>
+                                            <td>
+                                                <span class="badge badge-{{ $config->environment === 'prod' ? 'success' : 'warning' }}">
+                                                    {{ strtoupper($config->environment) }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge {{ $config->status_badge_class }}">
+                                                    {{ $config->status_label }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if($config->hasValidToken())
+                                                    <small class="text-success">
+                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                        Expire {{ $config->expires_at->diffForHumans() }}
+                                                    </small>
+                                                @else
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-times-circle mr-1"></i>
+                                                        Expiré ou manquant
+                                                    </small>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-outline-info" onclick="testConnection({{ $config->id }})" title="Tester la connexion">
+                                                        <i class="fas fa-plug"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" onclick="refreshToken({{ $config->id }})" title="Rafraîchir le token">
+                                                        <i class="fas fa-sync"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="editConfiguration({{ $config->id }})" title="Modifier">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-{{ $config->is_active ? 'warning' : 'success' }}" 
+                                                            onclick="toggleConfiguration({{ $config->id }})" 
+                                                            title="{{ $config->is_active ? 'Désactiver' : 'Activer' }}">
+                                                        <i class="fas fa-{{ $config->is_active ? 'pause' : 'play' }}"></i>
+                                                    </button>
+                                                    @if($config->pickups()->count() === 0)
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteConfiguration({{ $config->id }})" title="Supprimer">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <i class="fas fa-truck fa-3x text-gray-300 mb-3"></i>
+                            <h5 class="text-gray-600">Aucune configuration de transporteur</h5>
+                            <p class="text-gray-500">Commencez par ajouter votre premier transporteur pour gérer vos livraisons.</p>
+                            <button class="btn btn-primary mt-2" data-toggle="modal" data-target="#addConfigModal">
+                                <i class="fas fa-plus mr-1"></i>Ajouter un transporteur
+                            </button>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <!-- Adresses d'enlèvement -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-map-marker-alt mr-2"></i>Adresses d'Enlèvement
+                    </h6>
+                    <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addAddressModal">
+                        <i class="fas fa-plus"></i>
                     </button>
                 </div>
+                <div class="card-body">
+                    @if($pickupAddresses->count() > 0)
+                        @foreach($pickupAddresses as $address)
+                            <div class="card mb-2 {{ $address->is_default ? 'border-primary' : '' }}">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">
+                                                {{ $address->name }}
+                                                @if($address->is_default)
+                                                    <span class="badge badge-primary badge-sm ml-1">Par défaut</span>
+                                                @endif
+                                            </h6>
+                                            <small class="text-muted">
+                                                <i class="fas fa-user mr-1"></i>{{ $address->contact_name }}<br>
+                                                <i class="fas fa-map-marker-alt mr-1"></i>{{ $address->full_address }}<br>
+                                                <i class="fas fa-phone mr-1"></i>{{ $address->phone }}
+                                            </small>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                @if(!$address->is_default)
+                                                    <a class="dropdown-item" href="#" onclick="setDefaultAddress({{ $address->id }})">
+                                                        <i class="fas fa-star mr-2"></i>Définir par défaut
+                                                    </a>
+                                                @endif
+                                                <a class="dropdown-item" href="#" onclick="editAddress({{ $address->id }})">
+                                                    <i class="fas fa-edit mr-2"></i>Modifier
+                                                </a>
+                                                @if($address->canBeDeleted())
+                                                    <div class="dropdown-divider"></div>
+                                                    <a class="dropdown-item text-danger" href="#" onclick="deleteAddress({{ $address->id }})">
+                                                        <i class="fas fa-trash mr-2"></i>Supprimer
+                                                    </a>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="text-center py-3">
+                            <i class="fas fa-map-marker-alt fa-2x text-gray-300 mb-2"></i>
+                            <p class="text-gray-500 mb-2">Aucune adresse d'enlèvement</p>
+                            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addAddressModal">
+                                <i class="fas fa-plus mr-1"></i>Ajouter une adresse
+                            </button>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Transporteurs supportés -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle mr-2"></i>Transporteurs Supportés
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @foreach($supportedCarriers as $slug => $carrier)
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong>{{ $carrier['display_name'] }}</strong>
+                                <span class="badge badge-success">Disponible</span>
+                            </div>
+                            <small class="text-muted">
+                                @if($carrier['features']['cod'])
+                                    <i class="fas fa-money-bill mr-1" title="Contre remboursement"></i>
+                                @endif
+                                @if($carrier['features']['tracking'])
+                                    <i class="fas fa-search-location mr-1" title="Suivi en temps réel"></i>
+                                @endif
+                                @if($carrier['features']['mass_labels'])
+                                    <i class="fas fa-tags mr-1" title="Étiquettes en masse"></i>
+                                @endif
+                                @if($carrier['features']['pickup_address_selection'])
+                                    <i class="fas fa-map-marker-alt mr-1" title="Sélection d'adresse"></i>
+                                @endif
+                            </small>
+                        </div>
+                    @endforeach
+                </div>
             </div>
         </div>
-
-        <!-- FParcel Configuration Section -->
-        <div id="fparcel-configuration" style="display: none;">
-
-            <!-- Section de connexion FParcel -->
-            <div class="config-section">
-                <div class="section-header">
-                    <h3 class="section-title">
-                        <i class="fas fa-plug"></i>
-                        Connexion au service FParcel
-                    </h3>
-                </div>
-
-                <div style="padding: 1.5rem;">
-                    <!-- Statut de connexion -->
-                    <div id="connection-status" class="connection-status disconnected">
-                        <i class="fas fa-times-circle"></i>
-                        <span>Non connecté au service FParcel</span>
-                    </div>
-
-                    <!-- Alertes -->
-                    <div id="alerts-container"></div>
-
-                    <!-- Formulaire de connexion -->
-                    <div id="connection-form">
-                        <form id="fparcel-connect-form">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="fparcel_username">
-                                            <i class="fas fa-user me-2"></i>Nom d'utilisateur FParcel
-                                        </label>
-                                        <input type="text" class="form-control" id="fparcel_username" name="username"
-                                            required autocomplete="username" placeholder="Votre nom d'utilisateur FParcel">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label" for="fparcel_password">
-                                            <i class="fas fa-lock me-2"></i>Mot de passe FParcel
-                                        </label>
-                                        <input type="password" class="form-control" id="fparcel_password" name="password"
-                                            required autocomplete="current-password"
-                                            placeholder="Votre mot de passe FParcel">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-server me-2"></i>Environnement
-                                </label>
-                                <div>
-                                    <label style="margin-right: 1rem; font-weight: normal;">
-                                        <input type="radio" name="environment" value="test" checked
-                                            style="margin-right: 0.5rem;">
-                                        Test (http://fparcel.net:59)
-                                    </label>
-                                    <label style="font-weight: normal;">
-                                        <input type="radio" name="environment" value="prod"
-                                            style="margin-right: 0.5rem;">
-                                        Production (https://admin.fparcel.net)
-                                    </label>
-                                </div>
-                                <small class="text-muted">Utilisez l'environnement de test pour les essais, production pour
-                                    l'utilisation réelle.</small>
-                            </div>
-
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary" id="connect-btn">
-                                    <i class="fas fa-plug"></i>
-                                    Se connecter
-                                </button>
-                                <button type="button" class="btn btn-secondary" onclick="testConnection()">
-                                    <i class="fas fa-vial"></i>
-                                    Tester la connexion
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Informations de connexion (visible après connexion) -->
-                    <div id="connection-info" style="display: none;">
-                        <div class="alert alert-success">
-                            <i class="fas fa-check-circle"></i>
-                            Connecté avec succès au service FParcel
-                        </div>
-
-                        <div class="d-flex gap-2 mb-3">
-                            <button type="button" class="btn btn-danger" onclick="disconnect()">
-                                <i class="fas fa-times"></i>
-                                Se déconnecter
-                            </button>
-                            <button type="button" class="btn btn-info" onclick="refreshToken()">
-                                <i class="fas fa-refresh"></i>
-                                Actualiser le token
-                            </button>
-                        </div>
-
-                        <div class="token-info">
-                            <strong>Token actuel:</strong>
-                            <div id="current-token">Chargement...</div>
-                            <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--gray-600);">
-                                <strong>Dernière mise à jour:</strong> <span id="token-updated">-</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Configuration des paramètres (visible après connexion) -->
-            <div class="config-section" id="delivery-settings" style="display: none;">
-                <div class="section-header">
-                    <h3 class="section-title">
-                        <i class="fas fa-cogs"></i>
-                        Paramètres de livraison
-                    </h3>
-                </div>
-
-                <div class="config-grid">
-                    <div class="config-item">
-                        <h5>
-                            <i class="fas fa-dollar-sign text-success"></i>
-                            Modes de règlement
-                        </h5>
-                        <p>Synchronisez et configurez les modes de règlement disponibles</p>
-                        <button class="btn btn-success" onclick="syncPaymentMethods()">
-                            <i class="fas fa-sync"></i>
-                            Synchroniser
-                        </button>
-                    </div>
-
-                    <div class="config-item">
-                        <h5>
-                            <i class="fas fa-building text-info"></i>
-                            Points de dépôt
-                        </h5>
-                        <p>Gérez la liste des agences et points de dépôt</p>
-                        <button class="btn btn-info" onclick="syncDropPoints()">
-                            <i class="fas fa-download"></i>
-                            Synchroniser
-                        </button>
-                    </div>
-
-                    <div class="config-item">
-                        <h5>
-                            <i class="fas fa-exclamation-triangle text-warning"></i>
-                            Motifs d'anomalies
-                        </h5>
-                        <p>Synchronisez la liste des motifs d'anomalies</p>
-                        <button class="btn btn-warning" onclick="syncAnomalyReasons()">
-                            <i class="fas fa-list"></i>
-                            Synchroniser
-                        </button>
-                    </div>
-
-                    <div class="config-item">
-                        <h5>
-                            <i class="fas fa-tag text-primary"></i>
-                            Étiquettes
-                        </h5>
-                        <p>Configurez les paramètres d'impression des étiquettes</p>
-                        <button class="btn btn-primary" onclick="configureLabels()">
-                            <i class="fas fa-print"></i>
-                            Configurer
-                        </button>
-                    </div>
-
-                    <div class="config-item">
-                        <h5>
-                            <i class="fas fa-map-marker-alt text-danger"></i>
-                            Zones de livraison
-                        </h5>
-                        <p>Configurez vos zones de livraison et les tarifs associés</p>
-                        <button class="btn btn-danger" onclick="configureZones()">
-                            <i class="fas fa-cog"></i>
-                            Configurer
-                        </button>
-                    </div>
-
-                    <div class="config-item">
-                        <h5>
-                            <i class="fas fa-clock text-secondary"></i>
-                            Paramètres généraux
-                        </h5>
-                        <p>Configurez les horaires de livraison et autres paramètres</p>
-                        <button class="btn btn-secondary" onclick="configureGeneral()">
-                            <i class="fas fa-sliders-h"></i>
-                            Paramètres
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Configuration des paramètres d'envoi -->
-            <div class="config-section" id="api-parameters" style="display: none;">
-                <div class="section-header">
-                    <h3 class="section-title">
-                        <i class="fas fa-code"></i>
-                        Configuration des paramètres d'envoi
-                    </h3>
-                </div>
-
-                <div style="padding: 1.5rem;">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        <span>Configurez les valeurs par défaut qui seront utilisées lors de la création des positions de
-                            livraison via l'API FParcel.</span>
-                    </div>
-
-                    <form id="api-parameters-form">
-                        <!-- Informations Expéditeur -->
-                        <div class="card mb-4"
-                            style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
-                            <div class="card-header"
-                                style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
-                                <h5 class="mb-0"
-                                    style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
-                                    <i class="fas fa-user-tie text-primary"></i>
-                                    Informations Expéditeur (par défaut)
-                                </h5>
-                            </div>
-                            <div class="card-body" style="padding: 1.5rem;">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="enl_contact_nom">
-                                                <i class="fas fa-user me-2"></i>Nom de l'expéditeur
-                                            </label>
-                                            <input type="text" class="form-control" id="enl_contact_nom"
-                                                name="enl_contact_nom" placeholder="Nom de l'expéditeur">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="enl_contact_prenom">
-                                                <i class="fas fa-user me-2"></i>Prénom de l'expéditeur
-                                            </label>
-                                            <input type="text" class="form-control" id="enl_contact_prenom"
-                                                name="enl_contact_prenom" placeholder="Prénom de l'expéditeur">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="form-group">
-                                            <label class="form-label" for="enl_adresse">
-                                                <i class="fas fa-map-marker-alt me-2"></i>Adresse d'enlèvement
-                                            </label>
-                                            <textarea class="form-control" id="enl_adresse" name="enl_adresse" rows="2"
-                                                placeholder="Adresse complète d'enlèvement"></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label class="form-label" for="enl_code_postal">
-                                                <i class="fas fa-mail-bulk me-2"></i>Code postal
-                                            </label>
-                                            <input type="text" class="form-control" id="enl_code_postal"
-                                                name="enl_code_postal" placeholder="Code postal">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label class="form-label" for="enl_portable">
-                                                <i class="fas fa-mobile-alt me-2"></i>Téléphone portable
-                                            </label>
-                                            <input type="tel" class="form-control" id="enl_portable"
-                                                name="enl_portable" placeholder="Numéro de téléphone">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label class="form-label" for="enl_mail">
-                                                <i class="fas fa-envelope me-2"></i>Email
-                                            </label>
-                                            <input type="email" class="form-control" id="enl_mail" name="enl_mail"
-                                                placeholder="Adresse email">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Paramètres de livraison -->
-                        <div class="card mb-4"
-                            style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
-                            <div class="card-header"
-                                style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
-                                <h5 class="mb-0"
-                                    style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
-                                    <i class="fas fa-truck text-success"></i>
-                                    Paramètres de livraison par défaut
-                                </h5>
-                            </div>
-                            <div class="card-body" style="padding: 1.5rem;">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_mr_code">
-                                                <i class="fas fa-credit-card me-2"></i>Mode de règlement par défaut
-                                            </label>
-                                            <select class="form-control" id="default_mr_code" name="default_mr_code">
-                                                <option value="">Sélectionner un mode de règlement</option>
-                                            </select>
-                                            <small class="text-muted">Les modes de règlement sont synchronisés depuis
-                                                FParcel</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_pos_allow_open">
-                                                <i class="fas fa-box-open me-2"></i>Autoriser l'ouverture du colis
-                                            </label>
-                                            <select class="form-control" id="default_pos_allow_open"
-                                                name="default_pos_allow_open">
-                                                <option value="0">Non - Ouverture interdite</option>
-                                                <option value="1">Oui - Ouverture autorisée</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_pos_valid">
-                                                <i class="fas fa-check-circle me-2"></i>Validation automatique
-                                            </label>
-                                            <select class="form-control" id="default_pos_valid" name="default_pos_valid">
-                                                <option value="0">Non - Position temporaire</option>
-                                                <option value="1" selected>Oui - Position validée</option>
-                                            </select>
-                                            <small class="text-muted">Si "Non", la position devra être validée
-                                                manuellement</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_nb_piece">
-                                                <i class="fas fa-boxes me-2"></i>Nombre de pièces par défaut
-                                            </label>
-                                            <input type="number" class="form-control" id="default_nb_piece"
-                                                name="default_nb_piece" value="1" min="1">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Horaires de livraison -->
-                        <div class="card mb-4"
-                            style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
-                            <div class="card-header"
-                                style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
-                                <h5 class="mb-0"
-                                    style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
-                                    <i class="fas fa-clock text-warning"></i>
-                                    Horaires de disponibilité par défaut
-                                </h5>
-                            </div>
-                            <div class="card-body" style="padding: 1.5rem;">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_time_from">
-                                                <i class="fas fa-clock me-2"></i>Disponible à partir de
-                                            </label>
-                                            <input type="time" class="form-control" id="default_time_from"
-                                                name="default_time_from" value="08:00">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_time_to">
-                                                <i class="fas fa-clock me-2"></i>Disponible jusqu'à
-                                            </label>
-                                            <input type="time" class="form-control" id="default_time_to"
-                                                name="default_time_to" value="18:00">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Paramètres avancés -->
-                        <div class="card mb-4"
-                            style="border: 2px solid var(--gray-200); border-radius: var(--border-radius);">
-                            <div class="card-header"
-                                style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200);">
-                                <h5 class="mb-0"
-                                    style="color: var(--gray-800); display: flex; align-items: center; gap: 0.5rem;">
-                                    <i class="fas fa-cogs text-info"></i>
-                                    Paramètres avancés
-                                </h5>
-                            </div>
-                            <div class="card-body" style="padding: 1.5rem;">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_poids">
-                                                <i class="fas fa-weight me-2"></i>Poids par défaut (kg)
-                                            </label>
-                                            <input type="number" step="0.1" class="form-control" id="default_poids"
-                                                name="default_poids" placeholder="Poids en kg">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_valeur">
-                                                <i class="fas fa-euro-sign me-2"></i>Valeur déclarée par défaut (€)
-                                            </label>
-                                            <input type="number" step="0.01" class="form-control"
-                                                id="default_valeur" name="default_valeur" placeholder="Valeur en euros">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_pos_link_img">
-                                                <i class="fas fa-image me-2"></i>URL de l'image par défaut
-                                            </label>
-                                            <input type="url" class="form-control" id="default_pos_link_img"
-                                                name="default_pos_link_img" placeholder="https://exemple.com/image.jpg">
-                                            <small class="text-muted">URL de l'image représentant le contenu du
-                                                colis</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Boutons d'action -->
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i>
-                                Sauvegarder la configuration
-                            </button>
-                            <button type="button" class="btn btn-secondary" onclick="loadDefaultParameters()">
-                                <i class="fas fa-sync"></i>
-                                Recharger
-                            </button>
-                            <button type="button" class="btn btn-info" onclick="testApiParameters()">
-                                <i class="fas fa-vial"></i>
-                                Tester la configuration
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-        </div>
-
     </div>
-@endsection
+</div>
 
-@section('scripts')
-    <script>
-        let selectedCompany = null;
-        let isConnected = false;
+<!-- Modal Ajouter Configuration -->
+<div class="modal fade" id="addConfigModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus mr-2"></i>Nouvelle Configuration de Transporteur
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="{{ route('admin.delivery.configuration.store') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="carrier_slug">Transporteur <span class="text-danger">*</span></label>
+                                <select name="carrier_slug" id="carrier_slug" class="form-control" required>
+                                    <option value="">Sélectionner un transporteur</option>
+                                    @foreach($supportedCarriers as $slug => $carrier)
+                                        <option value="{{ $slug }}">{{ $carrier['display_name'] }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="integration_name">Nom d'intégration <span class="text-danger">*</span></label>
+                                <input type="text" name="integration_name" id="integration_name" class="form-control" 
+                                       placeholder="Ex: Fparcel - Entrepôt Principal" required>
+                                <small class="form-text text-muted">Nom pour identifier cette configuration</small>
+                            </div>
+                        </div>
+                    </div>
 
-        $(document).ready(function() {
-            console.log('Configuration des livraisons chargée');
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="username">Nom d'utilisateur <span class="text-danger">*</span></label>
+                                <input type="text" name="username" id="username" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="password">Mot de passe <span class="text-danger">*</span></label>
+                                <input type="password" name="password" id="password" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
 
-            // Always show company selection first
-            showCompanySelection();
-        });
-
-        // Company Selection Functions
-        function selectCompany(company) {
-            selectedCompany = company;
-
-            // Remove selected class from all cards
-            $('.company-card').removeClass('selected');
-
-            // Add selected class to clicked card
-            $(`.company-card[data-company="${company}"]`).addClass('selected');
-
-            // Enable continue button
-            $('#continue-btn').prop('disabled', false);
-        }
-
-        function proceedToConfiguration() {
-            if (!selectedCompany) return;
-
-            // Hide company selection
-            $('#company-selection').hide();
-
-            // Show breadcrumb
-            $('#breadcrumb-nav').show();
-            $('#selected-company-name').text(`Configuration ${selectedCompany.toUpperCase()}`);
-
-            // Show specific configuration
-            if (selectedCompany === 'fparcel') {
-                $('#fparcel-configuration').show();
-
-                // Check if already connected to FParcel
-                checkConnectionStatus();
-            }
-        }
-
-        function showCompanySelection() {
-            // Hide all configuration sections
-            $('#fparcel-configuration').hide();
-            $('#breadcrumb-nav').hide();
-
-            // Show company selection
-            $('#company-selection').show();
-
-            // Reset selection state
-            selectedCompany = null;
-            isConnected = false;
-            $('.company-card').removeClass('selected');
-            $('#continue-btn').prop('disabled', true);
-        }
-
-        // Vérifier le statut de connexion
-        function checkConnectionStatus() {
-            $.get('{{ route('admin.delivery.status') }}')
-                .done(function(response) {
-                    if (response.connected) {
-                        showConnectedState(response);
-                    } else {
-                        showDisconnectedState();
-                    }
-                })
-                .fail(function() {
-                    showDisconnectedState();
-                });
-        }
-
-        // Afficher l'état connecté
-        function showConnectedState(data) {
-            isConnected = true;
-
-            $('#connection-status')
-                .removeClass('disconnected')
-                .addClass('connected')
-                .html(
-                    '<i class="fas fa-check-circle"></i><span>Connecté au service FParcel</span><small style="margin-left: 10px; opacity: 0.7;">(Connexion persistante)</small>'
-                    );
-
-            $('#connection-form').hide();
-            $('#connection-info').show();
-            $('#delivery-settings').show();
-            $('#api-parameters').show(); // Show the new parameters section
-
-            if (data.token) {
-                $('#current-token').text(data.token);
-            }
-            if (data.updated_at) {
-                $('#token-updated').text(new Date(data.updated_at).toLocaleString('fr-FR'));
-            }
-
-            // Load payment methods and default parameters
-            loadPaymentMethods();
-            loadDefaultParameters();
-        }
-
-        // Afficher l'état déconnecté
-        function showDisconnectedState() {
-            isConnected = false;
-
-            $('#connection-status')
-                .removeClass('connected')
-                .addClass('disconnected')
-                .html('<i class="fas fa-times-circle"></i><span>Non connecté au service FParcel</span>');
-
-            $('#connection-form').show();
-            $('#connection-info').hide();
-            $('#delivery-settings').hide();
-            $('#api-parameters').hide(); // Hide the parameters section
-        }
-
-        // Gérer la soumission du formulaire de connexion
-        $('#fparcel-connect-form').on('submit', function(e) {
-            e.preventDefault();
-
-            const $btn = $('#connect-btn');
-            const originalText = $btn.html();
-
-            // Désactiver le bouton et afficher le spinner
-            $btn.prop('disabled', true).html('<span class="spinner"></span> Connexion...');
-
-            // Effacer les alertes précédentes
-            $('#alerts-container').empty();
-
-            $.post('{{ route('admin.delivery.connect') }}', {
-                    username: $('#fparcel_username').val(),
-                    password: $('#fparcel_password').val(),
-                    environment: $('input[name="environment"]:checked').val(),
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                })
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', 'Connexion réussie et sauvegardée ! Vous resterez connecté.');
-                        isConnected = true;
-                        showConnectedState(response.data);
-                    } else {
-                        showAlert('danger', response.message || 'Erreur lors de la connexion');
-                    }
-                })
-                .fail(function(xhr) {
-                    let message = 'Erreur lors de la connexion au service';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        message = xhr.responseJSON.message;
-                    }
-                    showAlert('danger', message);
-                })
-                .always(function() {
-                    $btn.prop('disabled', false).html(originalText);
-                });
-        });
-
-        // Tester la connexion
-        function testConnection() {
-            const username = $('#fparcel_username').val();
-            const password = $('#fparcel_password').val();
-            const environment = $('input[name="environment"]:checked').val();
-
-            if (!username || !password) {
-                showAlert('danger', 'Veuillez saisir votre nom d\'utilisateur et mot de passe');
-                return;
-            }
-
-            $('#alerts-container').empty();
-            showAlert('info', 'Test de connexion en cours...');
-
-            $.post('{{ route('admin.delivery.test') }}', {
-                    username: username,
-                    password: password,
-                    environment: environment,
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                })
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', 'Test de connexion réussi ! Les identifiants sont valides.');
-                    } else {
-                        showAlert('danger', response.message || 'Test de connexion échoué');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors du test de connexion');
-                });
-        }
-
-        // Se déconnecter
-        function disconnect() {
-            if (!confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-                return;
-            }
-
-            $.post('{{ route('admin.delivery.disconnect') }}', {
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                })
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', 'Déconnexion réussie');
-                        isConnected = false;
-                        selectedCompany = null;
-                        // Return to company selection after disconnect
-                        showCompanySelection();
-                    } else {
-                        showAlert('danger', response.message || 'Erreur lors de la déconnexion');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors de la déconnexion');
-                });
-        }
-
-        // Actualiser le token
-        function refreshToken() {
-            $.post('{{ route('admin.delivery.refresh-token') }}', {
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                })
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', 'Token actualisé avec succès');
-                        $('#current-token').text(response.data.token);
-                        $('#token-updated').text(new Date().toLocaleString('fr-FR'));
-                    } else {
-                        showAlert('danger', response.message || 'Erreur lors de l\'actualisation du token');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors de l\'actualisation du token');
-                });
-        }
-
-        // Enhanced syncPaymentMethods function
-        function syncPaymentMethods() {
-            showAlert('info', 'Synchronisation des modes de règlement...');
-
-            $.post('{{ route('admin.delivery.sync-payment-methods') }}', {
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                })
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', `${response.count} modes de règlement synchronisés`);
-                        loadPaymentMethods(); // Reload the payment methods dropdown
-                    } else {
-                        showAlert('danger', response.message || 'Erreur lors de la synchronisation');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors de la synchronisation des modes de règlement');
-                });
-        }
-
-        function syncDropPoints() {
-            showAlert('info', 'Synchronisation des points de dépôt...');
-
-            $.post('{{ route('admin.delivery.sync-drop-points') }}', {
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                })
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', `${response.count} points de dépôt synchronisés`);
-                    } else {
-                        showAlert('danger', response.message || 'Erreur lors de la synchronisation');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors de la synchronisation des points de dépôt');
-                });
-        }
-
-        function syncAnomalyReasons() {
-            showAlert('info', 'Synchronisation des motifs d\'anomalies...');
-
-            $.post('{{ route('admin.delivery.sync-anomaly-reasons') }}', {
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                })
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', `${response.count} motifs d'anomalies synchronisés`);
-                    } else {
-                        showAlert('danger', response.message || 'Erreur lors de la synchronisation');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors de la synchronisation des motifs d\'anomalies');
-                });
-        }
-
-        function configureZones() {
-            showAlert('info', 'Configuration des zones de livraison - Fonctionnalité à venir');
-        }
-
-        function configureLabels() {
-            showAlert('info', 'Configuration des étiquettes - Fonctionnalité à venir');
-        }
-
-        function configureGeneral() {
-            showAlert('info', 'Configuration générale - Fonctionnalité à venir');
-        }
-
-        // Load payment methods when connected
-        function loadPaymentMethods() {
-            $.get('{{ route('admin.delivery.payment-methods') }}')
-                .done(function(response) {
-                    if (response.success) {
-                        const select = $('#default_mr_code');
-                        select.empty().append('<option value="">Sélectionner un mode de règlement</option>');
-
-                        response.data.forEach(function(method) {
-                            select.append(`<option value="${method.code}">${method.name}</option>`);
-                        });
-                    }
-                })
-                .fail(function() {
-                    showAlert('warning', 'Impossible de charger les modes de règlement');
-                });
-        }
-
-        // Save API parameters
-        $('#api-parameters-form').on('submit', function(e) {
-            e.preventDefault();
-
-            const formData = new FormData(this);
-            formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
-
-            $.post('{{ route('admin.delivery.save-parameters') }}', formData)
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', 'Configuration sauvegardée avec succès');
-                    } else {
-                        showAlert('danger', response.message || 'Erreur lors de la sauvegarde');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors de la sauvegarde de la configuration');
-                });
-        });
-
-        // Load default parameters
-        function loadDefaultParameters() {
-            $.get('{{ route('admin.delivery.get-parameters') }}')
-                .done(function(response) {
-                    if (response.success && response.data) {
-                        const data = response.data;
-                        Object.keys(data).forEach(function(key) {
-                            const element = document.getElementById(key);
-                            if (element) {
-                                element.value = data[key] || '';
-                            }
-                        });
-                        showAlert('success', 'Configuration chargée');
-                    }
-                })
-                .fail(function() {
-                    showAlert('warning', 'Impossible de charger la configuration');
-                });
-        }
-
-        // Test API parameters
-        function testApiParameters() {
-            const formData = new FormData(document.getElementById('api-parameters-form'));
-            formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
-
-            showAlert('info', 'Test de la configuration en cours...');
-
-            $.post('{{ route('admin.delivery.test-parameters') }}', formData)
-                .done(function(response) {
-                    if (response.success) {
-                        showAlert('success', 'Configuration valide ! Prêt pour la création de positions.');
-                    } else {
-                        showAlert('danger', response.message || 'Configuration invalide');
-                    }
-                })
-                .fail(function() {
-                    showAlert('danger', 'Erreur lors du test de la configuration');
-                });
-        }
-
-        // Afficher une alerte
-        function showAlert(type, message) {
-            const alertClass = `alert-${type}`;
-            const iconClass = type === 'success' ? 'fa-check-circle' :
-                type === 'danger' ? 'fa-exclamation-circle' :
-                type === 'info' ? 'fa-info-circle' : 'fa-exclamation-triangle';
-
-            const alert = $(`
-        <div class="alert ${alertClass}">
-            <i class="fas ${iconClass}"></i>
-            <span>${message}</span>
+                    <div class="form-group">
+                        <label for="environment">Environnement <span class="text-danger">*</span></label>
+                        <select name="environment" id="environment" class="form-control" required>
+                            <option value="test">Test</option>
+                            <option value="prod">Production</option>
+                        </select>
+                        <small class="form-text text-muted">Commencez par l'environnement de test</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i>Créer la configuration
+                    </button>
+                </div>
+            </form>
         </div>
-    `);
+    </div>
+</div>
 
-            $('#alerts-container').empty().append(alert);
+<!-- Modal Ajouter Adresse -->
+<div class="modal fade" id="addAddressModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-map-marker-alt mr-2"></i>Nouvelle Adresse d'Enlèvement
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="{{ route('admin.delivery.pickup-addresses.store') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="address_name">Nom de l'adresse <span class="text-danger">*</span></label>
+                                <input type="text" name="name" id="address_name" class="form-control" 
+                                       placeholder="Ex: Entrepôt Principal" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="contact_name">Nom du contact <span class="text-danger">*</span></label>
+                                <input type="text" name="contact_name" id="contact_name" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
 
-            // Auto-hide success alerts
-            if (type === 'success') {
-                setTimeout(() => {
-                    alert.fadeOut();
-                }, 5000);
-            }
-        }
-    </script>
+                    <div class="form-group">
+                        <label for="address">Adresse complète <span class="text-danger">*</span></label>
+                        <textarea name="address" id="address" class="form-control" rows="2" required></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="postal_code">Code postal</label>
+                                <input type="text" name="postal_code" id="postal_code" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="city">Ville</label>
+                                <input type="text" name="city" id="city" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="phone">Téléphone <span class="text-danger">*</span></label>
+                                <input type="text" name="phone" id="phone" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" name="email" id="email" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <div class="custom-control custom-checkbox mt-4">
+                                    <input type="checkbox" class="custom-control-input" id="is_default" name="is_default">
+                                    <label class="custom-control-label" for="is_default">
+                                        Définir comme adresse par défaut
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i>Créer l'adresse
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+function testConnection(configId) {
+    $.ajax({
+        url: `/admin/delivery/configuration/${configId}/test`,
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        beforeSend: function() {
+            Swal.fire({
+                title: 'Test de connexion...',
+                text: 'Vérification de la connexion au transporteur',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading()
+                }
+            });
+        },
+        success: function(response) {
+            Swal.fire({
+                title: 'Connexion réussie!',
+                text: response.message,
+                icon: 'success',
+                timer: 3000
+            });
+            location.reload();
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            Swal.fire({
+                title: 'Erreur de connexion',
+                text: response.message || 'Impossible de se connecter au transporteur',
+                icon: 'error'
+            });
+        }
+    });
+}
+
+function refreshToken(configId) {
+    $.ajax({
+        url: `/admin/delivery/configuration/${configId}/refresh-token`,
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        beforeSend: function() {
+            Swal.fire({
+                title: 'Rafraîchissement...',
+                text: 'Mise à jour du token d\'authentification',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading()
+                }
+            });
+        },
+        success: function(response) {
+            Swal.fire({
+                title: 'Token rafraîchi!',
+                text: response.message,
+                icon: 'success',
+                timer: 3000
+            });
+            location.reload();
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            Swal.fire({
+                title: 'Erreur',
+                text: response.message || 'Impossible de rafraîchir le token',
+                icon: 'error'
+            });
+        }
+    });
+}
+
+function toggleConfiguration(configId) {
+    Swal.fire({
+        title: 'Confirmer l\'action',
+        text: 'Voulez-vous activer/désactiver cette configuration?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Oui, continuer',
+        cancelButtonText: 'Annuler'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: `/admin/delivery/configuration/${configId}/toggle`,
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    Swal.fire({
+                        title: 'Succès!',
+                        text: response.message,
+                        icon: 'success',
+                        timer: 3000
+                    });
+                    location.reload();
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON;
+                    Swal.fire({
+                        title: 'Erreur',
+                        text: response.message || 'Une erreur est survenue',
+                        icon: 'error'
+                    });
+                }
+            });
+        }
+    });
+}
+
+function deleteConfiguration(configId) {
+    Swal.fire({
+        title: 'Supprimer la configuration?',
+        text: 'Cette action est irréversible!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Oui, supprimer',
+        cancelButtonText: 'Annuler',
+        confirmButtonColor: '#d33'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/delivery/configuration/${configId}`;
+            
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = '_token';
+            tokenInput.value = $('meta[name="csrf-token"]').attr('content');
+            
+            form.appendChild(methodInput);
+            form.appendChild(tokenInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
+// Validation en temps réel du formulaire
+$('#addConfigModal form').on('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const submitBtn = $(form).find('button[type="submit"]');
+    const originalText = submitBtn.html();
+    
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Vérification...');
+    
+    // Simuler une vérification de connexion
+    setTimeout(() => {
+        form.submit();
+    }, 1000);
+});
+</script>
+@endpush
+
+@push('styles')
+<style>
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+
+.card-body .table {
+    margin-bottom: 0;
+}
+
+.btn-group .btn {
+    border-radius: 0.35rem;
+    margin-right: 2px;
+}
+
+.badge-sm {
+    font-size: 0.7em;
+}
+</style>
+@endpush

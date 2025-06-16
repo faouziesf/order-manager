@@ -1,11 +1,10 @@
 <?php
 
-namespace App\Services\Shipping\Fparcel;
+namespace App\Services\Shipping;
 
 use App\Models\DeliveryConfiguration;
 use App\Models\Order;
 use App\Models\PickupAddress;
-use App\Services\Shipping\ShippingServiceInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -21,8 +20,8 @@ class FparcelService implements ShippingServiceInterface
     {
         $this->config = $config;
         $this->baseUrl = $config->environment === 'prod' 
-            ? 'https://api.fparcel.com' 
-            : 'https://test-api.fparcel.com';
+            ? 'https://admin.fparcel.net/WebServiceExterne' 
+            : 'http://fparcel.net:59/WebServiceExterne';
     }
 
     public function createShipment(Order $order, ?PickupAddress $pickupAddress): array
@@ -64,10 +63,8 @@ class FparcelService implements ShippingServiceInterface
         }
 
         $payload = [
-            'USERNAME' => $this->config->username,
-            'PASSWORD' => $this->getDecryptedPassword(),
             'TOKEN' => $this->config->token,
-            'POSLIST' => implode(',', $posBarcodes),
+            'POSLIST' => $posBarcodes, // Fparcel attend un array selon la doc
         ];
 
         $response = Http::timeout($this->timeout)
@@ -88,15 +85,9 @@ class FparcelService implements ShippingServiceInterface
     {
         $this->ensureValidToken();
 
-        $payload = [
-            'USERNAME' => $this->config->username,
-            'PASSWORD' => $this->getDecryptedPassword(),
-            'TOKEN' => $this->config->token,
-            'POSBARCODE' => $trackingCode,
-        ];
-
+        // Utilisation de l'endpoint GET selon la documentation
         $response = Http::timeout($this->timeout)
-            ->post($this->baseUrl . '/tracking_position', $payload);
+            ->get($this->baseUrl . '/tracking_position/' . $trackingCode);
 
         if (!$response->successful()) {
             Log::warning('Fparcel tracking failed', [
@@ -160,16 +151,8 @@ class FparcelService implements ShippingServiceInterface
             "fparcel_payment_methods_{$this->config->id}",
             3600,
             function () {
-                $this->ensureValidToken();
-
-                $payload = [
-                    'USERNAME' => $this->config->username,
-                    'PASSWORD' => $this->getDecryptedPassword(),
-                    'TOKEN' => $this->config->token,
-                ];
-
                 $response = Http::timeout($this->timeout)
-                    ->post($this->baseUrl . '/mr_list', $payload);
+                    ->get($this->baseUrl . '/mr_list');
 
                 if (!$response->successful()) {
                     Log::warning('Fparcel payment methods fetch failed: ' . $response->body());
@@ -186,27 +169,26 @@ class FparcelService implements ShippingServiceInterface
         $cacheKey = "fparcel_drop_points_{$this->config->id}" . ($city ? "_{$city}" : '');
         
         return Cache::remember($cacheKey, 3600, function () use ($city) {
-            $this->ensureValidToken();
-
-            $payload = [
-                'USERNAME' => $this->config->username,
-                'PASSWORD' => $this->getDecryptedPassword(),
-                'TOKEN' => $this->config->token,
-            ];
-
-            if ($city) {
-                $payload['VILLE'] = $city;
-            }
-
-            $response = Http::timeout($this->timeout)
-                ->post($this->baseUrl . '/droppoint_list', $payload);
+            $url = $this->baseUrl . '/droppoint_list';
+            
+            $response = Http::timeout($this->timeout)->get($url);
 
             if (!$response->successful()) {
                 Log::warning('Fparcel drop points fetch failed: ' . $response->body());
                 return [];
             }
 
-            return $response->json() ?? [];
+            $dropPoints = $response->json() ?? [];
+            
+            // Filtrer par ville si spécifiée
+            if ($city) {
+                $dropPoints = array_filter($dropPoints, function($point) use ($city) {
+                    return isset($point['VILLE']) && 
+                           strtolower($point['VILLE']) === strtolower($city);
+                });
+            }
+
+            return array_values($dropPoints);
         });
     }
 
@@ -216,16 +198,8 @@ class FparcelService implements ShippingServiceInterface
             "fparcel_anomaly_reasons_{$this->config->id}",
             3600,
             function () {
-                $this->ensureValidToken();
-
-                $payload = [
-                    'USERNAME' => $this->config->username,
-                    'PASSWORD' => $this->getDecryptedPassword(),
-                    'TOKEN' => $this->config->token,
-                ];
-
                 $response = Http::timeout($this->timeout)
-                    ->post($this->baseUrl . '/motif_ano_list', $payload);
+                    ->get($this->baseUrl . '/motif_ano_list');
 
                 if (!$response->successful()) {
                     Log::warning('Fparcel anomaly reasons fetch failed: ' . $response->body());
@@ -277,7 +251,6 @@ class FparcelService implements ShippingServiceInterface
     public function calculateShippingCost(array $shipmentData): ?float
     {
         // Fparcel ne fournit pas d'API de calcul de coût dans la documentation fournie
-        // Retourner null pour indiquer que cette fonctionnalité n'est pas disponible
         return null;
     }
 
@@ -299,8 +272,8 @@ class FparcelService implements ShippingServiceInterface
                 'scheduling' => true,
             ],
             'environments' => [
-                'test' => 'https://test-api.fparcel.com',
-                'prod' => 'https://api.fparcel.com',
+                'test' => 'http://fparcel.net:59/WebServiceExterne',
+                'prod' => 'https://admin.fparcel.net/WebServiceExterne',
             ],
         ];
     }
@@ -325,38 +298,44 @@ class FparcelService implements ShippingServiceInterface
     private function buildShipmentPayload(Order $order, ?PickupAddress $pickupAddress): array
     {
         $payload = [
-            'USERNAME' => $this->config->username,
-            'PASSWORD' => $this->getDecryptedPassword(),
             'TOKEN' => $this->config->token,
             
-            // Informations du destinataire
-            'DES_CONTACT_NOM' => $order->customer_name,
-            'DES_TELEPHONE' => $this->formatPhoneNumber($order->customer_phone),
-            'DES_ADRESSE' => $order->customer_address,
-            'DES_GOUVERNORAT' => $order->customer_governorate,
-            'DES_VILLE' => $order->customer_city,
+            // Informations du destinataire (LIV_)
+            'LIV_CONTACT_NOM' => $order->customer_name,
+            'LIV_CONTACT_PRENOM' => '', // Pas dans notre modèle
+            'LIV_ADRESSE' => $order->customer_address,
+            'LIV_PORTABLE' => $this->formatPhoneNumber($order->customer_phone),
+            'LIV_MAIL' => $order->customer_email ?? '',
+            'LIV_CODE_POSTAL' => '', // Pas dans notre modèle
             
             // Informations du colis
-            'VALEUR' => $order->total_price,
-            'NB_PIECE' => 1,
             'POIDS' => $this->calculateWeight($order),
+            'VALEUR' => $order->total_price,
+            'COD' => $order->total_price, // Montant à récupérer
+            'RTRNCONTENU' => '', // Contenu échange (vide)
+            'POSNBPIECE' => 1,
+            'DATE_ENLEVEMENT' => now()->format('d/m/Y'),
+            'POSITION_TIME_LIV_DISPO_FROM' => '08:00',
+            'POSITION_TIME_LIV_DISPO_TO' => '18:00',
+            'REFERENCE' => "ORDER_{$order->id}",
+            'ORDER_NUMBER' => (string)$order->id,
             'MR_CODE' => $this->getDefaultPaymentMethod(),
+            'POS_VALID' => '1', // Position validée
+            'POS_ALLOW_OPEN' => '0', // Ouverture interdite
+            'POS_LINK_IMG' => '', // Pas d'image
         ];
 
         // Ajouter les informations d'adresse d'enlèvement si fournie
         if ($pickupAddress) {
             $payload = array_merge($payload, [
                 'ENL_CONTACT_NOM' => $pickupAddress->contact_name,
+                'ENL_CONTACT_PRENOM' => '', // Pas dans notre modèle
                 'ENL_ADRESSE' => $pickupAddress->address,
-                'ENL_TELEPHONE' => $pickupAddress->phone,
-                'ENL_CODE_POSTAL' => $pickupAddress->postal_code,
-                'ENL_VILLE' => $pickupAddress->city,
+                'ENL_PORTABLE' => $pickupAddress->phone,
+                'ENL_MAIL' => $pickupAddress->email ?? '',
+                'ENL_CODE_POSTAL' => $pickupAddress->postal_code ?? '',
             ]);
         }
-
-        // Ajouter les paramètres administrateur
-        $adminSettings = $this->getAdminDeliverySettings();
-        $payload = array_merge($payload, $adminSettings);
 
         return $payload;
     }
@@ -393,7 +372,7 @@ class FparcelService implements ShippingServiceInterface
         // Logique de calcul du poids basée sur les articles de la commande
         $totalWeight = 0;
         
-        foreach ($order->orderItems as $item) {
+        foreach ($order->items as $item) {
             // Poids par défaut ou poids du produit si disponible
             $itemWeight = $item->product->weight ?? 0.5; // 500g par défaut
             $totalWeight += $itemWeight * $item->quantity;
@@ -407,23 +386,8 @@ class FparcelService implements ShippingServiceInterface
      */
     private function getDefaultPaymentMethod(): string
     {
-        return Cache::get("admin_setting_{$this->config->admin_id}_delivery_param_default_mr_code", 'ESP');
-    }
-
-    /**
-     * Obtenir les paramètres de livraison de l'administrateur
-     */
-    private function getAdminDeliverySettings(): array
-    {
-        $adminId = $this->config->admin_id;
-        
-        return [
-            'POS_VALID' => Cache::get("admin_setting_{$adminId}_delivery_param_default_pos_valid", '1'),
-            'TIME_FROM' => Cache::get("admin_setting_{$adminId}_delivery_param_default_time_from", '08:00'),
-            'TIME_TO' => Cache::get("admin_setting_{$adminId}_delivery_param_default_time_to", '18:00'),
-            'POS_ALLOW_OPEN' => Cache::get("admin_setting_{$adminId}_delivery_param_default_pos_allow_open", '0'),
-            'POS_LINK_IMG' => Cache::get("admin_setting_{$adminId}_delivery_param_default_pos_link_img", ''),
-        ];
+        // Récupérer depuis les paramètres admin ou utiliser une valeur par défaut
+        return 'ESP'; // Espèces par défaut
     }
 
     /**
@@ -466,5 +430,67 @@ class FparcelService implements ShippingServiceInterface
         ];
 
         return $statusLabels[$eventId] ?? 'Statut inconnu';
+    }
+
+    /**
+     * Obtenir les détails d'une position
+     */
+    public function getPositionDetails(string $posBarcode): ?array
+    {
+        $this->ensureValidToken();
+
+        $payload = [
+            'TOKEN' => $this->config->token,
+            'POSBARCODE' => $posBarcode,
+        ];
+
+        $response = Http::timeout($this->timeout)
+            ->post($this->baseUrl . '/get_pos_details', $payload);
+
+        if (!$response->successful()) {
+            return null;
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Obtenir la liste des événements
+     */
+    public function getEventList(): array
+    {
+        return Cache::remember(
+            "fparcel_events_{$this->config->id}",
+            3600,
+            function () {
+                $response = Http::timeout($this->timeout)
+                    ->get($this->baseUrl . '/event_list');
+
+                if (!$response->successful()) {
+                    return [];
+                }
+
+                return $response->json() ?? [];
+            }
+        );
+    }
+
+    /**
+     * Valider une position temporaire
+     */
+    public function validatePosition(string $posBarcode): bool
+    {
+        $this->ensureValidToken();
+
+        $payload = [
+            'TOKEN' => $this->config->token,
+            'POSBARCODE' => $posBarcode,
+        ];
+
+        $response = Http::timeout($this->timeout)
+            ->post($this->baseUrl . '/set_valid', $payload);
+
+        return $response->successful() && 
+               $response->json()['status'] === 'success';
     }
 }

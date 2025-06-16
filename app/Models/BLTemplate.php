@@ -27,20 +27,59 @@ class BLTemplate extends Model
         'is_active' => 'boolean',
     ];
 
-    // Relations
+    // ========================================
+    // RELATIONS
+    // ========================================
+    
     public function admin(): BelongsTo
     {
         return $this->belongsTo(Admin::class);
     }
 
-    // Accessors
+    // ========================================
+    // ACCESSORS
+    // ========================================
+    
     public function getDisplayNameAttribute(): string
     {
         $carrier = $this->carrier_slug ? ucfirst($this->carrier_slug) : 'Général';
         return "{$carrier} - {$this->template_name}";
     }
 
-    // Methods
+    public function getStatusBadgeClassAttribute(): string
+    {
+        if (!$this->is_active) {
+            return 'badge-secondary';
+        }
+        
+        return $this->is_default ? 'badge-primary' : 'badge-success';
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        if (!$this->is_active) {
+            return 'Inactif';
+        }
+        
+        return $this->is_default ? 'Par défaut' : 'Actif';
+    }
+
+    public function getCarrierDisplayNameAttribute(): string
+    {
+        return match($this->carrier_slug) {
+            'fparcel' => 'Fparcel',
+            'dhl' => 'DHL',
+            'aramex' => 'Aramex',
+            'tunisia_post' => 'Poste Tunisienne',
+            null => 'Général',
+            default => ucfirst($this->carrier_slug),
+        };
+    }
+
+    // ========================================
+    // MÉTHODES
+    // ========================================
+    
     public function setAsDefault(): void
     {
         // Désactiver tous les autres templates par défaut pour cet admin et transporteur
@@ -50,7 +89,7 @@ class BLTemplate extends Model
             ->update(['is_default' => false]);
 
         // Activer celui-ci comme défaut
-        $this->update(['is_default' => true]);
+        $this->update(['is_default' => true, 'is_active' => true]);
     }
 
     public function duplicate(string $newName): self
@@ -63,6 +102,63 @@ class BLTemplate extends Model
         return $duplicate;
     }
 
+    public function mergeWithDefaults(array $config = []): array
+    {
+        $defaults = self::getDefaultLayoutConfig();
+        return array_merge_recursive($defaults, $this->layout_config ?? [], $config);
+    }
+
+    public function validateConfig(): array
+    {
+        $errors = [];
+        $config = $this->layout_config ?? [];
+        
+        // Validation des champs obligatoires
+        if (empty($config['page'])) {
+            $errors[] = 'Configuration de page manquante';
+        }
+        
+        if (empty($config['fields'])) {
+            $errors[] = 'Configuration des champs manquante';
+        }
+        
+        // Validation des champs essentiels
+        $requiredFields = ['customer_name', 'customer_address', 'tracking_number'];
+        foreach ($requiredFields as $field) {
+            if (empty($config['fields'][$field]['enabled'])) {
+                $errors[] = "Le champ '{$field}' doit être activé";
+            }
+        }
+        
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+        ];
+    }
+
+    public function getFieldsForCarrier(string $carrier): array
+    {
+        $baseFields = $this->getDefaultLayoutConfig()['fields'];
+        
+        // Ajouter des champs spécifiques selon le transporteur
+        if ($carrier === 'fparcel') {
+            $baseFields['cod_amount'] = [
+                'enabled' => true,
+                'label' => 'Montant COD',
+                'x' => 300,
+                'y' => 200,
+                'font_size' => 12,
+                'font_weight' => 'bold',
+            ];
+        }
+        
+        return $baseFields;
+    }
+
+    // ========================================
+    // MÉTHODES STATIQUES
+    // ========================================
+    
     public static function getDefaultLayoutConfig(): array
     {
         return [
@@ -171,6 +267,20 @@ class BLTemplate extends Model
                     'y' => 300,
                     'font_size' => 10,
                 ],
+                'weight' => [
+                    'enabled' => false,
+                    'label' => 'Poids',
+                    'x' => 300,
+                    'y' => 300,
+                    'font_size' => 10,
+                ],
+                'pieces_count' => [
+                    'enabled' => false,
+                    'label' => 'Nb pièces',
+                    'x' => 400,
+                    'y' => 300,
+                    'font_size' => 10,
+                ],
             ],
             'custom_text' => [
                 [
@@ -186,17 +296,92 @@ class BLTemplate extends Model
                 'secondary_color' => '#666666',
                 'border_color' => '#cccccc',
                 'background_color' => '#ffffff',
+                'font_family' => 'Arial',
             ],
         ];
     }
 
-    public function mergeWithDefaults(array $config = []): array
+    public static function createDefault(Admin $admin, ?string $carrier = null): self
     {
-        $defaults = self::getDefaultLayoutConfig();
-        return array_merge_recursive($defaults, $config);
+        return self::create([
+            'admin_id' => $admin->id,
+            'carrier_slug' => $carrier,
+            'template_name' => 'Template par défaut',
+            'layout_config' => self::getDefaultLayoutConfig(),
+            'is_default' => true,
+            'is_active' => true,
+        ]);
     }
 
-    // Scopes
+    public static function getFieldTypes(): array
+    {
+        return [
+            'text' => 'Texte simple',
+            'multiline' => 'Texte multiligne',
+            'barcode' => 'Code-barres',
+            'qrcode' => 'QR Code',
+            'image' => 'Image',
+            'date' => 'Date',
+            'currency' => 'Montant',
+        ];
+    }
+
+    public static function getBarcodeFormats(): array
+    {
+        return [
+            'Code128' => 'Code 128',
+            'Code39' => 'Code 39',
+            'EAN13' => 'EAN-13',
+            'QRCode' => 'QR Code',
+        ];
+    }
+
+    public static function getAvailableFields(): array
+    {
+        return [
+            'customer' => [
+                'customer_name' => 'Nom du client',
+                'customer_phone' => 'Téléphone client',
+                'customer_address' => 'Adresse client',
+                'customer_city' => 'Ville client',
+                'customer_email' => 'Email client',
+            ],
+            'sender' => [
+                'sender_name' => 'Nom expéditeur',
+                'sender_address' => 'Adresse expéditeur',
+                'sender_phone' => 'Téléphone expéditeur',
+                'sender_email' => 'Email expéditeur',
+            ],
+            'shipment' => [
+                'tracking_number' => 'N° de suivi',
+                'order_number' => 'N° commande',
+                'return_barcode' => 'Code retour',
+                'weight' => 'Poids',
+                'pieces_count' => 'Nombre de pièces',
+                'content_description' => 'Description contenu',
+            ],
+            'financial' => [
+                'total_amount' => 'Montant total',
+                'cod_amount' => 'Montant COD',
+                'shipping_cost' => 'Frais de port',
+            ],
+            'dates' => [
+                'shipping_date' => 'Date d\'expédition',
+                'pickup_date' => 'Date d\'enlèvement',
+                'estimated_delivery' => 'Livraison estimée',
+            ],
+            'barcodes' => [
+                'barcode' => 'Code-barres principal',
+                'return_barcode' => 'Code-barres retour',
+                'qr_code' => 'QR Code',
+            ],
+        ];
+    }
+
+    // ========================================
+    // SCOPES
+    // ========================================
+    
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -215,5 +400,10 @@ class BLTemplate extends Model
     public function scopeForAdmin($query, $adminId)
     {
         return $query->where('admin_id', $adminId);
+    }
+
+    public function scopeGeneral($query)
+    {
+        return $query->whereNull('carrier_slug');
     }
 }

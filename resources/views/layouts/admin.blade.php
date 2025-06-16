@@ -1573,16 +1573,70 @@
                 </a>
                 <ul class="sidebar-submenu {{ request()->routeIs('admin.delivery.*') ? 'show' : '' }}"
                     id="deliverySubmenu">
+                    
+                    <!-- Configuration des transporteurs -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.delivery.configuration') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.configuration') ? 'active' : '' }}">
                             <i class="fas fa-cog"></i>Configuration
                         </a>
                     </li>
+                    
+                    <!-- Préparation d'enlèvement -->
                     <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.delivery.management') }}"
-                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.management') ? 'active' : '' }}">
-                            <i class="fas fa-list"></i>Gestion
+                        <a href="{{ route('admin.delivery.preparation') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.preparation*') ? 'active' : '' }}">
+                            <i class="fas fa-boxes"></i>Préparation
+                        </a>
+                    </li>
+                    
+                    <!-- Gestion des enlèvements -->
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.delivery.pickups') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.pickups*') ? 'active' : '' }}">
+                            <i class="fas fa-warehouse"></i>Enlèvements
+                            @if(auth('admin')->user()->pickups()->where('status', 'draft')->count() > 0)
+                                <span class="badge badge-warning badge-sm ml-1">
+                                    {{ auth('admin')->user()->pickups()->where('status', 'draft')->count() }}
+                                </span>
+                            @endif
+                        </a>
+                    </li>
+                    
+                    <!-- Gestion des expéditions -->
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.delivery.shipments') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.shipments*') ? 'active' : '' }}">
+                            <i class="fas fa-shipping-fast"></i>Expéditions
+                            @if(auth('admin')->user()->shipments()->active()->count() > 0)
+                                <span class="badge badge-info badge-sm ml-1">
+                                    {{ auth('admin')->user()->shipments()->active()->count() }}
+                                </span>
+                            @endif
+                        </a>
+                    </li>
+                    
+                    <!-- Adresses d'enlèvement -->
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.delivery.pickup-addresses') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.pickup-addresses*') ? 'active' : '' }}">
+                            <i class="fas fa-map-marker-alt"></i>Adresses
+                        </a>
+                    </li>
+                    
+                    <!-- Templates BL -->
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.delivery.bl-templates') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.bl-templates*') ? 'active' : '' }}">
+                            <i class="fas fa-file-pdf"></i>Templates BL
+                        </a>
+                    </li>
+                    
+                    <!-- Statistiques -->
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.delivery.stats') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.stats*') ? 'active' : '' }}">
+                            <i class="fas fa-chart-bar"></i>Statistiques
                         </a>
                     </li>
                 </ul>
