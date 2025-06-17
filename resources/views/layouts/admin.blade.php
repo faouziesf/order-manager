@@ -1618,7 +1618,7 @@
                     
                     <!-- Adresses d'enlèvement -->
                     <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.delivery.pickup-addresses') }}"
+                        <a href="{{ route('admin.delivery.pickup-addresses.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.pickup-addresses*') ? 'active' : '' }}">
                             <i class="fas fa-map-marker-alt"></i>Adresses
                         </a>
@@ -1626,7 +1626,7 @@
                     
                     <!-- Templates BL -->
                     <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.delivery.bl-templates') }}"
+                        <a href="{{ route('admin.delivery.bl-templates.index') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.bl-templates*') ? 'active' : '' }}">
                             <i class="fas fa-file-pdf"></i>Templates BL
                         </a>

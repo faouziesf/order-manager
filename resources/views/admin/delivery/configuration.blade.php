@@ -288,25 +288,29 @@
                     @foreach($supportedCarriers as $slug => $carrier)
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center">
-                                <strong>{{ $carrier['display_name'] }}</strong>
+                                <strong>{{ $carrier['display_name'] ?? 'Transporteur inconnu' }}</strong>
                                 <span class="badge badge-success">Disponible</span>
                             </div>
                             <small class="text-muted">
-                                @if($carrier['features']['cod'])
+                                @php
+                                    $features = $carrier['features'] ?? [];
+                                @endphp
+                                @if(($features['cod'] ?? false))
                                     <i class="fas fa-money-bill mr-1" title="Contre remboursement"></i>
                                 @endif
-                                @if($carrier['features']['tracking'])
+                                @if(($features['tracking'] ?? false))
                                     <i class="fas fa-search-location mr-1" title="Suivi en temps réel"></i>
                                 @endif
-                                @if($carrier['features']['mass_labels'])
+                                @if(($features['mass_labels'] ?? false))
                                     <i class="fas fa-tags mr-1" title="Étiquettes en masse"></i>
                                 @endif
-                                @if($carrier['features']['pickup_address_selection'])
+                                @if(($features['pickup_address_selection'] ?? false))
                                     <i class="fas fa-map-marker-alt mr-1" title="Sélection d'adresse"></i>
                                 @endif
                             </small>
                         </div>
                     @endforeach
+                </div>
                 </div>
             </div>
         </div>
