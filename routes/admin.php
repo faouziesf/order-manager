@@ -243,7 +243,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             // Page de configuration principale
             Route::get('configuration', [DeliveryController::class, 'configuration'])
                 ->name('configuration');
+            Route::patch('pickup-addresses/{address}/set-default', [DeliveryController::class, 'setDefaultAddress'])
+                ->name('pickup-addresses.set-default');
             
+            Route::post('configuration/{config}/import-addresses', [DeliveryController::class, 'importFparcelAddresses'])
+                ->name('configuration.import-addresses');
+
             // Gestion des configurations de transporteurs
             Route::post('configuration', [DeliveryController::class, 'storeConfiguration'])
                 ->name('configuration.store');

@@ -6,6 +6,23 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
+            <!-- Messages Flash -->
+            @if(session('success'))
+                <div class="alert alert-success alert-dismissible fade show">
+                    <i class="fas fa-check-circle me-2"></i>
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
             <!-- En-tête -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
@@ -16,9 +33,9 @@
                     <p class="text-muted mb-0">Gérez vos transporteurs et adresses d'enlèvement</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-primary" onclick="refreshAllConfigs()">
+                    <a href="{{ route('admin.delivery.configuration') }}" class="btn btn-outline-primary">
                         <i class="fas fa-sync-alt me-2"></i>Actualiser
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -45,9 +62,16 @@
                         <div>
                             <h5 class="mb-1">Aucune adresse d'enlèvement</h5>
                             <p class="mb-2">Ajoutez une adresse d'enlèvement pour que les transporteurs puissent récupérer vos colis.</p>
-                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#addAddressModal">
-                                <i class="fas fa-plus me-2"></i>Ajouter une adresse
-                            </button>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#addAddressModal">
+                                    <i class="fas fa-plus me-2"></i>Ajouter manuellement
+                                </button>
+                                @if($configurations->where('is_active', true)->isNotEmpty())
+                                    <button type="button" class="btn btn-success btn-sm" onclick="importFromFparcel()">
+                                        <i class="fas fa-download me-2"></i>Importer depuis Fparcel
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -86,7 +110,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <i class="fas fa-truck text-primary me-2"></i>
-                                                            <strong>{{ $config->carrier_display_name }}</strong>
+                                                            <strong>Fparcel Tunisia</strong>
                                                         </div>
                                                     </td>
                                                     <td>{{ $config->integration_name }}</td>
@@ -96,12 +120,12 @@
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        <span class="badge {{ $config->status_badge_class }}">
-                                                            {{ $config->status_label }}
+                                                        <span class="badge {{ $config->is_active ? 'bg-success' : 'bg-secondary' }}">
+                                                            {{ $config->is_active ? 'Actif' : 'Inactif' }}
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        @if($config->hasValidToken())
+                                                        @if($config->token && $config->expires_at && $config->expires_at->isFuture())
                                                             <span class="badge bg-success">
                                                                 <i class="fas fa-check me-1"></i>Valide
                                                             </span>
@@ -110,8 +134,8 @@
                                                                 Expire: {{ $config->expires_at->format('d/m/Y H:i') }}
                                                             </small>
                                                         @else
-                                                            <span class="badge bg-danger">
-                                                                <i class="fas fa-times me-1"></i>Expiré
+                                                            <span class="badge bg-warning">
+                                                                <i class="fas fa-clock me-1"></i>Non testé
                                                             </span>
                                                         @endif
                                                     </td>
@@ -122,16 +146,13 @@
                                                                     title="Tester la connexion">
                                                                 <i class="fas fa-plug"></i>
                                                             </button>
-                                                            <button type="button" class="btn btn-outline-success" 
-                                                                    onclick="refreshToken({{ $config->id }})" 
-                                                                    title="Rafraîchir le token">
-                                                                <i class="fas fa-sync-alt"></i>
-                                                            </button>
-                                                            <button type="button" class="btn btn-outline-secondary" 
-                                                                    onclick="editConfig({{ $config->id }})" 
-                                                                    title="Modifier">
-                                                                <i class="fas fa-edit"></i>
-                                                            </button>
+                                                            @if($config->token)
+                                                                <button type="button" class="btn btn-outline-success" 
+                                                                        onclick="refreshToken({{ $config->id }})" 
+                                                                        title="Rafraîchir le token">
+                                                                    <i class="fas fa-sync-alt"></i>
+                                                                </button>
+                                                            @endif
                                                             <button type="button" class="btn btn-outline-{{ $config->is_active ? 'warning' : 'success' }}" 
                                                                     onclick="toggleConfig({{ $config->id }})" 
                                                                     title="{{ $config->is_active ? 'Désactiver' : 'Activer' }}">
@@ -171,9 +192,25 @@
                                 <i class="fas fa-map-marker-alt me-2"></i>
                                 Adresses d'enlèvement
                             </h5>
-                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAddressModal">
-                                <i class="fas fa-plus me-2"></i>Ajouter
-                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-plus me-2"></i>Ajouter
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#addAddressModal">
+                                            <i class="fas fa-edit me-2"></i>Saisir manuellement
+                                        </button>
+                                    </li>
+                                    @if($configurations->where('is_active', true)->isNotEmpty())
+                                        <li>
+                                            <button class="dropdown-item" onclick="importFromFparcel()">
+                                                <i class="fas fa-download me-2"></i>Importer depuis Fparcel
+                                            </button>
+                                        </li>
+                                    @endif
+                                </ul>
+                            </div>
                         </div>
                         <div class="card-body">
                             @if($pickupAddresses->isNotEmpty())
@@ -192,11 +229,6 @@
                                                         <i class="fas fa-ellipsis-v"></i>
                                                     </button>
                                                     <ul class="dropdown-menu">
-                                                        <li>
-                                                            <a class="dropdown-item" href="{{ route('admin.delivery.pickup-addresses.edit', $address) }}">
-                                                                <i class="fas fa-edit me-2"></i>Modifier
-                                                            </a>
-                                                        </li>
                                                         @if(!$address->is_default)
                                                             <li>
                                                                 <button class="dropdown-item" onclick="setDefaultAddress({{ $address->id }})">
@@ -230,39 +262,47 @@
                                 <div class="text-center py-4">
                                     <i class="fas fa-map-marker-alt fa-2x text-muted mb-3"></i>
                                     <h6 class="text-muted">Aucune adresse configurée</h6>
-                                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAddressModal">
-                                        <i class="fas fa-plus me-2"></i>Ajouter
-                                    </button>
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAddressModal">
+                                            <i class="fas fa-plus me-2"></i>Ajouter
+                                        </button>
+                                        @if($configurations->where('is_active', true)->isNotEmpty())
+                                            <button type="button" class="btn btn-outline-success btn-sm" onclick="importFromFparcel()">
+                                                <i class="fas fa-download me-2"></i>Importer
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
                             @endif
                         </div>
                     </div>
 
-                    <!-- Liens rapides -->
+                    <!-- Statistiques -->
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">
-                                <i class="fas fa-external-link-alt me-2"></i>
-                                Liens rapides
+                                <i class="fas fa-chart-bar me-2"></i>
+                                Statistiques
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div class="d-grid gap-2">
-                                <a href="{{ route('admin.delivery.preparation') }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-boxes me-2"></i>Préparation d'enlèvement
-                                </a>
-                                <a href="{{ route('admin.delivery.pickups') }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-warehouse me-2"></i>Gestion des enlèvements
-                                </a>
-                                <a href="{{ route('admin.delivery.shipments') }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-shipping-fast me-2"></i>Suivi des expéditions
-                                </a>
-                                <a href="{{ route('admin.delivery.bl-templates.index') }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-file-pdf me-2"></i>Templates BL
-                                </a>
-                                <a href="{{ route('admin.delivery.stats') }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-chart-bar me-2"></i>Statistiques
-                                </a>
+                            <div class="row text-center">
+                                <div class="col-6 mb-3">
+                                    <h4 class="text-primary mb-1">{{ $stats['total_configs'] }}</h4>
+                                    <small class="text-muted">Configurations</small>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <h4 class="text-success mb-1">{{ $stats['active_configs'] }}</h4>
+                                    <small class="text-muted">Actives</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-info mb-1">{{ $stats['total_addresses'] }}</h4>
+                                    <small class="text-muted">Adresses</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-warning mb-1">{{ $stats['expired_tokens'] }}</h4>
+                                    <small class="text-muted">Non testés</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -282,7 +322,8 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="addConfigForm" onsubmit="submitConfigForm(event)">
+            <form action="{{ route('admin.delivery.configuration.store') }}" method="POST">
+                @csrf
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -294,13 +335,21 @@
                                         <option value="{{ $slug }}">{{ $info['display_name'] }}</option>
                                     @endforeach
                                 </select>
+                                @error('carrier_slug')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="integration_name" class="form-label">Nom d'intégration *</label>
-                                <input type="text" class="form-control" id="integration_name" name="integration_name" 
+                                <input type="text" class="form-control @error('integration_name') is-invalid @enderror" 
+                                       id="integration_name" name="integration_name" 
+                                       value="{{ old('integration_name') }}"
                                        placeholder="Ex: Fparcel - Magasin principal" required>
+                                @error('integration_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -308,13 +357,21 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="username" class="form-label">Nom d'utilisateur *</label>
-                                <input type="text" class="form-control" id="username" name="username" required>
+                                <input type="text" class="form-control @error('username') is-invalid @enderror" 
+                                       id="username" name="username" value="{{ old('username') }}" required>
+                                @error('username')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="password" class="form-label">Mot de passe *</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
+                                <input type="password" class="form-control @error('password') is-invalid @enderror" 
+                                       id="password" name="password" required>
+                                @error('password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -322,22 +379,26 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="environment" class="form-label">Environnement *</label>
-                                <select class="form-select" id="environment" name="environment" required>
-                                    <option value="test">Test</option>
-                                    <option value="prod">Production</option>
+                                <select class="form-select @error('environment') is-invalid @enderror" 
+                                        id="environment" name="environment" required>
+                                    <option value="test" {{ old('environment') == 'test' ? 'selected' : '' }}>Test</option>
+                                    <option value="prod" {{ old('environment') == 'prod' ? 'selected' : '' }}>Production</option>
                                 </select>
+                                @error('environment')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        La connexion sera testée automatiquement lors de la création.
+                        La configuration sera créée directement. Vous pourrez tester la connexion après création.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Créer et tester
+                        <i class="fas fa-save me-2"></i>Créer la configuration
                     </button>
                 </div>
             </form>
@@ -355,34 +416,55 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="addAddressForm" onsubmit="submitAddressForm(event)">
+            <form action="{{ route('admin.delivery.pickup-addresses.store') }}" method="POST">
+                @csrf
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="address_name" class="form-label">Nom de l'adresse *</label>
-                        <input type="text" class="form-control" id="address_name" name="name" 
+                        <input type="text" class="form-control @error('name') is-invalid @enderror" 
+                               id="address_name" name="name" value="{{ old('name') }}"
                                placeholder="Ex: Entrepôt principal" required>
+                        @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-3">
                         <label for="contact_name" class="form-label">Nom du contact *</label>
-                        <input type="text" class="form-control" id="contact_name" name="contact_name" 
+                        <input type="text" class="form-control @error('contact_name') is-invalid @enderror" 
+                               id="contact_name" name="contact_name" value="{{ old('contact_name') }}"
                                placeholder="Nom de la personne de contact" required>
+                        @error('contact_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-3">
                         <label for="address" class="form-label">Adresse *</label>
-                        <textarea class="form-control" id="address" name="address" rows="3" 
-                                  placeholder="Adresse complète" required></textarea>
+                        <textarea class="form-control @error('address') is-invalid @enderror" 
+                                  id="address" name="address" rows="3" 
+                                  placeholder="Adresse complète" required>{{ old('address') }}</textarea>
+                        @error('address')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="postal_code" class="form-label">Code postal</label>
-                                <input type="text" class="form-control" id="postal_code" name="postal_code">
+                                <input type="text" class="form-control @error('postal_code') is-invalid @enderror" 
+                                       id="postal_code" name="postal_code" value="{{ old('postal_code') }}">
+                                @error('postal_code')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="city" class="form-label">Ville</label>
-                                <input type="text" class="form-control" id="city" name="city">
+                                <input type="text" class="form-control @error('city') is-invalid @enderror" 
+                                       id="city" name="city" value="{{ old('city') }}">
+                                @error('city')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -390,18 +472,27 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="phone" class="form-label">Téléphone *</label>
-                                <input type="tel" class="form-control" id="phone" name="phone" required>
+                                <input type="tel" class="form-control @error('phone') is-invalid @enderror" 
+                                       id="phone" name="phone" value="{{ old('phone') }}" required>
+                                @error('phone')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email">
+                                <input type="email" class="form-control @error('email') is-invalid @enderror" 
+                                       id="email" name="email" value="{{ old('email') }}">
+                                @error('email')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="is_default" name="is_default">
+                        <input class="form-check-input" type="checkbox" id="is_default" name="is_default"
+                               {{ old('is_default') ? 'checked' : '' }}>
                         <label class="form-check-label" for="is_default">
                             Définir comme adresse par défaut
                         </label>
@@ -410,7 +501,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Créer
+                        <i class="fas fa-save me-2"></i>Créer l'adresse
                     </button>
                 </div>
             </form>
@@ -421,122 +512,7 @@
 
 @section('scripts')
 <script>
-$(document).ready(function() {
-    // Initialisation
-    console.log('Page de configuration chargée');
-});
-
-// Configuration des transporteurs
-function submitConfigForm(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Test en cours...';
-    submitBtn.disabled = true;
-    
-    fetch('{{ route("admin.delivery.configuration.store") }}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('success', data.message);
-            bootstrap.Modal.getInstance(document.getElementById('addConfigModal')).hide();
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            if (data.errors) {
-                Object.keys(data.errors).forEach(key => {
-                    const input = form.querySelector(`[name="${key}"]`);
-                    if (input) {
-                        input.classList.add('is-invalid');
-                        let feedback = input.parentNode.querySelector('.invalid-feedback');
-                        if (!feedback) {
-                            feedback = document.createElement('div');
-                            feedback.className = 'invalid-feedback';
-                            input.parentNode.appendChild(feedback);
-                        }
-                        feedback.textContent = data.errors[key][0];
-                    }
-                });
-            } else {
-                showNotification('error', data.message || 'Erreur lors de la création');
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('error', 'Erreur lors de la création de la configuration');
-    })
-    .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-}
-
-// Adresses d'enlèvement
-function submitAddressForm(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Création...';
-    submitBtn.disabled = true;
-    
-    fetch('{{ route("admin.delivery.pickup-addresses.store") }}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('success', data.message);
-            bootstrap.Modal.getInstance(document.getElementById('addAddressModal')).hide();
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            if (data.errors) {
-                Object.keys(data.errors).forEach(key => {
-                    const input = form.querySelector(`[name="${key}"]`);
-                    if (input) {
-                        input.classList.add('is-invalid');
-                        let feedback = input.parentNode.querySelector('.invalid-feedback');
-                        if (!feedback) {
-                            feedback = document.createElement('div');
-                            feedback.className = 'invalid-feedback';
-                            input.parentNode.appendChild(feedback);
-                        }
-                        feedback.textContent = data.errors[key][0];
-                    }
-                });
-            } else {
-                showNotification('error', data.message || 'Erreur lors de la création');
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('error', 'Erreur lors de la création de l\'adresse');
-    })
-    .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-}
-
-// Actions sur les configurations
+// Actions AJAX pour les configurations
 function testConnection(configId) {
     const btn = event.target.closest('button');
     const originalHtml = btn.innerHTML;
@@ -653,7 +629,7 @@ function deleteConfig(configId) {
     });
 }
 
-// Actions sur les adresses
+// Actions pour les adresses
 function setDefaultAddress(addressId) {
     fetch(`/admin/delivery/pickup-addresses/${addressId}/set-default`, {
         method: 'PATCH',
@@ -702,9 +678,45 @@ function deleteAddress(addressId) {
     });
 }
 
-function refreshAllConfigs() {
-    showNotification('info', 'Actualisation en cours...');
-    setTimeout(() => location.reload(), 500);
+// Import depuis Fparcel
+function importFromFparcel() {
+    // Trouver la première configuration active avec token valide
+    const activeConfigs = @json($configurations->where('is_active', true)->filter(function($config) {
+        return $config->token && $config->expires_at && $config->expires_at->isFuture();
+    })->values());
+    
+    if (activeConfigs.length === 0) {
+        showNotification('error', 'Aucune configuration active avec token valide. Veuillez d\'abord tester une connexion.');
+        return;
+    }
+    
+    const configId = activeConfigs[0].id;
+    
+    if (!confirm('Voulez-vous importer les adresses d\'enlèvement depuis votre compte Fparcel ?')) {
+        return;
+    }
+    
+    showNotification('info', 'Import en cours depuis Fparcel...');
+    
+    fetch(`/admin/delivery/configuration/${configId}/import-addresses`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('success', data.message);
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showNotification('error', data.message);
+        }
+    })
+    .catch(error => {
+        showNotification('error', 'Erreur lors de l\'import depuis Fparcel');
+    });
 }
 
 // Fonction utilitaire pour les notifications
@@ -732,15 +744,15 @@ function showNotification(type, message) {
     }, 5000);
 }
 
-// Nettoyage des erreurs de validation lors de la saisie
-document.addEventListener('input', function(e) {
-    if (e.target.classList.contains('is-invalid')) {
-        e.target.classList.remove('is-invalid');
-        const feedback = e.target.parentNode.querySelector('.invalid-feedback');
-        if (feedback) {
-            feedback.remove();
-        }
-    }
-});
+// Rouvrir le modal avec les erreurs s'il y en a
+@if($errors->any() && old())
+    $(document).ready(function() {
+        @if(old('carrier_slug') || old('integration_name'))
+            $('#addConfigModal').modal('show');
+        @elseif(old('name') || old('contact_name'))
+            $('#addAddressModal').modal('show');
+        @endif
+    });
+@endif
 </script>
 @endsection

@@ -5,278 +5,467 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DeliveryConfiguration;
 use App\Models\PickupAddress;
-use App\Models\Pickup;
-use App\Models\Shipment;
-use App\Models\Order;
-use App\Services\PickupService;
-use App\Services\ShipmentService;
-use App\Services\Shipping\ShippingServiceFactory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
+use Exception;
 
 class DeliveryController extends Controller
 {
-    private PickupService $pickupService;
-    private ShipmentService $shipmentService;
-    private ShippingServiceFactory $shippingFactory;
-
-    public function __construct(
-        PickupService $pickupService,
-        ShipmentService $shipmentService,
-        ShippingServiceFactory $shippingFactory
-    ) {
-        $this->pickupService = $pickupService;
-        $this->shipmentService = $shipmentService;
-        $this->shippingFactory = $shippingFactory;
-    }
-
     /**
-     * Page de configuration principale
+     * Page principale de configuration des transporteurs
      */
-    public function configuration(Request $request)
+    public function configuration()
     {
-        try {
-            $admin = Auth::guard('admin')->user();
-            
-            $configurations = $admin->deliveryConfigurations()
-                ->orderBy('carrier_slug')
-                ->orderBy('integration_name')
-                ->get();
+        $admin = auth('admin')->user();
+        
+        // Récupérer les configurations existantes
+        $configurations = DeliveryConfiguration::where('admin_id', $admin->id)
+            ->latest()
+            ->get();
 
-            $pickupAddresses = $admin->pickupAddresses()
-                ->where('is_active', true)
-                ->orderBy('is_default', 'desc')
-                ->orderBy('name')
-                ->get();
+        // Récupérer les adresses d'enlèvement
+        $pickupAddresses = PickupAddress::where('admin_id', $admin->id)
+            ->where('is_active', true)
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get();
 
-            $availableCarriers = $this->shippingFactory->getSupportedCarriers();
+        // Transporteurs supportés
+        $supportedCarriers = $this->getSupportedCarriers();
+        $availableCarriers = $this->getAvailableCarriers();
 
-            return view('admin.delivery.configuration', compact(
-                'configurations', 
-                'pickupAddresses', 
-                'availableCarriers'
-            ));
+        // Statistiques rapides
+        $stats = [
+            'total_configs' => $configurations->count(),
+            'active_configs' => $configurations->where('is_active', true)->count(),
+            'total_addresses' => $pickupAddresses->count(),
+            'expired_tokens' => $configurations->where('is_active', true)->filter(function($config) {
+                return !$this->hasValidToken($config);
+            })->count(),
+        ];
 
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@configuration: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors du chargement de la configuration');
-        }
+        return view('admin.delivery.configuration', compact(
+            'configurations', 
+            'pickupAddresses', 
+            'supportedCarriers',
+            'availableCarriers',
+            'stats'
+        ));
     }
 
     /**
-     * Créer une configuration de transporteur
+     * Créer une nouvelle configuration de transporteur (SANS test automatique)
      */
     public function storeConfiguration(Request $request)
     {
         try {
-            $admin = Auth::guard('admin')->user();
+            $admin = auth('admin')->user();
 
-            $validated = $request->validate([
-                'carrier_slug' => 'required|string|max:50',
-                'integration_name' => 'required|string|max:255',
-                'username' => 'required|string|max:255',
-                'password' => 'required|string|max:255',
+            $validator = Validator::make($request->all(), [
+                'carrier_slug' => 'required|string|in:fparcel',
+                'integration_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('delivery_configurations')
+                        ->where('admin_id', $admin->id)
+                        ->where('carrier_slug', $request->carrier_slug),
+                ],
+                'username' => 'required|string|min:3|max:255',
+                'password' => 'required|string|min:6',
                 'environment' => 'required|in:test,prod',
-            ], [
-                'carrier_slug.required' => 'Le transporteur est obligatoire',
-                'integration_name.required' => 'Le nom d\'intégration est obligatoire',
-                'username.required' => 'Le nom d\'utilisateur est obligatoire',
-                'password.required' => 'Le mot de passe est obligatoire',
-                'environment.required' => 'L\'environnement est obligatoire',
-                'environment.in' => 'L\'environnement doit être "test" ou "prod"',
             ]);
 
-            // Vérifier l'unicité
-            $existing = DeliveryConfiguration::where('admin_id', $admin->id)
-                ->where('carrier_slug', $validated['carrier_slug'])
-                ->where('integration_name', $validated['integration_name'])
-                ->exists();
-
-            if ($existing) {
-                throw new ValidationException(['integration_name' => ['Une configuration avec ce nom existe déjà pour ce transporteur.']]);
+            if ($validator->fails()) {
+                return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput()
+                    ->with('error', 'Erreur de validation des données.');
             }
 
-            DB::beginTransaction();
-
+            // Créer la configuration DIRECTEMENT sans test
             $configuration = DeliveryConfiguration::create([
                 'admin_id' => $admin->id,
-                'carrier_slug' => $validated['carrier_slug'],
-                'integration_name' => $validated['integration_name'],
-                'username' => $validated['username'],
-                'password' => $validated['password'],
-                'environment' => $validated['environment'],
+                'carrier_slug' => $request->carrier_slug,
+                'integration_name' => $request->integration_name,
+                'username' => $request->username,
+                'password' => $request->password, // Sera chiffré automatiquement
+                'environment' => $request->environment,
+                'token' => null, // Sera défini lors du test de connexion
+                'expires_at' => null,
                 'is_active' => true,
             ]);
 
-            // Tester la connexion et obtenir le token
-            $testResult = $configuration->testConnection();
+            Log::info('Configuration créée avec succès', [
+                'admin_id' => $admin->id,
+                'config_id' => $configuration->id,
+                'carrier' => $request->carrier_slug
+            ]);
+
+            return redirect()->route('admin.delivery.configuration')
+                ->with('success', 'Configuration du transporteur créée avec succès. Vous pouvez maintenant tester la connexion.');
+
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la création de configuration', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'admin_id' => auth('admin')->id(),
+                'request_data' => $request->except(['password'])
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Erreur lors de la création : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Créer une adresse d'enlèvement (VERSION CORRIGÉE)
+     */
+    public function storePickupAddress(Request $request)
+    {
+        DB::beginTransaction();
+        
+        try {
+            $admin = auth('admin')->user();
+
+            Log::info('Tentative de création d\'adresse', [
+                'admin_id' => $admin->id,
+                'request_data' => $request->all()
+            ]);
+
+            $validator = Validator::make($request->all(), [
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('pickup_addresses')
+                        ->where('admin_id', $admin->id),
+                ],
+                'contact_name' => 'required|string|max:255',
+                'address' => 'required|string|max:1000',
+                'postal_code' => 'nullable|string|max:20',
+                'city' => 'nullable|string|max:255',
+                'phone' => 'required|string|max:20',
+                'email' => 'nullable|email|max:255',
+                'is_default' => 'nullable',
+            ]);
+
+            if ($validator->fails()) {
+                Log::warning('Validation échouée pour adresse', [
+                    'errors' => $validator->errors()->toArray(),
+                    'admin_id' => $admin->id
+                ]);
+
+                return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput()
+                    ->with('error', 'Erreur de validation des données.');
+            }
+
+            // Vérifier s'il existe déjà une adresse par défaut
+            $isDefault = $request->has('is_default') && $request->is_default;
             
-            if (!$testResult['success']) {
-                throw new \Exception($testResult['message']);
+            if ($isDefault) {
+                // Désactiver les autres adresses par défaut
+                PickupAddress::where('admin_id', $admin->id)
+                    ->update(['is_default' => false]);
+                    
+                Log::info('Autres adresses par défaut désactivées', ['admin_id' => $admin->id]);
+            }
+
+            // Créer l'adresse
+            $address = PickupAddress::create([
+                'admin_id' => $admin->id,
+                'name' => trim($request->name),
+                'contact_name' => trim($request->contact_name),
+                'address' => trim($request->address),
+                'postal_code' => $request->postal_code ? trim($request->postal_code) : null,
+                'city' => $request->city ? trim($request->city) : null,
+                'phone' => trim($request->phone),
+                'email' => $request->email ? trim($request->email) : null,
+                'is_default' => $isDefault,
+                'is_active' => true,
+            ]);
+
+            Log::info('Adresse créée avec succès', [
+                'admin_id' => $admin->id,
+                'address_id' => $address->id,
+                'name' => $address->name
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('admin.delivery.configuration')
+                ->with('success', 'Adresse d\'enlèvement créée avec succès.');
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Erreur lors de la création d\'adresse', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'admin_id' => auth('admin')->id(),
+                'request_data' => $request->all()
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Erreur lors de l\'enregistrement : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Importer les adresses depuis Fparcel
+     */
+    public function importFparcelAddresses(DeliveryConfiguration $config)
+    {
+        try {
+            Log::info('Début import adresses Fparcel', ['config_id' => $config->id]);
+
+            // Vérifier que la configuration a un token valide
+            if (!$this->hasValidToken($config)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token invalide. Veuillez d\'abord tester la connexion.'
+                ], 400);
+            }
+
+            // Récupérer les drop points depuis Fparcel
+            $dropPoints = $this->getFparcelDropPoints($config);
+            
+            if (!$dropPoints['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la récupération des adresses : ' . $dropPoints['message']
+                ]);
+            }
+
+            $imported = 0;
+            $skipped = 0;
+            $admin = auth('admin')->user();
+
+            DB::beginTransaction();
+
+            foreach ($dropPoints['data'] as $dropPoint) {
+                // Vérifier si l'adresse existe déjà
+                $exists = PickupAddress::where('admin_id', $admin->id)
+                    ->where('name', $dropPoint['name'])
+                    ->exists();
+
+                if ($exists) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Créer l'adresse
+                PickupAddress::create([
+                    'admin_id' => $admin->id,
+                    'name' => $dropPoint['name'],
+                    'contact_name' => $dropPoint['contact_name'] ?? 'Contact Fparcel',
+                    'address' => $dropPoint['address'],
+                    'postal_code' => $dropPoint['postal_code'] ?? null,
+                    'city' => $dropPoint['city'] ?? null,
+                    'phone' => $dropPoint['phone'] ?? '00000000',
+                    'email' => $dropPoint['email'] ?? null,
+                    'is_default' => false,
+                    'is_active' => true,
+                ]);
+
+                $imported++;
             }
 
             DB::commit();
 
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Configuration créée et testée avec succès',
-                    'configuration' => $configuration
-                ]);
-            }
-
-            return redirect()->back()->with('success', 'Configuration créée et testée avec succès');
-
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            
-            return redirect()->back()->withErrors($e->errors())->withInput();
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur dans DeliveryController@storeConfiguration: ' . $e->getMessage());
-            
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage()
-                ], 500);
-            }
-            
-            return redirect()->back()->with('error', $e->getMessage())->withInput();
-        }
-    }
-
-    /**
-     * Mettre à jour une configuration
-     */
-    public function updateConfiguration(Request $request, DeliveryConfiguration $config)
-    {
-        try {
-            $this->authorize('update', $config);
-
-            $validated = $request->validate([
-                'integration_name' => 'required|string|max:255',
-                'username' => 'required|string|max:255',
-                'password' => 'nullable|string|max:255',
-                'environment' => 'required|in:test,prod',
+            Log::info('Import adresses Fparcel terminé', [
+                'config_id' => $config->id,
+                'imported' => $imported,
+                'skipped' => $skipped
             ]);
-
-            // Si pas de nouveau mot de passe, garder l'ancien
-            if (empty($validated['password'])) {
-                unset($validated['password']);
-            }
-
-            $config->update($validated);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Configuration mise à jour avec succès'
+                'message' => "Import terminé : {$imported} adresses importées, {$skipped} ignorées (déjà existantes).",
+                'data' => [
+                    'imported' => $imported,
+                    'skipped' => $skipped
+                ]
             ]);
 
-        } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'errors' => $e->errors()
-            ], 422);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@updateConfiguration: ' . $e->getMessage());
+        } catch (Exception $e) {
+            DB::rollBack();
             
+            Log::error('Erreur lors de l\'import adresses Fparcel', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'config_id' => $config->id
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la mise à jour'
+                'message' => 'Erreur lors de l\'import : ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Supprimer une configuration
+     * Récupérer les drop points depuis Fparcel
      */
-    public function deleteConfiguration(DeliveryConfiguration $config)
+    private function getFparcelDropPoints(DeliveryConfiguration $config): array
     {
         try {
-            $this->authorize('delete', $config);
+            $baseUrl = $config->environment === 'prod' 
+                ? 'https://admin.fparcel.net/WebServiceExterne' 
+                : 'http://fparcel.net:59/WebServiceExterne';
 
-            $configName = $config->display_name;
-            $config->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => "Configuration \"{$configName}\" supprimée avec succès"
+            Log::info('Récupération drop points Fparcel', [
+                'url' => $baseUrl . '/droppoint_list'
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@deleteConfiguration: ' . $e->getMessage());
+            $response = Http::timeout(30)
+                ->get($baseUrl . '/droppoint_list');
+
+            if (!$response->successful()) {
+                return [
+                    'success' => false,
+                    'message' => 'Erreur HTTP ' . $response->status()
+                ];
+            }
+
+            $data = $response->json();
             
-            return response()->json([
+            if (!is_array($data)) {
+                return [
+                    'success' => false,
+                    'message' => 'Format de réponse invalide'
+                ];
+            }
+
+            // Transformer les données Fparcel en format standard
+            $addresses = [];
+            foreach ($data as $item) {
+                $addresses[] = [
+                    'name' => $item['NOM'] ?? ($item['DESIGNATION'] ?? 'Agence Fparcel'),
+                    'contact_name' => $item['CONTACT'] ?? ($item['NOM'] ?? 'Contact'),
+                    'address' => $item['ADRESSE'] ?? ($item['ADDRESS'] ?? ''),
+                    'postal_code' => $item['CODE_POSTAL'] ?? ($item['POSTAL_CODE'] ?? null),
+                    'city' => $item['VILLE'] ?? ($item['CITY'] ?? null),
+                    'phone' => $item['TELEPHONE'] ?? ($item['PHONE'] ?? null),
+                    'email' => $item['EMAIL'] ?? ($item['MAIL'] ?? null),
+                ];
+            }
+
+            Log::info('Drop points récupérés avec succès', [
+                'count' => count($addresses)
+            ]);
+
+            return [
+                'success' => true,
+                'data' => $addresses
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Erreur récupération drop points', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id
+            ]);
+
+            return [
                 'success' => false,
                 'message' => $e->getMessage()
-            ], 500);
+            ];
         }
     }
 
     /**
-     * Tester la connexion
+     * Tester la connexion d'une configuration (action séparée)
      */
     public function testConnection(DeliveryConfiguration $config)
     {
         try {
-            $this->authorize('testConnection', $config);
+            $result = $this->testFparcelConnection([
+                'username' => $config->username,
+                'password' => $this->getDecryptedPassword($config),
+                'environment' => $config->environment,
+            ]);
 
-            $result = $config->testConnection();
+            if ($result['success']) {
+                // Mettre à jour le token
+                $config->update([
+                    'token' => $result['data']['token'],
+                    'expires_at' => $result['data']['expires_at'],
+                ]);
 
-            return response()->json($result);
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'token_expires_at' => $result['data']['expires_at'],
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'],
+                ], 400);
+            }
 
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@testConnection: ' . $e->getMessage());
-            
+        } catch (Exception $e) {
+            Log::error('Erreur lors du test de connexion', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id,
+                'admin_id' => auth('admin')->id()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du test de connexion'
+                'message' => 'Erreur lors du test : ' . $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Rafraîchir le token
+     * Rafraîchir le token d'une configuration
      */
     public function refreshToken(DeliveryConfiguration $config)
     {
         try {
-            $this->authorize('testConnection', $config);
+            $result = $this->testFparcelConnection([
+                'username' => $config->username,
+                'password' => $this->getDecryptedPassword($config),
+                'environment' => $config->environment,
+            ]);
 
-            $success = $config->refreshToken();
+            if ($result['success']) {
+                $config->update([
+                    'token' => $result['data']['token'],
+                    'expires_at' => $result['data']['expires_at'],
+                ]);
 
-            if ($success) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Token rafraîchi avec succès',
-                    'expires_at' => $config->expires_at
+                    'message' => 'Token rafraîchi avec succès.',
+                    'expires_at' => $result['data']['expires_at'],
                 ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossible de rafraîchir le token : ' . $result['message'],
+                ], 400);
             }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du rafraîchissement du token'
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Erreur lors du rafraîchissement de token', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id,
+                'admin_id' => auth('admin')->id()
+            ]);
 
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@refreshToken: ' . $e->getMessage());
-            
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du rafraîchissement du token'
+                'message' => 'Erreur lors du rafraîchissement : ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -287,35 +476,55 @@ class DeliveryController extends Controller
     public function toggleConfiguration(DeliveryConfiguration $config)
     {
         try {
-            $this->authorize('toggleStatus', $config);
-
             $config->update(['is_active' => !$config->is_active]);
-            
+
             $status = $config->is_active ? 'activée' : 'désactivée';
 
             return response()->json([
                 'success' => true,
-                'message' => "Configuration {$status} avec succès",
-                'is_active' => $config->is_active
+                'message' => "Configuration {$status} avec succès.",
+                'is_active' => $config->is_active,
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@toggleConfiguration: ' . $e->getMessage());
-            
+        } catch (Exception $e) {
+            Log::error('Erreur lors du changement de statut', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id,
+                'admin_id' => auth('admin')->id()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Erreur lors du changement de statut : ' . $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Créer une adresse d'enlèvement
+     * Supprimer une configuration
      */
-    public function storePickupAddress(Request $request)
+    public function deleteConfiguration(DeliveryConfiguration $config)
     {
-        // Déléguer au PickupAddressController
-        return app(PickupAddressController::class)->store($request);
+        try {
+            $config->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuration supprimée avec succès.'
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la suppression de configuration', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id,
+                'admin_id' => auth('admin')->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la suppression : ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -323,445 +532,206 @@ class DeliveryController extends Controller
      */
     public function deletePickupAddress(PickupAddress $address)
     {
-        // Déléguer au PickupAddressController
-        return app(PickupAddressController::class)->destroy($address);
+        try {
+            $address->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Adresse d\'enlèvement supprimée avec succès.'
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la suppression d\'adresse', [
+                'error' => $e->getMessage(),
+                'address_id' => $address->id,
+                'admin_id' => auth('admin')->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la suppression : ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
-     * Page de préparation d'enlèvement
+     * Définir une adresse comme par défaut
      */
-    public function preparation(Request $request)
+    public function setDefaultAddress(PickupAddress $address)
     {
         try {
-            $admin = Auth::guard('admin')->user();
+            $admin = auth('admin')->user();
             
-            // Configurations actives
-            $configurations = $admin->deliveryConfigurations()
-                ->where('is_active', true)
-                ->get();
+            DB::beginTransaction();
+            
+            // Désactiver toutes les autres adresses par défaut
+            PickupAddress::where('admin_id', $admin->id)
+                ->update(['is_default' => false]);
+            
+            // Activer celle-ci
+            $address->update(['is_default' => true, 'is_active' => true]);
 
-            if ($configurations->isEmpty()) {
-                return redirect()->route('admin.delivery.configuration')
-                    ->with('warning', 'Veuillez d\'abord configurer au moins un transporteur.');
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Adresse définie comme par défaut avec succès.'
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Erreur lors de la définition d\'adresse par défaut', [
+                'error' => $e->getMessage(),
+                'address_id' => $address->id,
+                'admin_id' => auth('admin')->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour : ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Tester la connexion avec l'API Fparcel - VERSION SIMPLE ET DÉFINITIVE
+     */
+    private function testFparcelConnection(array $credentials): array
+    {
+        try {
+            $baseUrl = $credentials['environment'] === 'prod' 
+                ? 'https://admin.fparcel.net/WebServiceExterne' 
+                : 'http://fparcel.net:59/WebServiceExterne';
+
+            $response = Http::timeout(30)
+                ->asForm()
+                ->post($baseUrl . '/get_token', [
+                    'USERNAME' => $credentials['username'],
+                    'PASSWORD' => $credentials['password'],
+                ]);
+
+            if (!$response->successful()) {
+                return [
+                    'success' => false,
+                    'message' => 'Erreur HTTP ' . $response->status()
+                ];
             }
 
-            // Adresses d'enlèvement
-            $pickupAddresses = $admin->pickupAddresses()
-                ->where('is_active', true)
-                ->get();
-
-            // Statistiques
-            $stats = [
-                'available_orders' => $admin->orders()
-                    ->where('status', 'confirmée')
-                    ->whereDoesntHave('shipments', function($q) {
-                        $q->whereNotNull('pickup_id');
-                    })
-                    ->count(),
-                'draft_pickups' => $admin->pickups()->where('status', Pickup::STATUS_DRAFT)->count(),
+            $responseBody = trim($response->body());
+            
+            // Log pour debug
+            Log::info('Réponse Fparcel', ['body' => $responseBody]);
+            
+            // Extraire le token de toutes les façons possibles
+            $token = null;
+            
+            // Cas 1: JSON avec structure {"TOKEN": "..."}
+            $data = $response->json();
+            if (is_array($data) && isset($data['TOKEN'])) {
+                $token = $data['TOKEN'];
+            }
+            // Cas 2: JSON string directe "token_value"
+            elseif (is_string($data) && strlen($data) > 10) {
+                $token = $data;
+            }
+            // Cas 3: String JSON quoted dans le body brut
+            elseif (preg_match('/^"([^"]+)"$/', $responseBody, $matches)) {
+                $token = $matches[1];
+            }
+            // Cas 4: Texte brut qui ressemble à un token
+            elseif (strlen($responseBody) > 10 && !str_contains(strtolower($responseBody), 'error')) {
+                $token = $responseBody;
+            }
+            
+            // Si on a trouvé un token
+            if ($token) {
+                // Nettoyer le token (enlever les échappements)
+                $token = str_replace(['\\/', '\\"'], ['/', '"'], $token);
+                
+                Log::info('Token Fparcel extrait avec succès', ['token' => $token]);
+                
+                return [
+                    'success' => true,
+                    'message' => 'Connexion réussie avec Fparcel',
+                    'data' => [
+                        'token' => $token,
+                        'expires_at' => now()->addHour(),
+                    ]
+                ];
+            }
+            
+            // Échec d'extraction
+            return [
+                'success' => false,
+                'message' => 'Impossible d\'extraire le token de la réponse: ' . $responseBody
             ];
 
-            return view('admin.delivery.preparation', compact(
-                'configurations', 
-                'pickupAddresses', 
-                'stats'
-            ));
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@preparation: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors du chargement de la préparation');
-        }
-    }
-
-    /**
-     * Obtenir les commandes disponibles pour enlèvement
-     */
-    public function getAvailableOrders(Request $request)
-    {
-        try {
-            $admin = Auth::guard('admin')->user();
-            
-            $filters = $request->only([
-                'date_from', 'date_to', 'governorate', 'city', 
-                'min_amount', 'max_amount', 'search'
+        } catch (Exception $e) {
+            Log::error('Erreur test connexion Fparcel', [
+                'error' => $e->getMessage(),
+                'username' => $credentials['username'],
+                'environment' => $credentials['environment']
             ]);
 
-            $orders = $this->pickupService
-                ->getAvailableOrdersForPickup($admin, $filters)
-                ->with(['items.product'])
-                ->paginate(20);
-
-            if ($request->ajax()) {
-                return response()->json([
-                    'orders' => $orders,
-                    'html' => view('admin.delivery.preparation.orders-table', compact('orders'))->render()
-                ]);
-            }
-
-            return response()->json(['orders' => $orders]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@getAvailableOrders: ' . $e->getMessage());
-            
-            return response()->json([
-                'error' => 'Erreur lors du chargement des commandes'
-            ], 500);
-        }
-    }
-
-    /**
-     * Créer un enlèvement
-     */
-    public function createPickup(Request $request)
-    {
-        try {
-            $admin = Auth::guard('admin')->user();
-
-            $validated = $request->validate([
-                'delivery_configuration_id' => 'required|exists:delivery_configurations,id',
-                'pickup_address_id' => 'nullable|exists:pickup_addresses,id',
-                'pickup_date' => 'nullable|date|after_or_equal:today',
-                'order_ids' => 'required|array|min:1',
-                'order_ids.*' => 'exists:orders,id'
-            ], [
-                'delivery_configuration_id.required' => 'Veuillez sélectionner une configuration de transporteur',
-                'order_ids.required' => 'Veuillez sélectionner au moins une commande',
-                'order_ids.min' => 'Veuillez sélectionner au moins une commande',
-            ]);
-
-            $pickup = $this->pickupService->createPickup($admin, $validated);
-
-            // Enregistrer dans l'historique des commandes
-            foreach ($pickup->shipments as $shipment) {
-                $shipment->order->recordHistory(
-                    'pickup_created',
-                    "Enlèvement #{$pickup->id} créé avec {$pickup->carrier_slug}",
-                    [
-                        'pickup_id' => $pickup->id,
-                        'carrier' => $pickup->carrier_slug,
-                        'pickup_address_id' => $pickup->pickup_address_id,
-                    ]
-                );
-            }
-
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Enlèvement créé avec succès',
-                    'pickup_id' => $pickup->id,
-                    'redirect_url' => route('admin.delivery.pickups.show', $pickup)
-                ]);
-            }
-
-            return redirect()->route('admin.delivery.pickups.show', $pickup)
-                ->with('success', 'Enlèvement créé avec succès');
-
-        } catch (ValidationException $e) {
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            
-            return redirect()->back()->withErrors($e->errors())->withInput();
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@createPickup: ' . $e->getMessage());
-            
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage()
-                ], 500);
-            }
-            
-            return redirect()->back()->with('error', $e->getMessage())->withInput();
-        }
-    }
-
-    /**
-     * Page des enlèvements
-     */
-    public function pickups(Request $request)
-    {
-        // Déléguer au PickupController
-        return app(PickupController::class)->index($request);
-    }
-
-    /**
-     * Afficher un enlèvement
-     */
-    public function showPickup(Pickup $pickup)
-    {
-        // Déléguer au PickupController
-        return app(PickupController::class)->show($pickup);
-    }
-
-    /**
-     * Valider un enlèvement
-     */
-    public function validatePickup(Request $request, Pickup $pickup)
-    {
-        // Déléguer au PickupController
-        return app(PickupController::class)->validate($request, $pickup);
-    }
-
-    /**
-     * Générer les étiquettes
-     */
-    public function generateLabels(Request $request, Pickup $pickup)
-    {
-        // Déléguer au PickupController
-        return app(PickupController::class)->generateLabels($request, $pickup);
-    }
-
-    /**
-     * Générer le manifeste
-     */
-    public function generateManifest(Request $request, Pickup $pickup)
-    {
-        // Déléguer au PickupController
-        return app(PickupController::class)->generateManifest($request, $pickup);
-    }
-
-    /**
-     * Rafraîchir le statut
-     */
-    public function refreshStatus(Request $request, Pickup $pickup)
-    {
-        // Déléguer au PickupController
-        return app(PickupController::class)->refreshStatus($request, $pickup);
-    }
-
-    /**
-     * Supprimer un enlèvement
-     */
-    public function destroyPickup(Pickup $pickup)
-    {
-        // Déléguer au PickupController
-        return app(PickupController::class)->destroy($pickup);
-    }
-
-    /**
-     * Page des expéditions
-     */
-    public function shipments(Request $request)
-    {
-        try {
-            $admin = Auth::guard('admin')->user();
-            
-            $filters = $request->only([
-                'status', 'carrier', 'tracking_code', 'order_number',
-                'customer_name', 'customer_phone', 'date_from', 'date_to',
-                'governorate', 'pickup_id', 'min_value', 'max_value'
-            ]);
-
-            $shipments = $this->shipmentService
-                ->searchShipments($admin, $filters)
-                ->paginate(20);
-
-            // Statistiques
-            $stats = $this->shipmentService->getShipmentStats($admin);
-
-            if ($request->ajax()) {
-                return response()->json([
-                    'shipments' => $shipments,
-                    'stats' => $stats,
-                    'html' => view('admin.delivery.shipments.table', compact('shipments'))->render()
-                ]);
-            }
-
-            return view('admin.delivery.shipments.index', compact('shipments', 'stats'));
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@shipments: ' . $e->getMessage());
-            
-            if ($request->ajax()) {
-                return response()->json(['error' => 'Erreur lors du chargement des expéditions'], 500);
-            }
-            
-            return redirect()->back()->with('error', 'Erreur lors du chargement des expéditions');
-        }
-    }
-
-    /**
-     * Afficher une expédition
-     */
-    public function showShipment(Shipment $shipment)
-    {
-        try {
-            $this->authorize('view', $shipment->order);
-            
-            $shipment->load(['order', 'pickup.deliveryConfiguration', 'pickup.pickupAddress']);
-            
-            $trackingHistory = $shipment->getTrackingHistory();
-
-            return view('admin.delivery.shipments.show', compact('shipment', 'trackingHistory'));
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@showShipment: ' . $e->getMessage());
-            return redirect()->route('admin.delivery.shipments.index')
-                ->with('error', 'Erreur lors du chargement de l\'expédition');
-        }
-    }
-
-    /**
-     * Suivre une expédition
-     */
-    public function trackShipment(Request $request, Shipment $shipment)
-    {
-        try {
-            $this->authorize('view', $shipment->order);
-
-            $trackingData = $this->shipmentService->trackShipment($shipment);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Statut mis à jour',
-                'tracking_data' => $trackingData,
-                'shipment' => $shipment->fresh()
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@trackShipment: ' . $e->getMessage());
-            
-            return response()->json([
+            return [
                 'success' => false,
-                'message' => 'Erreur lors du suivi'
-            ], 500);
+                'message' => 'Erreur de connexion : ' . $e->getMessage()
+            ];
         }
     }
 
     /**
-     * Marquer comme livré
+     * Obtenir le mot de passe déchiffré
      */
-    public function markDelivered(Request $request, Shipment $shipment)
+    private function getDecryptedPassword(DeliveryConfiguration $config): string
     {
         try {
-            $this->authorize('update', $shipment->order);
-
-            $validated = $request->validate([
-                'notes' => 'nullable|string|max:1000'
-            ]);
-
-            $this->shipmentService->markAsDelivered($shipment, $validated['notes'] ?? null);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Expédition marquée comme livrée'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@markDelivered: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            return \Illuminate\Support\Facades\Crypt::decryptString($config->password);
+        } catch (Exception $e) {
+            // Si le déchiffrement échoue, retourner le mot de passe tel quel
+            return $config->password;
         }
     }
 
     /**
-     * Page des statistiques
+     * Vérifier si le token est valide
      */
-    public function stats(Request $request)
+    private function hasValidToken(DeliveryConfiguration $config): bool
     {
-        try {
-            $admin = Auth::guard('admin')->user();
-            
-            $days = $request->get('days', 30);
-            
-            $pickupStats = $this->pickupService->getPickupStats($admin, $days);
-            $shipmentStats = $this->shipmentService->getShipmentStats($admin, $days);
-            $returnAnalysis = $this->shipmentService->analyzeReturns($admin, $days);
-            $dashboard = $this->shipmentService->getRealtimeDashboard($admin);
-
-            return view('admin.delivery.stats', compact(
-                'pickupStats', 
-                'shipmentStats', 
-                'returnAnalysis', 
-                'dashboard',
-                'days'
-            ));
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@stats: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors du chargement des statistiques');
-        }
+        return $config->token && $config->expires_at && $config->expires_at->isFuture();
     }
 
     /**
-     * API: Obtenir les transporteurs disponibles
+     * Obtenir les transporteurs supportés
      */
-    public function getCarriers()
+    private function getSupportedCarriers(): array
     {
-        try {
-            $carriers = $this->shippingFactory->getSupportedCarriers();
-            
-            return response()->json([
-                'success' => true,
-                'carriers' => $carriers
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du chargement des transporteurs'
-            ], 500);
-        }
+        return [
+            'fparcel' => [
+                'name' => 'Fparcel',
+                'display_name' => 'Fparcel Tunisia',
+                'supports_pickup_address' => true,
+                'supports_tracking' => true,
+                'supports_mass_labels' => true,
+                'features' => ['cod', 'tracking', 'mass_labels', 'pickup_scheduling']
+            ]
+        ];
     }
 
     /**
-     * API: Obtenir les statistiques
+     * Obtenir les transporteurs disponibles
      */
-    public function getApiStats(Request $request)
+    private function getAvailableCarriers(): array
     {
-        try {
-            $admin = Auth::guard('admin')->user();
-            
-            $dashboard = $this->shipmentService->getRealtimeDashboard($admin);
-            
-            return response()->json([
-                'success' => true,
-                'stats' => $dashboard
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du chargement des statistiques'
-            ], 500);
-        }
-    }
-
-    /**
-     * API: Suivre toutes les expéditions
-     */
-    public function trackAllShipments(Request $request)
-    {
-        try {
-            $admin = Auth::guard('admin')->user();
-            
-            $filters = array_merge($request->only(['admin_id', 'carrier', 'pickup_id', 'limit']), [
-                'admin_id' => $admin->id
-            ]);
-            
-            $results = $this->shipmentService->trackAllShipments($filters);
-
-            return response()->json([
-                'success' => true,
-                'message' => "Suivi terminé. {$results['updated']} expédition(s) mise(s) à jour",
-                'results' => $results
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dans DeliveryController@trackAllShipments: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du suivi des expéditions'
-            ], 500);
-        }
+        return [
+            'fparcel' => [
+                'name' => 'Fparcel',
+                'display_name' => 'Fparcel Tunisia',
+                'description' => 'Service de livraison tunisien',
+                'website' => 'https://fparcel.com',
+                'environments' => ['test', 'prod']
+            ]
+        ];
     }
 }
