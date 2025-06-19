@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\SuspendedController;
 use App\Http\Controllers\Admin\WooCommerceController;
 use App\Http\Controllers\Admin\DeliveryController;
+use App\Http\Controllers\Admin\PickupController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\PickupAddressController;  
 use App\Http\Controllers\Admin\BLTemplateController;
@@ -240,6 +241,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // GESTION DES LIVRAISONS
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
+            // Route principale pour la livraison (redirection)
+            Route::get('/', [DeliveryController::class, 'configuration'])
+                ->name('index');
+            
             // Configuration des transporteurs
             Route::get('configuration', [DeliveryController::class, 'configuration'])
                 ->name('configuration');
@@ -274,10 +279,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('preparation', [DeliveryController::class, 'createPickup'])
                 ->name('preparation.store');
             
-            // GESTION DES ENLÈVEMENTS
+            // ========================================
+            // ROUTES PICKUPS - CORRECTION PRINCIPALE
+            // ========================================
+            
+            // Route principale pour les pickups (redirection vers index)
             Route::get('pickups', [DeliveryController::class, 'pickups'])
+                ->name('pickups'); // AJOUT DE CETTE ROUTE MANQUANTE
+            
+            // Routes détaillées des pickups via DeliveryController
+            Route::get('pickups/list', [DeliveryController::class, 'pickups'])
                 ->name('pickups.index');
-            Route::get('pickups/{pickup}', [DeliveryController::class, 'showPickup'])
+            Route::get('pickups/{pickup}/details', [DeliveryController::class, 'showPickup'])
                 ->name('pickups.show');
             Route::post('pickups/{pickup}/validate', [DeliveryController::class, 'validatePickup'])
                 ->name('pickups.validate');
@@ -285,6 +298,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('pickups.add-orders');
             Route::post('pickups/{pickup}/remove-orders', [DeliveryController::class, 'removeOrdersFromPickup'])
                 ->name('pickups.remove-orders');
+            Route::post('pickups/{pickup}/remove-shipment/{shipment}', [DeliveryController::class, 'removeOrdersFromPickup'])
+                ->name('pickups.remove-shipment');
             Route::post('pickups/{pickup}/labels', [DeliveryController::class, 'generateLabels'])
                 ->name('pickups.labels');
             Route::post('pickups/{pickup}/manifest', [DeliveryController::class, 'generateManifest'])
@@ -296,6 +311,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             
             // GESTION DES EXPÉDITIONS
             Route::get('shipments', [DeliveryController::class, 'shipments'])
+                ->name('shipments'); // ROUTE PRINCIPALE MANQUANTE AJOUTÉE
+            Route::get('shipments/list', [DeliveryController::class, 'shipments'])
                 ->name('shipments.index');
             Route::get('shipments/{shipment}', [DeliveryController::class, 'showShipment'])
                 ->name('shipments.show');

@@ -1459,8 +1459,6 @@ class DeliveryController extends Controller
         }
     }
 
-
-
     public function getCarriers()
     {
         return response()->json(['success' => true, 'carriers' => $this->getSupportedCarriers()]);
