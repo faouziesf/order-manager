@@ -236,20 +236,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('settings/api/{key}', [AdminSettingController::class, 'setSetting'])->name('settings.set');
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
-        // ========================================
+       // ========================================
         // GESTION DES LIVRAISONS
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
-            // Page de configuration principale
+            // Configuration des transporteurs
             Route::get('configuration', [DeliveryController::class, 'configuration'])
                 ->name('configuration');
-            Route::patch('pickup-addresses/{address}/set-default', [DeliveryController::class, 'setDefaultAddress'])
-                ->name('pickup-addresses.set-default');
-            
-            Route::post('configuration/{config}/import-addresses', [DeliveryController::class, 'importFparcelAddresses'])
-                ->name('configuration.import-addresses');
-
-            // Gestion des configurations de transporteurs
             Route::post('configuration', [DeliveryController::class, 'storeConfiguration'])
                 ->name('configuration.store');
             Route::patch('configuration/{config}', [DeliveryController::class, 'updateConfiguration'])
@@ -262,14 +255,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('configuration.refresh-token');
             Route::post('configuration/{config}/toggle', [DeliveryController::class, 'toggleConfiguration'])
                 ->name('configuration.toggle');
+            Route::post('configuration/{config}/import-addresses', [DeliveryController::class, 'importFparcelAddresses'])
+                ->name('configuration.import-addresses');
             
-            // Gestion des adresses d'enlèvement
-            Route::post('pickup-addresses', [DeliveryController::class, 'storePickupAddress'])
-                ->name('pickup-addresses.store');
-            Route::delete('pickup-addresses/{address}', [DeliveryController::class, 'deletePickupAddress'])
-                ->name('pickup-addresses.delete');
+            // Gestion des adresses d'enlèvement pour la configuration
+            Route::post('pickup-addresses-config', [DeliveryController::class, 'storePickupAddress'])
+                ->name('pickup-addresses-config.store');
+            Route::delete('pickup-addresses-config/{address}', [DeliveryController::class, 'deletePickupAddress'])
+                ->name('pickup-addresses-config.delete');
+            Route::patch('pickup-addresses-config/{address}/set-default', [DeliveryController::class, 'setDefaultAddress'])
+                ->name('pickup-addresses-config.set-default');
             
-            // Préparation d'enlèvement
+            // PRÉPARATION D'ENLÈVEMENT (Page principale du workflow)
             Route::get('preparation', [DeliveryController::class, 'preparation'])
                 ->name('preparation');
             Route::get('preparation/orders', [DeliveryController::class, 'getAvailableOrders'])
@@ -277,13 +274,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('preparation', [DeliveryController::class, 'createPickup'])
                 ->name('preparation.store');
             
-            // Gestion des enlèvements
+            // GESTION DES ENLÈVEMENTS
             Route::get('pickups', [DeliveryController::class, 'pickups'])
-                ->name('pickups');
+                ->name('pickups.index');
             Route::get('pickups/{pickup}', [DeliveryController::class, 'showPickup'])
                 ->name('pickups.show');
             Route::post('pickups/{pickup}/validate', [DeliveryController::class, 'validatePickup'])
                 ->name('pickups.validate');
+            Route::post('pickups/{pickup}/add-orders', [DeliveryController::class, 'addOrdersToPickup'])
+                ->name('pickups.add-orders');
+            Route::post('pickups/{pickup}/remove-orders', [DeliveryController::class, 'removeOrdersFromPickup'])
+                ->name('pickups.remove-orders');
             Route::post('pickups/{pickup}/labels', [DeliveryController::class, 'generateLabels'])
                 ->name('pickups.labels');
             Route::post('pickups/{pickup}/manifest', [DeliveryController::class, 'generateManifest'])
@@ -293,9 +294,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('pickups/{pickup}', [DeliveryController::class, 'destroyPickup'])
                 ->name('pickups.destroy');
             
-            // Gestion des expéditions
+            // GESTION DES EXPÉDITIONS
             Route::get('shipments', [DeliveryController::class, 'shipments'])
-                ->name('shipments');
+                ->name('shipments.index');
             Route::get('shipments/{shipment}', [DeliveryController::class, 'showShipment'])
                 ->name('shipments.show');
             Route::post('shipments/{shipment}/track', [DeliveryController::class, 'trackShipment'])
@@ -303,26 +304,26 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('shipments/{shipment}/mark-delivered', [DeliveryController::class, 'markDelivered'])
                 ->name('shipments.mark-delivered');
             
-            // Adresses d'enlèvement (page dédiée)
+            // ADRESSES D'ENLÈVEMENT (Page dédiée)
             Route::resource('pickup-addresses', PickupAddressController::class)
                 ->except(['show']);
-            Route::patch('pickup-addresses/{address}/toggle', [PickupAddressController::class, 'toggleStatus'])
+            Route::patch('pickup-addresses/{pickup_address}/toggle', [PickupAddressController::class, 'toggleStatus'])
                 ->name('pickup-addresses.toggle');
-            Route::patch('pickup-addresses/{address}/set-default', [PickupAddressController::class, 'setDefault'])
+            Route::patch('pickup-addresses/{pickup_address}/set-default', [PickupAddressController::class, 'setDefault'])
                 ->name('pickup-addresses.set-default');
             
-            // Templates BL
+            // TEMPLATES BL
             Route::resource('bl-templates', BLTemplateController::class);
             Route::post('bl-templates/{template}/duplicate', [BLTemplateController::class, 'duplicate'])
                 ->name('bl-templates.duplicate');
             Route::patch('bl-templates/{template}/set-default', [BLTemplateController::class, 'setDefault'])
                 ->name('bl-templates.set-default');
             
-            // Statistiques
+            // STATISTIQUES
             Route::get('stats', [DeliveryController::class, 'stats'])
                 ->name('stats');
             
-            // APIs utilitaires
+            // APIS UTILITAIRES
             Route::get('api/carriers', [DeliveryController::class, 'getCarriers'])
                 ->name('api.carriers');
             Route::get('api/stats', [DeliveryController::class, 'getApiStats'])
