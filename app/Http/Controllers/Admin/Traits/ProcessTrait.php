@@ -2,435 +2,350 @@
 
 namespace App\Http\Controllers\Admin\Traits;
 
+use App\Models\Order;
+use App\Models\OrderHistory;
 use App\Models\AdminSetting;
+use App\Models\Region;
+use App\Models\City;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 trait ProcessTrait
 {
     /**
-     * Helper pour obtenir les paramètres avec gestion d'erreur
+     * Obtenir un paramètre de configuration
      */
-    protected function getSetting($key, $default)
+    protected function getSetting($key, $default = null)
     {
-        try {
-            if (!is_string($key)) {
-                Log::warning("getSetting: clé invalide", ['key' => $key, 'type' => gettype($key)]);
-                return $default;
-            }
-            
-            // Vérifier si la classe AdminSetting existe
-            if (!class_exists(AdminSetting::class)) {
-                Log::warning("AdminSetting class not found, using default value for {$key}");
-                return $default;
-            }
-            
-            $value = AdminSetting::get($key, $default);
-            return is_numeric($value) ? (float)$value : $value;
-        } catch (\Exception $e) {
-            Log::warning("Impossible de récupérer le setting {$key}, utilisation de la valeur par défaut: {$default}. Erreur: " . $e->getMessage());
-            return $default;
-        }
+        return AdminSetting::getForAdmin(Auth::guard('admin')->id(), $key, $default);
     }
 
     /**
-     * Réinitialise les compteurs journaliers si nécessaire
+     * Réinitialiser les compteurs quotidiens si nécessaire
      */
     protected function resetDailyCountersIfNeeded($admin)
     {
-        try {
-            if (!$admin || !$admin->id) {
-                Log::warning('resetDailyCountersIfNeeded: admin invalide');
-                return;
-            }
-
-            $lastResetSettingKey = 'last_daily_reset_' . $admin->id;
-            $lastReset = $this->getSetting($lastResetSettingKey, null);
-            $today = now()->format('Y-m-d');
-            
-            if ($lastReset !== $today) {
-                Log::info("Réinitialisation des compteurs journaliers pour l'admin {$admin->id}");
-                
-                // Vérifier si la table orders existe
-                if (!\Schema::hasTable('orders')) {
-                    Log::error('Table orders not found');
-                    return;
-                }
-                
-                $updatedCount = \App\Models\Order::where('admin_id', $admin->id)
-                    ->whereDate('last_attempt_at', '<', $today)
-                    ->update(['daily_attempts_count' => 0]);
-                
-                AdminSetting::set($lastResetSettingKey, $today);
-                
-                Log::info("Compteurs journaliers réinitialisés pour {$updatedCount} commandes pour l'admin {$admin->id}");
-            }
-        } catch (\Exception $e) {
-            Log::error("Erreur lors de la réinitialisation des compteurs journaliers: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Helper: Vérifier si une commande a des problèmes de stock
-     */
-    protected function orderHasStockIssues($order)
-    {
-        try {
-            if (!$order || !$order->items || $order->items->count() === 0) {
-                Log::debug("orderHasStockIssues: commande sans items", ['order_id' => $order->id ?? 'unknown']);
-                return false;
-            }
-
-            // Recharger les relations si nécessaire
-            if (!$order->relationLoaded('items')) {
-                $order->load(['items.product']);
-            }
-
-            foreach ($order->items as $item) {
-                if (!$item->product) {
-                    Log::debug("orderHasStockIssues: produit supprimé détecté", [
-                        'order_id' => $order->id,
-                        'item_id' => $item->id,
-                        'product_id' => $item->product_id
-                    ]);
-                    return true; // Produit supprimé
-                }
-                
-                if (!$item->product->is_active) {
-                    Log::debug("orderHasStockIssues: produit inactif détecté", [
-                        'order_id' => $order->id,
-                        'product_id' => $item->product->id,
-                        'product_name' => $item->product->name
-                    ]);
-                    return true; // Produit inactif
-                }
-                
-                if ($item->product->stock < $item->quantity) {
-                    Log::debug("orderHasStockIssues: stock insuffisant détecté", [
-                        'order_id' => $order->id,
-                        'product_id' => $item->product->id,
-                        'stock_available' => $item->product->stock,
-                        'quantity_needed' => $item->quantity
-                    ]);
-                    return true; // Stock insuffisant
-                }
-            }
-            
-            return false;
-        } catch (\Exception $e) {
-            Log::error("orderHasStockIssues: Erreur pour commande {$order->id}: " . $e->getMessage());
-            return true; // En cas d'erreur, considérer qu'il y a un problème
-        }
-    }
-
-    /**
-     * Helper: Analyser les problèmes de stock d'une commande
-     */
-    protected function analyzeOrderStockIssues($order)
-    {
-        try {
-            $availableItems = collect();
-            $unavailableItems = collect();
-            $issues = [];
-
-            if (!$order || !$order->items) {
-                Log::warning('analyzeOrderStockIssues: commande ou items invalides', ['order_id' => $order->id ?? 'unknown']);
-                return [
-                    'hasIssues' => false,
-                    'availableItems' => $availableItems,
-                    'unavailableItems' => $unavailableItems,
-                    'issues' => $issues
-                ];
-            }
-
-            // Recharger les relations si nécessaire
-            if (!$order->relationLoaded('items')) {
-                $order->load(['items.product']);
-            }
-
-            foreach ($order->items as $item) {
-                $hasIssue = false;
-                $issueReasons = [];
-
-                if (!$item->product) {
-                    $hasIssue = true;
-                    $issueReasons[] = 'Produit supprimé';
-                } else {
-                    if (!$item->product->is_active) {
-                        $hasIssue = true;
-                        $issueReasons[] = 'Produit inactif';
-                    }
-                    
-                    if ($item->product->stock < $item->quantity) {
-                        $hasIssue = true;
-                        $issueReasons[] = "Stock insuffisant ({$item->product->stock} disponible, {$item->quantity} demandé)";
-                    }
-                }
-
-                if ($hasIssue) {
-                    $unavailableItems->push($item);
-                    $issues[] = [
-                        'item_id' => $item->id,
-                        'product_name' => $item->product ? $item->product->name : 'Produit supprimé',
-                        'reasons' => $issueReasons
-                    ];
-                } else {
-                    $availableItems->push($item);
-                }
-            }
-
-            return [
-                'hasIssues' => $unavailableItems->count() > 0,
-                'availableItems' => $availableItems,
-                'unavailableItems' => $unavailableItems,
-                'issues' => $issues
-            ];
-        } catch (\Exception $e) {
-            Log::error('Erreur dans analyzeOrderStockIssues: ' . $e->getMessage(), [
-                'order_id' => $order->id ?? 'unknown'
-            ]);
-            return [
-                'hasIssues' => false,
-                'availableItems' => collect(),
-                'unavailableItems' => collect(),
-                'issues' => []
-            ];
-        }
-    }
-
-    /**
-     * Formate les données d'une commande pour l'API
-     */
-    protected function formatOrderData($order)
-    {
-        try {
-            if (!$order || !$order->id) {
-                Log::warning('formatOrderData: commande invalide');
-                return null;
-            }
-
-            // Recharger les relations si nécessaire
-            if (!$order->relationLoaded('items')) {
-                $order->load(['items.product']);
-            }
-            
-            return [
-                'id' => $order->id,
-                'status' => $order->status ?? 'nouvelle',
-                'priority' => $order->priority ?? 'normale',
-                'customer_name' => $order->customer_name ?? '',
-                'customer_phone' => $order->customer_phone ?? '',
-                'customer_phone_2' => $order->customer_phone_2 ?? '',
-                'customer_governorate' => $order->customer_governorate ?? '',
-                'customer_city' => $order->customer_city ?? '',
-                'customer_address' => $order->customer_address ?? '',
-                'shipping_cost' => floatval($order->shipping_cost ?? 0),
-                'total_price' => floatval($order->total_price ?? 0),
-                'confirmed_price' => $order->confirmed_price ? floatval($order->confirmed_price) : null,
-                'scheduled_date' => $order->scheduled_date ? ($order->scheduled_date instanceof Carbon ? $order->scheduled_date->format('Y-m-d') : Carbon::parse($order->scheduled_date)->format('Y-m-d')) : null,
-                'attempts_count' => intval($order->attempts_count ?? 0),
-                'daily_attempts_count' => intval($order->daily_attempts_count ?? 0),
-                'created_at' => $order->created_at ? ($order->created_at instanceof Carbon ? $order->created_at->toISOString() : Carbon::parse($order->created_at)->toISOString()) : null,
-                'updated_at' => $order->updated_at ? ($order->updated_at instanceof Carbon ? $order->updated_at->toISOString() : Carbon::parse($order->updated_at)->toISOString()) : null,
-                'last_attempt_at' => $order->last_attempt_at ? ($order->last_attempt_at instanceof Carbon ? $order->last_attempt_at->toISOString() : Carbon::parse($order->last_attempt_at)->toISOString()) : null,
-                'is_suspended' => $order->is_suspended ?? false,
-                'suspension_reason' => $order->suspension_reason ?? '',
-                'items' => $order->items ? $order->items->map(function($item) {
-                    return [
-                        'id' => $item->id,
-                        'product_id' => $item->product_id,
-                        'quantity' => intval($item->quantity ?? 0),
-                        'unit_price' => floatval($item->unit_price ?? 0),
-                        'total_price' => floatval($item->total_price ?? 0),
-                        'product' => $item->product ? [
-                            'id' => $item->product->id,
-                            'name' => $item->product->name ?? 'Produit sans nom',
-                            'price' => floatval($item->product->price ?? 0),
-                            'stock' => intval($item->product->stock ?? 0),
-                            'is_active' => $item->product->is_active ?? false
-                        ] : [
-                            'id' => null,
-                            'name' => 'Produit supprimé',
-                            'price' => 0,
-                            'stock' => 0,
-                            'is_active' => false
-                        ]
-                    ];
-                })->toArray() : []
-            ];
-        } catch (\Exception $e) {
-            Log::error('Erreur dans formatOrderData: ' . $e->getMessage(), ['order_id' => $order->id ?? 'unknown']);
-            return null;
-        }
-    }
-
-    /**
-     * Valide les données pour une confirmation
-     */
-    protected function validateConfirmation($request)
-    {
-        return $request->validate([
-            'confirmed_price' => 'required|numeric|min:0',
-            'shipping_cost' => 'nullable|numeric|min:0',
-            'customer_name' => 'nullable|string|max:255',
-            'customer_phone_2' => 'nullable|string|max:20',
-            'customer_governorate' => 'nullable|string|max:255',
-            'customer_city' => 'nullable|string|max:255',
-            'customer_address' => 'nullable|string|max:1000',
-        ]);
-    }
-
-    /**
-     * Confirme une commande
-     */
-    protected function confirmOrder($order, $request, $notes)
-    {
-        $updateData = [
-            'status' => 'confirmée',
-            'confirmed_price' => $request->confirmed_price,
-            'shipping_cost' => $request->filled('shipping_cost') ? $request->shipping_cost : ($order->shipping_cost ?? 0),
-        ];
-
-        if ($request->filled('customer_name')) $updateData['customer_name'] = $request->customer_name;
-        if ($request->filled('customer_phone')) $updateData['customer_phone'] = $request->customer_phone;
-        if ($request->filled('customer_phone_2')) $updateData['customer_phone_2'] = $request->customer_phone_2;
-        if ($request->filled('customer_governorate')) $updateData['customer_governorate'] = $request->customer_governorate;
-        if ($request->filled('customer_city')) $updateData['customer_city'] = $request->customer_city;
-        if ($request->filled('customer_address')) $updateData['customer_address'] = $request->customer_address;
+        $lastReset = $this->getSetting('last_daily_reset');
+        $today = now()->format('Y-m-d');
         
-        $order->is_suspended = false;
-        $order->suspension_reason = null;
-
-        $order->update($updateData);
-        
-        // Enregistrer l'historique si la méthode existe
-        if (method_exists($order, 'recordHistory')) {
-            $order->recordHistory('confirmation', $notes);
+        if (!$lastReset || $lastReset !== $today) {
+            Order::where('admin_id', $admin->id)->update(['daily_attempts_count' => 0]);
+            AdminSetting::setForAdmin($admin->id, 'last_daily_reset', $today);
+            Log::info("Compteurs quotidiens réinitialisés pour admin {$admin->id}");
         }
     }
 
     /**
-     * Met à jour les informations de base d'une commande
-     */
-    protected function updateOrderInfo($order, $request)
-    {
-        $updateData = [];
-        
-        $validated = $request->validate([
-            'customer_name' => 'nullable|string|max:255',
-            'customer_phone' => 'nullable|string|max:20',
-            'customer_phone_2' => 'nullable|string|max:20',
-            'customer_governorate' => 'nullable|string|max:255',
-            'customer_city' => 'nullable|string|max:255',
-            'customer_address' => 'nullable|string|max:1000',
-            'shipping_cost' => 'nullable|numeric|min:0',
-        ]);
-
-        if ($request->filled('customer_name')) $updateData['customer_name'] = $validated['customer_name'];
-        if ($request->filled('customer_phone')) $updateData['customer_phone'] = $validated['customer_phone'];
-        if ($request->filled('customer_phone_2')) $updateData['customer_phone_2'] = $validated['customer_phone_2'];
-        if ($request->filled('customer_governorate')) $updateData['customer_governorate'] = $validated['customer_governorate'];
-        if ($request->filled('customer_city')) $updateData['customer_city'] = $validated['customer_city'];
-        if ($request->filled('customer_address')) $updateData['customer_address'] = $validated['customer_address'];
-        if ($request->filled('shipping_cost')) $updateData['shipping_cost'] = $validated['shipping_cost'];
-        
-        if (!empty($updateData)) {
-            $order->update($updateData);
-        }
-    }
-
-    /**
-     * Enregistre une tentative d'appel
+     * Enregistrer une tentative d'appel
      */
     protected function recordCallAttempt($order, $notes)
     {
         $order->increment('attempts_count');
         $order->increment('daily_attempts_count');
-        
         $order->last_attempt_at = now();
         $order->save();
         
-        // Enregistrer l'historique si la méthode existe
-        if (method_exists($order, 'recordHistory')) {
-            $order->recordHistory('tentative', $notes);
+        $order->recordHistory('tentative', $notes);
+        
+        // Vérifier si la commande doit passer en file ancienne
+        $this->checkForAutoTransition($order);
+    }
+
+    /**
+     * Vérifier et effectuer la transition automatique vers file ancienne
+     */
+    protected function checkForAutoTransition($order)
+    {
+        if ($order->status === 'nouvelle') {
+            $standardMaxAttempts = (int)$this->getSetting('standard_max_total_attempts', 9);
+            
+            if ($order->attempts_count >= $standardMaxAttempts) {
+                $previousStatus = $order->status;
+                $order->status = 'ancienne';
+                $order->save();
+                
+                // Utiliser une action existante dans la DB au lieu de 'changement_statut_auto'
+                $order->recordHistory(
+                    'modification',
+                    "Commande automatiquement passée en file ancienne après {$order->attempts_count} tentatives",
+                    [
+                        'previous_status' => $previousStatus,
+                        'new_status' => 'ancienne',
+                        'attempts_reached' => $order->attempts_count,
+                        'auto_transition' => true
+                    ],
+                    $previousStatus,
+                    'ancienne'
+                );
+                
+                Log::info("Commande #{$order->id} automatiquement passée en file ancienne après {$order->attempts_count} tentatives");
+                
+                return true;
+            }
         }
         
-        $standardMaxAttempts = (int)$this->getSetting('standard_max_total_attempts', 9);
-        if ($order->status === 'nouvelle' && $order->attempts_count >= $standardMaxAttempts) {
-            
-            $previousStatus = $order->status;
-            $order->status = 'ancienne';
-            $order->attempts_count = 0;
-            $order->daily_attempts_count = 0;
-            $order->save();
-            
-            if (method_exists($order, 'recordHistory')) {
-                $order->recordHistory(
-                    'changement_statut_auto', 
-                    "Commande #{$order->id} automatiquement passée en file 'ancienne' après {$standardMaxAttempts} tentatives en file 'nouvelle'. Notes: {$notes}",
-                    [
-                        'previous_status' => $previousStatus, 
-                        'new_status' => 'ancienne',
-                        'attempts_reached' => $standardMaxAttempts,
-                        'auto_transition' => true
-                    ]
-                );
+        return false;
+    }
+
+    /**
+     * Confirmer une commande
+     */
+    protected function confirmOrder($order, $request, $notes)
+    {
+        $order->status = 'confirmée';
+        $order->confirmed_price = $request->confirmed_price;
+        $order->save();
+        
+        $order->recordHistory('confirmation', $notes);
+    }
+
+    /**
+     * Valider les données de confirmation
+     */
+    protected function validateConfirmation($request)
+    {
+        $request->validate([
+            'confirmed_price' => 'required|numeric|min:0',
+        ]);
+    }
+
+    /**
+     * Mettre à jour les informations de la commande
+     */
+    protected function updateOrderInfo($order, $request)
+    {
+        $fieldsToUpdate = [
+            'customer_name',
+            'customer_phone_2',
+            'customer_governorate',
+            'customer_city',
+            'customer_address'
+        ];
+        
+        $changes = [];
+        foreach ($fieldsToUpdate as $field) {
+            if ($request->has($field)) {
+                $oldValue = $order->$field;
+                $newValue = $request->$field;
+                
+                if ($oldValue !== $newValue) {
+                    $changes[$field] = ['old' => $oldValue, 'new' => $newValue];
+                    $order->$field = $newValue;
+                }
             }
-            
-            Log::info("Commande {$order->id} automatiquement changée au statut 'ancienne' après {$order->attempts_count} tentatives (seuil: {$standardMaxAttempts})");
+        }
+        
+        if (!empty($changes)) {
+            $order->save();
         }
     }
 
     /**
-     * Met à jour les items de la commande
+     * Mettre à jour les items de la commande
      */
     protected function updateOrderItems($order, $cartItems)
     {
-        try {
-            if (!is_array($cartItems)) {
-                Log::warning('updateOrderItems: cartItems n\'est pas un tableau', ['order_id' => $order->id]);
-                return;
+        if (!$cartItems || !is_array($cartItems)) {
+            return;
+        }
+        
+        // Supprimer les anciens items
+        $order->items()->delete();
+        
+        $totalPrice = 0;
+        
+        foreach ($cartItems as $item) {
+            if (!isset($item['product_id']) || !isset($item['quantity'])) {
+                continue;
             }
+            
+            $quantity = (int)$item['quantity'];
+            $unitPrice = (float)($item['unit_price'] ?? 0);
+            $totalItemPrice = $quantity * $unitPrice;
+            $totalPrice += $totalItemPrice;
+            
+            $order->items()->create([
+                'product_id' => $item['product_id'],
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'total_price' => $totalItemPrice,
+            ]);
+        }
+        
+        // Mettre à jour le prix total de la commande
+        $order->total_price = $totalPrice + ($order->shipping_cost ?? 0);
+        $order->save();
+    }
 
-            $validItems = [];
-            foreach ($cartItems as $item) {
-                if (isset($item['product_id'], $item['quantity'], $item['unit_price']) &&
-                    is_numeric($item['product_id']) &&
-                    is_numeric($item['quantity']) && $item['quantity'] > 0 &&
-                    is_numeric($item['unit_price']) && $item['unit_price'] >= 0) {
-                    $validItems[] = $item;
-                } else {
-                    Log::warning('updateOrderItems: item invalide ignoré', ['item' => $item, 'order_id' => $order->id]);
+    /**
+     * Vérifier si une commande a des problèmes de stock
+     */
+    protected function orderHasStockIssues($order)
+    {
+        if (!$order->items || $order->items->isEmpty()) {
+            return false;
+        }
+        
+        foreach ($order->items as $item) {
+            if (!$item->product) {
+                continue; // Produit supprimé, on ignore
+            }
+            
+            if ($item->product->stock < $item->quantity) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Obtenir les informations de doublons pour une commande
+     */
+    protected function getDuplicateInfo($order)
+    {
+        if (!$order) {
+            return [
+                'has_duplicates' => false,
+                'duplicates_count' => 0,
+                'duplicates' => []
+            ];
+        }
+
+        // Rechercher les doublons par téléphone
+        $duplicates = Order::where('admin_id', $order->admin_id)
+            ->where('id', '!=', $order->id)
+            ->where(function($query) use ($order) {
+                $query->where('customer_phone', $order->customer_phone);
+                if ($order->customer_phone_2) {
+                    $query->orWhere('customer_phone', $order->customer_phone_2)
+                          ->orWhere('customer_phone_2', $order->customer_phone)
+                          ->orWhere('customer_phone_2', $order->customer_phone_2);
                 }
-            }
+            })
+            ->with(['items.product'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-            if (empty($validItems) && !empty($cartItems)) {
-                Log::error('updateOrderItems: Aucun item valide fourni pour la mise à jour.', ['order_id' => $order->id]);
-                return;
-            }
+        $duplicatesData = $duplicates->map(function($duplicate) {
+            return [
+                'id' => $duplicate->id,
+                'status' => $duplicate->status,
+                'customer_name' => $duplicate->customer_name,
+                'customer_phone' => $duplicate->customer_phone,
+                'customer_phone_2' => $duplicate->customer_phone_2,
+                'total_price' => $duplicate->total_price,
+                'created_at' => $duplicate->created_at->format('d/m/Y H:i'),
+                'items_count' => $duplicate->items->count(),
+                'items' => $duplicate->items->map(function($item) {
+                    return [
+                        'product_name' => $item->product ? $item->product->name : 'Produit supprimé',
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->unit_price
+                    ];
+                })
+            ];
+        });
 
-            $order->items()->delete();
-            
-            $newCalculatedTotalPrice = 0;
-            foreach ($validItems as $item) {
-                $totalItemPrice = $item['quantity'] * $item['unit_price'];
-                $order->items()->create([
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'total_price' => $totalItemPrice,
-                ]);
-                $newCalculatedTotalPrice += $totalItemPrice;
-            }
-            
-            $orderUpdateData = ['total_price' => $newCalculatedTotalPrice];
-            
-            $order->update($orderUpdateData);
-            Log::info("Items mis à jour pour la commande {$order->id}. Nouveau total: {$newCalculatedTotalPrice}");
-            
+        return [
+            'has_duplicates' => $duplicates->count() > 0,
+            'duplicates_count' => $duplicates->count(),
+            'duplicates' => $duplicatesData
+        ];
+    }
+
+    /**
+     * Formater les données d'une commande pour l'API
+     */
+    protected function formatOrderData($order)
+    {
+        if (!$order) {
+            return null;
+        }
+        
+        // Obtenir les informations de doublons
+        $duplicateInfo = $this->getDuplicateInfo($order);
+        
+        return [
+            'id' => $order->id,
+            'status' => $order->status,
+            'priority' => $order->priority,
+            'customer_name' => $order->customer_name,
+            'customer_phone' => $order->customer_phone,
+            'customer_phone_2' => $order->customer_phone_2,
+            'customer_governorate' => $order->customer_governorate,
+            'customer_city' => $order->customer_city,
+            'customer_address' => $order->customer_address,
+            'total_price' => $order->total_price,
+            'shipping_cost' => $order->shipping_cost,
+            'confirmed_price' => $order->confirmed_price,
+            'attempts_count' => $order->attempts_count,
+            'daily_attempts_count' => $order->daily_attempts_count,
+            'last_attempt_at' => $order->last_attempt_at,
+            'scheduled_date' => $order->scheduled_date,
+            'is_assigned' => $order->is_assigned,
+            'is_suspended' => $order->is_suspended,
+            'suspension_reason' => $order->suspension_reason,
+            'notes' => $order->notes,
+            'created_at' => $order->created_at,
+            'updated_at' => $order->updated_at,
+            'duplicate_info' => $duplicateInfo,
+            'items' => $order->items ? $order->items->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'total_price' => $item->total_price,
+                    'product' => $item->product ? [
+                        'id' => $item->product->id,
+                        'name' => $item->product->name,
+                        'price' => $item->product->price,
+                        'stock' => $item->product->stock,
+                        'is_active' => $item->product->is_active
+                    ] : null
+                ];
+            }) : [],
+            'employee' => $order->employee ? [
+                'id' => $order->employee->id,
+                'name' => $order->employee->name
+            ] : null,
+            'region' => $order->region ? [
+                'id' => $order->region->id,
+                'name' => $order->region->name
+            ] : null,
+            'city' => $order->city ? [
+                'id' => $order->city->id,
+                'name' => $order->city->name,
+                'shipping_cost' => $order->city->shipping_cost
+            ] : null
+        ];
+    }
+
+    /**
+     * Enregistrer une entrée d'historique avec gestion des erreurs
+     */
+    protected function safeRecordHistory($order, $action, $notes = null, $changes = null, $statusBefore = null, $statusAfter = null)
+    {
+        try {
+            $order->recordHistory($action, $notes, $changes, $statusBefore, $statusAfter);
         } catch (\Exception $e) {
-            Log::error("Erreur lors de la mise à jour des items pour la commande {$order->id}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            throw $e;
+            Log::error("Erreur lors de l'enregistrement de l'historique pour la commande {$order->id}", [
+                'action' => $action,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Fallback: essayer avec une action générique
+            try {
+                $order->recordHistory('modification', $notes, $changes, $statusBefore, $statusAfter);
+            } catch (\Exception $fallbackError) {
+                Log::error("Erreur lors du fallback historique pour la commande {$order->id}", [
+                    'fallback_error' => $fallbackError->getMessage()
+                ]);
+            }
         }
     }
 }

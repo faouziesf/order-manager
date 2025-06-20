@@ -286,6 +286,77 @@
         color: #4b5563;
     }
 
+    /* =========================
+       ALERTE DOUBLONS
+    ========================= */
+    .duplicate-alert {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
+        border: 2px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: none;
+    }
+
+    .duplicate-alert.show {
+        display: block;
+        animation: slideInDown 0.5s ease-out;
+    }
+
+    .duplicate-header {
+        display: flex;
+        align-items: center;
+        justify-content: between;
+        gap: 0.75rem;
+        color: #92400e;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+    }
+
+    .duplicate-message {
+        background: white;
+        padding: 0.75rem;
+        border-radius: 8px;
+        color: #374151;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        border-left: 4px solid #f59e0b;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .btn-view-duplicates {
+        background: var(--process-warning);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .btn-view-duplicates:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
     /* Section spéciale pour les commandes de retour en stock */
     .restock-info {
         background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
@@ -752,6 +823,36 @@
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     }
 
+    .action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .action-btn.loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 18px;
+        height: 18px;
+        margin: -9px 0 0 -9px;
+        border: 2px solid transparent;
+        border-top: 2px solid currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .action-btn.loading span {
+        opacity: 0;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
     .action-btn span {
         position: relative;
         z-index: 1;
@@ -763,6 +864,7 @@
     .btn-schedule { background: var(--process-info); color: white; }
     .btn-history { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; }
     .btn-reactivate { background: var(--process-restock); color: white; }
+    .btn-duplicates { background: var(--process-warning); color: white; }
 
     .no-order {
         text-align: center;
@@ -900,34 +1002,6 @@
     }
 
     /* =========================
-       ÉTATS DE CHARGEMENT
-    ========================= */
-    .loading {
-        position: relative;
-        pointer-events: none;
-        opacity: 0.7;
-    }
-
-    .loading::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 24px;
-        height: 24px;
-        margin: -12px 0 0 -12px;
-        border: 3px solid transparent;
-        border-top: 3px solid #667eea;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    /* =========================
        SCROLLBAR CUSTOM
     ========================= */
     .cart-items::-webkit-scrollbar {
@@ -1040,6 +1114,21 @@
                                 </div>
                             </div>
                             <div class="order-status" id="order-status">Nouvelle</div>
+                        </div>
+
+                        <!-- Alerte pour les doublons -->
+                        <div class="duplicate-alert" id="duplicate-alert">
+                            <div class="duplicate-header">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>Commandes doublons détectées</span>
+                            </div>
+                            <div class="duplicate-message">
+                                <span id="duplicate-text">Ce client a d'autres commandes dans le système</span>
+                                <button type="button" class="btn-view-duplicates" onclick="showDuplicatesModal()">
+                                    <i class="fas fa-eye"></i>
+                                    Voir les doublons
+                                </button>
+                            </div>
                         </div>
 
                         <div class="restock-info" id="restock-info" style="display: none;">
@@ -1306,7 +1395,6 @@ $(document).ready(function() {
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
                 $('#restock-count').text(data.restock || 0);
-                // Ligne pour #suspended-count supprimée
             })
             .fail(function(xhr, status, error) {
                 console.error('Erreur compteurs:', error, xhr.responseText);
@@ -1355,11 +1443,8 @@ $(document).ready(function() {
         // Déterminer l'endpoint selon le type de queue
         let endpoint;
         switch(currentQueue) {
-            // Le cas 'suspended' est retiré ici car l'onglet n'existe plus.
-            // Si des commandes suspendues doivent être chargées par un autre moyen (ex: via restock),
-            // la logique du backend devra le gérer.
             case 'restock':
-                endpoint = '/admin/process/api/restock'; // Ce endpoint pourrait déjà gérer les commandes suspendues éligibles au restock
+                endpoint = '/admin/process/api/restock';
                 break;
             default: // standard, dated, old
                 endpoint = `/admin/process/${currentQueue}`;
@@ -1377,7 +1462,7 @@ $(document).ready(function() {
                     showMainContent();
                     console.log('Commande affichée:', currentOrder.id);
                 } else if (data.hasOrders && data.orders) { 
-                    // Format pour les commandes multiples (potentiellement pour d'autres vues si adaptées)
+                    // Format pour les commandes multiples
                     if (Array.isArray(data.orders) && data.orders.length > 0) {
                         currentOrder = data.orders[0];
                         displayOrder(data.orders[0]);
@@ -1443,6 +1528,9 @@ $(document).ready(function() {
             // Affichage spécial selon le type de queue
             updateQueueSpecificDisplay(order);
             
+            // Afficher les doublons si existants
+            displayDuplicateInfo(order);
+            
             // Formulaire client avec gestion des valeurs nulles
             updateCustomerForm(order);
             
@@ -1458,14 +1546,24 @@ $(document).ready(function() {
         }
     }
     
+    function displayDuplicateInfo(order) {
+        const duplicateAlert = $('#duplicate-alert');
+        const duplicateText = $('#duplicate-text');
+        
+        if (order.duplicate_info && order.duplicate_info.has_duplicates) {
+            const count = order.duplicate_info.duplicates_count;
+            duplicateText.text(`Ce client a ${count} autre${count > 1 ? 's' : ''} commande${count > 1 ? 's' : ''} dans le système`);
+            duplicateAlert.addClass('show');
+        } else {
+            duplicateAlert.removeClass('show');
+        }
+    }
+    
     function updateQueueSpecificDisplay(order) {
-        // Affichage spécial selon le type de queue
-        // La condition pour currentQueue === 'suspended' a été retirée.
-        // La logique pour 'restock' gérera les commandes concernées.
-        if (currentQueue === 'restock' && order.is_suspended) { // Adapté pour les commandes suspendues dans la file restock
+        if (currentQueue === 'restock' && order.is_suspended) {
             $('#restock-info').show();
             $('#btn-reactivate').show();
-            $('#btn-call span').text('Reporter'); // Ou une autre action pertinente
+            $('#btn-call span').text('Reporter');
             console.log('Interface restock activée pour commande suspendue:', order.id);
         } else {
             $('#restock-info').hide();
@@ -1856,8 +1954,6 @@ $(document).ready(function() {
     }
     
     function showReactivateModal() {
-        // La condition a été ajustée car 'suspended' n'est plus une file directement sélectionnable.
-        // Cette action est principalement pertinente pour les commandes dans la file 'restock' qui étaient suspendues.
         if (currentQueue !== 'restock' || !currentOrder || !currentOrder.is_suspended) {
             showNotification('Cette action est disponible pour les commandes suspendues dans la file "Retour en Stock".', 'error');
             return;
@@ -1883,6 +1979,49 @@ $(document).ready(function() {
             .fail(function(xhr) {
                 showNotification('Erreur lors du chargement de l\'historique', 'error');
             });
+    }
+    
+    // =========================
+    // MODAL DOUBLONS
+    // =========================
+    
+    window.showDuplicatesModal = function() {
+        if (!currentOrder || !currentOrder.duplicate_info || !currentOrder.duplicate_info.has_duplicates) {
+            showNotification('Aucun doublon détecté pour cette commande', 'error');
+            return;
+        }
+        
+        const duplicates = currentOrder.duplicate_info.duplicates;
+        let modalContent = '<div class="table-responsive"><table class="table table-striped">';
+        modalContent += '<thead><tr><th>ID</th><th>Statut</th><th>Client</th><th>Total</th><th>Date</th><th>Articles</th></tr></thead><tbody>';
+        
+        duplicates.forEach(duplicate => {
+            const statusClass = `status-${duplicate.status}`;
+            modalContent += `
+                <tr>
+                    <td><strong>#${duplicate.id}</strong></td>
+                    <td><span class="badge ${statusClass}">${duplicate.status}</span></td>
+                    <td>
+                        <div><strong>${duplicate.customer_name || 'N/A'}</strong></div>
+                        <div><small>${duplicate.customer_phone}</small></div>
+                        ${duplicate.customer_phone_2 ? `<div><small>${duplicate.customer_phone_2}</small></div>` : ''}
+                    </td>
+                    <td><strong>${parseFloat(duplicate.total_price || 0).toFixed(3)} TND</strong></td>
+                    <td><small>${duplicate.created_at}</small></td>
+                    <td>
+                        <small>${duplicate.items_count} article(s)</small>
+                        <div class="mt-1">
+                            ${duplicate.items.map(item => `<span class="badge badge-secondary me-1">${item.product_name} (${item.quantity})</span>`).join('')}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        modalContent += '</tbody></table></div>';
+        
+        $('#duplicates-content').html(modalContent);
+        $('#duplicatesModal').modal('show');
     }
     
     // =========================
@@ -1983,8 +2122,7 @@ $(document).ready(function() {
         // Préparation des données
         const requestData = {
             action: action,
-            queue: currentQueue, // La queue 'suspended' ne sera plus envoyée d'ici si l'onglet est retiré.
-                               // Le backend doit gérer les actions en fonction de l'état réel de la commande.
+            queue: currentQueue,
             ...formData
         };
         
@@ -2000,7 +2138,7 @@ $(document).ready(function() {
             requestData.customer_address = $('#customer_address').val();
         }
         
-        // Désactiver les boutons
+        // Désactiver les boutons avec état de chargement
         $('.action-btn').prop('disabled', true).addClass('loading');
         
         // Envoyer la requête
@@ -2045,9 +2183,13 @@ $(document).ready(function() {
             }
             
             showNotification(errorMessage, 'error');
-            
-            // Réactiver les boutons en cas d'erreur
-            $('.action-btn').prop('disabled', false).removeClass('loading');
+        })
+        .always(function() {
+            // CORRECTION: Toujours réactiver les boutons
+            setTimeout(() => {
+                $('.action-btn').prop('disabled', false).removeClass('loading');
+                console.log('Boutons réactivés');
+            }, 1000);
         });
     };
 });

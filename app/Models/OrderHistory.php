@@ -49,6 +49,10 @@ class OrderHistory extends Model
     const ACTION_REACTIVATION = 'réactivation';
     const ACTION_CHANGEMENT_STATUT = 'changement_statut';
     
+    // AJOUT DE LA CONSTANTE MANQUANTE
+    const ACTION_CHANGEMENT_STATUT_AUTO = 'changement_statut_auto';
+    const ACTION_MODIFICATION_INFO = 'modification_info';
+    
     // Actions pour doublons
     const ACTION_DUPLICATE_DETECTED = 'duplicate_detected';
     const ACTION_DUPLICATE_REVIEW = 'duplicate_review';
@@ -68,6 +72,9 @@ class OrderHistory extends Model
     const ACTION_IN_RETURN = 'in_return';
     const ACTION_DELIVERY_ANOMALY = 'delivery_anomaly';
     const ACTION_TRACKING_UPDATED = 'tracking_updated';
+    
+    // Actions auto-review pour doublons
+    const ACTION_AUTO_DUPLICATE_REVIEW = 'auto_duplicate_review';
 
     // ========================================
     // RELATIONS
@@ -138,6 +145,8 @@ class OrderHistory extends Model
             self::ACTION_SUSPENSION => 'Suspension',
             self::ACTION_REACTIVATION => 'Réactivation',
             self::ACTION_CHANGEMENT_STATUT => 'Changement de statut',
+            self::ACTION_CHANGEMENT_STATUT_AUTO => 'Changement automatique de statut', // AJOUT
+            self::ACTION_MODIFICATION_INFO => 'Modification d\'informations', // AJOUT
             
             // Doublons
             self::ACTION_DUPLICATE_DETECTED => 'Doublon détecté',
@@ -145,6 +154,7 @@ class OrderHistory extends Model
             self::ACTION_DUPLICATE_MERGE => 'Fusion de doublons',
             self::ACTION_DUPLICATE_IGNORE => 'Doublon ignoré',
             self::ACTION_DUPLICATE_CANCEL => 'Doublon annulé',
+            self::ACTION_AUTO_DUPLICATE_REVIEW => 'Doublon auto-examiné', // AJOUT
             
             // Livraison
             self::ACTION_SHIPMENT_CREATED => 'Expédition créée',
@@ -202,6 +212,9 @@ class OrderHistory extends Model
             self::ACTION_EN_ROUTE => 'fa-route text-info',
             self::ACTION_SUSPENSION => 'fa-pause text-danger',
             self::ACTION_REACTIVATION => 'fa-play text-success',
+            self::ACTION_CHANGEMENT_STATUT => 'fa-exchange-alt text-info',
+            self::ACTION_CHANGEMENT_STATUT_AUTO => 'fa-robot text-info', // AJOUT
+            self::ACTION_MODIFICATION_INFO => 'fa-edit text-secondary', // AJOUT
             
             // Livraison
             self::ACTION_SHIPMENT_CREATED => 'fa-box text-primary',
@@ -364,6 +377,8 @@ class OrderHistory extends Model
                 self::ACTION_SUSPENSION => 'Suspension',
                 self::ACTION_REACTIVATION => 'Réactivation',
                 self::ACTION_CHANGEMENT_STATUT => 'Changement de statut',
+                self::ACTION_CHANGEMENT_STATUT_AUTO => 'Changement automatique de statut',
+                self::ACTION_MODIFICATION_INFO => 'Modification d\'informations',
             ],
             'duplicates' => [
                 self::ACTION_DUPLICATE_DETECTED => 'Doublon détecté',
@@ -371,6 +386,7 @@ class OrderHistory extends Model
                 self::ACTION_DUPLICATE_MERGE => 'Fusion de doublons',
                 self::ACTION_DUPLICATE_IGNORE => 'Doublon ignoré',
                 self::ACTION_DUPLICATE_CANCEL => 'Doublon annulé',
+                self::ACTION_AUTO_DUPLICATE_REVIEW => 'Doublon auto-examiné',
             ],
             'delivery' => [
                 self::ACTION_SHIPMENT_CREATED => 'Expédition créée',
