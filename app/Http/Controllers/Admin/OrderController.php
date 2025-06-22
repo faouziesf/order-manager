@@ -264,7 +264,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Mettre à jour une commande - SIMPLIFIÉE
+     * Mettre à jour une commande - CORRIGÉE AVEC GESTION STOCK
      */
     public function update(Request $request, Order $order)
     {
@@ -292,6 +292,27 @@ class OrderController extends Controller
             DB::beginTransaction();
 
             $oldStatus = $order->status;
+            $wasConfirmed = $oldStatus === 'confirmée';
+            $willBeConfirmed = $validated['status'] === 'confirmée';
+
+            // Si la commande passe de non-confirmée à confirmée, vérifier le stock
+            if (!$wasConfirmed && $willBeConfirmed) {
+                // Vérifier le stock disponible avant de confirmer
+                foreach ($validated['products'] as $productData) {
+                    $product = Product::where('id', $productData['id'])
+                        ->where('admin_id', $order->admin_id)
+                        ->where('is_active', true)
+                        ->first();
+                    
+                    if (!$product) {
+                        throw new \Exception("Produit {$productData['id']} non trouvé ou inactif");
+                    }
+                    
+                    if ((int)$product->stock < (int)$productData['quantity']) {
+                        throw new \Exception("Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock}, quantité demandée: {$productData['quantity']}");
+                    }
+                }
+            }
 
             // Mettre à jour les informations de base
             $order->fill($validated);
@@ -309,6 +330,16 @@ class OrderController extends Controller
 
             // Mettre à jour les produits si fournis
             if ($request->has('products')) {
+                // Si la commande était confirmée, remettre le stock avant de supprimer les items
+                if ($wasConfirmed) {
+                    foreach ($order->items as $item) {
+                        if ($item->product) {
+                            $item->product->increment('stock', $item->quantity);
+                            Log::info("Stock restauré pour produit {$item->product->id}: +{$item->quantity} (nouveau stock: {$item->product->stock})");
+                        }
+                    }
+                }
+                
                 $order->items()->delete();
                 
                 $totalPrice = 0;
@@ -329,6 +360,21 @@ class OrderController extends Controller
                             'unit_price' => $unitPrice,
                             'total_price' => $quantity * $unitPrice,
                         ]);
+                        
+                        // Si la commande devient confirmée, décrémenter le stock
+                        if ($willBeConfirmed) {
+                            $oldStock = $product->stock;
+                            $newStock = (int)$product->stock - (int)$quantity;
+                            
+                            if ($newStock < 0) {
+                                throw new \Exception("Stock insuffisant pour {$product->name}");
+                            }
+                            
+                            $product->stock = $newStock;
+                            $product->save();
+                            
+                            Log::info("Stock décrémenté pour produit {$product->id}: {$oldStock} → {$newStock} (-{$quantity})");
+                        }
                     }
                 }
                 
@@ -363,7 +409,7 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur dans OrderController@update: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la mise à jour')->withInput();
+            return redirect()->back()->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage())->withInput();
         }
     }
 

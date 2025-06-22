@@ -37,35 +37,88 @@ trait ProcessTrait
     }
 
     /**
-     * Vérifier si une commande a des problèmes de stock - CORRIGÉ
+     * Vérifier si une commande a des problèmes de stock - CORRIGÉ ET OPTIMISÉ
      */
     protected function orderHasStockIssues($order)
     {
         if (!$order || !$order->items || $order->items->isEmpty()) {
-            return false;
+            Log::warning("Commande {$order->id} sans items ou items vides");
+            return true; // Considérer comme problématique si pas d'items
         }
         
         foreach ($order->items as $item) {
-            // Si le produit n'existe plus, considérer comme problème de stock
+            // Si le produit n'existe plus
             if (!$item->product) {
-                Log::warning("Produit manquant pour order {$order->id}, item {$item->id}");
+                Log::warning("Produit manquant pour commande {$order->id}, item {$item->id}");
                 return true;
             }
             
-            // Si le produit est inactif, considérer comme problème de stock
+            // Si le produit est inactif
             if (!$item->product->is_active) {
-                Log::warning("Produit inactif pour order {$order->id}, product {$item->product->id}");
+                Log::warning("Produit inactif pour commande {$order->id}, product {$item->product->id}");
                 return true;
             }
             
-            // Vérifier si le stock est insuffisant
-            if ($item->product->stock < $item->quantity) {
-                Log::info("Stock insuffisant pour order {$order->id}, product {$item->product->id}: besoin {$item->quantity}, stock {$item->product->stock}");
+            // Vérifier si le stock est insuffisant (comparaison stricte)
+            if ((int)$item->product->stock < (int)$item->quantity) {
+                Log::info("Stock insuffisant pour commande {$order->id}, produit {$item->product->id} ({$item->product->name}): besoin {$item->quantity}, stock disponible {$item->product->stock}");
                 return true;
             }
         }
         
         return false;
+    }
+
+    /**
+     * Vérifier le stock disponible pour une liste de commandes - NOUVELLE MÉTHODE
+     */
+    protected function filterOrdersByStock($orders)
+    {
+        $validOrders = [];
+        
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                $validOrders[] = $order;
+            } else {
+                // Optionnel: suspendre automatiquement les commandes avec problème de stock
+                if (!$order->is_suspended) {
+                    $this->autoSuspendOrderForStock($order);
+                }
+            }
+        }
+        
+        return $validOrders;
+    }
+
+    /**
+     * Suspendre automatiquement une commande pour problème de stock
+     */
+    protected function autoSuspendOrderForStock($order)
+    {
+        try {
+            $missingProducts = [];
+            
+            foreach ($order->items as $item) {
+                if ($item->product && (int)$item->product->stock < (int)$item->quantity) {
+                    $missingProducts[] = $item->product->name;
+                }
+            }
+            
+            if (!empty($missingProducts)) {
+                $order->is_suspended = true;
+                $order->suspension_reason = 'Rupture de stock: ' . implode(', ', $missingProducts);
+                $order->save();
+                
+                $order->recordHistory(
+                    'suspension', 
+                    'Commande suspendue automatiquement - Stock insuffisant pour: ' . implode(', ', $missingProducts)
+                );
+                
+                Log::info("Commande {$order->id} suspendue automatiquement pour rupture de stock");
+            }
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la suspension automatique de la commande {$order->id}: " . $e->getMessage());
+        }
     }
 
     /**
@@ -169,22 +222,18 @@ trait ProcessTrait
     }
 
     /**
-     * Mettre à jour les items de la commande et décrémenter le stock - CORRIGÉ
+     * Mettre à jour les items de la commande et décrémenter le stock - CORRIGÉ AVEC DÉCRÉMENTATION
      */
     protected function updateOrderItems($order, $cartItems)
     {
         if (!$cartItems || !is_array($cartItems)) {
-            throw new \Exception('Aucun produit fourni');
+            throw new \Exception('Aucun produit fourni pour la mise à jour');
         }
         
         DB::beginTransaction();
         
         try {
-            // Supprimer les anciens items (sans remettre le stock car c'était une commande non confirmée)
-            $order->items()->delete();
-            
-            $totalPrice = 0;
-            
+            // ÉTAPE 1: Vérifier que tous les produits ont un stock suffisant AVANT de commencer
             foreach ($cartItems as $item) {
                 if (!isset($item['product_id']) || !isset($item['quantity'])) {
                     continue;
@@ -193,6 +242,7 @@ trait ProcessTrait
                 $product = Product::where('id', $item['product_id'])
                     ->where('admin_id', $order->admin_id)
                     ->where('is_active', true)
+                    ->lockForUpdate() // Verrouiller pour éviter les conditions de course
                     ->first();
                 
                 if (!$product) {
@@ -200,17 +250,56 @@ trait ProcessTrait
                 }
                 
                 $quantity = (int)$item['quantity'];
-                $unitPrice = (float)($item['unit_price'] ?? $product->price);
                 
-                // Vérifier le stock avant de décrémenter
-                if ($product->stock < $quantity) {
+                // Vérification critique du stock
+                if ((int)$product->stock < $quantity) {
                     throw new \Exception("Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock}, quantité demandée: {$quantity}");
                 }
+            }
+            
+            // ÉTAPE 2: Supprimer les anciens items (sans remettre le stock car c'était une commande non confirmée)
+            $order->items()->delete();
+            
+            // ÉTAPE 3: Traitement des nouveaux items avec décrémentation du stock
+            $totalPrice = 0;
+            $processedProducts = []; // Pour éviter les doublons
+            
+            foreach ($cartItems as $item) {
+                if (!isset($item['product_id']) || !isset($item['quantity'])) {
+                    continue;
+                }
                 
+                $productId = $item['product_id'];
+                $quantity = (int)$item['quantity'];
+                
+                // Éviter les doublons dans le même panier
+                if (isset($processedProducts[$productId])) {
+                    $processedProducts[$productId] += $quantity;
+                    $quantity = $processedProducts[$productId];
+                } else {
+                    $processedProducts[$productId] = $quantity;
+                }
+                
+                $product = Product::where('id', $productId)
+                    ->where('admin_id', $order->admin_id)
+                    ->where('is_active', true)
+                    ->lockForUpdate()
+                    ->first();
+                
+                if (!$product) {
+                    throw new \Exception("Produit {$productId} non trouvé ou inactif");
+                }
+                
+                $unitPrice = (float)($item['unit_price'] ?? $product->price);
                 $totalItemPrice = $quantity * $unitPrice;
                 $totalPrice += $totalItemPrice;
                 
-                // Créer le nouvel item
+                // Vérification finale du stock avant décrémentation
+                if ((int)$product->stock < $quantity) {
+                    throw new \Exception("Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock}, quantité demandée: {$quantity}");
+                }
+                
+                // Créer le nouvel item de commande
                 $order->items()->create([
                     'product_id' => $product->id,
                     'quantity' => $quantity,
@@ -218,11 +307,19 @@ trait ProcessTrait
                     'total_price' => $totalItemPrice,
                 ]);
                 
-                // DÉCRÉMENTER LE STOCK DU PRODUIT
-                $product->stock = $product->stock - $quantity;
+                // *** DÉCRÉMENTER LE STOCK DU PRODUIT - POINT CRITIQUE ***
+                $oldStock = $product->stock;
+                $newStock = (int)$product->stock - $quantity;
+                
+                // Sécurité supplémentaire
+                if ($newStock < 0) {
+                    throw new \Exception("Tentative de décrémentation du stock en négatif pour {$product->name}");
+                }
+                
+                $product->stock = $newStock;
                 $product->save();
                 
-                Log::info("Stock décrémenté pour produit {$product->id}: -{$quantity} (nouveau stock: {$product->stock})");
+                Log::info("STOCK DÉCRÉMENTÉ - Produit {$product->id} ({$product->name}): {$oldStock} → {$newStock} (-{$quantity}) | Commande {$order->id}");
             }
             
             // Le prix total est déjà défini dans confirmOrder()
@@ -230,8 +327,11 @@ trait ProcessTrait
             
             DB::commit();
             
+            Log::info("Commande {$order->id} confirmée avec succès - Stock mis à jour pour " . count($processedProducts) . " produit(s)");
+            
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error("Erreur lors de la mise à jour des items de la commande {$order->id}: " . $e->getMessage());
             throw $e;
         }
     }

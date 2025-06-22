@@ -34,7 +34,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * API unifiée pour obtenir une commande selon la file - CORRIGÉE
+     * API unifiée pour obtenir une commande selon la file - CORRIGÉE AVEC FILTRAGE STOCK
      */
     public function getQueueApi($queue)
     {
@@ -58,26 +58,21 @@ class ProcessController extends Controller
 
             $this->resetDailyCountersIfNeeded($admin);
 
-            // Obtenir la commande selon le type de file
+            // Obtenir la commande selon le type de file avec filtrage stock amélioré
             $order = $this->findOrderForQueue($admin, $queue);
             
             if ($order) {
-                // Vérifier une dernière fois le stock avant de retourner la commande
+                // Double vérification du stock avant de retourner la commande
                 if ($this->orderHasStockIssues($order)) {
                     Log::warning("Commande {$order->id} a des problèmes de stock détectés à la dernière minute");
                     
                     // Si c'est une commande non suspendue qui a des problèmes de stock, la suspendre
                     if (!$order->is_suspended && in_array($queue, ['standard', 'dated'])) {
-                        $order->is_suspended = true;
-                        $order->suspension_reason = 'Stock insuffisant';
-                        $order->save();
-                        $order->recordHistory('suspension', 'Commande suspendue automatiquement - Stock insuffisant');
+                        $this->autoSuspendOrderForStock($order);
                     }
                     
-                    return response()->json([
-                        'hasOrder' => false,
-                        'message' => 'Commande suspendue - problème de stock détecté'
-                    ]);
+                    // Rechercher une autre commande
+                    return $this->getQueueApi($queue);
                 }
                 
                 $orderData = $this->formatOrderData($order);
@@ -135,7 +130,9 @@ class ProcessController extends Controller
         $delayHours = $this->getSetting('standard_delay_hours', 2.5);
 
         $orders = Order::where('admin_id', $admin->id)
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('status', 'nouvelle')
             ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
@@ -149,16 +146,13 @@ class ProcessController extends Controller
             ->orderBy('priority', 'desc')
             ->orderBy('attempts_count', 'asc')
             ->orderBy('created_at', 'asc')
+            ->limit(50) // Limiter pour éviter de charger trop de commandes
             ->get();
 
-        // Filtrer les commandes avec stock suffisant
-        foreach ($orders as $order) {
-            if (!$this->orderHasStockIssues($order)) {
-                return $order;
-            }
-        }
-        
-        return null;
+        Log::info("File standard: {$orders->count()} commandes trouvées avant filtrage stock");
+
+        // Filtrer rigoureusement par stock disponible
+        return $this->findFirstValidOrder($orders);
     }
 
     /**
@@ -171,7 +165,9 @@ class ProcessController extends Controller
         $delayHours = $this->getSetting('dated_delay_hours', 3.5);
 
         $orders = Order::where('admin_id', $admin->id)
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('status', 'datée')
             ->whereDate('scheduled_date', '<=', now()) // Seulement après leur date
             ->where(function($q) {
@@ -186,16 +182,12 @@ class ProcessController extends Controller
             ->orderBy('scheduled_date', 'asc')
             ->orderBy('priority', 'desc')
             ->orderBy('attempts_count', 'asc')
+            ->limit(50)
             ->get();
 
-        // Filtrer les commandes avec stock suffisant
-        foreach ($orders as $order) {
-            if (!$this->orderHasStockIssues($order)) {
-                return $order;
-            }
-        }
-        
-        return null;
+        Log::info("File datée: {$orders->count()} commandes trouvées avant filtrage stock");
+
+        return $this->findFirstValidOrder($orders);
     }
 
     /**
@@ -208,7 +200,9 @@ class ProcessController extends Controller
         $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0);
 
         $query = Order::where('admin_id', $admin->id)
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('status', 'ancienne')
             // Ne pas filtrer par suspension pour la file ancienne
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
@@ -224,16 +218,12 @@ class ProcessController extends Controller
         $orders = $query->orderBy('priority', 'desc')
             ->orderBy('attempts_count', 'asc')
             ->orderBy('created_at', 'asc')
+            ->limit(50)
             ->get();
 
-        // Filtrer uniquement par stock
-        foreach ($orders as $order) {
-            if (!$this->orderHasStockIssues($order)) {
-                return $order;
-            }
-        }
-        
-        return null;
+        Log::info("File ancienne: {$orders->count()} commandes trouvées avant filtrage stock");
+
+        return $this->findFirstValidOrder($orders);
     }
 
     /**
@@ -246,9 +236,18 @@ class ProcessController extends Controller
         $delayHours = $this->getSetting('restock_delay_hours', 1);
 
         $orders = Order::where('admin_id', $admin->id)
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('is_suspended', true) // Seulement les commandes suspendues
             ->whereIn('status', ['nouvelle', 'datée'])
+            ->where(function($q) {
+                // Suspendues pour stock ou automatiquement
+                $q->where('suspension_reason', 'like', '%stock%')
+                  ->orWhere('suspension_reason', 'like', '%Stock%')
+                  ->orWhere('suspension_reason', 'like', '%rupture%')
+                  ->orWhere('suspension_reason', 'like', '%Rupture%');
+            })
             ->where('attempts_count', '<', $maxTotalAttempts)
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
             ->where(function($q) use ($delayHours) {
@@ -257,20 +256,52 @@ class ProcessController extends Controller
             })
             ->orderBy('priority', 'desc')
             ->orderBy('created_at', 'asc')
+            ->limit(50)
             ->get();
 
-        // Filtrer les commandes avec stock maintenant disponible
+        Log::info("File restock: {$orders->count()} commandes suspendues trouvées avant filtrage stock");
+
+        // Pour restock, on cherche spécifiquement les commandes qui MAINTENANT ont le stock disponible
+        return $this->findFirstValidOrder($orders, true);
+    }
+
+    /**
+     * Trouver la première commande valide avec stock suffisant - NOUVELLE MÉTHODE OPTIMISÉE
+     */
+    private function findFirstValidOrder($orders, $forRestock = false)
+    {
+        $checkedCount = 0;
+        $suspendedCount = 0;
+        
         foreach ($orders as $order) {
+            $checkedCount++;
+            
+            // Vérification rigoureuse du stock
             if (!$this->orderHasStockIssues($order)) {
+                if ($forRestock) {
+                    Log::info("Commande {$order->id} trouvée pour restock - stock maintenant disponible");
+                }
+                Log::info("Commande valide trouvée: {$order->id} (vérifiée parmi {$checkedCount} commandes)");
                 return $order;
+            } else {
+                // Pour les files standard et datée, suspendre automatiquement les commandes avec problème de stock
+                if (!$forRestock && !$order->is_suspended) {
+                    $this->autoSuspendOrderForStock($order);
+                    $suspendedCount++;
+                }
             }
         }
         
+        if ($suspendedCount > 0) {
+            Log::info("Aucune commande valide trouvée. {$suspendedCount} commandes suspendues automatiquement pour problème de stock.");
+        }
+        
+        Log::info("Aucune commande avec stock suffisant trouvée parmi {$checkedCount} commandes vérifiées.");
         return null;
     }
 
     /**
-     * Obtenir les compteurs de toutes les files - CORRIGÉ
+     * Obtenir les compteurs de toutes les files - CORRIGÉ AVEC FILTRAGE STOCK
      */
     public function getCounts()
     {
@@ -322,7 +353,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Compter les commandes standard disponibles - CORRIGÉ
+     * Compter les commandes standard disponibles - CORRIGÉ AVEC FILTRAGE STOCK
      */
     private function getStandardCount($admin)
     {
@@ -331,7 +362,9 @@ class ProcessController extends Controller
         $delayHours = $this->getSetting('standard_delay_hours', 2.5);
 
         $orders = Order::where('admin_id', $admin->id)
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('status', 'nouvelle')
             ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
@@ -355,7 +388,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Compter les commandes datées disponibles - CORRIGÉ
+     * Compter les commandes datées disponibles - CORRIGÉ AVEC FILTRAGE STOCK
      */
     private function getDatedCount($admin)
     {
@@ -364,7 +397,9 @@ class ProcessController extends Controller
         $delayHours = $this->getSetting('dated_delay_hours', 3.5);
 
         $orders = Order::where('admin_id', $admin->id)
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('status', 'datée')
             ->whereDate('scheduled_date', '<=', now())
             ->where(function($q) {
@@ -389,7 +424,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Compter les commandes anciennes disponibles - CORRIGÉ
+     * Compter les commandes anciennes disponibles - CORRIGÉ AVEC FILTRAGE STOCK
      */
     private function getOldCount($admin)
     {
@@ -398,7 +433,9 @@ class ProcessController extends Controller
         $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0);
 
         $query = Order::where('admin_id', $admin->id)
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('status', 'ancienne')
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
             ->where(function($q) use ($delayHours) {
@@ -428,7 +465,9 @@ class ProcessController extends Controller
     private function getExaminationCount($admin)
     {
         $orders = $admin->orders()
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
             })
@@ -457,7 +496,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Compter les commandes de retour en stock - CORRIGÉ
+     * Compter les commandes de retour en stock - CORRIGÉ AVEC FILTRAGE STOCK
      */
     private function getRestockCount($admin)
     {
@@ -466,9 +505,17 @@ class ProcessController extends Controller
         $delayHours = $this->getSetting('restock_delay_hours', 1);
 
         $orders = Order::where('admin_id', $admin->id)
-            ->with(['items.product'])
+            ->with(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('is_suspended', true)
             ->whereIn('status', ['nouvelle', 'datée'])
+            ->where(function($q) {
+                $q->where('suspension_reason', 'like', '%stock%')
+                  ->orWhere('suspension_reason', 'like', '%Stock%')
+                  ->orWhere('suspension_reason', 'like', '%rupture%')
+                  ->orWhere('suspension_reason', 'like', '%Rupture%');
+            })
             ->where('attempts_count', '<', $maxTotalAttempts)
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
             ->where(function($q) use ($delayHours) {
@@ -479,6 +526,7 @@ class ProcessController extends Controller
 
         $count = 0;
         foreach ($orders as $order) {
+            // Pour restock, on compte les commandes qui maintenant ont le stock disponible
             if (!$this->orderHasStockIssues($order)) {
                 $count++;
             }
@@ -488,7 +536,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Traiter une action sur une commande - CORRIGÉ
+     * Traiter une action sur une commande - CORRIGÉ AVEC VÉRIFICATION STOCK
      */
     public function processAction(Request $request, Order $order)
     {
@@ -654,13 +702,31 @@ class ProcessController extends Controller
     }
 
     /**
-     * Gérer l'action "Confirmer" - CORRIGÉE
+     * Gérer l'action "Confirmer" - CORRIGÉE AVEC VÉRIFICATION STOCK ET DÉCRÉMENTATION
      */
     private function handleConfirmAction($order, $request, $admin)
     {
-        // Vérifier le stock avant de confirmer
+        // Vérifier le stock avant de confirmer - VÉRIFICATION CRITIQUE
         if ($this->orderHasStockIssues($order)) {
-            throw new \Exception('Impossible de confirmer: certains produits ne sont plus en stock suffisant');
+            throw new \Exception('Impossible de confirmer: certains produits ne sont plus en stock suffisant. Veuillez actualiser la page.');
+        }
+        
+        // Vérification supplémentaire du stock des items du panier
+        if ($request->has('cart_items')) {
+            foreach ($request->cart_items as $cartItem) {
+                $product = \App\Models\Product::where('id', $cartItem['product_id'])
+                    ->where('admin_id', $order->admin_id)
+                    ->where('is_active', true)
+                    ->first();
+                
+                if (!$product) {
+                    throw new \Exception("Produit {$cartItem['product_id']} non trouvé ou inactif");
+                }
+                
+                if ((int)$product->stock < (int)$cartItem['quantity']) {
+                    throw new \Exception("Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock}, quantité demandée: {$cartItem['quantity']}");
+                }
+            }
         }
         
         // Valider les données de confirmation
@@ -669,7 +735,7 @@ class ProcessController extends Controller
         // Mettre à jour les informations de la commande
         $this->confirmOrder($order, $request, "Commande confirmée par " . $admin->name);
         
-        // Mettre à jour les items et décrémenter le stock
+        // Mettre à jour les items et décrémenter le stock - POINT CRITIQUE
         if ($request->has('cart_items')) {
             $this->updateOrderItems($order, $request->cart_items);
         }
@@ -680,6 +746,8 @@ class ProcessController extends Controller
         }
         
         $order->recordHistory('confirmation', $historyNote);
+        
+        Log::info("Commande {$order->id} confirmée avec succès par admin {$admin->id}");
     }
 
     /**

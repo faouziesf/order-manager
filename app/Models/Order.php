@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 
 class Order extends Model
 {
@@ -584,26 +585,45 @@ class Order extends Model
     }
 
     /**
-     * Vérifier le stock et mettre à jour le statut de suspension automatiquement
+     * Vérifier le stock et mettre à jour le statut de suspension automatiquement - CORRIGÉ
      */
     public function checkStockAndUpdateStatus()
     {
         $allInStock = true;
         $missingProducts = [];
         
+        // Charger les relations si pas déjà fait
+        if (!$this->relationLoaded('items')) {
+            $this->load(['items.product']);
+        }
+        
         foreach ($this->items as $item) {
-            if ($item->product && $item->product->stock < $item->quantity) {
+            if (!$item->product) {
                 $allInStock = false;
-                $missingProducts[] = $item->product->name;
+                $missingProducts[] = 'Produit supprimé (ID: ' . $item->product_id . ')';
+                continue;
+            }
+            
+            if (!$item->product->is_active) {
+                $allInStock = false;
+                $missingProducts[] = $item->product->name . ' (inactif)';
+                continue;
+            }
+            
+            if ((int)$item->product->stock < (int)$item->quantity) {
+                $allInStock = false;
+                $missingProducts[] = $item->product->name . " (stock: {$item->product->stock}, besoin: {$item->quantity})";
             }
         }
         
         if (!$allInStock && !$this->is_suspended) {
             $this->suspend('Rupture de stock: ' . implode(', ', $missingProducts));
+            Log::info("Commande {$this->id} suspendue automatiquement pour rupture de stock");
             return false;
         } 
         elseif ($allInStock && $this->is_suspended && str_contains($this->suspension_reason ?? '', 'stock')) {
             $this->reactivate('Stock disponible pour tous les produits');
+            Log::info("Commande {$this->id} réactivée automatiquement car stock disponible");
             return true;
         }
         
@@ -611,19 +631,82 @@ class Order extends Model
     }
 
     /**
-     * Vérifier si la commande a un stock suffisant pour tous ses produits
+     * Vérifier si la commande a un stock suffisant pour tous ses produits - NOUVELLE MÉTHODE OPTIMISÉE
      */
     public function hasSufficientStock()
     {
+        // Charger les relations si pas déjà fait
+        if (!$this->relationLoaded('items')) {
+            $this->load(['items.product' => function($query) {
+                $query->where('is_active', true);
+            }]);
+        }
+        
         foreach ($this->items as $item) {
             if (!$item->product || !$item->product->is_active) {
+                Log::warning("Commande {$this->id}: produit manquant ou inactif (item {$item->id})");
                 return false;
             }
-            if ($item->product->stock < $item->quantity) {
+            
+            if ((int)$item->product->stock < (int)$item->quantity) {
+                Log::info("Commande {$this->id}: stock insuffisant pour produit {$item->product->id} ({$item->product->name}): besoin {$item->quantity}, stock {$item->product->stock}");
                 return false;
             }
         }
+        
         return true;
+    }
+
+    /**
+     * Obtenir les détails des problèmes de stock - NOUVELLE MÉTHODE
+     */
+    public function getStockIssues()
+    {
+        $issues = [];
+        
+        if (!$this->relationLoaded('items')) {
+            $this->load(['items.product']);
+        }
+        
+        foreach ($this->items as $item) {
+            if (!$item->product) {
+                $issues[] = [
+                    'type' => 'missing_product',
+                    'item_id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'message' => 'Produit supprimé ou non trouvé'
+                ];
+                continue;
+            }
+            
+            if (!$item->product->is_active) {
+                $issues[] = [
+                    'type' => 'inactive_product',
+                    'item_id' => $item->id,
+                    'product_id' => $item->product->id,
+                    'product_name' => $item->product->name,
+                    'quantity' => $item->quantity,
+                    'message' => 'Produit désactivé'
+                ];
+                continue;
+            }
+            
+            if ((int)$item->product->stock < (int)$item->quantity) {
+                $issues[] = [
+                    'type' => 'insufficient_stock',
+                    'item_id' => $item->id,
+                    'product_id' => $item->product->id,
+                    'product_name' => $item->product->name,
+                    'quantity_needed' => $item->quantity,
+                    'stock_available' => $item->product->stock,
+                    'shortage' => (int)$item->quantity - (int)$item->product->stock,
+                    'message' => "Stock insuffisant: besoin {$item->quantity}, disponible {$item->product->stock}"
+                ];
+            }
+        }
+        
+        return $issues;
     }
 
     /**

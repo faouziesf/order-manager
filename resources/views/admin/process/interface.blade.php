@@ -251,6 +251,60 @@
         color: #4b5563;
     }
 
+    /* Tags de la commande */
+    .order-tags {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .order-tag {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .tag-priority-urgente {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #dc2626;
+        border: 1px solid #f87171;
+    }
+
+    .tag-priority-vip {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
+        color: #92400e;
+        border: 1px solid #f59e0b;
+    }
+
+    .tag-priority-normale {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        color: #3730a3;
+        border: 1px solid #6366f1;
+    }
+
+    .tag-assigned {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        color: #166534;
+        border: 1px solid #22c55e;
+    }
+
+    .tag-suspended {
+        background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);
+        color: #9b2c2c;
+        border: 1px solid #ef4444;
+    }
+
+    .tag-scheduled {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
+        color: #92400e;
+        border: 1px solid #f59e0b;
+    }
+
     /* Alertes spéciales */
     .duplicate-alert, .restock-info {
         padding: 1rem;
@@ -366,6 +420,11 @@
         background: #f9fafb;
         color: #9ca3af;
         cursor: not-allowed;
+    }
+
+    .form-control.is-invalid {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
     }
 
     /* Zone panier */
@@ -924,6 +983,10 @@
                                         <span id="order-last-attempt">Jamais</span>
                                     </div>
                                 </div>
+                                <!-- Tags de la commande -->
+                                <div class="order-tags" id="order-tags">
+                                    <!-- Les tags seront ajoutés dynamiquement -->
+                                </div>
                             </div>
                             <div class="order-status" id="order-status">Nouvelle</div>
                         </div>
@@ -1164,7 +1227,7 @@ $(document).ready(function() {
             }
         });
         
-        // Boutons d'action
+        // Boutons d'action avec pré-validation pour confirmer
         $('#btn-call').on('click', () => showActionModal('call'));
         $('#btn-confirm').on('click', () => showActionModal('confirm'));
         $('#btn-cancel').on('click', () => showActionModal('cancel'));
@@ -1177,6 +1240,126 @@ $(document).ready(function() {
             const regionId = $(this).val();
             loadCities(regionId);
         });
+
+        // Validation en temps réel des champs obligatoires
+        $('#customer_name, #customer_governorate, #customer_city, #customer_address').on('input change', function() {
+            validateField($(this));
+        });
+    }
+    
+    // Fonction de validation d'un champ
+    function validateField($field) {
+        const value = $field.val().trim();
+        const fieldId = $field.attr('id');
+        
+        let isValid = true;
+        
+        switch (fieldId) {
+            case 'customer_name':
+                isValid = value.length >= 2;
+                break;
+            case 'customer_governorate':
+            case 'customer_city':
+                isValid = value !== '';
+                break;
+            case 'customer_address':
+                isValid = value.length >= 5;
+                break;
+        }
+        
+        if (isValid) {
+            $field.removeClass('is-invalid');
+        } else {
+            $field.addClass('is-invalid');
+        }
+        
+        return isValid;
+    }
+
+    // Fonction de pré-validation avant d'afficher le modal de confirmation
+    function validateBeforeConfirm() {
+        let errors = [];
+        let hasFieldErrors = false;
+        
+        // Validation des champs client obligatoires
+        const customerName = $('#customer_name').val().trim();
+        const customerGovernorate = $('#customer_governorate').val();
+        const customerCity = $('#customer_city').val();
+        const customerAddress = $('#customer_address').val().trim();
+        
+        if (!customerName || customerName.length < 2) {
+            errors.push('Le nom du client est obligatoire (minimum 2 caractères)');
+            $('#customer_name').addClass('is-invalid');
+            hasFieldErrors = true;
+        } else {
+            $('#customer_name').removeClass('is-invalid');
+        }
+        
+        if (!customerGovernorate) {
+            errors.push('Le gouvernorat est obligatoire');
+            $('#customer_governorate').addClass('is-invalid');
+            hasFieldErrors = true;
+        } else {
+            $('#customer_governorate').removeClass('is-invalid');
+        }
+        
+        if (!customerCity) {
+            errors.push('La ville est obligatoire');
+            $('#customer_city').addClass('is-invalid');
+            hasFieldErrors = true;
+        } else {
+            $('#customer_city').removeClass('is-invalid');
+        }
+        
+        if (!customerAddress || customerAddress.length < 5) {
+            errors.push('L\'adresse doit contenir au moins 5 caractères');
+            $('#customer_address').addClass('is-invalid');
+            hasFieldErrors = true;
+        } else {
+            $('#customer_address').removeClass('is-invalid');
+        }
+        
+        // Validation du panier
+        if (!cartItems || cartItems.length === 0) {
+            errors.push('Veuillez ajouter au moins un produit au panier');
+        }
+        
+        // Vérification du stock disponible
+        let stockErrors = [];
+        if (cartItems && cartItems.length > 0) {
+            cartItems.forEach(item => {
+                if (item.product && item.product.stock < item.quantity) {
+                    stockErrors.push(`Stock insuffisant pour ${item.product.name} (disponible: ${item.product.stock}, demandé: ${item.quantity})`);
+                }
+            });
+        }
+        
+        // Afficher les erreurs
+        if (errors.length > 0) {
+            const errorMessage = '<div style="text-align: left;">' + errors.map(error => `• ${error}`).join('<br>') + '</div>';
+            showNotification(errorMessage, 'error');
+            
+            // Focus sur le premier champ en erreur
+            if (!customerName || customerName.length < 2) {
+                $('#customer_name').focus();
+            } else if (!customerGovernorate) {
+                $('#customer_governorate').focus();
+            } else if (!customerCity) {
+                $('#customer_city').focus();
+            } else if (!customerAddress || customerAddress.length < 5) {
+                $('#customer_address').focus();
+            }
+            
+            return false;
+        }
+        
+        if (stockErrors.length > 0) {
+            const stockMessage = '<div style="text-align: left;">' + stockErrors.map(error => `• ${error}`).join('<br>') + '</div>';
+            showNotification(stockMessage, 'error');
+            return false;
+        }
+        
+        return true;
     }
     
     // Gestion des files
@@ -1271,6 +1454,9 @@ $(document).ready(function() {
             statusElement.removeClass().addClass('order-status').addClass(`status-${status}`);
             statusElement.text(capitalizeFirst(status));
             
+            // Afficher les tags
+            displayOrderTags(order);
+            
             // Affichage spécial selon le type de queue
             updateQueueSpecificDisplay(order);
             
@@ -1287,6 +1473,56 @@ $(document).ready(function() {
             console.error('Erreur affichage commande:', error);
             showNotification('Erreur lors de l\'affichage de la commande', 'error');
             showNoOrderMessage();
+        }
+    }
+
+    // Affichage des tags de la commande
+    function displayOrderTags(order) {
+        const tagsContainer = $('#order-tags');
+        tagsContainer.empty();
+
+        // Tag priorité
+        if (order.priority && order.priority !== 'normale') {
+            const priorityTag = $(`
+                <div class="order-tag tag-priority-${order.priority}">
+                    <i class="fas fa-${order.priority === 'urgente' ? 'exclamation-triangle' : order.priority === 'vip' ? 'crown' : 'flag'}"></i>
+                    <span>${capitalizeFirst(order.priority)}</span>
+                </div>
+            `);
+            tagsContainer.append(priorityTag);
+        }
+
+        // Tag assignation
+        if (order.is_assigned && order.employee) {
+            const assignedTag = $(`
+                <div class="order-tag tag-assigned">
+                    <i class="fas fa-user-check"></i>
+                    <span>Assignée</span>
+                </div>
+            `);
+            tagsContainer.append(assignedTag);
+        }
+
+        // Tag suspension
+        if (order.is_suspended) {
+            const suspendedTag = $(`
+                <div class="order-tag tag-suspended">
+                    <i class="fas fa-pause-circle"></i>
+                    <span>Suspendue</span>
+                </div>
+            `);
+            tagsContainer.append(suspendedTag);
+        }
+
+        // Tag planifiée
+        if (order.scheduled_date) {
+            const scheduledTag = $(`
+                <div class="order-tag tag-scheduled">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Planifiée</span>
+                </div>
+            `);
+            tagsContainer.append(scheduledTag);
         }
     }
     
@@ -1578,11 +1814,18 @@ $(document).ready(function() {
             });
     }
     
-    // Actions de traitement
+    // Actions de traitement avec pré-validation pour confirmer
     function showActionModal(action) {
         if (!currentOrder) {
             showNotification('Aucune commande sélectionnée', 'error');
             return;
+        }
+        
+        // Pré-validation spéciale pour l'action confirmer
+        if (action === 'confirm') {
+            if (!validateBeforeConfirm()) {
+                return; // Arrêter ici si la validation échoue
+            }
         }
         
         switch (action) {
@@ -1672,16 +1915,6 @@ $(document).ready(function() {
             const customerGovernorate = $('#customer_governorate').val();
             const customerCity = $('#customer_city').val();
             const customerAddress = $('#customer_address').val().trim();
-            
-            if (!customerName || !customerGovernorate || !customerCity || !customerAddress) {
-                showNotification('Veuillez remplir tous les champs obligatoires', 'error');
-                return;
-            }
-            
-            if (!cartItems || cartItems.length === 0) {
-                showNotification('Veuillez ajouter au moins un produit au panier', 'error');
-                return;
-            }
             
             requestData.cart_items = cartItems;
             requestData.customer_name = customerName;
@@ -1777,7 +2010,7 @@ $(document).ready(function() {
         
         const alert = $(`
             <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
-                 style="top: 100px; right: 20px; z-index: 9999; min-width: 300px;">
+                 style="top: 100px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px;">
                 <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -1788,7 +2021,7 @@ $(document).ready(function() {
         
         setTimeout(() => {
             alert.fadeOut(() => alert.remove());
-        }, 5000);
+        }, type === 'error' ? 8000 : 5000);
     }
     
     // Initialisation

@@ -51,9 +51,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Attention:</strong> Assurez-vous que tous les champs client sont remplis et que le panier contient les bons produits avant de confirmer.
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Validation réussie!</strong> Tous les champs obligatoires sont remplis et le panier contient des produits en stock.
                 </div>
                 
                 <div class="row">
@@ -75,13 +75,14 @@
                         <div class="form-group mb-3">
                             <label class="form-label">
                                 <i class="fas fa-info-circle me-2"></i>
-                                Changements
+                                Changements à venir
                             </label>
                             <div class="alert alert-success mb-0">
                                 <small>
                                     <i class="fas fa-arrow-right me-1"></i>Statut: <strong>Confirmée</strong><br>
                                     <i class="fas fa-minus me-1"></i>Stock sera décrémenté automatiquement<br>
-                                    <i class="fas fa-money-bill me-1"></i>Prix total sera mis à jour
+                                    <i class="fas fa-money-bill me-1"></i>Prix total sera mis à jour<br>
+                                    <i class="fas fa-user me-1"></i>Infos client sauvegardées
                                 </small>
                             </div>
                         </div>
@@ -97,9 +98,36 @@
                               placeholder="Informations supplémentaires sur la confirmation..."></textarea>
                 </div>
 
-                <div class="alert alert-info mt-3">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <strong>Rappel:</strong> Vérifiez que tous les champs obligatoires du client sont remplis dans le formulaire principal avant de confirmer.
+                <!-- Récapitulatif des données -->
+                <div class="mt-4">
+                    <h6><i class="fas fa-clipboard-list me-2"></i>Récapitulatif des données</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-light">
+                                <div class="card-header bg-light py-2">
+                                    <small class="text-muted fw-bold">INFORMATIONS CLIENT</small>
+                                </div>
+                                <div class="card-body py-2">
+                                    <small>
+                                        <strong>Nom:</strong> <span id="confirm-customer-name">-</span><br>
+                                        <strong>Téléphone:</strong> <span id="confirm-customer-phone">-</span><br>
+                                        <strong>Lieu:</strong> <span id="confirm-customer-location">-</span><br>
+                                        <strong>Adresse:</strong> <span id="confirm-customer-address">-</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-light">
+                                <div class="card-header bg-light py-2">
+                                    <small class="text-muted fw-bold">PRODUITS COMMANDÉS</small>
+                                </div>
+                                <div class="card-body py-2" id="confirm-products-list">
+                                    <small class="text-muted">Chargement...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -107,7 +135,7 @@
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
                 <button type="button" class="btn btn-success" onclick="submitConfirmAction()">
-                    <i class="fas fa-check-circle me-2"></i>Confirmer la commande
+                    <i class="fas fa-check-circle me-2"></i>Confirmer définitivement
                 </button>
             </div>
         </div>
@@ -404,57 +432,8 @@ function submitConfirmAction() {
         return;
     }
     
-    // Validation des champs requis côté client
-    const customerName = $('#customer_name').val().trim();
-    const customerGovernorate = $('#customer_governorate').val();
-    const customerCity = $('#customer_city').val();
-    const customerAddress = $('#customer_address').val().trim();
-    
-    if (!customerName) {
-        showNotification('Le nom du client est obligatoire', 'error');
-        $('#customer_name').focus();
-        return;
-    }
-    
-    if (!customerGovernorate) {
-        showNotification('Le gouvernorat est obligatoire', 'error');
-        $('#customer_governorate').focus();
-        return;
-    }
-    
-    if (!customerCity) {
-        showNotification('La ville est obligatoire', 'error');
-        $('#customer_city').focus();
-        return;
-    }
-    
-    if (!customerAddress || customerAddress.length < 5) {
-        showNotification('L\'adresse doit contenir au moins 5 caractères', 'error');
-        $('#customer_address').focus();
-        return;
-    }
-    
-    // Validation du panier
-    if (!cartItems || cartItems.length === 0) {
-        showNotification('Veuillez ajouter au moins un produit au panier', 'error');
-        return;
-    }
-    
-    // Vérification du stock disponible
-    let stockError = false;
-    let stockMessage = '';
-    
-    cartItems.forEach(item => {
-        if (item.product && item.product.stock < item.quantity) {
-            stockError = true;
-            stockMessage = `Stock insuffisant pour ${item.product.name}. Stock disponible: ${item.product.stock}, quantité demandée: ${item.quantity}`;
-        }
-    });
-    
-    if (stockError) {
-        showNotification(stockMessage, 'error');
-        return;
-    }
+    // Note: La validation des champs client a déjà été faite avant l'ouverture du modal
+    // donc ici on peut directement procéder
     
     processAction('confirm', { 
         confirmed_price: parseFloat(price),
@@ -509,7 +488,72 @@ function submitReactivateAction() {
     });
 }
 
-// Initialiser les dates minimales au chargement
+// Fonctions utilitaires pour les modals
+function getSelectedGovernorate() {
+    const governorateSelect = $('#customer_governorate');
+    const selectedOption = governorateSelect.find('option:selected');
+    return selectedOption.text() !== 'Sélectionner un gouvernorat' ? selectedOption.text() : '';
+}
+
+function getSelectedCity() {
+    const citySelect = $('#customer_city');
+    const selectedOption = citySelect.find('option:selected');
+    return selectedOption.text() !== 'Sélectionner une ville' ? selectedOption.text() : '';
+}
+
+function updateConfirmModalData() {
+    // Mettre à jour les informations client dans le modal de confirmation
+    $('#confirm-customer-name').text($('#customer_name').val() || 'Non renseigné');
+    $('#confirm-customer-phone').text($('#customer_phone').val() || 'Non renseigné');
+    
+    const governorate = getSelectedGovernorate();
+    const city = getSelectedCity();
+    let location = '';
+    if (governorate && city) {
+        location = `${city}, ${governorate}`;
+    } else if (governorate) {
+        location = governorate;
+    } else {
+        location = 'Non renseigné';
+    }
+    $('#confirm-customer-location').text(location);
+    $('#confirm-customer-address').text($('#customer_address').val() || 'Non renseignée');
+    
+    // Mettre à jour la liste des produits
+    const productsList = $('#confirm-products-list');
+    productsList.empty();
+    
+    if (cartItems && cartItems.length > 0) {
+        let totalProducts = 0;
+        let totalPrice = 0;
+        
+        cartItems.forEach(item => {
+            if (item.product) {
+                totalProducts += item.quantity;
+                totalPrice += parseFloat(item.total_price) || 0;
+                
+                productsList.append(`
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>${item.product.name} (×${item.quantity})</span>
+                        <span class="fw-bold">${parseFloat(item.total_price || 0).toFixed(3)} TND</span>
+                    </div>
+                `);
+            }
+        });
+        
+        productsList.append(`
+            <hr class="my-2">
+            <div class="d-flex justify-content-between fw-bold">
+                <span>${totalProducts} article${totalProducts > 1 ? 's' : ''}</span>
+                <span>${totalPrice.toFixed(3)} TND</span>
+            </div>
+        `);
+    } else {
+        productsList.html('<small class="text-muted">Aucun produit</small>');
+    }
+}
+
+// Initialiser les dates minimales et événements
 $(document).ready(function() {
     // Date minimum pour la planification = aujourd'hui
     const today = new Date().toISOString().split('T')[0];
@@ -520,12 +564,15 @@ $(document).ready(function() {
         $(this).find('textarea, input[type="text"], input[type="number"], input[type="date"]').val('');
     });
     
-    // Calculer le prix automatiquement pour la confirmation
+    // Calculer le prix automatiquement et mettre à jour les données pour la confirmation
     $('#confirmModal').on('show.bs.modal', function() {
         if (cartItems && cartItems.length > 0) {
             const total = cartItems.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0);
             $('#confirm-price').val(total.toFixed(3));
         }
+        
+        // Mettre à jour toutes les données du récapitulatif
+        updateConfirmModalData();
     });
     
     // Validation en temps réel pour le prix de confirmation
@@ -534,6 +581,36 @@ $(document).ready(function() {
         const submitBtn = $(this).closest('.modal').find('.btn-success');
         
         if (value > 0) {
+            submitBtn.prop('disabled', false);
+            $(this).removeClass('is-invalid');
+        } else {
+            submitBtn.prop('disabled', true);
+            $(this).addClass('is-invalid');
+        }
+    });
+    
+    // Validation en temps réel pour les notes obligatoires
+    $('#call-notes, #cancel-notes').on('input', function() {
+        const value = $(this).val().trim();
+        const submitBtn = $(this).closest('.modal').find('.btn-warning, .btn-danger');
+        
+        if (value.length >= 3) {
+            submitBtn.prop('disabled', false);
+            $(this).removeClass('is-invalid');
+        } else {
+            submitBtn.prop('disabled', true);
+            $(this).addClass('is-invalid');
+        }
+    });
+    
+    // Validation pour la date de planification
+    $('#schedule-date').on('change', function() {
+        const selectedDate = new Date($(this).val());
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const submitBtn = $(this).closest('.modal').find('.btn-info');
+        
+        if (selectedDate >= today) {
             submitBtn.prop('disabled', false);
             $(this).removeClass('is-invalid');
         } else {
