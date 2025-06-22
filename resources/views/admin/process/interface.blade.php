@@ -18,11 +18,6 @@
         --border-radius-xl: 24px;
         --border-radius-2xl: 32px;
         --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        --spacing-xs: 0.5rem;
-        --spacing-sm: 1rem;
-        --spacing-md: 1.5rem;
-        --spacing-lg: 2rem;
-        --spacing-xl: 3rem;
     }
 
     body {
@@ -31,9 +26,7 @@
         overflow-x: hidden;
     }
 
-    /* =========================
-       CONTAINER PRINCIPAL
-    ========================= */
+    /* Container principal */
     .process-container {
         background: var(--glass-bg);
         backdrop-filter: blur(20px);
@@ -45,9 +38,7 @@
         overflow: hidden;
     }
 
-    /* =========================
-       HEADER AVEC ONGLETS
-    ========================= */
+    /* Header avec onglets */
     .process-header {
         background: var(--process-primary);
         padding: 1rem 1.5rem;
@@ -55,7 +46,7 @@
         overflow: hidden;
         display: flex;
         align-items: center;
-        gap: var(--spacing-lg);
+        gap: 2rem;
     }
 
     .process-header::before {
@@ -85,12 +76,10 @@
         border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    /* =========================
-       ONGLETS MODERNES
-    ========================= */
+    /* Onglets modernes */
     .queue-tabs {
         display: flex;
-        gap: var(--spacing-sm);
+        gap: 1rem;
         position: relative;
         z-index: 2;
         flex: 1;
@@ -108,31 +97,13 @@
         transition: var(--transition-smooth);
         display: flex;
         align-items: center;
-        gap: var(--spacing-sm);
+        gap: 0.5rem;
         font-weight: 600;
         font-size: 0.95rem;
         position: relative;
         overflow: hidden;
         min-width: 140px;
         justify-content: center;
-    }
-
-    .queue-tab::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.1);
-        transform: translateX(-100%);
-        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: -1;
-    }
-
-    .queue-tab:hover::before,
-    .queue-tab.active::before {
-        transform: translateX(0);
     }
 
     .queue-tab:hover {
@@ -177,7 +148,6 @@
         animation: pulse 2s infinite;
     }
 
-    /* Badge spécial pour restock */
     .queue-tab[data-queue="restock"] .queue-badge {
         background: rgba(16, 185, 129, 0.9);
         color: white;
@@ -193,9 +163,7 @@
         50% { transform: scale(1.05); }
     }
 
-    /* =========================
-       CONTENU PRINCIPAL
-    ========================= */
+    /* Contenu principal */
     .process-content {
         padding: 1rem;
         display: grid;
@@ -204,9 +172,7 @@
         min-height: calc(100vh - 180px);
     }
 
-    /* =========================
-       ZONE COMMANDE (GAUCHE)
-    ========================= */
+    /* Zone commande */
     .order-zone {
         display: flex;
         flex-direction: column;
@@ -242,7 +208,7 @@
         color: #374151;
         display: flex;
         align-items: center;
-        gap: var(--spacing-sm);
+        gap: 1rem;
     }
 
     .order-status {
@@ -258,7 +224,6 @@
     .status-datée { background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%); color: #92400e; }
     .status-confirmée { background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%); color: #166534; }
     .status-ancienne { background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%); color: #9b2c2c; }
-    .status-suspended { background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%); color: #92400e; }
 
     .order-meta {
         display: flex;
@@ -286,64 +251,27 @@
         color: #4b5563;
     }
 
-    /* =========================
-       ALERTE DOUBLONS
-    ========================= */
-    .duplicate-alert {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
-        border: 2px solid #f59e0b;
-        border-radius: 12px;
+    /* Alertes spéciales */
+    .duplicate-alert, .restock-info {
         padding: 1rem;
         margin-bottom: 1rem;
+        border-radius: 12px;
         display: none;
     }
 
-    .duplicate-alert.show {
+    .duplicate-alert {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
+        border: 2px solid #f59e0b;
+    }
+
+    .restock-info {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        border: 1px solid #86efac;
+    }
+
+    .duplicate-alert.show, .restock-info.show {
         display: block;
         animation: slideInDown 0.5s ease-out;
-    }
-
-    .duplicate-header {
-        display: flex;
-        align-items: center;
-        justify-content: between;
-        gap: 0.75rem;
-        color: #92400e;
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-    }
-
-    .duplicate-message {
-        background: white;
-        padding: 0.75rem;
-        border-radius: 8px;
-        color: #374151;
-        font-size: 0.9rem;
-        line-height: 1.4;
-        border-left: 4px solid #f59e0b;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .btn-view-duplicates {
-        background: var(--process-warning);
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: var(--transition-smooth);
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .btn-view-duplicates:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 
     @keyframes slideInDown {
@@ -357,37 +285,35 @@
         }
     }
 
-    /* Section spéciale pour les commandes de retour en stock */
-    .restock-info {
-        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-        border: 1px solid #86efac;
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .restock-header {
+    .alert-header {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        color: #065f46;
         font-weight: 600;
         margin-bottom: 0.75rem;
     }
 
-    .restock-message {
+    .duplicate-alert .alert-header { color: #92400e; }
+    .restock-info .alert-header { color: #065f46; }
+
+    .alert-message {
         background: white;
         padding: 0.75rem;
         border-radius: 8px;
         color: #374151;
         font-size: 0.9rem;
         line-height: 1.4;
-        border-left: 4px solid #10b981;
+        border-left: 4px solid #f59e0b;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
-    /* =========================
-       FORMULAIRE CLIENT
-    ========================= */
+    .restock-info .alert-message {
+        border-left-color: #10b981;
+    }
+
+    /* Formulaire client */
     .customer-form {
         padding: 1rem 1.5rem;
     }
@@ -442,9 +368,7 @@
         cursor: not-allowed;
     }
 
-    /* =========================
-       ZONE PANIER (DROITE)
-    ========================= */
+    /* Zone panier */
     .cart-zone {
         display: flex;
         flex-direction: column;
@@ -461,15 +385,6 @@
         display: flex;
         flex-direction: column;
         transition: var(--transition-smooth);
-    }
-
-    .cart-card.collapsed {
-        height: 50px;
-        overflow: hidden;
-    }
-
-    .cart-card.collapsed .cart-body {
-        display: none;
     }
 
     .cart-header {
@@ -498,26 +413,6 @@
         border-radius: 15px;
         font-size: 0.8rem;
         font-weight: 600;
-    }
-
-    .cart-toggle {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.1rem;
-        cursor: pointer;
-        transition: var(--transition-smooth);
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-    }
-
-    .cart-toggle:hover {
-        background: rgba(255, 255, 255, 0.1);
-        transform: scale(1.1);
     }
 
     .cart-body {
@@ -596,9 +491,7 @@
         border-bottom: none;
     }
 
-    /* =========================
-       PRODUITS DU PANIER
-    ========================= */
+    /* Produits du panier */
     .cart-items {
         flex: 1;
         padding: 0.75rem;
@@ -724,9 +617,7 @@
         opacity: 0.5;
     }
 
-    /* =========================
-       RÉSUMÉ PANIER
-    ========================= */
+    /* Résumé panier */
     .cart-summary {
         padding: 0.75rem;
         background: #f9fafb;
@@ -761,9 +652,7 @@
         color: #374151;
     }
 
-    /* =========================
-       ZONE ACTIONS
-    ========================= */
+    /* Zone actions */
     .actions-zone {
         grid-column: 1 / -1;
         background: white;
@@ -799,23 +688,6 @@
         overflow: hidden;
         min-width: 120px;
         justify-content: center;
-    }
-
-    .action-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.2);
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        z-index: 0;
-    }
-
-    .action-btn:hover::before {
-        transform: translateX(0);
     }
 
     .action-btn:hover {
@@ -864,7 +736,6 @@
     .btn-schedule { background: var(--process-info); color: white; }
     .btn-history { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; }
     .btn-reactivate { background: var(--process-restock); color: white; }
-    .btn-duplicates { background: var(--process-warning); color: white; }
 
     .no-order {
         text-align: center;
@@ -885,17 +756,10 @@
         color: #374151;
     }
 
-    /* =========================
-       RESPONSIVE
-    ========================= */
+    /* Responsive */
     @media (max-width: 1200px) {
         .process-content {
             grid-template-columns: 1fr;
-            grid-template-rows: auto auto;
-        }
-        
-        .cart-zone {
-            grid-row: auto;
         }
         
         .cart-card {
@@ -911,46 +775,17 @@
             padding: 0.75rem 1rem;
         }
 
-        .process-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 2rem;
-        }
-
-        .process-content {
-            padding: 0.75rem;
-            gap: 0.75rem;
-        }
-        
         .queue-tabs {
             flex-direction: column;
             gap: 0.5rem;
             width: 100%;
         }
         
-        .queue-tab {
-            min-width: auto;
-            padding: 0.6rem 0.8rem;
-            font-size: 0.9rem;
-        }
-
-        .queue-icon {
-            width: 24px;
-            height: 24px;
-            font-size: 1.1rem;
-        }
-        
         .form-grid {
             grid-template-columns: 1fr;
         }
         
-        .actions-zone {
-            padding: 0.75rem;
-        }
-        
         .action-buttons {
-            width: 100%;
-            justify-content: center;
             gap: 0.5rem;
         }
 
@@ -959,24 +794,9 @@
             padding: 8px 14px;
             font-size: 0.85rem;
         }
-
-        .cart-header {
-            padding: 0.6rem 0.8rem;
-        }
-
-        .cart-title {
-            font-size: 1rem;
-        }
-
-        .cart-count {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-        }
     }
 
-    /* =========================
-       ANIMATIONS
-    ========================= */
+    /* Animations */
     .fade-in {
         animation: fadeIn 0.5s ease-out;
     }
@@ -1001,9 +821,7 @@
         }
     }
 
-    /* =========================
-       SCROLLBAR CUSTOM
-    ========================= */
+    /* Scrollbar custom */
     .cart-items::-webkit-scrollbar {
         width: 6px;
     }
@@ -1017,15 +835,12 @@
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         border-radius: 3px;
     }
-
-    .cart-items::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(135deg, #059669 0%, #047857 100%);
-    }
 </style>
 @endsection
 
 @section('content')
 <div class="process-container">
+    <!-- Header avec onglets des files -->
     <div class="process-header">
         <div class="process-icon">
             <i class="fas fa-headset"></i>
@@ -1036,9 +851,7 @@
                 <div class="queue-icon">
                     <i class="fas fa-phone"></i>
                 </div>
-                <div>
-                    <div>File Standard</div>
-                </div>
+                <div>File Standard</div>
                 <div class="queue-badge" id="standard-count">0</div>
             </div>
             
@@ -1046,9 +859,7 @@
                 <div class="queue-icon">
                     <i class="fas fa-calendar-alt"></i>
                 </div>
-                <div>
-                    <div>File Datée</div>
-                </div>
+                <div>File Datée</div>
                 <div class="queue-badge" id="dated-count">0</div>
             </div>
             
@@ -1056,9 +867,7 @@
                 <div class="queue-icon">
                     <i class="fas fa-history"></i>
                 </div>
-                <div>
-                    <div>File Ancienne</div>
-                </div>
+                <div>File Ancienne</div>
                 <div class="queue-badge" id="old-count">0</div>
             </div>
             
@@ -1066,31 +875,35 @@
                 <div class="queue-icon">
                     <i class="fas fa-box-open"></i>
                 </div>
-                <div>
-                    <div>Retour en Stock</div>
-                </div>
+                <div>Retour en Stock</div>
                 <div class="queue-badge" id="restock-count">0</div>
             </div>
         </div>
     </div>
 
+    <!-- Contenu principal -->
     <div class="process-content" id="process-content">
+        <!-- Message de chargement -->
         <div class="no-order fade-in" id="loading-message">
             <i class="fas fa-spinner fa-spin"></i>
             <h3>Chargement en cours...</h3>
             <p>Préparation de l'interface de traitement</p>
         </div>
         
+        <!-- Message aucune commande -->
         <div class="no-order fade-in" id="no-order-message" style="display: none;">
             <i class="fas fa-inbox"></i>
             <h3>Aucune commande disponible</h3>
             <p>Il n'y a aucune commande à traiter dans cette file pour le moment.</p>
         </div>
 
+        <!-- Contenu principal avec commande -->
         <div id="main-content" style="display: none; grid-column: 1 / -1;">
             <div class="process-content">
+                <!-- Zone de la commande (gauche) -->
                 <div class="order-zone">
                     <div class="order-card slide-up">
+                        <!-- En-tête de la commande -->
                         <div class="order-header">
                             <div>
                                 <div class="order-id">
@@ -1117,30 +930,31 @@
 
                         <!-- Alerte pour les doublons -->
                         <div class="duplicate-alert" id="duplicate-alert">
-                            <div class="duplicate-header">
+                            <div class="alert-header">
                                 <i class="fas fa-exclamation-triangle"></i>
                                 <span>Commandes doublons détectées</span>
                             </div>
-                            <div class="duplicate-message">
+                            <div class="alert-message">
                                 <span id="duplicate-text">Ce client a d'autres commandes dans le système</span>
-                                <button type="button" class="btn-view-duplicates" onclick="showDuplicatesModal()">
-                                    <i class="fas fa-eye"></i>
-                                    Voir les doublons
+                                <button type="button" class="btn btn-sm btn-warning" onclick="showDuplicatesModal()">
+                                    <i class="fas fa-eye"></i> Voir
                                 </button>
                             </div>
                         </div>
 
+                        <!-- Info retour en stock -->
                         <div class="restock-info" id="restock-info" style="display: none;">
-                            <div class="restock-header">
+                            <div class="alert-header">
                                 <i class="fas fa-check-circle"></i>
-                                <span>Commande suspendue - Retour en stock</span>
+                                <span>Commande retour en stock</span>
                             </div>
-                            <div class="restock-message">
-                                Cette commande était suspendue mais tous ses produits sont maintenant disponibles en stock. 
+                            <div class="alert-message">
+                                Cette commande était suspendue mais tous ses produits sont maintenant disponibles. 
                                 Elle peut être traitée normalement ou réactivée définitivement.
                             </div>
                         </div>
 
+                        <!-- Formulaire client -->
                         <div class="customer-form">
                             <div class="form-grid">
                                 <div class="form-group">
@@ -1199,20 +1013,19 @@
                     </div>
                 </div>
 
+                <!-- Zone panier (droite) -->
                 <div class="cart-zone">
                     <div class="cart-card slide-up">
-                        <div class="cart-header" onclick="toggleCart()">
+                        <div class="cart-header">
                             <div class="cart-title">
                                 <i class="fas fa-shopping-cart"></i>
                                 Panier
                             </div>
                             <div class="cart-count" id="cart-item-count">0 article(s)</div>
-                            <button class="cart-toggle" id="cart-toggle">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
                         </div>
 
                         <div class="cart-body">
+                            <!-- Recherche de produits -->
                             <div class="product-search">
                                 <div class="search-wrapper">
                                     <i class="fas fa-search search-icon"></i>
@@ -1222,6 +1035,7 @@
                                 </div>
                             </div>
 
+                            <!-- Items du panier -->
                             <div class="cart-items" id="cart-items">
                                 <div class="cart-empty" id="cart-empty">
                                     <i class="fas fa-shopping-basket"></i>
@@ -1230,9 +1044,10 @@
                                 </div>
                             </div>
 
+                            <!-- Résumé du panier -->
                             <div class="cart-summary" id="cart-summary" style="display: none;">
                                 <div class="summary-row">
-                                    <span class="summary-label">Total:</span>
+                                    <span class="summary-label">Total produits:</span>
                                     <span class="summary-value" id="cart-total">0.000 TND</span>
                                 </div>
                             </div>
@@ -1240,6 +1055,7 @@
                     </div>
                 </div>
 
+                <!-- Zone des actions -->
                 <div class="actions-zone slide-up">
                     <div class="action-buttons" id="action-buttons">
                         <button class="action-btn btn-call" id="btn-call">
@@ -1278,6 +1094,7 @@
     </div>
 </div>
 
+<!-- Inclusion des modales -->
 @include('admin.process.modals')
 
 @endsection
@@ -1292,12 +1109,8 @@ $(document).ready(function() {
     let isLoadingQueue = false;
     let isLoadingCounts = false;
     
-    // =========================
-    // INITIALISATION
-    // =========================
-    
+    // Initialisation
     function initialize() {
-        // Vérifier jQuery et CSRF token
         if (typeof $ === 'undefined') {
             console.error('jQuery non chargé!');
             return;
@@ -1309,7 +1122,6 @@ $(document).ready(function() {
             return;
         }
         
-        // Configuration AJAX globale
         $.ajaxSetup({
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
@@ -1345,7 +1157,7 @@ $(document).ready(function() {
             }
         });
         
-        // Masquer suggestions en cliquant ailleurs
+        // Masquer suggestions
         $(document).on('click', function(e) {
             if (!$(e.target).closest('.search-wrapper').length) {
                 hideSearchSuggestions();
@@ -1367,28 +1179,21 @@ $(document).ready(function() {
         });
     }
     
-    // =========================
-    // GESTION DES FILES - CORRECTION PRINCIPALE
-    // =========================
-    
+    // Gestion des files
     function loadQueueCounts() {
-        if (isLoadingCounts) {
-            console.log('Chargement des compteurs déjà en cours, ignoré');
-            return;
-        }
+        if (isLoadingCounts) return;
         
         isLoadingCounts = true;
         
         $.get('/admin/process/counts')
             .done(function(data) {
-                console.log('Compteurs reçus:', data);
                 $('#standard-count').text(data.standard || 0);
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
                 $('#restock-count').text(data.restock || 0);
             })
             .fail(function(xhr, status, error) {
-                console.error('Erreur compteurs:', error, xhr.responseText);
+                console.error('Erreur compteurs:', error);
                 showNotification('Erreur lors du chargement des compteurs', 'error');
             })
             .always(function() {
@@ -1397,60 +1202,38 @@ $(document).ready(function() {
     }
     
     function switchQueue(queue) {
-        console.log('Changement de file vers:', queue);
+        if (isLoadingQueue) return;
         
-        if (isLoadingQueue) {
-            console.log('Changement de file déjà en cours, ignoré');
-            return;
-        }
-        
-        // Mettre à jour l'UI
         $('.queue-tab').removeClass('active');
         $(`.queue-tab[data-queue="${queue}"]`).addClass('active');
         
         currentQueue = queue;
         currentOrder = null;
         
-        // Réinitialiser l'affichage
         showLoading();
-        
-        // Charger la nouvelle file avec délai pour éviter les conflits
-        setTimeout(() => {
-            loadCurrentQueue();
-        }, 100);
+        setTimeout(() => loadCurrentQueue(), 100);
     }
     
     function loadCurrentQueue() {
-        console.log('Chargement de la file:', currentQueue);
-        
-        if (isLoadingQueue) {
-            console.log('Chargement déjà en cours pour', currentQueue);
-            return;
-        }
+        if (isLoadingQueue) return;
         
         isLoadingQueue = true;
         showLoading();
         
-        // **CORRECTION PRINCIPALE** - Utiliser l'API unifiée
         const endpoint = `/admin/process/api/${currentQueue}`;
         
         $.get(endpoint)
             .done(function(data) {
-                console.log('Données reçues pour', currentQueue, ':', data);
-                
                 if (data.hasOrder && data.order) {
                     currentOrder = data.order;
                     displayOrder(data.order);
                     showMainContent();
-                    console.log('Commande affichée:', currentOrder.id);
                 } else {
-                    console.log('Aucune commande disponible dans', currentQueue);
                     showNoOrderMessage();
                 }
             })
             .fail(function(xhr, status, error) {
-                console.error('Erreur lors du chargement de', currentQueue, ':', error);
-                console.error('Réponse complète:', xhr.responseText);
+                console.error('Erreur chargement file:', error);
                 
                 let errorMsg = 'Erreur lors du chargement de la commande';
                 try {
@@ -1458,9 +1241,7 @@ $(document).ready(function() {
                     if (response.error) {
                         errorMsg = response.error;
                     }
-                } catch (e) {
-                    // Ignorer les erreurs de parsing JSON
-                }
+                } catch (e) {}
                 
                 showNotification(errorMsg, 'error');
                 showNoOrderMessage();
@@ -1470,15 +1251,9 @@ $(document).ready(function() {
             });
     }
     
-    // =========================
-    // AFFICHAGE DES COMMANDES
-    // =========================
-    
+    // Affichage des commandes
     function displayOrder(order) {
-        console.log('Affichage de la commande:', order);
-        
         if (!order || !order.id) {
-            console.error('Commande invalide reçue pour affichage');
             showNoOrderMessage();
             return;
         }
@@ -1508,10 +1283,8 @@ $(document).ready(function() {
             // Panier
             updateCartFromOrder(order);
             
-            console.log('Commande affichée avec succès:', order.id, 'Items:', cartItems.length);
-            
         } catch (error) {
-            console.error('Erreur lors de l\'affichage de la commande:', error);
+            console.error('Erreur affichage commande:', error);
             showNotification('Erreur lors de l\'affichage de la commande', 'error');
             showNoOrderMessage();
         }
@@ -1532,12 +1305,11 @@ $(document).ready(function() {
     
     function updateQueueSpecificDisplay(order) {
         if (currentQueue === 'restock' && order.is_suspended) {
-            $('#restock-info').show();
+            $('#restock-info').show().addClass('show');
             $('#btn-reactivate').show();
             $('#btn-call span').text('Reporter');
-            console.log('Interface restock activée pour commande suspendue:', order.id);
         } else {
-            $('#restock-info').hide();
+            $('#restock-info').hide().removeClass('show');
             $('#btn-reactivate').hide();
             $('#btn-call span').text('Ne répond pas');
         }
@@ -1597,10 +1369,7 @@ $(document).ready(function() {
         $('#loading-message').show().addClass('fade-in');
     }
     
-    // =========================
-    // GESTION DU PANIER - SIMPLIFIÉE
-    // =========================
-    
+    // Gestion du panier
     function updateCartDisplay() {
         const cartItemsContainer = $('#cart-items');
         const cartEmpty = $('#cart-empty');
@@ -1728,34 +1497,14 @@ $(document).ready(function() {
         $('#cart-total').text(total.toFixed(3) + ' TND');
     }
     
-    // =========================
-    // TOGGLE PANIER
-    // =========================
-    
-    window.toggleCart = function() {
-        const cartCard = $('.cart-card');
-        const cartToggle = $('#cart-toggle i');
-        
-        cartCard.toggleClass('collapsed');
-        
-        if (cartCard.hasClass('collapsed')) {
-            cartToggle.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-        } else {
-            cartToggle.removeClass('fa-chevron-down').addClass('fa-chevron-up');
-        }
-    }
-    
-    // =========================
-    // RECHERCHE DE PRODUITS
-    // =========================
-    
+    // Recherche de produits
     function searchProducts(query) {
         $.get('/admin/orders/search-products', { search: query })
             .done(function(products) {
                 showSearchSuggestions(products);
             })
             .fail(function(xhr) {
-                console.error('Erreur lors de la recherche de produits');
+                console.error('Erreur recherche produits');
             });
     }
     
@@ -1792,10 +1541,7 @@ $(document).ready(function() {
         $('#search-suggestions').hide();
     }
     
-    // =========================
-    // GESTION GÉOGRAPHIQUE
-    // =========================
-    
+    // Gestion géographique
     function loadRegions() {
         $.get('/admin/orders/get-regions')
             .done(function(regions) {
@@ -1807,7 +1553,7 @@ $(document).ready(function() {
                 });
             })
             .fail(function(xhr) {
-                console.error('Erreur lors du chargement des régions');
+                console.error('Erreur chargement régions');
             });
     }
     
@@ -1828,14 +1574,11 @@ $(document).ready(function() {
                 });
             })
             .fail(function(xhr) {
-                console.error('Erreur lors du chargement des villes');
+                console.error('Erreur chargement villes');
             });
     }
     
-    // =========================
-    // ACTIONS DE TRAITEMENT
-    // =========================
-    
+    // Actions de traitement
     function showActionModal(action) {
         if (!currentOrder) {
             showNotification('Aucune commande sélectionnée', 'error');
@@ -1867,7 +1610,6 @@ $(document).ready(function() {
             return;
         }
         
-        // Charger l'historique
         $.get(`/admin/orders/${currentOrder.id}/history-modal`)
             .done(function(history) {
                 $('#history-content').html(history);
@@ -1878,10 +1620,7 @@ $(document).ready(function() {
             });
     }
     
-    // =========================
-    // MODAL DOUBLONS
-    // =========================
-    
+    // Modal doublons
     window.showDuplicatesModal = function() {
         if (!currentOrder || !currentOrder.duplicate_info || !currentOrder.duplicate_info.has_duplicates) {
             showNotification('Aucun doublon détecté pour cette commande', 'error');
@@ -1890,7 +1629,7 @@ $(document).ready(function() {
         
         const duplicates = currentOrder.duplicate_info.duplicates;
         let modalContent = '<div class="table-responsive"><table class="table table-striped">';
-        modalContent += '<thead><tr><th>ID</th><th>Statut</th><th>Client</th><th>Total</th><th>Date</th><th>Articles</th></tr></thead><tbody>';
+        modalContent += '<thead><tr><th>ID</th><th>Statut</th><th>Client</th><th>Total</th><th>Date</th></tr></thead><tbody>';
         
         duplicates.forEach(duplicate => {
             const statusClass = `status-${duplicate.status}`;
@@ -1901,16 +1640,9 @@ $(document).ready(function() {
                     <td>
                         <div><strong>${duplicate.customer_name || 'N/A'}</strong></div>
                         <div><small>${duplicate.customer_phone}</small></div>
-                        ${duplicate.customer_phone_2 ? `<div><small>${duplicate.customer_phone_2}</small></div>` : ''}
                     </td>
                     <td><strong>${parseFloat(duplicate.total_price || 0).toFixed(3)} TND</strong></td>
                     <td><small>${duplicate.created_at}</small></td>
-                    <td>
-                        <small>${duplicate.items_count} article(s)</small>
-                        <div class="mt-1">
-                            ${duplicate.items.map(item => `<span class="badge badge-secondary me-1">${item.product_name} (${item.quantity})</span>`).join('')}
-                        </div>
-                    </td>
                 </tr>
             `;
         });
@@ -1921,28 +1653,21 @@ $(document).ready(function() {
         $('#duplicatesModal').modal('show');
     }
     
-    // =========================
-    // FONCTION GLOBALE POUR LES ACTIONS - CORRIGÉE
-    // =========================
-    
+    // Fonction globale pour les actions
     window.processAction = function(action, formData) {
         if (!currentOrder) {
             showNotification('Aucune commande sélectionnée', 'error');
             return;
         }
         
-        console.log('Traitement action:', action, 'pour queue:', currentQueue, 'commande:', currentOrder.id);
-        
-        // Préparation des données
         const requestData = {
             action: action,
             queue: currentQueue,
             ...formData
         };
         
-        // **CORRECTION** - Ajouter les données du panier ET client pour l'action confirm
+        // Ajouter les données du panier et client pour l'action confirm
         if (action === 'confirm') {
-            // Validation des champs requis côté client
             const customerName = $('#customer_name').val().trim();
             const customerGovernorate = $('#customer_governorate').val();
             const customerCity = $('#customer_city').val();
@@ -1958,7 +1683,6 @@ $(document).ready(function() {
                 return;
             }
             
-            // Ajouter toutes les données nécessaires
             requestData.cart_items = cartItems;
             requestData.customer_name = customerName;
             requestData.customer_phone_2 = $('#customer_phone_2').val();
@@ -1967,7 +1691,7 @@ $(document).ready(function() {
             requestData.customer_address = customerAddress;
         }
         
-        // Désactiver les boutons avec état de chargement
+        // Désactiver les boutons
         $('.action-btn').prop('disabled', true).addClass('loading');
         
         // Envoyer la requête
@@ -1980,56 +1704,36 @@ $(document).ready(function() {
             }
         })
         .done(function(response) {
-            console.log('Action réussie:', response);
             showNotification('Action traitée avec succès!', 'success');
-            
-            // Fermer les modales
             $('.modal').modal('hide');
             
-            // Attendre un peu avant de recharger pour éviter les conflits
             setTimeout(() => {
-                console.log('Rechargement après action réussie');
                 loadQueueCounts();
-                
-                // Recharger la file après un délai supplémentaire
-                setTimeout(() => {
-                    loadCurrentQueue();
-                }, 500);
+                setTimeout(() => loadCurrentQueue(), 500);
             }, 1000);
         })
         .fail(function(xhr, status, error) {
-            console.error('Erreur action:', error);
-            console.error('Réponse:', xhr.responseText);
-            
             let errorMessage = 'Erreur lors du traitement de l\'action';
             try {
                 const response = JSON.parse(xhr.responseText);
                 if (response.error) {
                     errorMessage = response.error;
                 } else if (response.errors) {
-                    // Afficher les erreurs de validation
                     const errors = Object.values(response.errors).flat();
                     errorMessage = errors.join(', ');
                 }
-            } catch (e) {
-                // Ignorer les erreurs de parsing
-            }
+            } catch (e) {}
             
             showNotification(errorMessage, 'error');
         })
         .always(function() {
-            // CORRECTION: Toujours réactiver les boutons
             setTimeout(() => {
                 $('.action-btn').prop('disabled', false).removeClass('loading');
-                console.log('Boutons réactivés');
             }, 1000);
         });
     };
     
-    // =========================
-    // UTILITAIRES
-    // =========================
-    
+    // Utilitaires
     function formatDate(dateString) {
         if (!dateString) return 'N/A';
         
@@ -2087,11 +1791,7 @@ $(document).ready(function() {
         }, 5000);
     }
     
-    // =========================
-    // INITIALISATION
-    // =========================
-    
-    // Démarrer l'application
+    // Initialisation
     initialize();
     
     // Actualiser les compteurs toutes les 60 secondes
@@ -2104,7 +1804,6 @@ $(document).ready(function() {
     // Actualiser la file courante toutes les 2 minutes
     setInterval(function() {
         if (!isLoadingQueue && !isLoadingCounts && $('.modal:visible').length === 0) {
-            console.log('Actualisation automatique de la file', currentQueue);
             loadCurrentQueue();
         }
     }, 120000);

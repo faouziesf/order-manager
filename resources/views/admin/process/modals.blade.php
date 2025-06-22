@@ -61,14 +61,14 @@
                         <div class="form-group mb-3">
                             <label for="confirm-price" class="form-label">
                                 <i class="fas fa-money-bill-wave me-2"></i>
-                                Prix total confirmé (TND) <span class="text-danger">*</span>
+                                Prix total de la commande (TND) <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
                                 <input type="number" step="0.001" class="form-control" id="confirm-price" 
-                                       placeholder="0.000" required>
+                                       placeholder="0.000" required min="0.001">
                                 <span class="input-group-text">TND</span>
                             </div>
-                            <div class="form-text">Prix total négocié avec le client</div>
+                            <div class="form-text">Prix total final négocié avec le client (incluant tout)</div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -80,7 +80,8 @@
                             <div class="alert alert-success mb-0">
                                 <small>
                                     <i class="fas fa-arrow-right me-1"></i>Statut: <strong>Confirmée</strong><br>
-                                    <i class="fas fa-minus me-1"></i>Stock sera décrémenté automatiquement
+                                    <i class="fas fa-minus me-1"></i>Stock sera décrémenté automatiquement<br>
+                                    <i class="fas fa-money-bill me-1"></i>Prix total sera mis à jour
                                 </small>
                             </div>
                         </div>
@@ -94,6 +95,11 @@
                     </label>
                     <textarea class="form-control" id="confirm-notes" rows="3" 
                               placeholder="Informations supplémentaires sur la confirmation..."></textarea>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Rappel:</strong> Vérifiez que tous les champs obligatoires du client sont remplis dans le formulaire principal avant de confirmer.
                 </div>
             </div>
             <div class="modal-footer">
@@ -362,10 +368,19 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     transform: translateY(-1px);
 }
+
+/* Classes de statut pour les badges */
+.status-nouvelle { background: #e0e7ff; color: #5b21b6; }
+.status-datée { background: #fef3c7; color: #92400e; }
+.status-confirmée { background: #dcfce7; color: #166534; }
+.status-ancienne { background: #fed7d7; color: #9b2c2c; }
+.status-annulée { background: #fee2e2; color: #dc2626; }
+.status-livrée { background: #dcfce7; color: #166534; }
 </style>
 
 <script>
-// Fonctions pour soumettre les actions avec validation
+// Fonctions pour soumettre les actions avec validation - CORRIGÉES
+
 function submitCallAction() {
     const notes = $('#call-notes').val().trim();
     
@@ -383,8 +398,8 @@ function submitConfirmAction() {
     const notes = $('#confirm-notes').val().trim();
     
     // Validation du prix
-    if (!price || parseFloat(price) < 0) {
-        showNotification('Veuillez saisir un prix valide', 'error');
+    if (!price || parseFloat(price) <= 0) {
+        showNotification('Veuillez saisir un prix valide supérieur à 0', 'error');
         $('#confirm-price').focus();
         return;
     }
@@ -422,6 +437,22 @@ function submitConfirmAction() {
     // Validation du panier
     if (!cartItems || cartItems.length === 0) {
         showNotification('Veuillez ajouter au moins un produit au panier', 'error');
+        return;
+    }
+    
+    // Vérification du stock disponible
+    let stockError = false;
+    let stockMessage = '';
+    
+    cartItems.forEach(item => {
+        if (item.product && item.product.stock < item.quantity) {
+            stockError = true;
+            stockMessage = `Stock insuffisant pour ${item.product.name}. Stock disponible: ${item.product.stock}, quantité demandée: ${item.quantity}`;
+        }
+    });
+    
+    if (stockError) {
+        showNotification(stockMessage, 'error');
         return;
     }
     
@@ -494,6 +525,20 @@ $(document).ready(function() {
         if (cartItems && cartItems.length > 0) {
             const total = cartItems.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0);
             $('#confirm-price').val(total.toFixed(3));
+        }
+    });
+    
+    // Validation en temps réel pour le prix de confirmation
+    $('#confirm-price').on('input', function() {
+        const value = parseFloat($(this).val());
+        const submitBtn = $(this).closest('.modal').find('.btn-success');
+        
+        if (value > 0) {
+            submitBtn.prop('disabled', false);
+            $(this).removeClass('is-invalid');
+        } else {
+            submitBtn.prop('disabled', true);
+            $(this).addClass('is-invalid');
         }
     });
 });

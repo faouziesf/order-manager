@@ -23,37 +23,33 @@ class Order extends Model
         'customer_governorate',
         'customer_city',
         'customer_address',
-        'total_price',
-        'shipping_cost',
-        'confirmed_price',
+        'total_price', // Prix total final de la commande
         'status',
         'priority',
         'scheduled_date',
         'attempts_count',
         'daily_attempts_count',
         'last_attempt_at',
-        'shipped_at',             // Ajouté pour la livraison
-        'delivered_at',           // Ajouté pour la livraison
-        'tracking_number',        // Ajouté pour la livraison
-        'carrier_name',           // Ajouté pour la livraison
-        'delivery_notes',         // Ajouté pour la livraison
+        'shipped_at',
+        'delivered_at',
+        'tracking_number',
+        'carrier_name',
+        'delivery_notes',
         'is_assigned',
         'is_suspended',
         'suspension_reason',
-        'is_duplicate',           // Marquage doublon
-        'reviewed_for_duplicates', // Examiné pour doublons
-        'duplicate_group_id',     // ID du groupe de doublons
+        'is_duplicate',
+        'reviewed_for_duplicates',
+        'duplicate_group_id',
         'notes',
     ];
 
     protected $casts = [
         'total_price' => 'decimal:3',
-        'shipping_cost' => 'decimal:3',
-        'confirmed_price' => 'decimal:3',
         'scheduled_date' => 'date',
         'last_attempt_at' => 'datetime',
-        'shipped_at' => 'datetime',       // Ajouté pour la livraison
-        'delivered_at' => 'datetime',     // Ajouté pour la livraison
+        'shipped_at' => 'datetime',
+        'delivered_at' => 'datetime',
         'is_assigned' => 'boolean',
         'is_suspended' => 'boolean',
         'is_duplicate' => 'boolean',
@@ -100,11 +96,6 @@ class Order extends Model
         return $this->belongsTo(City::class, 'customer_city');
     }
 
-    /**
-     * ========================================
-     * NOUVELLES RELATIONS POUR LA LIVRAISON
-     * ========================================
-     */
     public function shipments()
     {
         return $this->hasMany(Shipment::class);
@@ -158,7 +149,7 @@ class Order extends Model
 
     /**
      * ========================================
-     * SCOPES DE BASE
+     * SCOPES DE BASE - CORRIGÉS POUR FILTRAGE PAR STOCK
      * ========================================
      */
     public function scopeNew($query)
@@ -181,9 +172,13 @@ class Order extends Model
         return $query->where('status', 'datée');
     }
 
+    public function scopeOld($query)
+    {
+        return $query->where('status', 'ancienne');
+    }
+
     public function scopeInTransit($query)
     {
-        // Statut modifié pour refléter les nouveaux statuts de livraison
         return $query->whereIn('status', ['en_route', 'en_transit']);
     }
 
@@ -213,6 +208,81 @@ class Order extends Model
     public function scopeSuspended($query)
     {
         return $query->where('is_suspended', true);
+    }
+
+    /**
+     * ========================================
+     * NOUVEAUX SCOPES POUR LES FILES DE TRAITEMENT
+     * ========================================
+     */
+    
+    /**
+     * Scope pour la file standard: nouvelles commandes non suspendues avec stock suffisant
+     */
+    public function scopeStandardQueue($query, $maxTotalAttempts = 9, $maxDailyAttempts = 3, $delayHours = 2.5)
+    {
+        return $query->where('status', 'nouvelle')
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            })
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+            });
+    }
+
+    /**
+     * Scope pour la file datée: commandes datées après leur date, non suspendues, avec stock suffisant
+     */
+    public function scopeDatedQueue($query, $maxTotalAttempts = 5, $maxDailyAttempts = 2, $delayHours = 3.5)
+    {
+        return $query->where('status', 'datée')
+            ->whereDate('scheduled_date', '<=', now())
+            ->where(function($q) {
+                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+            })
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+            });
+    }
+
+    /**
+     * Scope pour la file ancienne: commandes anciennes avec stock suffisant (même si suspendues)
+     */
+    public function scopeOldQueue($query, $maxDailyAttempts = 2, $delayHours = 6, $maxTotalAttempts = 0)
+    {
+        $query = $query->where('status', 'ancienne')
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+            });
+
+        if ($maxTotalAttempts > 0) {
+            $query->where('attempts_count', '<', $maxTotalAttempts);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Scope pour la file retour en stock: commandes suspendues nouvelles/datées avec stock maintenant suffisant
+     */
+    public function scopeRestockQueue($query, $maxTotalAttempts = 5, $maxDailyAttempts = 2, $delayHours = 1)
+    {
+        return $query->where('is_suspended', true)
+            ->whereIn('status', ['nouvelle', 'datée'])
+            ->where('attempts_count', '<', $maxTotalAttempts)
+            ->where('daily_attempts_count', '<', $maxDailyAttempts)
+            ->where(function($q) use ($delayHours) {
+                $q->whereNull('last_attempt_at')
+                  ->orWhere('last_attempt_at', '<=', now()->subHours($delayHours));
+            });
     }
 
     /**
@@ -314,6 +384,9 @@ class Order extends Model
         ]);
     }
 
+    /**
+     * Recalculer le prix total depuis les items - SUPPRESSION DES FRAIS DE LIVRAISON
+     */
     public function recalculateTotal()
     {
         $total = $this->items->sum('total_price');
@@ -323,7 +396,7 @@ class Order extends Model
     }
 
     /**
-     * Enregistrer une action dans l'historique (VERSION MISE À JOUR)
+     * Enregistrer une action dans l'historique - VERSION SIMPLIFIÉE
      */
     public function recordHistory(
         $action,
@@ -390,21 +463,13 @@ class Order extends Model
     }
 
     /**
-     * Vérifier si la commande peut être traitée
+     * Vérifier si la commande peut être traitée selon les règles de files
      */
-    public function canBeProcessed($queueType = null)
+    public function canBeProcessed($queueType = null, $maxDailyAttempts = 3, $maxTotalAttempts = 9, $delayHours = 2.5)
     {
-        if (!$queueType) {
-            $queueType = $this->getQueueType();
-        }
-        
-        if ($this->is_suspended) {
+        if ($queueType !== 'old' && $this->is_suspended) {
             return false;
         }
-        
-        $maxDailyAttempts = (int)AdminSetting::get("{$queueType}_max_daily_attempts", 3);
-        $maxTotalAttempts = (int)AdminSetting::get("{$queueType}_max_total_attempts", 9);
-        $delayHours = (float)AdminSetting::get("{$queueType}_delay_hours", 2.5);
         
         if ($this->daily_attempts_count >= $maxDailyAttempts) {
             return false;
@@ -414,9 +479,9 @@ class Order extends Model
             return false;
         }
         
-        if ($this->last_attempt_at && $this->updated_at) {
-            $timeSinceLastModification = now()->diffInHours($this->updated_at);
-            if ($timeSinceLastModification < $delayHours) {
+        if ($this->last_attempt_at) {
+            $timeSinceLastAttempt = now()->diffInHours($this->last_attempt_at);
+            if ($timeSinceLastAttempt < $delayHours) {
                 return false;
             }
         }
@@ -428,48 +493,46 @@ class Order extends Model
         return true;
     }
 
+    /**
+     * Obtenir le type de file selon le statut
+     */
     public function getQueueType()
     {
-        if ($this->status === 'datée') {
-            return 'dated';
-        }
-        
-        if ($this->status === 'ancienne') {
-            return 'old';
-        }
-        
-        if ($this->status === 'nouvelle') {
-            return 'standard';
-        }
-        
-        return 'standard';
+        return match($this->status) {
+            'datée' => 'dated',
+            'ancienne' => 'old', 
+            'nouvelle' => 'standard',
+            default => 'standard'
+        };
     }
 
-    public function transitionToOldIfNeeded()
+    /**
+     * Transition automatique vers file ancienne si nécessaire
+     */
+    public function transitionToOldIfNeeded($standardMaxAttempts = 9)
     {
-        if ($this->status === 'nouvelle') {
-            $standardMaxAttempts = (int)AdminSetting::get('standard_max_total_attempts', 9);
+        if ($this->status === 'nouvelle' && $this->attempts_count >= $standardMaxAttempts) {
+            $previousStatus = $this->status;
+            $this->status = 'ancienne';
+            $this->save();
             
-            if ($this->attempts_count >= $standardMaxAttempts) {
-                $previousStatus = $this->status;
-                $this->status = 'ancienne';
-                $this->save();
-                
-                $this->recordHistory(
-                    'changement_statut',
-                    "Commande automatiquement passée en file ancienne après {$standardMaxAttempts} tentatives",
-                    ['auto_transition' => true, 'attempts_reached' => $this->attempts_count],
-                    $previousStatus,
-                    'ancienne'
-                );
-                
-                return true;
-            }
+            $this->recordHistory(
+                'changement_statut',
+                "Commande automatiquement passée en file ancienne après {$standardMaxAttempts} tentatives",
+                ['auto_transition' => true, 'attempts_reached' => $this->attempts_count],
+                $previousStatus,
+                'ancienne'
+            );
+            
+            return true;
         }
         
         return false;
     }
 
+    /**
+     * Planifier la commande pour une date donnée
+     */
     public function scheduleFor($date, $notes = null)
     {
         $this->status = 'datée';
@@ -486,6 +549,9 @@ class Order extends Model
         return $this;
     }
 
+    /**
+     * Suspendre la commande
+     */
     public function suspend($reason = null)
     {
         $this->is_suspended = true;
@@ -500,6 +566,9 @@ class Order extends Model
         return $this;
     }
 
+    /**
+     * Réactiver la commande
+     */
     public function reactivate($note = null)
     {
         $this->is_suspended = false;
@@ -514,6 +583,9 @@ class Order extends Model
         return $this;
     }
 
+    /**
+     * Vérifier le stock et mettre à jour le statut de suspension automatiquement
+     */
     public function checkStockAndUpdateStatus()
     {
         $allInStock = true;
@@ -530,7 +602,7 @@ class Order extends Model
             $this->suspend('Rupture de stock: ' . implode(', ', $missingProducts));
             return false;
         } 
-        elseif ($allInStock && $this->is_suspended) {
+        elseif ($allInStock && $this->is_suspended && str_contains($this->suspension_reason ?? '', 'stock')) {
             $this->reactivate('Stock disponible pour tous les produits');
             return true;
         }
@@ -538,19 +610,25 @@ class Order extends Model
         return $allInStock;
     }
 
+    /**
+     * Vérifier si la commande a un stock suffisant pour tous ses produits
+     */
     public function hasSufficientStock()
     {
         foreach ($this->items as $item) {
-            if ($item->product && $item->product->stock < $item->quantity) {
+            if (!$item->product || !$item->product->is_active) {
+                return false;
+            }
+            if ($item->product->stock < $item->quantity) {
                 return false;
             }
         }
         return true;
     }
-    
+
     /**
      * ========================================
-     * MÉTHODES POUR LA LIVRAISON
+     * MÉTHODES POUR LA LIVRAISON (SIMPLIFIÉES)
      * ========================================
      */
 
@@ -662,65 +740,6 @@ class Order extends Model
     }
 
     /**
-     * Obtenir le dernier statut de livraison
-     */
-    public function getLastDeliveryStatus()
-    {
-        return $this->getDeliveryHistory()->first();
-    }
-
-    /**
-     * ========================================
-     * SCOPES POUR LES FILES
-     * ========================================
-     */
-    public function scopeAvailableForQueue($query, $queueType)
-    {
-        $maxDailyAttempts = (int)AdminSetting::get("{$queueType}_max_daily_attempts", 3);
-        $maxTotalAttempts = (int)AdminSetting::get("{$queueType}_max_total_attempts", 9);
-        $delayHours = (float)AdminSetting::get("{$queueType}_delay_hours", 2.5);
-        
-        return $query->where('daily_attempts_count', '<', $maxDailyAttempts)
-            ->where(function($q) use ($maxTotalAttempts) {
-                if ($maxTotalAttempts > 0) {
-                    $q->where('attempts_count', '<', $maxTotalAttempts);
-                }
-            })
-            ->where(function($q) use ($delayHours) {
-                $q->whereNull('last_attempt_at')
-                  ->orWhere('updated_at', '<=', now()->subHours($delayHours));
-            })
-            ->notSuspended();
-    }
-
-    public function scopeStandardQueue($query)
-    {
-        $maxTotalAttempts = (int)AdminSetting::get('standard_max_total_attempts', 9);
-        
-        return $query->where('status', 'nouvelle')
-            ->where('attempts_count', '<', $maxTotalAttempts)
-            ->availableForQueue('standard');
-    }
-
-    public function scopeDatedQueue($query)
-    {
-        return $query->where('status', 'datée')
-            ->whereDate('scheduled_date', '<=', now())
-            ->availableForQueue('dated');
-    }
-
-    public function scopeOld($query)
-    {
-        return $query->where('status', 'ancienne');
-    }
-
-    public function scopeOldQueue($query)
-    {
-        return $query->where('status', 'ancienne')
-            ->availableForQueue('old');
-    }
-
-    /**
      * ========================================
      * MÉTHODES POUR LA GESTION DES DOUBLONS
      * ========================================
@@ -779,158 +798,11 @@ class Order extends Model
             ->get();
     }
 
-    public function canMergeWith(Order $otherOrder)
-    {
-        if ($this->admin_id !== $otherOrder->admin_id) {
-            return false;
-        }
-        
-        $mergeableStatuses = ['nouvelle', 'datée'];
-        if (!in_array($this->status, $mergeableStatuses) || !in_array($otherOrder->status, $mergeableStatuses)) {
-            return false;
-        }
-        
-        $compatibleStatuses = [
-            ['nouvelle', 'nouvelle'],
-            ['datée', 'datée'],
-            ['nouvelle', 'datée'],
-            ['datée', 'nouvelle']
-        ];
-        
-        $statusPair = [$this->status, $otherOrder->status];
-        
-        foreach ($compatibleStatuses as $compatible) {
-            if (($statusPair[0] === $compatible[0] && $statusPair[1] === $compatible[1]) ||
-                ($statusPair[0] === $compatible[1] && $statusPair[1] === $compatible[0])) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    public function mergeWith(Order $otherOrder, $note = null)
-    {
-        if (!$this->canMergeWith($otherOrder)) {
-            throw new \Exception('Ces commandes ne peuvent pas être fusionnées (seules les commandes nouvelle/datée sont fusionnables)');
-        }
-        
-        $mergedNames = collect([$this->customer_name, $otherOrder->customer_name])
-            ->filter()->unique()->implode(' / ');
-            
-        $mergedAddresses = collect([$this->customer_address, $otherOrder->customer_address])
-            ->filter()->unique()->implode(' / ');
-        
-        foreach ($otherOrder->items as $item) {
-            $existingItem = $this->items->where('product_id', $item->product_id)->first();
-            
-            if ($existingItem) {
-                $existingItem->quantity += $item->quantity;
-                $existingItem->total_price += $item->total_price;
-                $existingItem->save();
-            } else {
-                $this->items()->create([
-                    'product_id' => $item->product_id,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'total_price' => $item->total_price
-                ]);
-            }
-        }
-        
-        $this->update([
-            'customer_name' => $mergedNames,
-            'customer_address' => $mergedAddresses,
-            'total_price' => $this->items->sum('total_price') + $this->shipping_cost,
-            'reviewed_for_duplicates' => true,
-            'notes' => ($this->notes ? $this->notes . "\n" : "") . 
-                      "[FUSION " . now()->format('d/m/Y H:i') . "] " . 
-                      ($note ?: "Fusion avec commande #{$otherOrder->id} (Statut: {$otherOrder->status})")
-        ]);
-        
-        $this->recordHistory(
-            'duplicate_merge',
-            "Fusion avec commande #{$otherOrder->id} (Statut: {$otherOrder->status})",
-            [
-                'merged_order_id' => $otherOrder->id,
-                'merged_order_status' => $otherOrder->status,
-                'total_price_before' => $this->getOriginal('total_price'),
-                'total_price_after' => $this->total_price,
-                'admin_note' => $note
-            ]
-        );
-        
-        $otherOrder->delete();
-        
-        return $this;
-    }
-
-    public function getDuplicateCount()
-    {
-        return static::where('admin_id', $this->admin_id)
-            ->where(function($q) {
-                $q->where('customer_phone', $this->customer_phone);
-                if ($this->customer_phone_2) {
-                    $q->orWhere('customer_phone', $this->customer_phone_2)
-                      ->orWhere('customer_phone_2', $this->customer_phone)
-                      ->orWhere('customer_phone_2', $this->customer_phone_2);
-                }
-            })
-            ->where('is_duplicate', true)
-            ->count();
-    }
-
-    public function getMergeableDuplicateCount()
-    {
-        return static::where('admin_id', $this->admin_id)
-            ->where(function($q) {
-                $q->where('customer_phone', $this->customer_phone);
-                if ($this->customer_phone_2) {
-                    $q->orWhere('customer_phone', $this->customer_phone_2)
-                      ->orWhere('customer_phone_2', $this->customer_phone)
-                      ->orWhere('customer_phone_2', $this->customer_phone_2);
-                }
-            })
-            ->where('is_duplicate', true)
-            ->whereIn('status', ['nouvelle', 'datée'])
-            ->count();
-    }
-
-    public function hasRecentDuplicates()
-    {
-        return static::where('admin_id', $this->admin_id)
-            ->where(function($q) {
-                $q->where('customer_phone', $this->customer_phone);
-                if ($this->customer_phone_2) {
-                    $q->orWhere('customer_phone', $this->customer_phone_2)
-                      ->orWhere('customer_phone_2', $this->customer_phone)
-                      ->orWhere('customer_phone_2', $this->customer_phone_2);
-                }
-            })
-            ->where('is_duplicate', true)
-            ->where('reviewed_for_duplicates', false)
-            ->where('id', '!=', $this->id)
-            ->exists();
-    }
-
-    public function hasMergeableDuplicates()
-    {
-        return static::where('admin_id', $this->admin_id)
-            ->where(function($q) {
-                $q->where('customer_phone', $this->customer_phone);
-                if ($this->customer_phone_2) {
-                    $q->orWhere('customer_phone', $this->customer_phone_2)
-                      ->orWhere('customer_phone_2', $this->customer_phone)
-                      ->orWhere('customer_phone_2', $this->customer_phone_2);
-                }
-            })
-            ->where('is_duplicate', true)
-            ->where('reviewed_for_duplicates', false)
-            ->whereIn('status', ['nouvelle', 'datée'])
-            ->where('id', '!=', $this->id)
-            ->exists();
-    }
-
+    /**
+     * ========================================
+     * MÉTHODES STATIQUES POUR DÉTECTION DE DOUBLONS
+     * ========================================
+     */
     public static function detectDuplicatesForAdmin($adminId)
     {
         $orders = static::where('admin_id', $adminId)->get();

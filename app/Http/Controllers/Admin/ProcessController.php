@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class ProcessController extends Controller
 {
@@ -33,7 +34,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * API unifiée pour obtenir une commande selon la file
+     * API unifiée pour obtenir une commande selon la file - CORRIGÉE
      */
     public function getQueueApi($queue)
     {
@@ -61,6 +62,24 @@ class ProcessController extends Controller
             $order = $this->findOrderForQueue($admin, $queue);
             
             if ($order) {
+                // Vérifier une dernière fois le stock avant de retourner la commande
+                if ($this->orderHasStockIssues($order)) {
+                    Log::warning("Commande {$order->id} a des problèmes de stock détectés à la dernière minute");
+                    
+                    // Si c'est une commande non suspendue qui a des problèmes de stock, la suspendre
+                    if (!$order->is_suspended && in_array($queue, ['standard', 'dated'])) {
+                        $order->is_suspended = true;
+                        $order->suspension_reason = 'Stock insuffisant';
+                        $order->save();
+                        $order->recordHistory('suspension', 'Commande suspendue automatiquement - Stock insuffisant');
+                    }
+                    
+                    return response()->json([
+                        'hasOrder' => false,
+                        'message' => 'Commande suspendue - problème de stock détecté'
+                    ]);
+                }
+                
                 $orderData = $this->formatOrderData($order);
                 
                 return response()->json([
@@ -88,7 +107,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Trouver une commande selon le type de file
+     * Trouver une commande selon le type de file - LOGIQUE CORRIGÉE
      */
     private function findOrderForQueue($admin, $queue)
     {
@@ -107,7 +126,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * File standard : commandes nouvelles, non suspendues, avec stock suffisant
+     * File standard : commandes nouvelles, non suspendues, avec stock suffisant - CORRIGÉE
      */
     private function findStandardOrder($admin)
     {
@@ -133,13 +152,17 @@ class ProcessController extends Controller
             ->get();
 
         // Filtrer les commandes avec stock suffisant
-        return $orders->filter(function($order) {
-            return !$this->orderHasStockIssues($order);
-        })->first();
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                return $order;
+            }
+        }
+        
+        return null;
     }
 
     /**
-     * File datée : commandes datées après leur date, non suspendues, avec stock suffisant
+     * File datée : commandes datées après leur date, non suspendues, avec stock suffisant - CORRIGÉE
      */
     private function findDatedOrder($admin)
     {
@@ -150,7 +173,7 @@ class ProcessController extends Controller
         $orders = Order::where('admin_id', $admin->id)
             ->with(['items.product'])
             ->where('status', 'datée')
-            ->whereDate('scheduled_date', '<=', now())
+            ->whereDate('scheduled_date', '<=', now()) // Seulement après leur date
             ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
             })
@@ -166,13 +189,17 @@ class ProcessController extends Controller
             ->get();
 
         // Filtrer les commandes avec stock suffisant
-        return $orders->filter(function($order) {
-            return !$this->orderHasStockIssues($order);
-        })->first();
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                return $order;
+            }
+        }
+        
+        return null;
     }
 
     /**
-     * File ancienne : commandes anciennes avec stock suffisant (même si suspendues)
+     * File ancienne : commandes anciennes avec stock suffisant (même si suspendues) - CORRIGÉE
      */
     private function findOldOrder($admin)
     {
@@ -183,6 +210,7 @@ class ProcessController extends Controller
         $query = Order::where('admin_id', $admin->id)
             ->with(['items.product'])
             ->where('status', 'ancienne')
+            // Ne pas filtrer par suspension pour la file ancienne
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
             ->where(function($q) use ($delayHours) {
                 $q->whereNull('last_attempt_at')
@@ -198,14 +226,18 @@ class ProcessController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Filtrer uniquement par stock (même si suspendues)
-        return $orders->filter(function($order) {
-            return !$this->orderHasStockIssues($order);
-        })->first();
+        // Filtrer uniquement par stock
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                return $order;
+            }
+        }
+        
+        return null;
     }
 
     /**
-     * File retour en stock : commandes suspendues nouvelles/datées avec stock suffisant
+     * File retour en stock : commandes suspendues nouvelles/datées avec stock maintenant suffisant - CORRIGÉE
      */
     private function findRestockOrder($admin)
     {
@@ -215,7 +247,7 @@ class ProcessController extends Controller
 
         $orders = Order::where('admin_id', $admin->id)
             ->with(['items.product'])
-            ->where('is_suspended', true)
+            ->where('is_suspended', true) // Seulement les commandes suspendues
             ->whereIn('status', ['nouvelle', 'datée'])
             ->where('attempts_count', '<', $maxTotalAttempts)
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
@@ -228,13 +260,17 @@ class ProcessController extends Controller
             ->get();
 
         // Filtrer les commandes avec stock maintenant disponible
-        return $orders->filter(function($order) {
-            return !$this->orderHasStockIssues($order);
-        })->first();
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                return $order;
+            }
+        }
+        
+        return null;
     }
 
     /**
-     * Obtenir les compteurs de toutes les files
+     * Obtenir les compteurs de toutes les files - CORRIGÉ
      */
     public function getCounts()
     {
@@ -286,7 +322,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Compter les commandes standard disponibles
+     * Compter les commandes standard disponibles - CORRIGÉ
      */
     private function getStandardCount($admin)
     {
@@ -308,13 +344,18 @@ class ProcessController extends Controller
             })
             ->get();
 
-        return $orders->filter(function($order) {
-            return !$this->orderHasStockIssues($order);
-        })->count();
+        $count = 0;
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                $count++;
+            }
+        }
+        
+        return $count;
     }
 
     /**
-     * Compter les commandes datées disponibles
+     * Compter les commandes datées disponibles - CORRIGÉ
      */
     private function getDatedCount($admin)
     {
@@ -337,13 +378,18 @@ class ProcessController extends Controller
             })
             ->get();
 
-        return $orders->filter(function($order) {
-            return !$this->orderHasStockIssues($order);
-        })->count();
+        $count = 0;
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                $count++;
+            }
+        }
+        
+        return $count;
     }
 
     /**
-     * Compter les commandes anciennes disponibles
+     * Compter les commandes anciennes disponibles - CORRIGÉ
      */
     private function getOldCount($admin)
     {
@@ -366,26 +412,37 @@ class ProcessController extends Controller
 
         $orders = $query->get();
 
-        return $orders->filter(function($order) {
-            return !$this->orderHasStockIssues($order);
-        })->count();
+        $count = 0;
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                $count++;
+            }
+        }
+        
+        return $count;
     }
 
     /**
-     * Compter les commandes en examen
+     * Compter les commandes en examen - CORRIGÉ
      */
     private function getExaminationCount($admin)
     {
-        return $admin->orders()
+        $orders = $admin->orders()
             ->with(['items.product'])
             ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
             })
             ->whereIn('status', ['nouvelle', 'confirmée', 'datée'])
-            ->get()
-            ->filter(function($order) {
-                return $this->orderHasStockIssues($order);
-            })->count();
+            ->get();
+        
+        $count = 0;
+        foreach ($orders as $order) {
+            if ($this->orderHasStockIssues($order)) {
+                $count++;
+            }
+        }
+        
+        return $count;
     }
 
     /**
@@ -400,7 +457,7 @@ class ProcessController extends Controller
     }
 
     /**
-     * Compter les commandes de retour en stock
+     * Compter les commandes de retour en stock - CORRIGÉ
      */
     private function getRestockCount($admin)
     {
@@ -420,13 +477,18 @@ class ProcessController extends Controller
             })
             ->get();
 
-        return $orders->filter(function($order) {
-            return !$this->orderHasStockIssues($order);
-        })->count();
+        $count = 0;
+        foreach ($orders as $order) {
+            if (!$this->orderHasStockIssues($order)) {
+                $count++;
+            }
+        }
+        
+        return $count;
     }
 
     /**
-     * Traiter une action sur une commande
+     * Traiter une action sur une commande - CORRIGÉ
      */
     public function processAction(Request $request, Order $order)
     {
@@ -485,7 +547,7 @@ class ProcessController extends Controller
                 'action' => $action
             ]);
             
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
             return response()->json([
                 'error' => 'Erreur de validation',
@@ -507,27 +569,44 @@ class ProcessController extends Controller
     }
 
     /**
-     * Validation selon l'action
+     * Validation selon l'action - CORRIGÉE
      */
     private function validateAction($request, $action)
     {
         $rules = [];
+        $messages = [];
         
         switch ($action) {
             case 'call':
                 $rules = [
                     'notes' => 'required|string|min:3|max:1000',
                 ];
+                $messages = [
+                    'notes.required' => 'Une note est obligatoire pour cette action',
+                    'notes.min' => 'La note doit contenir au moins 3 caractères',
+                ];
                 break;
                 
             case 'confirm':
                 $rules = [
-                    'confirmed_price' => 'required|numeric|min:0',
+                    'confirmed_price' => 'required|numeric|min:0.001',
                     'customer_name' => 'required|string|min:2|max:255',
-                    'customer_governorate' => 'required|string',
-                    'customer_city' => 'required|string',
-                    'customer_address' => 'required|string|min:5',
+                    'customer_governorate' => 'required|string|max:255',
+                    'customer_city' => 'required|string|max:255',
+                    'customer_address' => 'required|string|min:5|max:500',
                     'cart_items' => 'required|array|min:1',
+                    'cart_items.*.product_id' => 'required|exists:products,id',
+                    'cart_items.*.quantity' => 'required|integer|min:1',
+                ];
+                $messages = [
+                    'confirmed_price.required' => 'Le prix total confirmé est obligatoire',
+                    'confirmed_price.min' => 'Le prix doit être supérieur à 0',
+                    'customer_name.required' => 'Le nom du client est obligatoire',
+                    'customer_governorate.required' => 'Le gouvernorat est obligatoire',
+                    'customer_city.required' => 'La ville est obligatoire',
+                    'customer_address.required' => 'L\'adresse est obligatoire',
+                    'customer_address.min' => 'L\'adresse doit contenir au moins 5 caractères',
+                    'cart_items.required' => 'Au moins un produit est requis',
                 ];
                 break;
                 
@@ -535,12 +614,20 @@ class ProcessController extends Controller
                 $rules = [
                     'notes' => 'required|string|min:3|max:1000',
                 ];
+                $messages = [
+                    'notes.required' => 'Une raison d\'annulation est obligatoire',
+                    'notes.min' => 'La raison doit contenir au moins 3 caractères',
+                ];
                 break;
                 
             case 'schedule':
                 $rules = [
                     'scheduled_date' => 'required|date|after_or_equal:today',
                     'notes' => 'nullable|string|max:1000',
+                ];
+                $messages = [
+                    'scheduled_date.required' => 'Une date est obligatoire',
+                    'scheduled_date.after_or_equal' => 'La date ne peut pas être dans le passé',
                 ];
                 break;
                 
@@ -552,7 +639,7 @@ class ProcessController extends Controller
                 break;
         }
         
-        $request->validate($rules);
+        $request->validate($rules, $messages);
     }
 
     /**
@@ -567,19 +654,27 @@ class ProcessController extends Controller
     }
 
     /**
-     * Gérer l'action "Confirmer"
+     * Gérer l'action "Confirmer" - CORRIGÉE
      */
     private function handleConfirmAction($order, $request, $admin)
     {
+        // Vérifier le stock avant de confirmer
+        if ($this->orderHasStockIssues($order)) {
+            throw new \Exception('Impossible de confirmer: certains produits ne sont plus en stock suffisant');
+        }
+        
+        // Valider les données de confirmation
+        $this->validateConfirmation($request);
+        
         // Mettre à jour les informations de la commande
-        $this->confirmOrder($order, $request, $admin->name . " a confirmé la commande");
+        $this->confirmOrder($order, $request, "Commande confirmée par " . $admin->name);
         
         // Mettre à jour les items et décrémenter le stock
         if ($request->has('cart_items')) {
             $this->updateOrderItems($order, $request->cart_items);
         }
         
-        $historyNote = $admin->name . " a confirmé la commande pour " . $order->total_price . " TND";
+        $historyNote = $admin->name . " a confirmé la commande pour " . $request->confirmed_price . " TND";
         if ($request->notes) {
             $historyNote .= " : " . $request->notes;
         }

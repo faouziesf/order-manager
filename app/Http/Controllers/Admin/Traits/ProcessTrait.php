@@ -37,7 +37,7 @@ trait ProcessTrait
     }
 
     /**
-     * Vérifier si une commande a des problèmes de stock
+     * Vérifier si une commande a des problèmes de stock - CORRIGÉ
      */
     protected function orderHasStockIssues($order)
     {
@@ -46,13 +46,21 @@ trait ProcessTrait
         }
         
         foreach ($order->items as $item) {
-            // Si le produit n'existe plus, on considère qu'il n'y a pas de problème de stock
+            // Si le produit n'existe plus, considérer comme problème de stock
             if (!$item->product) {
-                continue;
+                Log::warning("Produit manquant pour order {$order->id}, item {$item->id}");
+                return true;
+            }
+            
+            // Si le produit est inactif, considérer comme problème de stock
+            if (!$item->product->is_active) {
+                Log::warning("Produit inactif pour order {$order->id}, product {$item->product->id}");
+                return true;
             }
             
             // Vérifier si le stock est insuffisant
             if ($item->product->stock < $item->quantity) {
+                Log::info("Stock insuffisant pour order {$order->id}, product {$item->product->id}: besoin {$item->quantity}, stock {$item->product->stock}");
                 return true;
             }
         }
@@ -61,7 +69,7 @@ trait ProcessTrait
     }
 
     /**
-     * Enregistrer une tentative d'appel
+     * Enregistrer une tentative d'appel - SIMPLIFIÉ
      */
     protected function recordCallAttempt($order, $notes)
     {
@@ -112,7 +120,7 @@ trait ProcessTrait
     }
 
     /**
-     * Confirmer une commande avec mise à jour du stock
+     * Confirmer une commande - SIMPLIFIÉ
      */
     protected function confirmOrder($order, $request, $notes)
     {
@@ -132,95 +140,99 @@ trait ProcessTrait
     }
 
     /**
-     * Validation pour la confirmation
+     * Validation pour la confirmation - CORRIGÉE
      */
     protected function validateConfirmation($request)
     {
         $request->validate([
-            'confirmed_price' => 'required|numeric|min:0',
+            'confirmed_price' => 'required|numeric|min:0.001',
             'customer_name' => 'required|string|min:2|max:255',
-            'customer_governorate' => 'required|string',
-            'customer_city' => 'required|string', 
-            'customer_address' => 'required|string|min:5',
+            'customer_governorate' => 'required|string|max:255',
+            'customer_city' => 'required|string|max:255', 
+            'customer_address' => 'required|string|min:5|max:500',
             'cart_items' => 'required|array|min:1',
+            'cart_items.*.product_id' => 'required|exists:products,id',
+            'cart_items.*.quantity' => 'required|integer|min:1',
+            'cart_items.*.unit_price' => 'required|numeric|min:0',
+        ], [
+            'confirmed_price.required' => 'Le prix total confirmé est obligatoire',
+            'confirmed_price.min' => 'Le prix doit être supérieur à 0',
+            'customer_name.required' => 'Le nom du client est obligatoire',
+            'customer_name.min' => 'Le nom doit contenir au moins 2 caractères',
+            'customer_governorate.required' => 'Le gouvernorat est obligatoire',
+            'customer_city.required' => 'La ville est obligatoire',
+            'customer_address.required' => 'L\'adresse est obligatoire',
+            'customer_address.min' => 'L\'adresse doit contenir au moins 5 caractères',
+            'cart_items.required' => 'Au moins un produit est requis',
+            'cart_items.min' => 'Au moins un produit est requis',
         ]);
     }
 
     /**
-     * Mettre à jour les items de la commande et décrémenter le stock
+     * Mettre à jour les items de la commande et décrémenter le stock - CORRIGÉ
      */
     protected function updateOrderItems($order, $cartItems)
     {
         if (!$cartItems || !is_array($cartItems)) {
-            return;
+            throw new \Exception('Aucun produit fourni');
         }
         
-        // Supprimer les anciens items (sans remettre le stock)
-        $order->items()->delete();
+        DB::beginTransaction();
         
-        $totalPrice = 0;
-        
-        foreach ($cartItems as $item) {
-            if (!isset($item['product_id']) || !isset($item['quantity'])) {
-                continue;
-            }
+        try {
+            // Supprimer les anciens items (sans remettre le stock car c'était une commande non confirmée)
+            $order->items()->delete();
             
-            $quantity = (int)$item['quantity'];
-            $unitPrice = (float)($item['unit_price'] ?? 0);
-            $totalItemPrice = $quantity * $unitPrice;
-            $totalPrice += $totalItemPrice;
+            $totalPrice = 0;
             
-            // Créer le nouvel item
-            $order->items()->create([
-                'product_id' => $item['product_id'],
-                'quantity' => $quantity,
-                'unit_price' => $unitPrice,
-                'total_price' => $totalItemPrice,
-            ]);
-            
-            // DÉCRÉMENTER LE STOCK DU PRODUIT
-            $product = Product::find($item['product_id']);
-            if ($product && $product->admin_id === $order->admin_id) {
-                $product->stock = max(0, $product->stock - $quantity);
+            foreach ($cartItems as $item) {
+                if (!isset($item['product_id']) || !isset($item['quantity'])) {
+                    continue;
+                }
+                
+                $product = Product::where('id', $item['product_id'])
+                    ->where('admin_id', $order->admin_id)
+                    ->where('is_active', true)
+                    ->first();
+                
+                if (!$product) {
+                    throw new \Exception("Produit {$item['product_id']} non trouvé ou inactif");
+                }
+                
+                $quantity = (int)$item['quantity'];
+                $unitPrice = (float)($item['unit_price'] ?? $product->price);
+                
+                // Vérifier le stock avant de décrémenter
+                if ($product->stock < $quantity) {
+                    throw new \Exception("Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock}, quantité demandée: {$quantity}");
+                }
+                
+                $totalItemPrice = $quantity * $unitPrice;
+                $totalPrice += $totalItemPrice;
+                
+                // Créer le nouvel item
+                $order->items()->create([
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'total_price' => $totalItemPrice,
+                ]);
+                
+                // DÉCRÉMENTER LE STOCK DU PRODUIT
+                $product->stock = $product->stock - $quantity;
                 $product->save();
                 
                 Log::info("Stock décrémenté pour produit {$product->id}: -{$quantity} (nouveau stock: {$product->stock})");
             }
-        }
-        
-        // Mettre à jour le prix total de la commande (SANS frais de livraison)
-        $order->total_price = $totalPrice;
-        $order->save();
-    }
-
-    /**
-     * Mettre à jour les informations de la commande
-     */
-    protected function updateOrderInfo($order, $request)
-    {
-        $fieldsToUpdate = [
-            'customer_name',
-            'customer_phone_2', 
-            'customer_governorate',
-            'customer_city',
-            'customer_address'
-        ];
-        
-        $changes = [];
-        foreach ($fieldsToUpdate as $field) {
-            if ($request->has($field)) {
-                $oldValue = $order->$field;
-                $newValue = $request->$field;
-                
-                if ($oldValue !== $newValue) {
-                    $changes[$field] = ['old' => $oldValue, 'new' => $newValue];
-                    $order->$field = $newValue;
-                }
-            }
-        }
-        
-        if (!empty($changes)) {
-            $order->save();
+            
+            // Le prix total est déjà défini dans confirmOrder()
+            // On ne le modifie pas ici pour garder le prix confirmé par l'utilisateur
+            
+            DB::commit();
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
     }
 

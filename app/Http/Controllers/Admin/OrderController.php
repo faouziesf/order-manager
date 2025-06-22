@@ -130,7 +130,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Créer une nouvelle commande
+     * Créer une nouvelle commande - SIMPLIFIÉE
      */
     public function store(Request $request)
     {
@@ -182,12 +182,15 @@ class OrderController extends Controller
 
             $order->save();
 
-            // Ajouter les produits
+            // Ajouter les produits et calculer le prix total
             $totalPrice = 0;
             foreach ($validated['products'] as $productData) {
-                $product = Product::find($productData['id']);
+                $product = Product::where('id', $productData['id'])
+                    ->where('admin_id', $admin->id)
+                    ->where('is_active', true)
+                    ->first();
                 
-                if ($product && $product->admin_id === $admin->id) {
+                if ($product) {
                     $quantity = $productData['quantity'];
                     $unitPrice = $product->price;
                     $totalPrice += $quantity * $unitPrice;
@@ -204,6 +207,9 @@ class OrderController extends Controller
             // Mettre à jour le prix total
             $order->total_price = $totalPrice;
             $order->save();
+
+            // Vérifier le stock et suspendre si nécessaire
+            $order->checkStockAndUpdateStatus();
 
             // Enregistrer dans l'historique
             $order->recordHistory('création', 'Commande créée par ' . $admin->name);
@@ -258,7 +264,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Mettre à jour une commande
+     * Mettre à jour une commande - SIMPLIFIÉE
      */
     public function update(Request $request, Order $order)
     {
@@ -273,11 +279,11 @@ class OrderController extends Controller
                 'customer_city' => 'nullable|exists:cities,id',
                 'customer_address' => 'nullable|string|max:500',
                 'notes' => 'nullable|string|max:1000',
-                'status' => 'required|in:nouvelle,confirmée,annulée,datée,en_route,livrée',
+                'status' => 'required|in:nouvelle,confirmée,annulée,datée,ancienne,en_route,livrée',
                 'priority' => 'required|in:normale,urgente,vip',
                 'employee_id' => 'nullable|exists:employees,id',
                 'scheduled_date' => 'nullable|date|after:today',
-                'confirmed_price' => 'nullable|numeric|min:0',
+                'total_price' => 'nullable|numeric|min:0',
                 'products' => 'required|array|min:1',
                 'products.*.id' => 'required|exists:products,id',
                 'products.*.quantity' => 'required|integer|min:1',
@@ -301,15 +307,18 @@ class OrderController extends Controller
 
             $order->save();
 
-            // Mettre à jour les produits
+            // Mettre à jour les produits si fournis
             if ($request->has('products')) {
                 $order->items()->delete();
                 
                 $totalPrice = 0;
                 foreach ($validated['products'] as $productData) {
-                    $product = Product::find($productData['id']);
+                    $product = Product::where('id', $productData['id'])
+                        ->where('admin_id', $order->admin_id)
+                        ->where('is_active', true)
+                        ->first();
                     
-                    if ($product && $product->admin_id === $order->admin_id) {
+                    if ($product) {
                         $quantity = $productData['quantity'];
                         $unitPrice = $product->price;
                         $totalPrice += $quantity * $unitPrice;
@@ -323,9 +332,15 @@ class OrderController extends Controller
                     }
                 }
                 
-                $order->total_price = $totalPrice;
-                $order->save();
+                // Mettre à jour le prix total seulement si pas fourni manuellement
+                if (!$validated['total_price']) {
+                    $order->total_price = $totalPrice;
+                    $order->save();
+                }
             }
+
+            // Vérifier le stock et mettre à jour le statut de suspension
+            $order->checkStockAndUpdateStatus();
 
             // Enregistrer dans l'historique si le statut a changé
             if ($oldStatus !== $order->status) {
@@ -389,7 +404,7 @@ class OrderController extends Controller
      */
 
     /**
-     * Rechercher des produits pour l'interface de traitement
+     * Rechercher des produits pour l'interface de traitement - CORRIGÉE
      */
     public function searchProducts(Request $request)
     {
@@ -404,6 +419,7 @@ class OrderController extends Controller
             $products = $admin->products()
                 ->where('is_active', true)
                 ->where('name', 'like', "%{$search}%")
+                ->where('stock', '>', 0) // Seulement les produits en stock
                 ->limit(10)
                 ->get(['id', 'name', 'price', 'stock']);
 
@@ -443,7 +459,7 @@ class OrderController extends Controller
 
             $cities = City::where('region_id', $regionId)
                 ->orderBy('name')
-                ->get(['id', 'name', 'shipping_cost']);
+                ->get(['id', 'name']);
 
             return response()->json($cities);
 
@@ -454,7 +470,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Enregistrer une tentative d'appel
+     * Enregistrer une tentative d'appel - CORRIGÉE
      */
     public function recordAttempt(Request $request, Order $order)
     {
@@ -463,18 +479,25 @@ class OrderController extends Controller
 
             $validated = $request->validate([
                 'notes' => 'required|string|min:3|max:1000'
+            ], [
+                'notes.required' => 'Une note est obligatoire pour enregistrer une tentative',
+                'notes.min' => 'La note doit contenir au moins 3 caractères'
             ]);
 
             DB::beginTransaction();
 
-            // Incrémenter les compteurs
+            // Incrémenter les compteurs et mettre à jour la date
             $order->increment('attempts_count');
             $order->increment('daily_attempts_count');
             $order->last_attempt_at = now();
             $order->save();
 
             // Enregistrer dans l'historique
-            $order->recordHistory('tentative', $validated['notes']);
+            $admin = Auth::guard('admin')->user();
+            $order->recordHistory('tentative', $admin->name . ' a tenté d\'appeler : ' . $validated['notes']);
+
+            // Vérifier la transition automatique vers file ancienne si nécessaire
+            $order->transitionToOldIfNeeded();
 
             DB::commit();
 
@@ -482,7 +505,8 @@ class OrderController extends Controller
                 'success' => true,
                 'message' => 'Tentative d\'appel enregistrée avec succès',
                 'attempts_count' => $order->attempts_count,
-                'daily_attempts_count' => $order->daily_attempts_count
+                'daily_attempts_count' => $order->daily_attempts_count,
+                'last_attempt_at' => $order->last_attempt_at->toISOString()
             ]);
 
         } catch (ValidationException $e) {
@@ -515,7 +539,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Obtenir l'historique pour modal
+     * Obtenir l'historique pour modal - SIMPLIFIÉ
      */
     public function getHistory(Order $order)
     {
@@ -574,36 +598,6 @@ class OrderController extends Controller
                     if ($entry->notes) {
                         $html .= '<div class="card-body py-2">';
                         $html .= '<p class="mb-0">' . e($entry->notes) . '</p>';
-                        
-                        if ($entry->user_type && $entry->user_id) {
-                            $html .= '<small class="text-muted d-block mt-1">';
-                            $html .= '<i class="fas fa-user me-1"></i>';
-                            $html .= 'Par: ' . $entry->user_type;
-                            
-                            if ($entry->user_type === 'Admin' && $entry->user_id === $admin->id) {
-                                $html .= ' <span class="text-primary">(Vous)</span>';
-                            }
-                            
-                            $html .= '</small>';
-                        }
-                        
-                        if ($entry->changes) {
-                            $changes = json_decode($entry->changes, true);
-                            if ($changes && is_array($changes)) {
-                                $html .= '<div class="mt-2">';
-                                $html .= '<small class="text-muted">Détails:</small>';
-                                $html .= '<ul class="list-unstyled mb-0 ms-3">';
-                                
-                                foreach ($changes as $key => $value) {
-                                    $displayValue = is_array($value) ? json_encode($value) : $value;
-                                    $html .= '<li><small class="text-muted">' . ucfirst(str_replace('_', ' ', $key)) . ': ' . $displayValue . '</small></li>';
-                                }
-                                
-                                $html .= '</ul>';
-                                $html .= '</div>';
-                            }
-                        }
-                        
                         $html .= '</div>';
                     }
                     

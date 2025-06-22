@@ -20,7 +20,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\PickupAddressController;  
 use App\Http\Controllers\Admin\BLTemplateController;
 
-
 // ========================================
 // ROUTES ADMIN
 // ========================================
@@ -82,7 +81,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('products', ProductController::class);
 
         // ========================================
-        // GESTION DES COMMANDES
+        // GESTION DES COMMANDES - ROUTES SIMPLIFIÉES
         // ========================================
 
         // Routes spéciales AVANT le resource
@@ -98,10 +97,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('orders.history-modal');
         Route::post('orders/{order}/record-attempt', [OrderController::class, 'recordAttempt'])
             ->name('orders.recordAttempt');
-        Route::post('orders/{order}/quick-attempt', [OrderController::class, 'quickAttempt'])
-            ->name('orders.quick-attempt');
 
-        // Routes pour l'interface de traitement
+        // Routes pour l'interface de traitement - CORRIGÉES
         Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
             ->name('orders.getRegions');
         Route::get('orders/get-cities', [OrderController::class, 'getCities'])
@@ -113,24 +110,36 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('orders', OrderController::class);
 
         // ========================================
-        // TRAITEMENT DES COMMANDES - ROUTES CORRIGÉES
+        // TRAITEMENT DES COMMANDES - API UNIFIÉE CORRIGÉE
         // ========================================
 
         // Interface de traitement principal
         Route::get('process', [ProcessController::class, 'interface'])
             ->name('process.interface');
+        
+        // API de test pour vérifier la connectivité
         Route::get('process/test', [ProcessController::class, 'test'])
             ->name('process.test');
+        
+        // API pour obtenir les compteurs de toutes les files
         Route::get('process/counts', [ProcessController::class, 'getCounts'])
             ->name('process.getCounts');
+        
+        // API pour traiter une action sur une commande
         Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
             ->name('process.action');
 
-        // **CORRECTION PRINCIPALE** - Routes API unifiées pour toutes les files
+        // ========================================
+        // API UNIFIÉE POUR TOUTES LES FILES - ROUTES PRINCIPALES
+        // ========================================
         Route::get('process/api/{queue}', [ProcessController::class, 'getQueueApi'])
             ->where('queue', 'standard|dated|old|restock')
             ->name('process.api.queue');
 
+        // ========================================
+        // INTERFACES SPÉCIALISÉES (OPTIONNELLES)
+        // ========================================
+        
         // INTERFACE D'EXAMEN DES COMMANDES
         Route::prefix('process/examination')->name('process.examination.')->group(function () {
             Route::get('/', [ExaminationController::class, 'index'])->name('index');
@@ -232,7 +241,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('settings/api/{key}', [AdminSettingController::class, 'setSetting'])->name('settings.set');
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
-       // ========================================
+        // ========================================
         // GESTION DES LIVRAISONS
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
@@ -275,12 +284,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('preparation.store');
             
             // ========================================
-            // ROUTES PICKUPS - CORRECTION PRINCIPALE
+            // ROUTES PICKUPS
             // ========================================
             
-            // Route principale pour les pickups (redirection vers index)
+            // Route principale pour les pickups
             Route::get('pickups', [DeliveryController::class, 'pickups'])
-                ->name('pickups'); // AJOUT DE CETTE ROUTE MANQUANTE
+                ->name('pickups');
             
             // Routes détaillées des pickups via DeliveryController
             Route::get('pickups/list', [DeliveryController::class, 'pickups'])
@@ -306,7 +315,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             
             // GESTION DES EXPÉDITIONS
             Route::get('shipments', [DeliveryController::class, 'shipments'])
-                ->name('shipments'); // ROUTE PRINCIPALE MANQUANTE AJOUTÉE
+                ->name('shipments');
             Route::get('shipments/list', [DeliveryController::class, 'shipments'])
                 ->name('shipments.index');
             Route::get('shipments/{shipment}', [DeliveryController::class, 'showShipment'])
@@ -345,7 +354,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // ========================================
-        // DEBUG
+        // DEBUG ET DIAGNOSTICS
         // ========================================
         Route::get('debug-auth', function () {
             $admin = auth('admin')->user();
@@ -355,13 +364,35 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'admin_name' => $admin ? $admin->name : null,
                 'admin_class' => $admin ? get_class($admin) : null,
                 'admin_instance_check' => $admin instanceof \App\Models\Admin,
-                'gates' => [
-                    'view-process-interface' => \Gate::allows('view-process-interface', $admin),
-                    'view-examination' => \Gate::allows('view-examination', $admin),
-                    'view-suspended' => \Gate::allows('view-suspended', $admin),
-                    'view-restock' => \Gate::allows('view-restock', $admin),
+                'csrf_token' => csrf_token(),
+                'current_time' => now()->toISOString(),
+                'routes' => [
+                    'process_interface' => route('admin.process.interface'),
+                    'process_api_standard' => route('admin.process.api.queue', 'standard'),
+                    'process_api_dated' => route('admin.process.api.queue', 'dated'),
+                    'process_api_old' => route('admin.process.api.queue', 'old'),
+                    'process_api_restock' => route('admin.process.api.queue', 'restock'),
+                    'process_counts' => route('admin.process.getCounts'),
                 ]
             ];
         })->name('debug-auth');
+
+        // Route de test spécifique pour l'API de traitement
+        Route::get('debug-process', function () {
+            $admin = auth('admin')->user();
+            if (!$admin) {
+                return ['error' => 'Non authentifié'];
+            }
+
+            return [
+                'admin_orders_count' => $admin->orders()->count(),
+                'nouvelle_orders' => $admin->orders()->where('status', 'nouvelle')->count(),
+                'datee_orders' => $admin->orders()->where('status', 'datée')->count(),
+                'ancienne_orders' => $admin->orders()->where('status', 'ancienne')->count(),
+                'suspended_orders' => $admin->orders()->where('is_suspended', true)->count(),
+                'products_count' => $admin->products()->count(),
+                'active_products' => $admin->products()->where('is_active', true)->count(),
+            ];
+        })->name('debug-process');
     });
 });
