@@ -1071,7 +1071,6 @@
                 </div>
                 <div class="queue-badge" id="restock-count">0</div>
             </div>
-
         </div>
     </div>
 
@@ -1147,7 +1146,7 @@
                                 <div class="form-group">
                                     <label class="form-label">
                                         <i class="fas fa-user"></i>
-                                        Nom complet
+                                        Nom complet <span class="required">*</span>
                                     </label>
                                     <input type="text" class="form-control" id="customer_name" placeholder="Nom et prénom">
                                 </div>
@@ -1171,7 +1170,7 @@
                                 <div class="form-group">
                                     <label class="form-label">
                                         <i class="fas fa-map-marked-alt"></i>
-                                        Gouvernorat
+                                        Gouvernorat <span class="required">*</span>
                                     </label>
                                     <select class="form-control" id="customer_governorate">
                                         <option value="">Sélectionner un gouvernorat</option>
@@ -1181,7 +1180,7 @@
                                 <div class="form-group">
                                     <label class="form-label">
                                         <i class="fas fa-city"></i>
-                                        Ville
+                                        Ville <span class="required">*</span>
                                     </label>
                                     <select class="form-control" id="customer_city">
                                         <option value="">Sélectionner une ville</option>
@@ -1191,7 +1190,7 @@
                                 <div class="form-group form-group-full">
                                     <label class="form-label">
                                         <i class="fas fa-map-marker-alt"></i>
-                                        Adresse complète
+                                        Adresse complète <span class="required">*</span>
                                     </label>
                                     <textarea class="form-control" id="customer_address" rows="3" placeholder="Adresse détaillée"></textarea>
                                 </div>
@@ -1232,14 +1231,6 @@
                             </div>
 
                             <div class="cart-summary" id="cart-summary" style="display: none;">
-                                <div class="summary-row">
-                                    <span class="summary-label">Sous-total:</span>
-                                    <span class="summary-value" id="cart-subtotal">0.000 TND</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Livraison:</span>
-                                    <span class="summary-value" id="cart-shipping">0.000 TND</span>
-                                </div>
                                 <div class="summary-row">
                                     <span class="summary-label">Total:</span>
                                     <span class="summary-value" id="cart-total">0.000 TND</span>
@@ -1377,7 +1368,7 @@ $(document).ready(function() {
     }
     
     // =========================
-    // GESTION DES FILES
+    // GESTION DES FILES - CORRECTION PRINCIPALE
     // =========================
     
     function loadQueueCounts() {
@@ -1440,40 +1431,20 @@ $(document).ready(function() {
         isLoadingQueue = true;
         showLoading();
         
-        // Déterminer l'endpoint selon le type de queue
-        let endpoint;
-        switch(currentQueue) {
-            case 'restock':
-                endpoint = '/admin/process/api/restock';
-                break;
-            default: // standard, dated, old
-                endpoint = `/admin/process/${currentQueue}`;
-        }
+        // **CORRECTION PRINCIPALE** - Utiliser l'API unifiée
+        const endpoint = `/admin/process/api/${currentQueue}`;
         
         $.get(endpoint)
             .done(function(data) {
                 console.log('Données reçues pour', currentQueue, ':', data);
                 
-                // Gérer les différents formats de réponse
                 if (data.hasOrder && data.order) {
-                    // Format standard (une seule commande)
                     currentOrder = data.order;
                     displayOrder(data.order);
                     showMainContent();
                     console.log('Commande affichée:', currentOrder.id);
-                } else if (data.hasOrders && data.orders) { 
-                    // Format pour les commandes multiples
-                    if (Array.isArray(data.orders) && data.orders.length > 0) {
-                        currentOrder = data.orders[0];
-                        displayOrder(data.orders[0]);
-                        showMainContent();
-                        console.log('Première commande affichée:', currentOrder.id);
-                    } else {
-                        console.log('Aucune commande disponible dans', currentQueue);
-                        showNoOrderMessage();
-                    }
                 } else {
-                    console.log('Aucune commande disponible pour', currentQueue);
+                    console.log('Aucune commande disponible dans', currentQueue);
                     showNoOrderMessage();
                 }
             })
@@ -1513,13 +1484,13 @@ $(document).ready(function() {
         }
         
         try {
-            // Informations de base avec gestion des valeurs nulles
+            // Informations de base
             $('#order-number').text(order.id || 'N/A');
             $('#order-date').text(formatDate(order.created_at));
             $('#order-attempts').text(`${order.attempts_count || 0} tentative(s)`);
             $('#order-last-attempt').text(order.last_attempt_at ? formatDate(order.last_attempt_at) : 'Jamais');
             
-            // Statut avec gestion des valeurs nulles
+            // Statut
             const statusElement = $('#order-status');
             const status = order.status || 'nouvelle';
             statusElement.removeClass().addClass('order-status').addClass(`status-${status}`);
@@ -1531,10 +1502,10 @@ $(document).ready(function() {
             // Afficher les doublons si existants
             displayDuplicateInfo(order);
             
-            // Formulaire client avec gestion des valeurs nulles
+            // Formulaire client
             updateCustomerForm(order);
             
-            // Panier avec validation
+            // Panier
             updateCartFromOrder(order);
             
             console.log('Commande affichée avec succès:', order.id, 'Items:', cartItems.length);
@@ -1627,7 +1598,7 @@ $(document).ready(function() {
     }
     
     // =========================
-    // GESTION DU PANIER
+    // GESTION DU PANIER - SIMPLIFIÉE
     // =========================
     
     function updateCartDisplay() {
@@ -1745,20 +1716,15 @@ $(document).ready(function() {
     }
     
     function updateCartSummary() {
-        let subtotal = 0;
+        let total = 0;
         
         if (cartItems && Array.isArray(cartItems)) {
-            subtotal = cartItems.reduce((sum, item) => {
+            total = cartItems.reduce((sum, item) => {
                 const itemTotal = parseFloat(item.total_price) || 0;
                 return sum + itemTotal;
             }, 0);
         }
         
-        const shipping = parseFloat(currentOrder?.shipping_cost) || 0;
-        const total = subtotal + shipping;
-        
-        $('#cart-subtotal').text(subtotal.toFixed(3) + ' TND');
-        $('#cart-shipping').text(shipping.toFixed(3) + ' TND');
         $('#cart-total').text(total.toFixed(3) + ' TND');
     }
     
@@ -1878,90 +1844,21 @@ $(document).ready(function() {
         
         switch (action) {
             case 'call':
-                showCallModal();
+                $('#callModal').modal('show');
                 break;
             case 'confirm':
-                showConfirmModal();
+                $('#confirmModal').modal('show');
                 break;
             case 'cancel':
-                showCancelModal();
+                $('#cancelModal').modal('show');
                 break;
             case 'schedule':
-                showScheduleModal();
+                $('#scheduleModal').modal('show');
                 break;
             case 'reactivate':
-                showReactivateModal();
+                $('#reactivateModal').modal('show');
                 break;
         }
-    }
-    
-    function showCallModal() {
-        const modal = $('#callModal');
-        $('#call-notes').val('');
-        modal.modal('show');
-    }
-    
-    function showConfirmModal() {
-        // Validation des champs requis
-        const requiredFields = ['customer_name', 'customer_phone', 'customer_address'];
-        let isValid = true;
-        let missingFields = [];
-        
-        requiredFields.forEach(field => {
-            const value = $(`#${field}`).val().trim();
-            if (!value) {
-                isValid = false;
-                missingFields.push(field);
-            }
-        });
-        
-        if (!isValid) {
-            showNotification('Veuillez remplir tous les champs obligatoires avant de confirmer', 'error');
-            return;
-        }
-        
-        if (cartItems.length === 0) {
-            showNotification('Veuillez ajouter au moins un produit au panier', 'error');
-            return;
-        }
-        
-        // Calculer le prix total
-        const subtotal = cartItems.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0);
-        $('#confirm-price').val(subtotal.toFixed(3));
-        $('#confirm-notes').val('');
-        
-        const modal = $('#confirmModal');
-        modal.modal('show');
-    }
-    
-    function showCancelModal() {
-        $('#cancel-notes').val('');
-        const modal = $('#cancelModal');
-        modal.modal('show');
-    }
-    
-    function showScheduleModal() {
-        $('#schedule-notes').val('');
-        $('#schedule-date').val('');
-        
-        // Date minimum = demain
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        $('#schedule-date').attr('min', tomorrow.toISOString().split('T')[0]);
-        
-        const modal = $('#scheduleModal');
-        modal.modal('show');
-    }
-    
-    function showReactivateModal() {
-        if (currentQueue !== 'restock' || !currentOrder || !currentOrder.is_suspended) {
-            showNotification('Cette action est disponible pour les commandes suspendues dans la file "Retour en Stock".', 'error');
-            return;
-        }
-        
-        $('#reactivate-notes').val('');
-        const modal = $('#reactivateModal');
-        modal.modal('show');
     }
     
     function showHistoryModal() {
@@ -2023,6 +1920,111 @@ $(document).ready(function() {
         $('#duplicates-content').html(modalContent);
         $('#duplicatesModal').modal('show');
     }
+    
+    // =========================
+    // FONCTION GLOBALE POUR LES ACTIONS - CORRIGÉE
+    // =========================
+    
+    window.processAction = function(action, formData) {
+        if (!currentOrder) {
+            showNotification('Aucune commande sélectionnée', 'error');
+            return;
+        }
+        
+        console.log('Traitement action:', action, 'pour queue:', currentQueue, 'commande:', currentOrder.id);
+        
+        // Préparation des données
+        const requestData = {
+            action: action,
+            queue: currentQueue,
+            ...formData
+        };
+        
+        // **CORRECTION** - Ajouter les données du panier ET client pour l'action confirm
+        if (action === 'confirm') {
+            // Validation des champs requis côté client
+            const customerName = $('#customer_name').val().trim();
+            const customerGovernorate = $('#customer_governorate').val();
+            const customerCity = $('#customer_city').val();
+            const customerAddress = $('#customer_address').val().trim();
+            
+            if (!customerName || !customerGovernorate || !customerCity || !customerAddress) {
+                showNotification('Veuillez remplir tous les champs obligatoires', 'error');
+                return;
+            }
+            
+            if (!cartItems || cartItems.length === 0) {
+                showNotification('Veuillez ajouter au moins un produit au panier', 'error');
+                return;
+            }
+            
+            // Ajouter toutes les données nécessaires
+            requestData.cart_items = cartItems;
+            requestData.customer_name = customerName;
+            requestData.customer_phone_2 = $('#customer_phone_2').val();
+            requestData.customer_governorate = customerGovernorate;
+            requestData.customer_city = customerCity;
+            requestData.customer_address = customerAddress;
+        }
+        
+        // Désactiver les boutons avec état de chargement
+        $('.action-btn').prop('disabled', true).addClass('loading');
+        
+        // Envoyer la requête
+        $.ajax({
+            url: `/admin/process/action/${currentOrder.id}`,
+            method: 'POST',
+            data: requestData,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        })
+        .done(function(response) {
+            console.log('Action réussie:', response);
+            showNotification('Action traitée avec succès!', 'success');
+            
+            // Fermer les modales
+            $('.modal').modal('hide');
+            
+            // Attendre un peu avant de recharger pour éviter les conflits
+            setTimeout(() => {
+                console.log('Rechargement après action réussie');
+                loadQueueCounts();
+                
+                // Recharger la file après un délai supplémentaire
+                setTimeout(() => {
+                    loadCurrentQueue();
+                }, 500);
+            }, 1000);
+        })
+        .fail(function(xhr, status, error) {
+            console.error('Erreur action:', error);
+            console.error('Réponse:', xhr.responseText);
+            
+            let errorMessage = 'Erreur lors du traitement de l\'action';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    errorMessage = response.error;
+                } else if (response.errors) {
+                    // Afficher les erreurs de validation
+                    const errors = Object.values(response.errors).flat();
+                    errorMessage = errors.join(', ');
+                }
+            } catch (e) {
+                // Ignorer les erreurs de parsing
+            }
+            
+            showNotification(errorMessage, 'error');
+        })
+        .always(function() {
+            // CORRECTION: Toujours réactiver les boutons
+            setTimeout(() => {
+                $('.action-btn').prop('disabled', false).removeClass('loading');
+                console.log('Boutons réactivés');
+            }, 1000);
+        });
+    };
     
     // =========================
     // UTILITAIRES
@@ -2106,92 +2108,6 @@ $(document).ready(function() {
             loadCurrentQueue();
         }
     }, 120000);
-    
-    // =========================
-    // FONCTION GLOBALE POUR LES MODALES
-    // =========================
-    
-    window.processAction = function(action, formData) {
-        if (!currentOrder) {
-            showNotification('Aucune commande sélectionnée', 'error');
-            return;
-        }
-        
-        console.log('Traitement action:', action, 'pour queue:', currentQueue, 'commande:', currentOrder.id);
-        
-        // Préparation des données
-        const requestData = {
-            action: action,
-            queue: currentQueue,
-            ...formData
-        };
-        
-        // Ajouter les données du panier si nécessaire
-        if (action === 'confirm') {
-            requestData.cart_items = cartItems;
-            
-            // Données client
-            requestData.customer_name = $('#customer_name').val();
-            requestData.customer_phone_2 = $('#customer_phone_2').val();
-            requestData.customer_governorate = $('#customer_governorate').val();
-            requestData.customer_city = $('#customer_city').val();
-            requestData.customer_address = $('#customer_address').val();
-        }
-        
-        // Désactiver les boutons avec état de chargement
-        $('.action-btn').prop('disabled', true).addClass('loading');
-        
-        // Envoyer la requête
-        $.ajax({
-            url: `/admin/process/action/${currentOrder.id}`,
-            method: 'POST',
-            data: requestData,
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        })
-        .done(function(response) {
-            console.log('Action réussie:', response);
-            showNotification('Action traitée avec succès!', 'success');
-            
-            // Fermer les modales
-            $('.modal').modal('hide');
-            
-            // Attendre un peu avant de recharger pour éviter les conflits
-            setTimeout(() => {
-                console.log('Rechargement après action réussie');
-                loadQueueCounts();
-                
-                // Recharger la file après un délai supplémentaire
-                setTimeout(() => {
-                    loadCurrentQueue();
-                }, 500);
-            }, 1000);
-        })
-        .fail(function(xhr, status, error) {
-            console.error('Erreur action:', error);
-            console.error('Réponse:', xhr.responseText);
-            
-            let errorMessage = 'Erreur lors du traitement de l\'action';
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.error) {
-                    errorMessage = response.error;
-                }
-            } catch (e) {
-                // Ignorer les erreurs de parsing
-            }
-            
-            showNotification(errorMessage, 'error');
-        })
-        .always(function() {
-            // CORRECTION: Toujours réactiver les boutons
-            setTimeout(() => {
-                $('.action-btn').prop('disabled', false).removeClass('loading');
-                console.log('Boutons réactivés');
-            }, 1000);
-        });
-    };
 });
 </script>
 @endsection

@@ -113,7 +113,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('orders', OrderController::class);
 
         // ========================================
-        // TRAITEMENT DES COMMANDES
+        // TRAITEMENT DES COMMANDES - ROUTES CORRIGÉES
         // ========================================
 
         // Interface de traitement principal
@@ -126,10 +126,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('process/action/{order}', [ProcessController::class, 'processAction'])
             ->name('process.action');
 
-        // Route API spécifique pour restock
-        Route::get('process/api/restock', [ProcessController::class, 'getQueue'])
-            ->defaults('queue', 'restock')
-            ->name('process.api.restock');
+        // **CORRECTION PRINCIPALE** - Routes API unifiées pour toutes les files
+        Route::get('process/api/{queue}', [ProcessController::class, 'getQueueApi'])
+            ->where('queue', 'standard|dated|old|restock')
+            ->name('process.api.queue');
 
         // INTERFACE D'EXAMEN DES COMMANDES
         Route::prefix('process/examination')->name('process.examination.')->group(function () {
@@ -162,11 +162,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/reactivate/{order}', [RestockController::class, 'reactivateOrder'])->name('reactivate');
             Route::post('/bulk-reactivate', [RestockController::class, 'bulkReactivate'])->name('bulk-reactivate');
         });
-
-        // Route générique pour les autres onglets
-        Route::get('process/{queue}', [ProcessController::class, 'getQueue'])
-            ->where('queue', 'standard|dated|old')
-            ->name('process.getQueue');
 
         // ========================================
         // GESTION DES UTILISATEURS

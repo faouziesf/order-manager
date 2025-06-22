@@ -13,20 +13,25 @@
                 <div class="form-group">
                     <label for="call-notes" class="form-label">
                         <i class="fas fa-sticky-note me-2"></i>
-                        Notes sur la tentative
+                        Notes sur la tentative <span class="text-danger">*</span>
                     </label>
                     <textarea class="form-control" id="call-notes" rows="4" 
                               placeholder="Décrivez ce qui s'est passé lors de l'appel..." required></textarea>
                     <div class="form-text">
-                        Exemple: "Sonnerie mais pas de réponse", "Numéro occupé", "Éteint", etc.
+                        Exemple: "Sonnerie mais pas de réponse", "Numéro occupé", "Éteint", "Demande de rappeler plus tard", etc.
                     </div>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Action:</strong> Cette action va incrémenter le compteur de tentatives et marquer l'heure de la dernière tentative.
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
-                <button type="button" class="btn btn-warning" onclick="processAction('call', {notes: $('#call-notes').val()})">
+                <button type="button" class="btn btn-warning" onclick="submitCallAction()">
                     <i class="fas fa-save me-2"></i>Enregistrer la tentative
                 </button>
             </div>
@@ -46,29 +51,37 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Attention:</strong> Assurez-vous que tous les champs client sont remplis et que le panier contient les bons produits avant de confirmer.
+                </div>
+                
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label for="confirm-price" class="form-label">
                                 <i class="fas fa-money-bill-wave me-2"></i>
-                                Prix confirmé
+                                Prix total confirmé (TND) <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
                                 <input type="number" step="0.001" class="form-control" id="confirm-price" 
                                        placeholder="0.000" required>
                                 <span class="input-group-text">TND</span>
                             </div>
+                            <div class="form-text">Prix total négocié avec le client</div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group mb-3">
                             <label class="form-label">
                                 <i class="fas fa-info-circle me-2"></i>
-                                Statut après confirmation
+                                Changements
                             </label>
                             <div class="alert alert-success mb-0">
-                                <i class="fas fa-arrow-right me-2"></i>
-                                La commande passera au statut <strong>"Confirmée"</strong>
+                                <small>
+                                    <i class="fas fa-arrow-right me-1"></i>Statut: <strong>Confirmée</strong><br>
+                                    <i class="fas fa-minus me-1"></i>Stock sera décrémenté automatiquement
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -77,7 +90,7 @@
                 <div class="form-group">
                     <label for="confirm-notes" class="form-label">
                         <i class="fas fa-comment me-2"></i>
-                        Notes de confirmation
+                        Notes de confirmation (optionnel)
                     </label>
                     <textarea class="form-control" id="confirm-notes" rows="3" 
                               placeholder="Informations supplémentaires sur la confirmation..."></textarea>
@@ -87,7 +100,7 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
-                <button type="button" class="btn btn-success" onclick="processAction('confirm', {confirmed_price: $('#confirm-price').val(), notes: $('#confirm-notes').val()})">
+                <button type="button" class="btn btn-success" onclick="submitConfirmAction()">
                     <i class="fas fa-check-circle me-2"></i>Confirmer la commande
                 </button>
             </div>
@@ -107,9 +120,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="alert alert-warning">
+                <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Attention:</strong> Cette action annulera définitivement la commande.
+                    <strong>Attention:</strong> Cette action changera définitivement le statut de la commande à "Annulée".
                 </div>
                 
                 <div class="form-group">
@@ -120,7 +133,7 @@
                     <textarea class="form-control" id="cancel-notes" rows="4" 
                               placeholder="Expliquez pourquoi cette commande est annulée..." required></textarea>
                     <div class="form-text">
-                        Exemple: "Client a changé d'avis", "Produit non disponible", etc.
+                        Exemple: "Client a changé d'avis", "Produit non disponible", "Adresse incorrecte", etc.
                     </div>
                 </div>
             </div>
@@ -128,8 +141,8 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-arrow-left me-2"></i>Retour
                 </button>
-                <button type="button" class="btn btn-danger" onclick="processAction('cancel', {notes: $('#cancel-notes').val()})">
-                    <i class="fas fa-times-circle me-2"></i>Annuler la commande
+                <button type="button" class="btn btn-danger" onclick="submitCancelAction()">
+                    <i class="fas fa-times-circle me-2"></i>Annuler définitivement
                 </button>
             </div>
         </div>
@@ -143,7 +156,7 @@
             <div class="modal-header">
                 <h5 class="modal-title" id="scheduleModalLabel">
                     <i class="fas fa-calendar-plus text-info me-2"></i>
-                    Planifier la commande
+                    Dater la commande
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -155,14 +168,14 @@
                     </label>
                     <input type="date" class="form-control" id="schedule-date" required>
                     <div class="form-text">
-                        Choisissez une date future pour rappeler ce client
+                        La commande apparaîtra dans la file "Datée" à partir de cette date
                     </div>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group mb-3">
                     <label for="schedule-notes" class="form-label">
                         <i class="fas fa-comment me-2"></i>
-                        Notes de planification
+                        Notes de planification (optionnel)
                     </label>
                     <textarea class="form-control" id="schedule-notes" rows="3" 
                               placeholder="Raison de la planification et informations pour le rappel..."></textarea>
@@ -170,15 +183,15 @@
                 
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
-                    La commande passera au statut <strong>"Datée"</strong> et apparaîtra dans la file datée à partir de la date choisie.
+                    <strong>Action:</strong> La commande passera au statut <strong>"Datée"</strong> et ses compteurs de tentatives seront remis à zéro.
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
-                <button type="button" class="btn btn-info" onclick="processAction('schedule', {scheduled_date: $('#schedule-date').val(), notes: $('#schedule-notes').val()})">
-                    <i class="fas fa-calendar-check me-2"></i>Planifier
+                <button type="button" class="btn btn-info" onclick="submitScheduleAction()">
+                    <i class="fas fa-calendar-check me-2"></i>Dater la commande
                 </button>
             </div>
         </div>
@@ -199,14 +212,14 @@
             <div class="modal-body">
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle me-2"></i>
-                    <strong>Tous les produits sont maintenant en stock!</strong><br>
-                    Cette commande peut être réactivée et retourner dans la file standard.
+                    <strong>Stock disponible!</strong><br>
+                    Tous les produits de cette commande sont maintenant en stock et peuvent être traités normalement.
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group mb-3">
                     <label for="reactivate-notes" class="form-label">
                         <i class="fas fa-comment me-2"></i>
-                        Notes de réactivation
+                        Notes de réactivation (optionnel)
                     </label>
                     <textarea class="form-control" id="reactivate-notes" rows="3" 
                               placeholder="Notes sur la réactivation de cette commande..."></textarea>
@@ -214,14 +227,14 @@
                 
                 <div class="alert alert-info">
                     <i class="fas fa-arrow-right me-2"></i>
-                    La commande retournera au statut <strong>"Nouvelle"</strong> et ses compteurs de tentatives seront remis à zéro.
+                    <strong>Action:</strong> La commande retournera au statut <strong>"Nouvelle"</strong> et ne sera plus suspendue. Ses compteurs de tentatives seront remis à zéro.
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
-                <button type="button" class="btn btn-success" onclick="processAction('reactivate', {notes: $('#reactivate-notes').val()})">
+                <button type="button" class="btn btn-success" onclick="submitReactivateAction()">
                     <i class="fas fa-play-circle me-2"></i>Réactiver définitivement
                 </button>
             </div>
@@ -272,7 +285,7 @@
                 <div class="alert alert-warning">
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>Attention:</strong> Ce client a plusieurs commandes dans le système. 
-                    Vérifiez les détails ci-dessous avant de traiter.
+                    Vérifiez les détails ci-dessous avant de traiter cette commande.
                 </div>
                 
                 <div id="duplicates-content">
@@ -295,231 +308,193 @@
 </div>
 
 <style>
-/* Styles pour les modales */
-.modal-content {
-    border-radius: 15px;
-    border: none;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+/* Timeline pour l'historique */
+.timeline {
+    position: relative;
+    padding-left: 30px;
 }
 
-.modal-header {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    border-bottom: 1px solid #e5e7eb;
-    border-radius: 15px 15px 0 0;
-    padding: 1.25rem 1.5rem;
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #e9ecef 0%, #dee2e6 100%);
 }
 
-.modal-title {
-    font-weight: 700;
-    color: #374151;
+.timeline-item {
+    position: relative;
 }
 
-.modal-body {
-    padding: 1.5rem;
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 8px;
+    z-index: 2;
 }
 
-.modal-footer {
-    border-top: 1px solid #e5e7eb;
-    padding: 1rem 1.5rem;
-    background: #f9fafb;
-    border-radius: 0 0 15px 15px;
-}
-
-.form-label {
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 0.5rem;
-}
-
-.form-control {
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 0.75rem;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.btn {
-    border-radius: 8px;
-    padding: 0.625rem 1.25rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Styles pour l'historique */
-.history-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-    transition: background-color 0.2s ease;
-}
-
-.history-item:hover {
-    background-color: #f9fafb;
-}
-
-.history-item:last-child {
-    border-bottom: none;
-}
-
-.history-icon {
-    width: 40px;
-    height: 40px;
+.timeline-marker-icon {
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
-    flex-shrink: 0;
+    color: white;
+    font-size: 12px;
+    border: 3px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.history-icon.creation {
-    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-    color: #166534;
+.timeline-content {
+    margin-left: 15px;
 }
 
-.history-icon.modification {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    color: #1d4ed8;
+.timeline-content .card {
+    border-left: 3px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
 }
 
-.history-icon.tentative {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
-    color: #92400e;
-}
-
-.history-icon.confirmation {
-    background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%);
-    color: #166534;
-}
-
-.history-icon.annulation {
-    background: linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%);
-    color: #dc2626;
-}
-
-.history-content {
-    flex: 1;
-}
-
-.history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.history-action {
-    font-weight: 700;
-    color: #374151;
-    font-size: 1.1rem;
-}
-
-.history-time {
-    color: #6b7280;
-    font-size: 0.875rem;
-}
-
-.history-user {
-    color: #4b5563;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-}
-
-.history-notes {
-    background: #f3f4f6;
-    padding: 0.75rem;
-    border-radius: 8px;
-    border-left: 4px solid #6b7280;
-    color: #374151;
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-/* Styles pour les badges de statut */
-.badge {
-    padding: 0.375rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.badge.status-nouvelle {
-    background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
-    color: #5b21b6;
-}
-
-.badge.status-datée {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
-    color: #92400e;
-}
-
-.badge.status-confirmée {
-    background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%);
-    color: #166534;
-}
-
-.badge.status-ancienne {
-    background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);
-    color: #9b2c2c;
-}
-
-.badge.status-annulée {
-    background: linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%);
-    color: #dc2626;
-}
-
-.badge.status-livrée {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    color: #065f46;
-}
-
-/* Animation pour les modales */
-.modal.fade .modal-dialog {
-    transform: translateY(-30px);
-    transition: transform 0.3s ease-out;
-}
-
-.modal.show .modal-dialog {
-    transform: translateY(0);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .modal-dialog {
-        margin: 0.5rem;
-    }
-    
-    .modal-xl {
-        max-width: 95%;
-    }
-    
-    .history-item {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    
-    .history-icon {
-        align-self: flex-start;
-    }
-    
-    .history-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
-    }
+.timeline-content .card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
 }
 </style>
+
+<script>
+// Fonctions pour soumettre les actions avec validation
+function submitCallAction() {
+    const notes = $('#call-notes').val().trim();
+    
+    if (!notes || notes.length < 3) {
+        showNotification('Veuillez saisir des notes d\'au moins 3 caractères', 'error');
+        $('#call-notes').focus();
+        return;
+    }
+    
+    processAction('call', { notes: notes });
+}
+
+function submitConfirmAction() {
+    const price = $('#confirm-price').val();
+    const notes = $('#confirm-notes').val().trim();
+    
+    // Validation du prix
+    if (!price || parseFloat(price) < 0) {
+        showNotification('Veuillez saisir un prix valide', 'error');
+        $('#confirm-price').focus();
+        return;
+    }
+    
+    // Validation des champs requis côté client
+    const customerName = $('#customer_name').val().trim();
+    const customerGovernorate = $('#customer_governorate').val();
+    const customerCity = $('#customer_city').val();
+    const customerAddress = $('#customer_address').val().trim();
+    
+    if (!customerName) {
+        showNotification('Le nom du client est obligatoire', 'error');
+        $('#customer_name').focus();
+        return;
+    }
+    
+    if (!customerGovernorate) {
+        showNotification('Le gouvernorat est obligatoire', 'error');
+        $('#customer_governorate').focus();
+        return;
+    }
+    
+    if (!customerCity) {
+        showNotification('La ville est obligatoire', 'error');
+        $('#customer_city').focus();
+        return;
+    }
+    
+    if (!customerAddress || customerAddress.length < 5) {
+        showNotification('L\'adresse doit contenir au moins 5 caractères', 'error');
+        $('#customer_address').focus();
+        return;
+    }
+    
+    // Validation du panier
+    if (!cartItems || cartItems.length === 0) {
+        showNotification('Veuillez ajouter au moins un produit au panier', 'error');
+        return;
+    }
+    
+    processAction('confirm', { 
+        confirmed_price: parseFloat(price),
+        notes: notes
+    });
+}
+
+function submitCancelAction() {
+    const notes = $('#cancel-notes').val().trim();
+    
+    if (!notes || notes.length < 3) {
+        showNotification('Veuillez indiquer la raison de l\'annulation (minimum 3 caractères)', 'error');
+        $('#cancel-notes').focus();
+        return;
+    }
+    
+    processAction('cancel', { notes: notes });
+}
+
+function submitScheduleAction() {
+    const date = $('#schedule-date').val();
+    const notes = $('#schedule-notes').val().trim();
+    
+    if (!date) {
+        showNotification('Veuillez sélectionner une date', 'error');
+        $('#schedule-date').focus();
+        return;
+    }
+    
+    // Vérifier que la date n'est pas dans le passé
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+        showNotification('La date ne peut pas être dans le passé', 'error');
+        $('#schedule-date').focus();
+        return;
+    }
+    
+    processAction('schedule', { 
+        scheduled_date: date,
+        notes: notes
+    });
+}
+
+function submitReactivateAction() {
+    const notes = $('#reactivate-notes').val().trim();
+    
+    processAction('reactivate', { 
+        notes: notes
+    });
+}
+
+// Initialiser les dates minimales au chargement
+$(document).ready(function() {
+    // Date minimum pour la planification = aujourd'hui
+    const today = new Date().toISOString().split('T')[0];
+    $('#schedule-date').attr('min', today);
+    
+    // Vider les champs des modales à leur ouverture
+    $('.modal').on('show.bs.modal', function() {
+        $(this).find('textarea, input[type="text"], input[type="number"], input[type="date"]').val('');
+    });
+    
+    // Calculer le prix automatiquement pour la confirmation
+    $('#confirmModal').on('show.bs.modal', function() {
+        if (cartItems && cartItems.length > 0) {
+            const total = cartItems.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0);
+            $('#confirm-price').val(total.toFixed(3));
+        }
+    });
+});
+</script>

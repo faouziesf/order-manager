@@ -383,7 +383,9 @@ class OrderController extends Controller
     }
 
     /**
-     * NOUVELLES MÉTHODES POUR L'INTERFACE DE TRAITEMENT
+     * ========================================
+     * MÉTHODES POUR L'INTERFACE DE TRAITEMENT
+     * ========================================
      */
 
     /**
@@ -518,40 +520,104 @@ class OrderController extends Controller
     public function getHistory(Order $order)
     {
         try {
-            $this->authorize('view', $order);
+            $admin = Auth::guard('admin')->user();
+            
+            if ($order->admin_id !== $admin->id) {
+                return response()->json(['error' => 'Accès refusé'], 403);
+            }
             
             $history = $order->history()
                 ->orderBy('created_at', 'desc')
                 ->get();
             
+            // Générer le HTML de l'historique
             $html = '';
             
-            foreach ($history as $entry) {
-                $actionIcon = $this->getActionIcon($entry->action);
-                $actionClass = $this->getActionClass($entry->action);
+            if ($history->count() > 0) {
+                $html .= '<div class="timeline">';
                 
-                $html .= '<div class="history-item">';
-                $html .= '<div class="history-icon ' . $actionClass . '">';
-                $html .= '<i class="' . $actionIcon . '"></i>';
-                $html .= '</div>';
-                $html .= '<div class="history-content">';
-                $html .= '<div class="history-header">';
-                $html .= '<div class="history-action">' . ucfirst($entry->action) . '</div>';
-                $html .= '<div class="history-time">' . $entry->created_at->format('d/m/Y H:i') . '</div>';
-                $html .= '</div>';
-                $html .= '<div class="history-user">Par ' . ($entry->getUserName() ?: 'Système') . '</div>';
-                if ($entry->notes) {
-                    $html .= '<div class="history-notes">' . e($entry->notes) . '</div>';
+                foreach ($history as $entry) {
+                    $actionIcon = $this->getActionIcon($entry->action);
+                    $actionClass = $this->getActionClass($entry->action);
+                    
+                    $html .= '<div class="timeline-item mb-3">';
+                    $html .= '<div class="timeline-marker">';
+                    $html .= '<div class="timeline-marker-icon bg-' . $actionClass . '">';
+                    $html .= '<i class="' . $actionIcon . '"></i>';
+                    $html .= '</div>';
+                    $html .= '</div>';
+                    $html .= '<div class="timeline-content">';
+                    $html .= '<div class="card">';
+                    $html .= '<div class="card-header py-2">';
+                    $html .= '<div class="d-flex justify-content-between align-items-center">';
+                    $html .= '<h6 class="mb-0">';
+                    $html .= '<span class="badge bg-' . $actionClass . '">' . ucfirst($entry->action) . '</span>';
+                    
+                    if ($entry->status_before && $entry->status_after && $entry->status_before !== $entry->status_after) {
+                        $html .= '<small class="text-muted ms-2">';
+                        $html .= ucfirst($entry->status_before) . ' → ' . ucfirst($entry->status_after);
+                        $html .= '</small>';
+                    }
+                    
+                    $html .= '</h6>';
+                    $html .= '<small class="text-muted">';
+                    $html .= $entry->created_at->format('d/m/Y H:i');
+                    
+                    if ($entry->created_at->diffInHours(now()) < 24) {
+                        $html .= ' <span class="text-primary">(' . $entry->created_at->diffForHumans() . ')</span>';
+                    }
+                    
+                    $html .= '</small>';
+                    $html .= '</div>';
+                    $html .= '</div>';
+                    
+                    if ($entry->notes) {
+                        $html .= '<div class="card-body py-2">';
+                        $html .= '<p class="mb-0">' . e($entry->notes) . '</p>';
+                        
+                        if ($entry->user_type && $entry->user_id) {
+                            $html .= '<small class="text-muted d-block mt-1">';
+                            $html .= '<i class="fas fa-user me-1"></i>';
+                            $html .= 'Par: ' . $entry->user_type;
+                            
+                            if ($entry->user_type === 'Admin' && $entry->user_id === $admin->id) {
+                                $html .= ' <span class="text-primary">(Vous)</span>';
+                            }
+                            
+                            $html .= '</small>';
+                        }
+                        
+                        if ($entry->changes) {
+                            $changes = json_decode($entry->changes, true);
+                            if ($changes && is_array($changes)) {
+                                $html .= '<div class="mt-2">';
+                                $html .= '<small class="text-muted">Détails:</small>';
+                                $html .= '<ul class="list-unstyled mb-0 ms-3">';
+                                
+                                foreach ($changes as $key => $value) {
+                                    $displayValue = is_array($value) ? json_encode($value) : $value;
+                                    $html .= '<li><small class="text-muted">' . ucfirst(str_replace('_', ' ', $key)) . ': ' . $displayValue . '</small></li>';
+                                }
+                                
+                                $html .= '</ul>';
+                                $html .= '</div>';
+                            }
+                        }
+                        
+                        $html .= '</div>';
+                    }
+                    
+                    $html .= '</div>';
+                    $html .= '</div>';
+                    $html .= '</div>';
                 }
+                
                 $html .= '</div>';
-                $html .= '</div>';
-            }
-            
-            if (empty($html)) {
-                $html = '<div class="text-center text-muted py-4">';
-                $html .= '<i class="fas fa-history fa-3x mb-3 opacity-50"></i>';
-                $html .= '<h5>Aucun historique</h5>';
-                $html .= '<p>Cette commande n\'a pas encore d\'historique.</p>';
+            } else {
+                $html .= '<div class="text-center py-4">';
+                $html .= '<i class="fas fa-history fa-3x text-muted mb-3"></i>';
+                $html .= '<h5 class="text-muted">Aucun historique</h5>';
+                $html .= '<p class="text-muted">Cette commande n\'a pas encore d\'historique d\'actions.</p>';
                 $html .= '</div>';
             }
             
@@ -681,7 +747,9 @@ class OrderController extends Controller
     }
 
     /**
+     * ========================================
      * MÉTHODES UTILITAIRES
+     * ========================================
      */
 
     private function getActionIcon($action)
@@ -705,18 +773,18 @@ class OrderController extends Controller
     private function getActionClass($action)
     {
         $classes = [
-            'création' => 'creation',
-            'modification' => 'modification',
-            'tentative' => 'tentative',
-            'confirmation' => 'confirmation',
-            'annulation' => 'annulation',
-            'datation' => 'tentative',
-            'assignation' => 'confirmation',
-            'désassignation' => 'annulation',
-            'suspension' => 'annulation',
-            'réactivation' => 'confirmation',
+            'création' => 'success',
+            'modification' => 'primary',
+            'tentative' => 'warning',
+            'confirmation' => 'success',
+            'annulation' => 'danger',
+            'datation' => 'info',
+            'assignation' => 'success',
+            'désassignation' => 'danger',
+            'suspension' => 'warning',
+            'réactivation' => 'success',
         ];
 
-        return $classes[$action] ?? 'modification';
+        return $classes[$action] ?? 'secondary';
     }
 }
