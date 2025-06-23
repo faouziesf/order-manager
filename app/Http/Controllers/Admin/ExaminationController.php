@@ -38,7 +38,7 @@ class ExaminationController extends Controller
     }
 
     /**
-     * Obtenir les commandes pour l'interface d'examen
+     * Obtenir les commandes pour l'interface d'examen - LOGIQUE CORRIGÉE
      */
     public function getOrders(Request $request)
     {
@@ -52,8 +52,8 @@ class ExaminationController extends Controller
                 ], 401);
             }
 
-            // Obtenir les commandes avec problèmes de stock (mais pas suspendues)
-            $orders = $this->findOrdersWithStockIssues($admin, false);
+            // LOGIQUE CORRIGÉE: Chercher les commandes NON suspendues avec problèmes de stock
+            $orders = $this->findOrdersWithStockIssuesForExamination($admin);
             
             if ($orders->count() > 0) {
                 $ordersData = $orders->map(function($order) {
@@ -61,6 +61,8 @@ class ExaminationController extends Controller
                 })->filter(function($orderData) {
                     return $orderData !== null;
                 })->values()->toArray();
+                
+                Log::info("Interface examination: {$orders->count()} commandes trouvées, " . count($ordersData) . " commandes formatées");
                 
                 return response()->json([
                     'hasOrders' => true,
@@ -75,7 +77,7 @@ class ExaminationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur dans getOrders: ' . $e->getMessage(), [
+            Log::error('Erreur dans ExaminationController::getOrders: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -87,7 +89,7 @@ class ExaminationController extends Controller
     }
 
     /**
-     * Compter les commandes avec problèmes de stock
+     * Compter les commandes avec problèmes de stock - LOGIQUE CORRIGÉE
      */
     public function getCount()
     {
@@ -98,7 +100,7 @@ class ExaminationController extends Controller
                 return response()->json(['error' => 'Non authentifié'], 401);
             }
             
-            $count = $this->countOrdersWithStockIssues($admin, false);
+            $count = $this->countOrdersWithStockIssuesForExamination($admin);
             
             return response()->json([
                 'count' => $count,
@@ -106,7 +108,7 @@ class ExaminationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur dans getCount: ' . $e->getMessage());
+            Log::error('Erreur dans ExaminationController::getCount: ' . $e->getMessage());
             
             return response()->json([
                 'error' => 'Erreur lors du chargement du compteur',
@@ -274,9 +276,7 @@ class ExaminationController extends Controller
 
                 case 'reactivate':
                     // Vérifier d'abord que les stocks sont OK
-                    $stockIssues = $this->analyzeOrderStockIssues($order);
-                    
-                    if ($stockIssues['hasIssues']) {
+                    if ($this->orderHasStockIssues($order)) {
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
@@ -601,47 +601,54 @@ class ExaminationController extends Controller
     }
 
     /**
-     * Helper: Trouver les commandes avec problèmes de stock
+     * Helper: Trouver les commandes avec problèmes de stock pour l'interface d'examen - NOUVELLE MÉTHODE
+     * LOGIQUE: Commandes NON suspendues dans les statuts actifs qui ont des problèmes de stock
      */
-    private function findOrdersWithStockIssues($admin, $includeSuspended = true)
+    private function findOrdersWithStockIssuesForExamination($admin)
     {
-        $query = $admin->orders()->with(['items.product']);
+        Log::info("Recherche des commandes pour l'interface examination");
         
-        if (!$includeSuspended) {
-            $query->where(function($q) {
+        // Étape 1: Récupérer toutes les commandes candidates (NON suspendues)
+        $candidateOrders = $admin->orders()
+            ->with(['items.product' => function($query) {
+                // Précharger tous les produits (actifs et inactifs) pour l'analyse
+                $query->withoutGlobalScopes();
+            }])
+            ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            });
-        }
-        
-        return $query->whereIn('status', ['nouvelle', 'confirmée', 'datée'])
-            ->get()
-            ->filter(function($order) {
-                return $this->orderHasStockIssues($order);
-            });
+            })
+            ->whereIn('status', ['nouvelle', 'confirmée', 'datée']) // Seulement les statuts actifs
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        Log::info("Commandes candidates trouvées: {$candidateOrders->count()}");
+
+        // Étape 2: Filtrer celles qui ont vraiment des problèmes de stock
+        $ordersWithStockIssues = $candidateOrders->filter(function($order) {
+            $hasIssues = $this->orderHasStockIssues($order);
+            if ($hasIssues) {
+                Log::info("Commande {$order->id} a des problèmes de stock détectés");
+            }
+            return $hasIssues;
+        });
+
+        Log::info("Commandes avec problèmes de stock pour examination: {$ordersWithStockIssues->count()}");
+
+        return $ordersWithStockIssues;
     }
 
     /**
-     * Helper: Compter les commandes avec problèmes de stock
+     * Helper: Compter les commandes avec problèmes de stock pour l'interface d'examen - NOUVELLE MÉTHODE
      */
-    private function countOrdersWithStockIssues($admin, $includeSuspended = true)
+    private function countOrdersWithStockIssuesForExamination($admin)
     {
-        $orders = $admin->orders()->with(['items.product']);
-        
-        if (!$includeSuspended) {
-            $orders->where(function($q) {
-                $q->where('is_suspended', false)->orWhereNull('is_suspended');
-            });
-        }
-        
-        return $orders->whereIn('status', ['nouvelle', 'confirmée', 'datée'])
-            ->get()
-            ->filter(function($order) {
-                return $this->orderHasStockIssues($order);
-            })->count();
+        $orders = $this->findOrdersWithStockIssuesForExamination($admin);
+        return $orders->count();
     }
 
     /**
-     * Helper: Formater les données d'une commande pour l'examen
+     * Helper: Formater les données d'une commande pour l'examen - AMÉLIORÉE
      */
     private function formatOrderDataForExamination($order)
     {

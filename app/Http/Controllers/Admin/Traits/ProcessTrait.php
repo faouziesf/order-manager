@@ -37,57 +37,121 @@ trait ProcessTrait
     }
 
     /**
-     * Vérifier si une commande a des problèmes de stock - CORRIGÉ ET OPTIMISÉ
+     * Vérifier si une commande a des problèmes de stock - LOGIQUE CORRIGÉE
      */
     protected function orderHasStockIssues($order)
     {
-        if (!$order || !$order->items || $order->items->isEmpty()) {
-            Log::warning("Commande {$order->id} sans items ou items vides");
-            return true; // Considérer comme problématique si pas d'items
+        // Vérifier si la commande existe
+        if (!$order || !$order->id) {
+            Log::warning("Commande invalide ou sans ID");
+            return true;
         }
         
+        // Charger les items si pas déjà chargés
+        if (!$order->relationLoaded('items')) {
+            $order->load(['items.product']);
+        }
+        
+        // Si pas d'items, considérer comme problématique
+        if (!$order->items || $order->items->isEmpty()) {
+            Log::warning("Commande {$order->id} sans items");
+            return true;
+        }
+        
+        // Vérifier chaque item
         foreach ($order->items as $item) {
-            // Si le produit n'existe plus
+            // Vérifier si l'item a les données requises
+            if (!$item->product_id || !$item->quantity) {
+                Log::warning("Item invalide pour commande {$order->id}, item {$item->id}");
+                return true;
+            }
+            
+            // Si le produit n'existe plus ou n'est pas chargé
             if (!$item->product) {
-                Log::warning("Produit manquant pour commande {$order->id}, item {$item->id}");
+                Log::warning("Produit manquant pour commande {$order->id}, product_id {$item->product_id}");
                 return true;
             }
             
             // Si le produit est inactif
             if (!$item->product->is_active) {
-                Log::warning("Produit inactif pour commande {$order->id}, product {$item->product->id}");
+                Log::info("Produit inactif pour commande {$order->id}, product {$item->product->id}");
                 return true;
             }
             
-            // Vérifier si le stock est insuffisant (comparaison stricte)
-            if ((int)$item->product->stock < (int)$item->quantity) {
-                Log::info("Stock insuffisant pour commande {$order->id}, produit {$item->product->id} ({$item->product->name}): besoin {$item->quantity}, stock disponible {$item->product->stock}");
+            // Vérifier le stock (conversion en entier pour éviter les problèmes de type)
+            $requiredStock = (int)$item->quantity;
+            $availableStock = (int)$item->product->stock;
+            
+            if ($availableStock < $requiredStock) {
+                Log::info("Stock insuffisant pour commande {$order->id}, produit {$item->product->id}: besoin {$requiredStock}, disponible {$availableStock}");
                 return true;
             }
         }
         
+        // Aucun problème détecté
         return false;
     }
 
     /**
-     * Vérifier le stock disponible pour une liste de commandes - NOUVELLE MÉTHODE
+     * Analyser les problèmes de stock d'une commande - MÉTHODE CORRIGÉE
      */
-    protected function filterOrdersByStock($orders)
+    protected function analyzeOrderStockIssues($order)
     {
-        $validOrders = [];
+        $analysis = [
+            'hasIssues' => false,
+            'availableItems' => collect(),
+            'unavailableItems' => collect(),
+            'issues' => []
+        ];
         
-        foreach ($orders as $order) {
-            if (!$this->orderHasStockIssues($order)) {
-                $validOrders[] = $order;
+        if (!$order || !$order->items || $order->items->isEmpty()) {
+            $analysis['hasIssues'] = true;
+            $analysis['issues'][] = [
+                'type' => 'no_items',
+                'message' => 'Commande sans produits'
+            ];
+            return $analysis;
+        }
+        
+        foreach ($order->items as $item) {
+            $itemIssues = [];
+            $hasItemIssues = false;
+            
+            // Vérifier l'existence du produit
+            if (!$item->product) {
+                $itemIssues[] = 'Produit supprimé';
+                $hasItemIssues = true;
             } else {
-                // Optionnel: suspendre automatiquement les commandes avec problème de stock
-                if (!$order->is_suspended) {
-                    $this->autoSuspendOrderForStock($order);
+                // Vérifier si le produit est actif
+                if (!$item->product->is_active) {
+                    $itemIssues[] = 'Produit inactif';
+                    $hasItemIssues = true;
                 }
+                
+                // Vérifier le stock
+                $requiredStock = (int)$item->quantity;
+                $availableStock = (int)($item->product->stock ?? 0);
+                
+                if ($availableStock < $requiredStock) {
+                    $itemIssues[] = "Stock insuffisant (besoin: {$requiredStock}, disponible: {$availableStock})";
+                    $hasItemIssues = true;
+                }
+            }
+            
+            // Classer l'item
+            if ($hasItemIssues) {
+                $analysis['unavailableItems']->push($item);
+                $analysis['issues'][] = [
+                    'product_name' => $item->product ? $item->product->name : "Produit #{$item->product_id}",
+                    'reasons' => $itemIssues
+                ];
+                $analysis['hasIssues'] = true;
+            } else {
+                $analysis['availableItems']->push($item);
             }
         }
         
-        return $validOrders;
+        return $analysis;
     }
 
     /**
@@ -96,29 +160,34 @@ trait ProcessTrait
     protected function autoSuspendOrderForStock($order)
     {
         try {
-            $missingProducts = [];
-            
-            foreach ($order->items as $item) {
-                if ($item->product && (int)$item->product->stock < (int)$item->quantity) {
-                    $missingProducts[] = $item->product->name;
+            if ($this->orderHasStockIssues($order)) {
+                $analysis = $this->analyzeOrderStockIssues($order);
+                
+                $reasons = [];
+                foreach ($analysis['issues'] as $issue) {
+                    $reasons[] = $issue['product_name'] . ': ' . implode(', ', $issue['reasons']);
                 }
-            }
-            
-            if (!empty($missingProducts)) {
+                
                 $order->is_suspended = true;
-                $order->suspension_reason = 'Rupture de stock: ' . implode(', ', $missingProducts);
+                $order->suspension_reason = 'Auto-suspension: ' . implode(' | ', array_slice($reasons, 0, 3));
+                if (count($reasons) > 3) {
+                    $order->suspension_reason .= ' (et ' . (count($reasons) - 3) . ' autre(s))';
+                }
                 $order->save();
                 
                 $order->recordHistory(
                     'suspension', 
-                    'Commande suspendue automatiquement - Stock insuffisant pour: ' . implode(', ', $missingProducts)
+                    'Commande suspendue automatiquement pour problèmes de stock: ' . implode(', ', array_slice($reasons, 0, 2))
                 );
                 
-                Log::info("Commande {$order->id} suspendue automatiquement pour rupture de stock");
+                Log::info("Commande {$order->id} suspendue automatiquement pour problèmes de stock");
+                return true;
             }
         } catch (\Exception $e) {
             Log::error("Erreur lors de la suspension automatique de la commande {$order->id}: " . $e->getMessage());
         }
+        
+        return false;
     }
 
     /**

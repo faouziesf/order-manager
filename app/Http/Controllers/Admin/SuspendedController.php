@@ -38,7 +38,7 @@ class SuspendedController extends Controller
     }
 
     /**
-     * Obtenir les commandes suspendues
+     * Obtenir les commandes suspendues - LOGIQUE CORRIGÉE
      */
     public function getOrders(Request $request)
     {
@@ -52,12 +52,13 @@ class SuspendedController extends Controller
                 ], 401);
             }
 
+            // LOGIQUE CORRIGÉE: Récupérer TOUTES les commandes suspendues sans filtrage de stock
             $query = $admin->orders()
                 ->with(['items.product', 'employee'])
                 ->where('is_suspended', true)
                 ->whereNotIn('status', ['annulée', 'livrée']);
 
-            // Appliquer les filtres
+            // Appliquer les filtres de recherche si présents
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function($q) use ($search) {
@@ -84,34 +85,27 @@ class SuspendedController extends Controller
                 $query->whereDate('created_at', '<=', $request->date_to);
             }
 
+            // Récupérer toutes les commandes suspendues
+            $allSuspendedOrders = $query->orderBy('created_at', 'desc')->get();
+
+            Log::info("Interface suspended: {$allSuspendedOrders->count()} commandes suspendues trouvées");
+
+            // Filtrer par problèmes de stock si demandé
             if ($request->filled('has_stock_issues')) {
                 if ($request->has_stock_issues === 'yes') {
                     // Filtrer uniquement celles avec problèmes de stock
-                    $orders = $query->get()->filter(function($order) {
+                    $orders = $allSuspendedOrders->filter(function($order) {
                         return $this->orderHasStockIssues($order);
                     });
                 } else {
                     // Filtrer celles sans problèmes de stock
-                    $orders = $query->get()->filter(function($order) {
+                    $orders = $allSuspendedOrders->filter(function($order) {
                         return !$this->orderHasStockIssues($order);
                     });
                 }
             } else {
-                $orders = $query->get();
-            }
-
-            // Tri
-            $sortField = $request->get('sort', 'created_at');
-            $sortOrder = $request->get('order', 'desc');
-            
-            if ($sortField === 'created_at') {
-                $orders = $sortOrder === 'desc' 
-                    ? $orders->sortByDesc('created_at')
-                    : $orders->sortBy('created_at');
-            } elseif ($sortField === 'customer_name') {
-                $orders = $sortOrder === 'desc' 
-                    ? $orders->sortByDesc('customer_name')
-                    : $orders->sortBy('customer_name');
+                // Pas de filtrage par stock, prendre toutes les commandes suspendues
+                $orders = $allSuspendedOrders;
             }
 
             if ($orders->count() > 0) {
@@ -120,6 +114,8 @@ class SuspendedController extends Controller
                 })->filter(function($orderData) {
                     return $orderData !== null;
                 })->values()->toArray();
+                
+                Log::info("Interface suspended: " . count($ordersData) . " commandes formatées");
                 
                 return response()->json([
                     'hasOrders' => true,
@@ -134,7 +130,7 @@ class SuspendedController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur dans getOrders: ' . $e->getMessage(), [
+            Log::error('Erreur dans SuspendedController::getOrders: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -146,7 +142,7 @@ class SuspendedController extends Controller
     }
 
     /**
-     * Compter les commandes suspendues
+     * Compter les commandes suspendues - LOGIQUE CORRIGÉE
      */
     public function getCount()
     {
@@ -157,6 +153,7 @@ class SuspendedController extends Controller
                 return response()->json(['error' => 'Non authentifié'], 401);
             }
             
+            // LOGIQUE CORRIGÉE: Compter TOUTES les commandes suspendues
             $count = $admin->orders()
                 ->where('is_suspended', true)
                 ->whereNotIn('status', ['annulée', 'livrée'])
@@ -168,7 +165,7 @@ class SuspendedController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur dans getCount: ' . $e->getMessage());
+            Log::error('Erreur dans SuspendedController::getCount: ' . $e->getMessage());
             
             return response()->json([
                 'error' => 'Erreur lors du chargement du compteur',
@@ -432,7 +429,7 @@ class SuspendedController extends Controller
     }
 
     /**
-     * Helper pour formater les données des commandes suspendues
+     * Helper pour formater les données des commandes suspendues - AMÉLIORÉE
      */
     private function formatSuspendedOrderData($order)
     {
@@ -445,6 +442,7 @@ class SuspendedController extends Controller
                 $order->load(['items.product']);
             }
             
+            // Analyser les problèmes de stock pour cette commande suspendue
             $hasStockIssues = $this->orderHasStockIssues($order);
             $stockAnalysis = $hasStockIssues ? $this->analyzeOrderStockIssues($order) : null;
             
@@ -460,7 +458,7 @@ class SuspendedController extends Controller
                 'created_at' => $order->created_at ? $order->created_at->toISOString() : now()->toISOString(),
                 'suspension_reason' => $order->suspension_reason ?? '',
                 'has_stock_issues' => $hasStockIssues,
-                'can_reactivate' => !$hasStockIssues,
+                'can_reactivate' => !$hasStockIssues, // Peut être réactivée si pas de problèmes de stock
                 'items_count' => $order->items ? $order->items->count() : 0,
                 'employee_name' => $order->employee ? $order->employee->name : null,
                 'stock_analysis' => $stockAnalysis,
