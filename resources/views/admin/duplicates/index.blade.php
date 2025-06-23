@@ -8,7 +8,6 @@
 
 @section('css')
 <style>
-    /* Variables CSS simples */
     :root {
         --primary: #6366f1;
         --success: #10b981;
@@ -333,18 +332,6 @@
         color: var(--gray-600);
     }
 
-    .priority-badge {
-        background: #d4a147;
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
     .auto-merge-indicator {
         background: rgba(16, 185, 129, 0.1);
         color: #059669;
@@ -565,6 +552,7 @@
         padding: 2rem;
         border-radius: 8px;
         text-align: center;
+        margin:150px;
     }
 
     .spinner {
@@ -672,6 +660,12 @@
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
 
+    .alert-info {
+        background: rgba(59, 130, 246, 0.1);
+        color: #1e40af;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
     .alert-dismissible .btn-close {
         margin-left: auto;
         background: none;
@@ -700,12 +694,19 @@
         </div>
     @endif
 
+    <!-- Info sur la logique simplifiée -->
+    <div class="alert alert-info alert-dismissible">
+        <i class="fas fa-info-circle"></i>
+        <strong>Logique simplifiée :</strong> Si plusieurs commandes ont le même numéro de téléphone → toutes marquées comme double. Après fusion, si il ne reste qu'une commande → plus marquée comme double.
+        <button type="button" class="btn-close" onclick="this.parentElement.style.display='none'">&times;</button>
+    </div>
+
     <!-- Stats + Actions -->
     <div class="stats-actions">
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number" id="totalDuplicates">{{ $stats['total_duplicates'] ?? 0 }}</div>
-                <div class="stat-label">Doublons (Tous Statuts)</div>
+                <div class="stat-label">Doublons Non Examinés</div>
             </div>
             
             <div class="stat-card info">
@@ -720,22 +721,18 @@
             
             <div class="stat-card warning">
                 <div class="stat-number" id="uniqueClients">{{ $stats['unique_clients'] ?? 0 }}</div>
-                <div class="stat-label">Clients en Attente</div>
+                <div class="stat-label">Clients Uniques</div>
             </div>
         </div>
         
         <div class="main-actions">
             <button class="btn btn-warning" id="btnCheckDuplicates">
                 <i class="fas fa-search"></i>
-                Vérifier Doublons
+                Détecter Doublons
             </button>
             <button class="btn btn-success" id="btnAutoMerge">
                 <i class="fas fa-magic"></i>
                 Fusion Auto
-            </button>
-            <button class="btn btn-outline" id="btnCleanData" title="Nettoyer les données incohérentes">
-                <i class="fas fa-broom"></i>
-                Nettoyer
             </button>
         </div>
     </div>
@@ -746,7 +743,7 @@
             <div class="search-box">
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" class="search-input" id="searchInput" 
-                       placeholder="Rechercher un client par téléphone ou nom...">
+                       placeholder="Rechercher un client par téléphone...">
             </div>
             
             <div class="search-actions">
@@ -782,10 +779,6 @@
                         <option value="4">4+</option>
                         <option value="5">5+</option>
                     </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Montant min:</label>
-                    <input type="number" class="filter-input" id="minAmount" placeholder="TND">
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">Trier par:</label>
@@ -892,7 +885,7 @@
             </button>
         </div>
         <div class="modal-body">
-            <div class="alert alert-info" style="background: rgba(59, 130, 246, 0.1); color: #1e40af; border: 1px solid rgba(59, 130, 246, 0.3);">
+            <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
                 Cette action va fusionner toutes les commandes fusionnables (nouvelle/datée) de ce client.
             </div>
@@ -959,7 +952,7 @@ $(document).ready(function() {
     });
     
     // Filter changes
-    $('#duplicateType, #minOrders, #minAmount, #sortField, #perPage').change(function() {
+    $('#duplicateType, #minOrders, #sortField, #perPage').change(function() {
         loadDuplicates(1);
     });
     
@@ -992,6 +985,7 @@ $(document).ready(function() {
         
         const phones = Array.from(selectedItems);
         let completed = 0;
+        let totalSuccess = 0;
         
         phones.forEach(phone => {
             $.post('{{ route("admin.duplicates.merge") }}', {
@@ -999,13 +993,22 @@ $(document).ready(function() {
                 note: 'Fusion groupée',
                 _token: $('meta[name="csrf-token"]').attr('content')
             })
+            .done(function(response) {
+                if (response.success) {
+                    totalSuccess++;
+                }
+            })
             .always(() => {
                 completed++;
                 if (completed === phones.length) {
                     hideLoading();
-                    showSuccess(`${phones.length} groupe(s) fusionné(s)`);
-                    loadDuplicates(currentPage);
-                    refreshStats();
+                    if (totalSuccess > 0) {
+                        showSuccess(`${totalSuccess} groupe(s) fusionné(s)`);
+                        loadDuplicates(currentPage);
+                        refreshStats();
+                    } else {
+                        showError('Aucun groupe n\'a pu être fusionné');
+                    }
                 }
             });
         });
@@ -1014,7 +1017,7 @@ $(document).ready(function() {
     $('#btnBulkReview').click(function() {
         if (selectedItems.size === 0) return;
         
-        if (!confirm(`Marquer ${selectedItems.size} groupe(s) comme examiné(s) ? Cela va marquer TOUTES les commandes de ces clients comme examinées.`)) {
+        if (!confirm(`Marquer ${selectedItems.size} groupe(s) comme examiné(s) ?`)) {
             return;
         }
         
@@ -1037,9 +1040,6 @@ $(document).ready(function() {
                         $(this).remove();
                     });
                 }
-            })
-            .fail(function(xhr) {
-                console.error(`Erreur pour ${phone}:`, xhr.responseText);
             })
             .always(() => {
                 completed++;
@@ -1085,7 +1085,7 @@ $(document).ready(function() {
         })
         .fail(function() {
             hideLoading();
-            showError('Erreur lors de la vérification');
+            showError('Erreur lors de la détection');
         });
     });
     
@@ -1108,33 +1108,6 @@ $(document).ready(function() {
         .fail(function() {
             hideLoading();
             showError('Erreur lors de la fusion automatique');
-        });
-    });
-    
-    // NOUVEAU: Bouton de nettoyage des données
-    $('#btnCleanData').click(function() {
-        if (!confirm('Nettoyer les données incohérentes ? Cela va automatiquement marquer comme examinés les clients qui ont déjà des commandes traitées.')) {
-            return;
-        }
-        
-        showLoading();
-        
-        $.post('{{ route("admin.duplicates.clean-data") }}', {
-            _token: $('meta[name="csrf-token"]').attr('content')
-        })
-        .done(function(response) {
-            hideLoading();
-            if (response.success) {
-                showSuccess(response.message);
-                loadDuplicates(currentPage);
-                refreshStats();
-            } else {
-                showError(response.message);
-            }
-        })
-        .fail(function() {
-            hideLoading();
-            showError('Erreur lors du nettoyage');
         });
     });
     
@@ -1177,7 +1150,6 @@ $(document).ready(function() {
             search: $('#searchInput').val(),
             duplicate_type: $('#duplicateType').val(),
             min_orders: $('#minOrders').val(),
-            min_amount: $('#minAmount').val(),
             sort: $('#sortField').val(),
             direction: 'desc'
         };
@@ -1206,9 +1178,9 @@ $(document).ready(function() {
                 <tr>
                     <td colspan="7">
                         <div class="empty-state">
-                            <i class="fas fa-search"></i>
+                            <i class="fas fa-check-circle"></i>
                             <h6>Aucune commande double trouvée</h6>
-                            <p>Modifiez vos critères de recherche.</p>
+                            <p>Tous les doublons ont été traités ou il n'y en a pas.</p>
                         </div>
                     </td>
                 </tr>
@@ -1222,7 +1194,6 @@ $(document).ready(function() {
                 ? '<div class="auto-merge-indicator"><i class="fas fa-clock"></i> Éligible fusion auto</div>'
                 : '';
             
-            // Nouvel indicateur pour les commandes fusionnables/non-fusionnables
             const hasMergeable = duplicate.mergeable_orders && duplicate.mergeable_orders.length > 1;
             const hasNonMergeable = duplicate.non_mergeable_orders && duplicate.non_mergeable_orders.length > 0;
             
@@ -1234,7 +1205,6 @@ $(document).ready(function() {
                 statusIndicators += `<div class="non-mergeable-indicator"><i class="fas fa-ban"></i> ${duplicate.non_mergeable_orders.length} non-fusionnables</div>`;
             }
             
-            // Afficher les statuts présents
             if (duplicate.statuses) {
                 statusIndicators += `<div class="status-summary">Statuts: ${duplicate.statuses}</div>`;
             }
@@ -1397,7 +1367,6 @@ $(document).ready(function() {
     function refreshStats() {
         $.get('{{ route("admin.duplicates.stats") }}')
             .done(function(stats) {
-                // Mettre à jour les statistiques avec vérification
                 $('#totalDuplicates').text(stats.total_duplicates || 0);
                 $('#mergeableDuplicates').text(stats.mergeable_duplicates || 0);
                 $('#mergedToday').text(stats.merged_today || 0);
@@ -1407,7 +1376,6 @@ $(document).ready(function() {
                 if ((stats.total_duplicates || 0) === 0) {
                     const currentResultsCount = parseInt($('#totalResultsBadge').text());
                     if (currentResultsCount > 0) {
-                        // Il y a une incohérence, forcer le rechargement de la liste
                         loadDuplicates(1);
                     }
                 }
@@ -1470,7 +1438,6 @@ function closeMergeModal() {
 function markAsReviewed(phone) {
     if (!confirm('Marquer comme examiné ? Cela va marquer TOUTES les commandes de ce client comme examinées.')) return;
     
-    // Afficher un indicateur de chargement sur la ligne concernée
     const row = $(`.table tbody tr[data-phone="${phone}"]`);
     const originalContent = row.html();
     row.html('<td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Traitement en cours...</td>');
@@ -1483,23 +1450,20 @@ function markAsReviewed(phone) {
         if (response.success) {
             showSuccess(response.message);
             
-            // Retirer immédiatement la ligne de la table
             row.fadeOut(300, function() {
                 $(this).remove();
                 
-                // Mettre à jour le compteur de résultats
                 const currentTotal = parseInt($('#totalResultsBadge').text()) - 1;
                 $('#totalResultsBadge').text(Math.max(0, currentTotal));
                 $('#resultsCount').text(currentTotal === 0 ? 'Aucun résultat' : 
                                       currentTotal === 1 ? '1 résultat' : `${currentTotal} résultats`);
                 
-                // Si plus de résultats, afficher le message vide
                 if (currentTotal === 0) {
                     $('#duplicatesTableBody').html(`
                         <tr>
                             <td colspan="7">
                                 <div class="empty-state">
-                                    <i class="fas fa-search"></i>
+                                    <i class="fas fa-check-circle"></i>
                                     <h6>Aucune commande double trouvée</h6>
                                     <p>Tous les doublons ont été traités.</p>
                                 </div>
@@ -1509,23 +1473,13 @@ function markAsReviewed(phone) {
                 }
             });
             
-            // Rafraîchir les statistiques
             refreshStats();
-            
-            // Si le response indique qu'on doit rafraîchir, le faire après un délai
-            if (response.should_refresh) {
-                setTimeout(() => {
-                    loadDuplicates(currentPage);
-                }, 1000);
-            }
         } else {
-            // Restaurer le contenu original en cas d'erreur
             row.html(originalContent);
             showError(response.message || 'Erreur lors de la mise à jour');
         }
     })
     .fail(function(xhr) {
-        // Restaurer le contenu original en cas d'erreur
         row.html(originalContent);
         
         let errorMessage = 'Erreur lors de la mise à jour';

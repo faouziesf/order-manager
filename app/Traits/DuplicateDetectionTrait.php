@@ -5,124 +5,51 @@ namespace App\Traits;
 use App\Models\Order;
 use App\Models\AdminSetting;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 trait DuplicateDetectionTrait
 {
     /**
      * Détecter automatiquement les doublons lors de la création d'une commande
-     * MODIFICATION: Détecte maintenant TOUTES les commandes avec le même téléphone, peu importe le statut
+     * LOGIQUE SIMPLIFIÉE: Si plusieurs commandes ont le même téléphone → toutes marquées comme double
      */
     public function detectDuplicatesOnCreate(Order $newOrder)
     {
-        $duplicateOrders = $this->findDuplicateOrders($newOrder);
-        
-        if ($duplicateOrders->count() > 0) {
-            // Ajouter la nouvelle commande au groupe
-            $duplicateOrders->push($newOrder);
+        // Trouver toutes les commandes avec le même numéro (y compris la nouvelle)
+        $allOrdersWithSamePhone = Order::where('admin_id', $newOrder->admin_id)
+            ->where(function($query) use ($newOrder) {
+                $query->where('customer_phone', $newOrder->customer_phone);
+                if ($newOrder->customer_phone_2) {
+                    $query->orWhere('customer_phone', $newOrder->customer_phone_2)
+                          ->orWhere('customer_phone_2', $newOrder->customer_phone)
+                          ->orWhere('customer_phone_2', $newOrder->customer_phone_2);
+                }
+            })
+            ->get();
+
+        // Si plus d'une commande avec ce numéro → toutes marquées comme double
+        if ($allOrdersWithSamePhone->count() > 1) {
+            $groupId = 'DUP_' . time() . '_' . $newOrder->customer_phone;
             
-            // Générer un ID de groupe unique
-            $groupId = 'DUP_' . time() . '_' . $newOrder->id;
-            
-            // Marquer toutes les commandes comme doublons (peu importe leur statut)
-            foreach ($duplicateOrders as $order) {
+            foreach ($allOrdersWithSamePhone as $order) {
                 $order->update([
                     'is_duplicate' => true,
-                    'duplicate_group_id' => $groupId
+                    'duplicate_group_id' => $groupId,
+                    'reviewed_for_duplicates' => false
                 ]);
                 
                 $order->recordHistory(
                     'duplicate_detected',
-                    'Doublon détecté automatiquement lors de la création de la commande #' . $newOrder->id
+                    'Doublon détecté automatiquement (groupe: ' . $groupId . ')'
                 );
             }
             
-            Log::info("Doublons détectés pour la commande #{$newOrder->id}", [
-                'phone' => $newOrder->customer_phone,
-                'duplicate_count' => $duplicateOrders->count(),
-                'group_id' => $groupId,
-                'statuses' => $duplicateOrders->pluck('status')->unique()->toArray()
+            Log::info("Doublons détectés pour le téléphone {$newOrder->customer_phone}", [
+                'orders_count' => $allOrdersWithSamePhone->count(),
+                'group_id' => $groupId
             ]);
             
-            return $duplicateOrders->count();
-        }
-        
-        return false;
-    }
-
-    /**
-     * Trouver les commandes en double pour une commande donnée
-     * MODIFICATION: Recherche maintenant dans TOUTES les commandes, peu importe le statut
-     */
-    public function findDuplicateOrders(Order $order)
-    {
-        return Order::where('admin_id', $order->admin_id)
-            ->where('id', '!=', $order->id)
-            // SUPPRESSION du filtre sur les statuts - maintenant on cherche dans TOUS les statuts
-            ->where(function($query) use ($order) {
-                $query->where(function($q) use ($order) {
-                    // Correspondance exacte du téléphone principal
-                    $q->where('customer_phone', $order->customer_phone);
-                    
-                    // Correspondance avec téléphone secondaire
-                    if ($order->customer_phone_2) {
-                        $q->orWhere('customer_phone', $order->customer_phone_2)
-                          ->orWhere('customer_phone_2', $order->customer_phone)
-                          ->orWhere('customer_phone_2', $order->customer_phone_2);
-                    }
-                })
-                ->orWhere(function($q) use ($order) {
-                    // Vérification des 8 chiffres successifs
-                    $q->whereRaw('1=1'); // Base query, sera affinée ci-dessous
-                });
-            })
-            ->get()
-            ->filter(function($otherOrder) use ($order) {
-                return $this->phoneMatches($order->customer_phone, $otherOrder->customer_phone) ||
-                       $this->has8SuccessiveDigits($order->customer_phone, $otherOrder->customer_phone) ||
-                       ($order->customer_phone_2 && (
-                           $this->phoneMatches($order->customer_phone_2, $otherOrder->customer_phone) ||
-                           $this->phoneMatches($order->customer_phone_2, $otherOrder->customer_phone_2) ||
-                           $this->has8SuccessiveDigits($order->customer_phone_2, $otherOrder->customer_phone)
-                       ));
-            });
-    }
-
-    /**
-     * Vérifier si deux numéros de téléphone correspondent exactement
-     */
-    private function phoneMatches($phone1, $phone2)
-    {
-        if (!$phone1 || !$phone2) {
-            return false;
-        }
-        
-        return trim($phone1) === trim($phone2);
-    }
-
-    /**
-     * Vérifier si deux numéros ont 8 chiffres successifs identiques
-     */
-    private function has8SuccessiveDigits($phone1, $phone2)
-    {
-        if (!$phone1 || !$phone2) {
-            return false;
-        }
-        
-        // Extraire seulement les chiffres
-        $digits1 = preg_replace('/\D/', '', $phone1);
-        $digits2 = preg_replace('/\D/', '', $phone2);
-        
-        // Vérifier que les deux numéros ont au moins 8 chiffres
-        if (strlen($digits1) < 8 || strlen($digits2) < 8) {
-            return false;
-        }
-        
-        // Chercher 8 chiffres successifs identiques
-        for ($i = 0; $i <= strlen($digits1) - 8; $i++) {
-            $substring = substr($digits1, $i, 8);
-            if (strpos($digits2, $substring) !== false) {
-                return true;
-            }
+            return $allOrdersWithSamePhone->count();
         }
         
         return false;
@@ -130,85 +57,76 @@ trait DuplicateDetectionTrait
 
     /**
      * Scanner toutes les commandes d'un admin pour détecter les doublons
-     * MODIFICATION: Scan maintenant TOUTES les commandes, peu importe le statut
+     * LOGIQUE SIMPLIFIÉE: Grouper par téléphone, si plus d'une → toutes marquées comme double
      */
     public function scanAllOrdersForDuplicates($adminId)
     {
         try {
-            // Reset les tags existants
-            Order::where('admin_id', $adminId)
-                  ->update(['is_duplicate' => false, 'duplicate_group_id' => null]);
+            DB::beginTransaction();
             
-            // MODIFICATION: Récupérer TOUTES les commandes, pas seulement nouvelle/datée
-            $orders = Order::where('admin_id', $adminId)
-                ->orderBy('created_at', 'asc')
-                ->get();
+            // Reset tous les marquages existants
+            Order::where('admin_id', $adminId)
+                  ->update([
+                      'is_duplicate' => false, 
+                      'duplicate_group_id' => null,
+                      'reviewed_for_duplicates' => false
+                  ]);
+            
+            // Grouper les commandes par numéro de téléphone
+            $phoneGroups = Order::where('admin_id', $adminId)
+                ->select('customer_phone')
+                ->groupBy('customer_phone')
+                ->havingRaw('COUNT(*) > 1')
+                ->pluck('customer_phone');
             
             $duplicatesFound = 0;
-            $processedPhones = [];
-            $processedOrders = [];
+            $groupsCreated = 0;
             
-            foreach ($orders as $order) {
-                // Éviter de traiter deux fois le même numéro ou la même commande
-                if (in_array($order->customer_phone, $processedPhones) || 
-                    in_array($order->id, $processedOrders)) {
-                    continue;
-                }
+            foreach ($phoneGroups as $phone) {
+                $ordersWithThisPhone = Order::where('admin_id', $adminId)
+                    ->where('customer_phone', $phone)
+                    ->get();
                 
-                $duplicateOrders = $this->findDuplicateOrders($order);
-                
-                if ($duplicateOrders->count() > 0) {
-                    // Ajouter la commande principale
-                    $duplicateOrders->push($order);
+                if ($ordersWithThisPhone->count() > 1) {
+                    $groupId = 'DUP_' . time() . '_' . $phone . '_' . $ordersWithThisPhone->count();
                     
-                    // Générer un ID de groupe unique
-                    $groupId = 'DUP_' . time() . '_' . $order->id . '_' . $duplicateOrders->count();
-                    
-                    // Marquer toutes les commandes du groupe comme doublons
-                    foreach ($duplicateOrders as $dupOrder) {
-                        $dupOrder->update([
+                    foreach ($ordersWithThisPhone as $order) {
+                        $order->update([
                             'is_duplicate' => true,
-                            'duplicate_group_id' => $groupId
+                            'duplicate_group_id' => $groupId,
+                            'reviewed_for_duplicates' => false
                         ]);
                         
-                        $dupOrder->recordHistory(
+                        $order->recordHistory(
                             'duplicate_detected',
-                            'Doublon détecté lors du scan global - Groupe: ' . $groupId . ' (Statut: ' . $dupOrder->status . ')'
+                            'Doublon détecté lors du scan global (groupe: ' . $groupId . ')'
                         );
-                        
-                        $processedOrders[] = $dupOrder->id;
                     }
                     
-                    $duplicatesFound += $duplicateOrders->count();
-                    $processedPhones[] = $order->customer_phone;
-                    
-                    Log::info("Groupe de doublons détecté", [
-                        'group_id' => $groupId,
-                        'phone' => $order->customer_phone,
-                        'orders_count' => $duplicateOrders->count(),
-                        'order_ids' => $duplicateOrders->pluck('id')->toArray(),
-                        'statuses' => $duplicateOrders->pluck('status')->unique()->toArray()
-                    ]);
+                    $duplicatesFound += $ordersWithThisPhone->count();
+                    $groupsCreated++;
                 }
             }
             
+            DB::commit();
+            
             Log::info("Scan des doublons terminé", [
                 'admin_id' => $adminId,
-                'total_duplicates_found' => $duplicatesFound,
-                'unique_groups' => count($processedPhones)
+                'duplicates_found' => $duplicatesFound,
+                'groups_created' => $groupsCreated
             ]);
             
             return [
                 'success' => true,
                 'duplicates_found' => $duplicatesFound,
-                'groups_created' => count($processedPhones)
+                'groups_created' => $groupsCreated
             ];
             
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Erreur lors du scan des doublons', [
                 'admin_id' => $adminId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
             
             return [
@@ -220,7 +138,7 @@ trait DuplicateDetectionTrait
 
     /**
      * Fusion automatique basée sur le délai configuré
-     * REMARQUE: La fusion reste limitée aux commandes "nouvelle" et "datée" seulement
+     * Fusion limitée aux commandes "nouvelle" et "datée" seulement
      */
     public function autoMergeDuplicates($adminId)
     {
@@ -228,9 +146,9 @@ trait DuplicateDetectionTrait
             $delayHours = AdminSetting::getForAdmin($adminId, 'duplicate_auto_merge_delay_hours', 2);
             $cutoffTime = now()->subHours($delayHours);
             
-            // IMPORTANT: Pour la fusion, on ne traite que les commandes nouvelle/datée
+            // Trouver les groupes de doublons fusionnables
             $duplicateGroups = Order::where('admin_id', $adminId)
-                ->whereIn('status', ['nouvelle', 'datée']) // Fusion limitée à ces statuts
+                ->whereIn('status', ['nouvelle', 'datée'])
                 ->where('is_duplicate', true)
                 ->where('reviewed_for_duplicates', false)
                 ->where('created_at', '<=', $cutoffTime)
@@ -243,10 +161,9 @@ trait DuplicateDetectionTrait
             $groupsProcessed = 0;
             
             foreach ($duplicateGroups as $group) {
-                // Ne traiter que les commandes fusionnables (nouvelle/datée)
                 $orders = Order::where('admin_id', $adminId)
                     ->where('customer_phone', $group->customer_phone)
-                    ->whereIn('status', ['nouvelle', 'datée']) // Fusion limitée
+                    ->whereIn('status', ['nouvelle', 'datée'])
                     ->where('is_duplicate', true)
                     ->where('reviewed_for_duplicates', false)
                     ->orderBy('created_at', 'desc')
@@ -256,28 +173,11 @@ trait DuplicateDetectionTrait
                     $primaryOrder = $orders->first();
                     $secondaryOrders = $orders->skip(1);
                     
-                    // Vérifier la compatibilité avant fusion
-                    $canMerge = true;
-                    foreach ($secondaryOrders as $secondaryOrder) {
-                        if (!$primaryOrder->canMergeWith($secondaryOrder)) {
-                            $canMerge = false;
-                            break;
-                        }
-                    }
+                    $this->performMerge($primaryOrder, $secondaryOrders, 
+                        "Fusion automatique après {$delayHours}h de délai");
                     
-                    if ($canMerge) {
-                        $this->performMerge($primaryOrder, $secondaryOrders, 
-                            "Fusion automatique après {$delayHours}h de délai");
-                        
-                        $mergedCount += $orders->count();
-                        $groupsProcessed++;
-                        
-                        Log::info("Fusion automatique effectuée", [
-                            'primary_order_id' => $primaryOrder->id,
-                            'merged_orders' => $secondaryOrders->pluck('id')->toArray(),
-                            'phone' => $group->customer_phone
-                        ]);
-                    }
+                    $mergedCount += $orders->count();
+                    $groupsProcessed++;
                 }
             }
             
@@ -302,94 +202,157 @@ trait DuplicateDetectionTrait
 
     /**
      * Effectuer la fusion de commandes
-     * REMARQUE: Ne fonctionne que pour les commandes nouvelle/datée
+     * NOUVEAU: Vérification automatique après fusion
      */
     private function performMerge(Order $primaryOrder, $secondaryOrders, $note = null)
     {
-        $mergedNames = collect([$primaryOrder->customer_name]);
-        $mergedAddresses = collect([$primaryOrder->customer_address]);
+        DB::beginTransaction();
+        
+        try {
+            $mergedNames = collect([$primaryOrder->customer_name]);
+            $mergedAddresses = collect([$primaryOrder->customer_address]);
 
-        foreach ($secondaryOrders as $secondaryOrder) {
-            // Collecter noms et adresses uniques
-            if ($secondaryOrder->customer_name && 
-                !$mergedNames->contains($secondaryOrder->customer_name)) {
-                $mergedNames->push($secondaryOrder->customer_name);
-            }
-            
-            if ($secondaryOrder->customer_address && 
-                !$mergedAddresses->contains($secondaryOrder->customer_address)) {
-                $mergedAddresses->push($secondaryOrder->customer_address);
-            }
-
-            // Fusionner les produits
-            foreach ($secondaryOrder->items as $item) {
-                $existingItem = $primaryOrder->items->where('product_id', $item->product_id)->first();
+            foreach ($secondaryOrders as $secondaryOrder) {
+                // Collecter noms et adresses uniques
+                if ($secondaryOrder->customer_name && 
+                    !$mergedNames->contains($secondaryOrder->customer_name)) {
+                    $mergedNames->push($secondaryOrder->customer_name);
+                }
                 
-                if ($existingItem) {
-                    $existingItem->quantity += $item->quantity;
-                    $existingItem->total_price += $item->total_price;
-                    $existingItem->save();
-                } else {
-                    $primaryOrder->items()->create([
-                        'product_id' => $item->product_id,
-                        'quantity' => $item->quantity,
-                        'unit_price' => $item->unit_price,
-                        'total_price' => $item->total_price
-                    ]);
+                if ($secondaryOrder->customer_address && 
+                    !$mergedAddresses->contains($secondaryOrder->customer_address)) {
+                    $mergedAddresses->push($secondaryOrder->customer_address);
+                }
+
+                // Fusionner les produits
+                foreach ($secondaryOrder->items as $item) {
+                    $existingItem = $primaryOrder->items->where('product_id', $item->product_id)->first();
+                    
+                    if ($existingItem) {
+                        $existingItem->quantity += $item->quantity;
+                        $existingItem->total_price += $item->total_price;
+                        $existingItem->save();
+                    } else {
+                        $primaryOrder->items()->create([
+                            'product_id' => $item->product_id,
+                            'quantity' => $item->quantity,
+                            'unit_price' => $item->unit_price,
+                            'total_price' => $item->total_price
+                        ]);
+                    }
                 }
             }
+
+            // Mettre à jour la commande principale
+            $originalPrice = $primaryOrder->total_price;
+            $primaryOrder->update([
+                'customer_name' => $mergedNames->filter()->implode(' / '),
+                'customer_address' => $mergedAddresses->filter()->implode(' / '),
+                'total_price' => $primaryOrder->items->sum('total_price'),
+                'reviewed_for_duplicates' => true,
+                'notes' => ($primaryOrder->notes ? $primaryOrder->notes . "\n" : "") . 
+                          "[FUSION " . now()->format('d/m/Y H:i') . "] " . 
+                          ($note ?: "Fusion de " . $secondaryOrders->count() . " commandes")
+            ]);
+
+            // Enregistrer l'historique
+            $primaryOrder->recordHistory(
+                'duplicate_merge',
+                "Fusion avec commandes: " . $secondaryOrders->pluck('id')->implode(', '),
+                [
+                    'merged_orders_ids' => $secondaryOrders->pluck('id')->toArray(),
+                    'total_price_before' => $originalPrice,
+                    'total_price_after' => $primaryOrder->total_price,
+                    'admin_note' => $note
+                ]
+            );
+
+            // Supprimer les commandes secondaires
+            foreach ($secondaryOrders as $secondaryOrder) {
+                $secondaryOrder->delete();
+            }
+
+            DB::commit();
+
+            // NOUVEAU: Vérifier automatiquement si la commande restante doit encore être marquée comme double
+            $this->autoCleanSingleOrders($primaryOrder->admin_id, $primaryOrder->customer_phone);
+
+            return $primaryOrder;
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
-
-        // Mettre à jour la commande principale
-        $originalPrice = $primaryOrder->total_price;
-        $primaryOrder->update([
-            'customer_name' => $mergedNames->filter()->implode(' / '),
-            'customer_address' => $mergedAddresses->filter()->implode(' / '),
-            'total_price' => $primaryOrder->items->sum('total_price') + $primaryOrder->shipping_cost,
-            'reviewed_for_duplicates' => true,
-            'notes' => ($primaryOrder->notes ? $primaryOrder->notes . "\n" : "") . 
-                      "[FUSION " . now()->format('d/m/Y H:i') . "] " . 
-                      ($note ?: "Fusion de " . $secondaryOrders->count() . " commandes")
-        ]);
-
-        // Enregistrer l'historique
-        $primaryOrder->recordHistory(
-            'duplicate_merge',
-            "Fusion avec commandes: " . $secondaryOrders->pluck('id')->implode(', '),
-            [
-                'merged_orders_ids' => $secondaryOrders->pluck('id')->toArray(),
-                'total_price_before' => $originalPrice,
-                'total_price_after' => $primaryOrder->total_price,
-                'admin_note' => $note
-            ]
-        );
-
-        // Supprimer les commandes secondaires
-        foreach ($secondaryOrders as $secondaryOrder) {
-            $secondaryOrder->delete();
-        }
-
-        // NOUVELLE LOGIQUE: Après fusion, auto-marquer toutes les autres commandes du client
-        $this->autoMarkAllClientDuplicatesAsReviewed($primaryOrder->admin_id, $primaryOrder->customer_phone);
-
-        return $primaryOrder;
     }
 
     /**
-     * Vérifier s'il y a des doublons non examinés pour un admin
-     * MODIFICATION: Compte maintenant TOUS les doublons, pas seulement nouvelle/datée
+     * NOUVELLE MÉTHODE: Nettoyage automatique des commandes uniques
+     * Si un numéro de téléphone n'a plus qu'une seule commande, elle ne doit plus être marquée comme double
      */
-    public function hasUnreviewedDuplicates($adminId)
+    public function autoCleanSingleOrders($adminId, $customerPhone = null)
     {
-        return Order::where('admin_id', $adminId)
-            ->where('is_duplicate', true)
-            ->where('reviewed_for_duplicates', false)
-            ->exists();
+        try {
+            $query = Order::where('admin_id', $adminId)
+                ->where('is_duplicate', true);
+            
+            if ($customerPhone) {
+                $query->where('customer_phone', $customerPhone);
+            }
+            
+            // Grouper par téléphone et compter
+            $phoneGroups = $query->select('customer_phone')
+                ->groupBy('customer_phone')
+                ->selectRaw('customer_phone, COUNT(*) as count')
+                ->get();
+            
+            $cleanedCount = 0;
+            
+            foreach ($phoneGroups as $group) {
+                if ($group->count == 1) {
+                    // Si il ne reste qu'une commande avec ce numéro → la démarquer
+                    $order = Order::where('admin_id', $adminId)
+                        ->where('customer_phone', $group->customer_phone)
+                        ->where('is_duplicate', true)
+                        ->first();
+                    
+                    if ($order) {
+                        $order->update([
+                            'is_duplicate' => false,
+                            'duplicate_group_id' => null,
+                            'reviewed_for_duplicates' => false
+                        ]);
+                        
+                        $order->recordHistory(
+                            'duplicate_auto_clean',
+                            'Marquage doublon supprimé automatiquement (commande unique pour ce numéro)'
+                        );
+                        
+                        $cleanedCount++;
+                    }
+                }
+            }
+            
+            if ($cleanedCount > 0) {
+                Log::info("Nettoyage automatique effectué", [
+                    'admin_id' => $adminId,
+                    'cleaned_count' => $cleanedCount,
+                    'customer_phone' => $customerPhone
+                ]);
+            }
+            
+            return $cleanedCount;
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du nettoyage automatique', [
+                'admin_id' => $adminId,
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
     }
 
     /**
      * Compter les doublons non examinés pour un admin
-     * MODIFICATION: Compte maintenant TOUS les doublons, pas seulement nouvelle/datée
      */
     public function countUnreviewedDuplicates($adminId)
     {
@@ -402,7 +365,6 @@ trait DuplicateDetectionTrait
 
     /**
      * Obtenir les statistiques des doublons pour un admin
-     * MODIFICATION: Statistiques pour TOUS les doublons, avec séparation fusionnables/non-fusionnables
      */
     public function getDuplicateStats($adminId)
     {
@@ -416,13 +378,11 @@ trait DuplicateDetectionTrait
             ->where('reviewed_for_duplicates', false)
             ->whereIn('status', ['nouvelle', 'datée'])
             ->count();
-            
-        $nonMergeableDuplicates = $totalDuplicates - $mergeableDuplicates;
         
         return [
             'total_duplicates' => $totalDuplicates,
             'mergeable_duplicates' => $mergeableDuplicates,
-            'non_mergeable_duplicates' => $nonMergeableDuplicates,
+            'non_mergeable_duplicates' => $totalDuplicates - $mergeableDuplicates,
             
             'unique_clients' => Order::where('admin_id', $adminId)
                 ->where('is_duplicate', true)
@@ -442,7 +402,7 @@ trait DuplicateDetectionTrait
     }
 
     /**
-     * NOUVELLE MÉTHODE: Obtenir les statistiques détaillées par statut
+     * Obtenir les statistiques détaillées par statut
      */
     public function getDuplicateStatsByStatus($adminId)
     {
@@ -454,115 +414,15 @@ trait DuplicateDetectionTrait
             ->pluck('count', 'status')
             ->toArray();
     }
-    
+
     /**
-     * NOUVELLE MÉTHODE: Auto-marquer toutes les commandes doubles d'un client comme examinées
-     * Si un client a au moins une commande double examinée/fusionnée, 
-     * marquer TOUTES ses commandes doubles comme examinées
+     * Vérifier s'il y a des doublons non examinés pour un admin
      */
-    private function autoMarkAllClientDuplicatesAsReviewed($adminId, $customerPhone)
+    public function hasUnreviewedDuplicates($adminId)
     {
-        try {
-            // Marquer toutes les commandes doubles de ce client comme examinées
-            $updated = Order::where('admin_id', $adminId)
-                ->where(function($query) use ($customerPhone) {
-                    $query->where('customer_phone', $customerPhone)
-                          ->orWhere('customer_phone_2', $customerPhone);
-                })
-                ->where('is_duplicate', true)
-                ->where('reviewed_for_duplicates', false)
-                ->update(['reviewed_for_duplicates' => true]);
-            
-            if ($updated > 0) {
-                Log::info("Auto-marquage après fusion pour client {$customerPhone}: {$updated} commandes mises à jour");
-                
-                // Enregistrer dans l'historique pour traçabilité
-                $orders = Order::where('admin_id', $adminId)
-                    ->where(function($query) use ($customerPhone) {
-                        $query->where('customer_phone', $customerPhone)
-                              ->orWhere('customer_phone_2', $customerPhone);
-                    })
-                    ->where('is_duplicate', true)
-                    ->get();
-                    
-                foreach ($orders as $order) {
-                    $order->recordHistory(
-                        'auto_duplicate_review',
-                        'Commande automatiquement marquée comme examinée (client a eu une fusion)'
-                    );
-                }
-            }
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'auto-marquage des commandes du client: ' . $e->getMessage());
-        }
-    }
-    
-    /**
-     * NOUVELLE MÉTHODE: Auto-marquer tous les clients avec des commandes examinées après un scan
-     * Cette méthode est appelée après un scan pour maintenir la cohérence
-     */
-    private function autoMarkAllReviewedClientsAfterScan($adminId)
-    {
-        try {
-            // Trouver les clients qui ont au moins une commande double examinée ou fusionnée
-            $clientsWithReviewedOrders = Order::where('admin_id', $adminId)
-                ->where('is_duplicate', true)
-                ->where(function($query) {
-                    $query->where('reviewed_for_duplicates', true) // Déjà examinée
-                          ->orWhereHas('history', function($subQuery) { // Ou fusionnée
-                              $subQuery->where('action', 'duplicate_merge');
-                          });
-                })
-                ->distinct()
-                ->pluck('customer_phone');
-            
-            if ($clientsWithReviewedOrders->count() > 0) {
-                $totalUpdated = 0;
-                
-                foreach ($clientsWithReviewedOrders as $phone) {
-                    $updated = Order::where('admin_id', $adminId)
-                        ->where(function($query) use ($phone) {
-                            $query->where('customer_phone', $phone)
-                                  ->orWhere('customer_phone_2', $phone);
-                        })
-                        ->where('is_duplicate', true)
-                        ->where('reviewed_for_duplicates', false)
-                        ->update(['reviewed_for_duplicates' => true]);
-                    
-                    $totalUpdated += $updated;
-                    
-                    if ($updated > 0) {
-                        Log::info("Auto-marquage après scan pour client {$phone}: {$updated} commandes mises à jour");
-                        
-                        // Enregistrer dans l'historique pour traçabilité
-                        $orders = Order::where('admin_id', $adminId)
-                            ->where(function($query) use ($phone) {
-                                $query->where('customer_phone', $phone)
-                                      ->orWhere('customer_phone_2', $phone);
-                            })
-                            ->where('is_duplicate', true)
-                            ->get();
-                            
-                        foreach ($orders as $order) {
-                            $order->recordHistory(
-                                'auto_duplicate_review',
-                                'Commande automatiquement marquée comme examinée après scan (client a des commandes déjà traitées)'
-                            );
-                        }
-                    }
-                }
-                
-                if ($totalUpdated > 0) {
-                    Log::info("Auto-marquage après scan terminé pour l'admin {$adminId}", [
-                        'clients_processed' => $clientsWithReviewedOrders->count(),
-                        'total_orders_updated' => $totalUpdated
-                    ]);
-                }
-            }
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'auto-marquage après scan: ' . $e->getMessage());
-        }
+        return Order::where('admin_id', $adminId)
+            ->where('is_duplicate', true)
+            ->where('reviewed_for_duplicates', false)
+            ->exists();
     }
 }
