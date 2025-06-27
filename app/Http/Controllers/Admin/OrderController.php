@@ -121,8 +121,9 @@ class OrderController extends Controller
     public function create()
     {
         try {
-            $regions = Region::all();
-            return view('admin.orders.create', compact('regions'));
+            $regions = Region::orderBy('name')->get();
+            $employees = Auth::guard('admin')->user()->employees()->where('is_active', true)->get();
+            return view('admin.orders.create', compact('regions', 'employees'));
         } catch (\Exception $e) {
             Log::error('Erreur dans OrderController@create: ' . $e->getMessage());
             return redirect()->route('admin.orders.index')->with('error', 'Erreur lors du chargement du formulaire');
@@ -130,7 +131,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Créer une nouvelle commande - SIMPLIFIÉE
+     * Créer une nouvelle commande - VERSION CORRIGÉE
      */
     public function store(Request $request)
     {
@@ -153,63 +154,105 @@ class OrderController extends Controller
                 'customer_phone.required' => 'Le numéro de téléphone est obligatoire',
                 'products.required' => 'Veuillez ajouter au moins un produit',
                 'products.min' => 'Veuillez ajouter au moins un produit',
+                'products.*.id.exists' => 'Un ou plusieurs produits sélectionnés n\'existent pas',
+                'products.*.quantity.required' => 'La quantité est obligatoire pour tous les produits',
+                'products.*.quantity.min' => 'La quantité doit être au moins de 1',
             ]);
 
             DB::beginTransaction();
 
             $admin = Auth::guard('admin')->user();
 
-            // Créer la commande
-            $order = new Order();
-            $order->admin_id = $admin->id;
-            $order->customer_phone = $validated['customer_phone'];
-            $order->customer_name = $validated['customer_name'];
-            $order->customer_phone_2 = $validated['customer_phone_2'];
-            $order->customer_governorate = $validated['customer_governorate'];
-            $order->customer_city = $validated['customer_city'];
-            $order->customer_address = $validated['customer_address'];
-            $order->notes = $validated['notes'];
-            $order->status = $validated['status'];
-            $order->priority = $validated['priority'];
-            $order->attempts_count = 0;
-            $order->daily_attempts_count = 0;
-            
-            // Assigner à un employé si spécifié
-            if ($validated['employee_id']) {
-                $order->employee_id = $validated['employee_id'];
-                $order->is_assigned = true;
-            }
-
-            $order->save();
-
-            // Ajouter les produits et calculer le prix total
+            // Vérifier et préparer les produits
+            $productsData = [];
             $totalPrice = 0;
+
             foreach ($validated['products'] as $productData) {
                 $product = Product::where('id', $productData['id'])
                     ->where('admin_id', $admin->id)
                     ->where('is_active', true)
                     ->first();
                 
-                if ($product) {
-                    $quantity = $productData['quantity'];
-                    $unitPrice = $product->price;
-                    $totalPrice += $quantity * $unitPrice;
-                    
-                    $order->items()->create([
-                        'product_id' => $product->id,
-                        'quantity' => $quantity,
-                        'unit_price' => $unitPrice,
-                        'total_price' => $quantity * $unitPrice,
-                    ]);
+                if (!$product) {
+                    throw new \Exception("Le produit avec l'ID {$productData['id']} n'existe pas ou n'est pas actif.");
+                }
+
+                $quantity = (int) $productData['quantity'];
+                
+                // Si le statut sera confirmé, vérifier le stock
+                if ($validated['status'] === 'confirmée' && $product->stock < $quantity) {
+                    throw new \Exception("Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock}, quantité demandée: {$quantity}");
+                }
+
+                $unitPrice = (float) $product->price;
+                $itemTotal = $quantity * $unitPrice;
+                $totalPrice += $itemTotal;
+
+                $productsData[] = [
+                    'product' => $product,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'total_price' => $itemTotal,
+                ];
+            }
+
+            // Créer la commande
+            $order = new Order();
+            $order->admin_id = $admin->id;
+            $order->customer_phone = $validated['customer_phone'];
+            $order->customer_name = $validated['customer_name'] ?? null;
+            $order->customer_phone_2 = $validated['customer_phone_2'] ?? null;
+            $order->customer_governorate = $validated['customer_governorate'] ?? null;
+            $order->customer_city = $validated['customer_city'] ?? null;
+            $order->customer_address = $validated['customer_address'] ?? null;
+            $order->notes = $validated['notes'] ?? null;
+            $order->status = $validated['status'];
+            $order->priority = $validated['priority'];
+            $order->total_price = $totalPrice;
+            $order->attempts_count = 0;
+            $order->daily_attempts_count = 0;
+            
+            // Assigner à un employé si spécifié
+            if (!empty($validated['employee_id'])) {
+                $employee = Employee::where('id', $validated['employee_id'])
+                    ->where('admin_id', $admin->id)
+                    ->where('is_active', true)
+                    ->first();
+                
+                if ($employee) {
+                    $order->employee_id = $employee->id;
+                    $order->is_assigned = true;
+                } else {
+                    $order->employee_id = null;
+                    $order->is_assigned = false;
+                }
+            } else {
+                $order->employee_id = null;
+                $order->is_assigned = false;
+            }
+
+            $order->save();
+
+            // Ajouter les produits et décrémenter le stock si confirmé
+            foreach ($productsData as $productData) {
+                $order->items()->create([
+                    'product_id' => $productData['product']->id,
+                    'quantity' => $productData['quantity'],
+                    'unit_price' => $productData['unit_price'],
+                    'total_price' => $productData['total_price'],
+                ]);
+
+                // Si commande confirmée, décrémenter le stock
+                if ($validated['status'] === 'confirmée') {
+                    $productData['product']->decrement('stock', $productData['quantity']);
+                    Log::info("Stock décrémenté pour produit {$productData['product']->id}: -{$productData['quantity']}");
                 }
             }
 
-            // Mettre à jour le prix total
-            $order->total_price = $totalPrice;
-            $order->save();
-
-            // Vérifier le stock et suspendre si nécessaire
-            $order->checkStockAndUpdateStatus();
+            // Vérifier le stock et suspendre si nécessaire (pour les commandes non confirmées)
+            if ($validated['status'] !== 'confirmée') {
+                $order->checkStockAndUpdateStatus();
+            }
 
             // Enregistrer dans l'historique
             $order->recordHistory('création', 'Commande créée par ' . $admin->name);
@@ -224,7 +267,7 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur dans OrderController@store: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la création de la commande')->withInput();
+            return redirect()->back()->with('error', 'Erreur: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -249,14 +292,15 @@ class OrderController extends Controller
             $this->authorize('update', $order);
             
             $order->load(['items.product']);
-            $regions = Region::all();
+            $regions = Region::orderBy('name')->get();
             $cities = [];
+            $employees = Auth::guard('admin')->user()->employees()->where('is_active', true)->get();
             
             if ($order->customer_governorate) {
-                $cities = City::where('region_id', $order->customer_governorate)->get();
+                $cities = City::where('region_id', $order->customer_governorate)->orderBy('name')->get();
             }
             
-            return view('admin.orders.edit', compact('order', 'regions', 'cities'));
+            return view('admin.orders.edit', compact('order', 'regions', 'cities', 'employees'));
         } catch (\Exception $e) {
             Log::error('Erreur dans OrderController@edit: ' . $e->getMessage());
             return redirect()->route('admin.orders.index')->with('error', 'Erreur lors du chargement de la commande');
@@ -264,7 +308,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Mettre à jour une commande - CORRIGÉE AVEC GESTION STOCK
+     * Mettre à jour une commande - VERSION CORRIGÉE
      */
     public function update(Request $request, Order $order)
     {
@@ -287,6 +331,11 @@ class OrderController extends Controller
                 'products' => 'required|array|min:1',
                 'products.*.id' => 'required|exists:products,id',
                 'products.*.quantity' => 'required|integer|min:1',
+            ], [
+                'customer_phone.required' => 'Le numéro de téléphone est obligatoire',
+                'products.required' => 'Veuillez ajouter au moins un produit',
+                'products.min' => 'Veuillez ajouter au moins un produit',
+                'scheduled_date.after' => 'La date programmée doit être dans le futur',
             ]);
 
             DB::beginTransaction();
@@ -295,32 +344,81 @@ class OrderController extends Controller
             $wasConfirmed = $oldStatus === 'confirmée';
             $willBeConfirmed = $validated['status'] === 'confirmée';
 
-            // Si la commande passe de non-confirmée à confirmée, vérifier le stock
-            if (!$wasConfirmed && $willBeConfirmed) {
-                // Vérifier le stock disponible avant de confirmer
-                foreach ($validated['products'] as $productData) {
-                    $product = Product::where('id', $productData['id'])
-                        ->where('admin_id', $order->admin_id)
-                        ->where('is_active', true)
-                        ->first();
-                    
-                    if (!$product) {
-                        throw new \Exception("Produit {$productData['id']} non trouvé ou inactif");
-                    }
-                    
-                    if ((int)$product->stock < (int)$productData['quantity']) {
-                        throw new \Exception("Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock}, quantité demandée: {$productData['quantity']}");
+            // Restaurer le stock si la commande était confirmée
+            if ($wasConfirmed && !$willBeConfirmed) {
+                foreach ($order->items as $item) {
+                    if ($item->product) {
+                        $item->product->increment('stock', $item->quantity);
+                        Log::info("Stock restauré pour produit {$item->product->id}: +{$item->quantity}");
                     }
                 }
             }
 
+            // Préparer les nouveaux produits
+            $newProductsData = [];
+            $totalPrice = 0;
+
+            foreach ($validated['products'] as $productData) {
+                $product = Product::where('id', $productData['id'])
+                    ->where('admin_id', $order->admin_id)
+                    ->where('is_active', true)
+                    ->first();
+                
+                if (!$product) {
+                    throw new \Exception("Le produit avec l'ID {$productData['id']} n'existe pas ou n'est pas actif.");
+                }
+
+                $quantity = (int) $productData['quantity'];
+                
+                // Si la commande devient confirmée, vérifier le stock
+                if ($willBeConfirmed && $product->stock < $quantity) {
+                    throw new \Exception("Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock}, quantité demandée: {$quantity}");
+                }
+
+                $unitPrice = (float) $product->price;
+                $itemTotal = $quantity * $unitPrice;
+                $totalPrice += $itemTotal;
+
+                $newProductsData[] = [
+                    'product' => $product,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'total_price' => $itemTotal,
+                ];
+            }
+
             // Mettre à jour les informations de base
-            $order->fill($validated);
+            $order->customer_phone = $validated['customer_phone'];
+            $order->customer_name = $validated['customer_name'] ?? null;
+            $order->customer_phone_2 = $validated['customer_phone_2'] ?? null;
+            $order->customer_governorate = $validated['customer_governorate'] ?? null;
+            $order->customer_city = $validated['customer_city'] ?? null;
+            $order->customer_address = $validated['customer_address'] ?? null;
+            $order->notes = $validated['notes'] ?? null;
+            $order->status = $validated['status'];
+            $order->priority = $validated['priority'];
+            $order->total_price = $validated['total_price'] ?? $totalPrice;
+            
+            if (!empty($validated['scheduled_date'])) {
+                $order->scheduled_date = $validated['scheduled_date'];
+            } elseif ($validated['status'] !== 'datée') {
+                $order->scheduled_date = null;
+            }
             
             // Gestion de l'assignation
-            if ($validated['employee_id']) {
-                $order->employee_id = $validated['employee_id'];
-                $order->is_assigned = true;
+            if (!empty($validated['employee_id'])) {
+                $employee = Employee::where('id', $validated['employee_id'])
+                    ->where('admin_id', $order->admin_id)
+                    ->where('is_active', true)
+                    ->first();
+                
+                if ($employee) {
+                    $order->employee_id = $employee->id;
+                    $order->is_assigned = true;
+                } else {
+                    $order->employee_id = null;
+                    $order->is_assigned = false;
+                }
             } else {
                 $order->employee_id = null;
                 $order->is_assigned = false;
@@ -328,65 +426,29 @@ class OrderController extends Controller
 
             $order->save();
 
-            // Mettre à jour les produits si fournis
-            if ($request->has('products')) {
-                // Si la commande était confirmée, remettre le stock avant de supprimer les items
-                if ($wasConfirmed) {
-                    foreach ($order->items as $item) {
-                        if ($item->product) {
-                            $item->product->increment('stock', $item->quantity);
-                            Log::info("Stock restauré pour produit {$item->product->id}: +{$item->quantity} (nouveau stock: {$item->product->stock})");
-                        }
-                    }
-                }
-                
-                $order->items()->delete();
-                
-                $totalPrice = 0;
-                foreach ($validated['products'] as $productData) {
-                    $product = Product::where('id', $productData['id'])
-                        ->where('admin_id', $order->admin_id)
-                        ->where('is_active', true)
-                        ->first();
-                    
-                    if ($product) {
-                        $quantity = $productData['quantity'];
-                        $unitPrice = $product->price;
-                        $totalPrice += $quantity * $unitPrice;
-                        
-                        $order->items()->create([
-                            'product_id' => $product->id,
-                            'quantity' => $quantity,
-                            'unit_price' => $unitPrice,
-                            'total_price' => $quantity * $unitPrice,
-                        ]);
-                        
-                        // Si la commande devient confirmée, décrémenter le stock
-                        if ($willBeConfirmed) {
-                            $oldStock = $product->stock;
-                            $newStock = (int)$product->stock - (int)$quantity;
-                            
-                            if ($newStock < 0) {
-                                throw new \Exception("Stock insuffisant pour {$product->name}");
-                            }
-                            
-                            $product->stock = $newStock;
-                            $product->save();
-                            
-                            Log::info("Stock décrémenté pour produit {$product->id}: {$oldStock} → {$newStock} (-{$quantity})");
-                        }
-                    }
-                }
-                
-                // Mettre à jour le prix total seulement si pas fourni manuellement
-                if (!$validated['total_price']) {
-                    $order->total_price = $totalPrice;
-                    $order->save();
+            // Supprimer les anciens items
+            $order->items()->delete();
+            
+            // Ajouter les nouveaux produits
+            foreach ($newProductsData as $productData) {
+                $order->items()->create([
+                    'product_id' => $productData['product']->id,
+                    'quantity' => $productData['quantity'],
+                    'unit_price' => $productData['unit_price'],
+                    'total_price' => $productData['total_price'],
+                ]);
+
+                // Si la commande devient confirmée, décrémenter le stock
+                if ($willBeConfirmed) {
+                    $productData['product']->decrement('stock', $productData['quantity']);
+                    Log::info("Stock décrémenté pour produit {$productData['product']->id}: -{$productData['quantity']}");
                 }
             }
 
             // Vérifier le stock et mettre à jour le statut de suspension
-            $order->checkStockAndUpdateStatus();
+            if ($validated['status'] !== 'confirmée') {
+                $order->checkStockAndUpdateStatus();
+            }
 
             // Enregistrer dans l'historique si le statut a changé
             if ($oldStatus !== $order->status) {
@@ -409,7 +471,7 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur dans OrderController@update: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('error', 'Erreur: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -424,6 +486,16 @@ class OrderController extends Controller
             DB::beginTransaction();
 
             $orderId = $order->id;
+            
+            // Restaurer le stock si la commande était confirmée
+            if ($order->status === 'confirmée') {
+                foreach ($order->items as $item) {
+                    if ($item->product) {
+                        $item->product->increment('stock', $item->quantity);
+                        Log::info("Stock restauré pour produit {$item->product->id}: +{$item->quantity}");
+                    }
+                }
+            }
             
             // Supprimer les items et l'historique
             $order->items()->delete();
@@ -444,12 +516,6 @@ class OrderController extends Controller
     }
 
     /**
-     * ========================================
-     * MÉTHODES POUR L'INTERFACE DE TRAITEMENT
-     * ========================================
-     */
-
-    /**
      * Rechercher des produits pour l'interface de traitement - CORRIGÉE
      */
     public function searchProducts(Request $request)
@@ -465,7 +531,7 @@ class OrderController extends Controller
             $products = $admin->products()
                 ->where('is_active', true)
                 ->where('name', 'like', "%{$search}%")
-                ->where('stock', '>', 0) // Seulement les produits en stock
+                ->where('stock', '>', 0)
                 ->limit(10)
                 ->get(['id', 'name', 'price', 'stock']);
 
@@ -512,6 +578,47 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur dans getCities: ' . $e->getMessage());
             return response()->json([], 500);
+        }
+    }
+
+    /**
+     * Vérifier les doublons pour un numéro de téléphone
+     */
+    public function checkPhoneForDuplicates(Request $request)
+    {
+        try {
+            $phone = $request->get('phone');
+            $admin = Auth::guard('admin')->user();
+            
+            if (!$phone || strlen($phone) < 8) {
+                return response()->json(['has_duplicates' => false]);
+            }
+
+            $existingOrders = $admin->orders()
+                ->where(function($q) use ($phone) {
+                    $q->where('customer_phone', $phone)
+                      ->orWhere('customer_phone_2', $phone);
+                })
+                ->count();
+
+            $markedDuplicates = $admin->orders()
+                ->where(function($q) use ($phone) {
+                    $q->where('customer_phone', $phone)
+                      ->orWhere('customer_phone_2', $phone);
+                })
+                ->where('is_duplicate', true)
+                ->where('reviewed_for_duplicates', false)
+                ->count();
+
+            return response()->json([
+                'has_duplicates' => $existingOrders > 0,
+                'total_orders' => $existingOrders,
+                'marked_duplicates' => $markedDuplicates
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans checkPhoneForDuplicates: ' . $e->getMessage());
+            return response()->json(['has_duplicates' => false], 500);
         }
     }
 
@@ -600,72 +707,11 @@ class OrderController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
             
-            // Générer le HTML de l'historique
-            $html = '';
-            
-            if ($history->count() > 0) {
-                $html .= '<div class="timeline">';
-                
-                foreach ($history as $entry) {
-                    $actionIcon = $this->getActionIcon($entry->action);
-                    $actionClass = $this->getActionClass($entry->action);
-                    
-                    $html .= '<div class="timeline-item mb-3">';
-                    $html .= '<div class="timeline-marker">';
-                    $html .= '<div class="timeline-marker-icon bg-' . $actionClass . '">';
-                    $html .= '<i class="' . $actionIcon . '"></i>';
-                    $html .= '</div>';
-                    $html .= '</div>';
-                    $html .= '<div class="timeline-content">';
-                    $html .= '<div class="card">';
-                    $html .= '<div class="card-header py-2">';
-                    $html .= '<div class="d-flex justify-content-between align-items-center">';
-                    $html .= '<h6 class="mb-0">';
-                    $html .= '<span class="badge bg-' . $actionClass . '">' . ucfirst($entry->action) . '</span>';
-                    
-                    if ($entry->status_before && $entry->status_after && $entry->status_before !== $entry->status_after) {
-                        $html .= '<small class="text-muted ms-2">';
-                        $html .= ucfirst($entry->status_before) . ' → ' . ucfirst($entry->status_after);
-                        $html .= '</small>';
-                    }
-                    
-                    $html .= '</h6>';
-                    $html .= '<small class="text-muted">';
-                    $html .= $entry->created_at->format('d/m/Y H:i');
-                    
-                    if ($entry->created_at->diffInHours(now()) < 24) {
-                        $html .= ' <span class="text-primary">(' . $entry->created_at->diffForHumans() . ')</span>';
-                    }
-                    
-                    $html .= '</small>';
-                    $html .= '</div>';
-                    $html .= '</div>';
-                    
-                    if ($entry->notes) {
-                        $html .= '<div class="card-body py-2">';
-                        $html .= '<p class="mb-0">' . e($entry->notes) . '</p>';
-                        $html .= '</div>';
-                    }
-                    
-                    $html .= '</div>';
-                    $html .= '</div>';
-                    $html .= '</div>';
-                }
-                
-                $html .= '</div>';
-            } else {
-                $html .= '<div class="text-center py-4">';
-                $html .= '<i class="fas fa-history fa-3x text-muted mb-3"></i>';
-                $html .= '<h5 class="text-muted">Aucun historique</h5>';
-                $html .= '<p class="text-muted">Cette commande n\'a pas encore d\'historique d\'actions.</p>';
-                $html .= '</div>';
-            }
-            
-            return response($html);
+            return view('admin.orders.partials.history', compact('history'));
             
         } catch (\Exception $e) {
             Log::error('Erreur dans getHistory: ' . $e->getMessage());
-            return response('<div class="alert alert-danger">Erreur lors du chargement de l\'historique</div>', 500);
+            return view('admin.orders.partials.history-error');
         }
     }
 
@@ -784,47 +830,5 @@ class OrderController extends Controller
             Log::error('Erreur dans unassigned: ' . $e->getMessage());
             return redirect()->route('admin.orders.index')->with('error', 'Erreur lors du chargement');
         }
-    }
-
-    /**
-     * ========================================
-     * MÉTHODES UTILITAIRES
-     * ========================================
-     */
-
-    private function getActionIcon($action)
-    {
-        $icons = [
-            'création' => 'fas fa-plus-circle',
-            'modification' => 'fas fa-edit',
-            'tentative' => 'fas fa-phone',
-            'confirmation' => 'fas fa-check-circle',
-            'annulation' => 'fas fa-times-circle',
-            'datation' => 'fas fa-calendar-alt',
-            'assignation' => 'fas fa-user-plus',
-            'désassignation' => 'fas fa-user-minus',
-            'suspension' => 'fas fa-pause-circle',
-            'réactivation' => 'fas fa-play-circle',
-        ];
-
-        return $icons[$action] ?? 'fas fa-circle';
-    }
-
-    private function getActionClass($action)
-    {
-        $classes = [
-            'création' => 'success',
-            'modification' => 'primary',
-            'tentative' => 'warning',
-            'confirmation' => 'success',
-            'annulation' => 'danger',
-            'datation' => 'info',
-            'assignation' => 'success',
-            'désassignation' => 'danger',
-            'suspension' => 'warning',
-            'réactivation' => 'success',
-        ];
-
-        return $classes[$action] ?? 'secondary';
     }
 }

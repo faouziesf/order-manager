@@ -15,14 +15,11 @@
         --shadow-elevated: 0 8px 25px -8px rgba(0, 0, 0, 0.12);
         --border-radius: 12px;
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        --cart-width-expanded: 400px; /* Variable for cart width */
-        --cart-width-collapsed: 230px; /* Variable for collapsed cart width */
     }
 
     body {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         font-family: 'Inter', sans-serif;
-        margin: 0;
     }
 
     .page-container {
@@ -61,6 +58,18 @@
         align-items: start;
         position: relative;
         z-index: 2;
+    }
+
+    @media (max-width: 1200px) {
+        .header-content {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .header-actions {
+            width: 100%;
+            justify-content: center;
+        }
     }
 
     .page-header h1 {
@@ -105,6 +114,7 @@
         display: flex;
         gap: 0.75rem;
         align-items: center;
+        flex-wrap: wrap;
     }
 
     .header-btn {
@@ -139,33 +149,39 @@
         background: linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(124, 58, 237, 0.8) 100%);
     }
 
-    /* Layout Principal - Utilise le même système que create.blade.php */
+    /* Layout Principal */
     .main-content {
         display: grid;
-        /* Form takes available space, cart column is auto-sized based on .cart-section width */
-        grid-template-columns: 1fr auto; 
+        grid-template-columns: 1fr 400px;
         gap: 2rem;
         padding: 2rem;
+        min-height: calc(100vh - 200px);
+    }
+
+    @media (max-width: 1400px) {
+        .main-content {
+            grid-template-columns: 1fr 350px;
+            gap: 1.5rem;
+        }
     }
 
     @media (max-width: 1200px) {
         .main-content {
             grid-template-columns: 1fr;
+            gap: 1.5rem;
         }
+        
         .cart-section {
-            width: auto !important; /* Ensure it takes full width when stacked, overriding specific widths */
-            position: static; 
-            margin-top: 1rem;
+            position: static !important;
+            width: 100% !important;
+            max-width: none !important;
         }
+    }
 
-        .header-content {
-            flex-direction: column;
+    @media (max-width: 768px) {
+        .main-content {
+            padding: 1rem;
             gap: 1rem;
-        }
-
-        .header-actions {
-            width: 100%;
-            justify-content: center;
         }
     }
 
@@ -186,19 +202,97 @@
         gap: 0.75rem;
     }
 
-    .form-header h3 { margin: 0; font-size: 1.125rem; font-weight: 600; color: #374151; }
-    .form-header .icon { width: 32px; height: 32px; background: var(--primary-gradient); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.875rem; }
-    .form-body { padding: 1.5rem; }
-    .form-row { display: grid; gap: 1rem; margin-bottom: 1rem; }
-    .form-row.cols-1 { grid-template-columns: 1fr; }
-    .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
-    .form-group { display: flex; flex-direction: column; }
-    .form-label { font-weight: 600; color: #374151; margin-bottom: 0.375rem; font-size: 0.875rem; display: flex; align-items: center; gap: 0.375rem; }
-    .form-label .required { color: #ef4444; font-size: 0.75rem; }
-    .form-control { border: 2px solid #e5e7eb; border-radius: 8px; padding: 0.75rem; transition: var(--transition); font-size: 0.875rem; background: #fafafa; font-family: inherit; }
-    .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); background: white; outline: none; }
-    .form-control:invalid { border-color: #ef4444; }
-    .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25em 1.25em; padding-right: 2.5rem; }
+    .form-header h3 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .form-header .icon {
+        width: 32px;
+        height: 32px;
+        background: var(--primary-gradient);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.875rem;
+    }
+
+    .form-body {
+        padding: 1.5rem;
+    }
+
+    .form-row {
+        display: grid;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-row.cols-1 {
+        grid-template-columns: 1fr;
+    }
+
+    .form-row.cols-2 {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    @media (max-width: 768px) {
+        .form-row.cols-2 {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.375rem;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    .form-label .required {
+        color: #ef4444;
+        font-size: 0.75rem;
+    }
+
+    .form-control {
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: var(--transition);
+        font-size: 0.875rem;
+        background: #fafafa;
+        font-family: inherit;
+    }
+
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
+        outline: none;
+    }
+
+    .form-control:invalid {
+        border-color: #ef4444;
+    }
+
+    .form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.75rem center;
+        background-repeat: no-repeat;
+        background-size: 1.25em 1.25em;
+        padding-right: 2.5rem;
+    }
 
     /* Section Panier */
     .cart-section {
@@ -208,13 +302,13 @@
         height: fit-content;
         position: sticky;
         top: 1rem;
-        width: var(--cart-width-expanded); /* Use variable for default width */
-        transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother transition for width */
+        width: 100%;
+        max-width: 400px;
+        transition: all 0.3s ease;
     }
 
-    /* Class to apply when cart content (items/summary) is collapsed */
-    .cart-section.cart-content-collapsed {
-        width: var(--cart-width-collapsed);
+    .cart-section.collapsed {
+        max-width: 250px;
     }
 
     .cart-header {
@@ -225,91 +319,470 @@
         align-items: center;
         justify-content: space-between;
         border-radius: var(--border-radius) var(--border-radius) 0 0;
-        overflow: hidden; /* To prevent text overflow issues during transition */
+        cursor: pointer;
+        user-select: none;
     }
 
-    .cart-header h3 { margin: 0; font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; white-space: nowrap; /* Prevent text wrapping in header */ }
-    .cart-toggle-btn { background: transparent; border: none; color: white; font-size: 1.2rem; cursor: pointer; padding: 0.25rem; line-height: 1; border-radius: 4px; }
-    .cart-toggle-btn:hover { background: rgba(255,255,255,0.1); }
+    .cart-header h3 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        white-space: nowrap;
+    }
 
-    .cart-body { max-height: 500px; overflow-y: auto; }
-    .product-search { padding: 1.25rem; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
-    .search-input-group { position: relative; }
-    .search-input-group input { padding-left: 2.5rem; background: white; }
-    .search-input-group .search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280; font-size: 0.875rem; }
-    .product-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); z-index: 1000; max-height: 200px; overflow-y: auto; }
-    .suggestion-item { padding: 0.75rem; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: var(--transition); display: flex; justify-content: space-between; align-items: center; }
-    .suggestion-item:hover { background: #f3f4f6; }
-    .suggestion-item:last-child { border-bottom: none; }
-    .cart-items { padding: 1rem; min-height: 150px; }
-    .cart-items.is-empty .cart-empty { display: block; }
-    .cart-items:not(.is-empty) .cart-empty { display: none; }
-    .cart-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: #f9fafb; border-radius: 8px; margin-bottom: 0.75rem; border: 1px solid #e5e7eb; transition: var(--transition); }
-    .cart-item:hover { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
-    .item-info { flex: 1; }
-    .item-name { font-weight: 600; color: #374151; font-size: 0.875rem; margin-bottom: 0.25rem; }
-    .item-price { color: #6b7280; font-size: 0.75rem; font-family: monospace; }
-    .quantity-control { display: flex; align-items: center; gap: 0.5rem; background: white; border-radius: 6px; padding: 0.25rem; }
-    .quantity-btn { width: 28px; height: 28px; border: none; background: #f3f4f6; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); color: #6b7280; font-size: 0.75rem; }
-    .quantity-btn:hover { background: #e5e7eb; color: #374151; }
-    .quantity-input { width: 40px; text-align: center; border: none; background: transparent; font-weight: 600; color: #374151; font-size: 0.875rem; }
-    .remove-item { background: #fef2f2; color: #ef4444; border: none; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); font-size: 0.75rem; }
-    .remove-item:hover { background: #fee2e2; }
-    .cart-empty { text-align: center; padding: 2rem 1rem; color: #6b7280; }
-    .cart-empty i { font-size: 2rem; margin-bottom: 0.75rem; opacity: 0.5; }
-    .cart-summary { padding: 1.25rem; background: #f9fafb; border-top: 1px solid #e5e7eb; }
-    .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; font-size: 0.875rem; }
-    .summary-row:last-child { margin-bottom: 0; font-weight: 700; font-size: 1rem; color: #374151; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; }
-    .summary-label { color: #6b7280; font-weight: 500; }
-    .summary-value { font-family: monospace; font-weight: 600; color: #374151; }
+    .cart-toggle-btn {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: var(--transition);
+    }
+
+    .cart-toggle-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .cart-body {
+        max-height: 500px;
+        overflow-y: auto;
+        transition: all 0.3s ease;
+    }
+
+    .cart-section.collapsed .cart-body {
+        display: none;
+    }
+
+    .cart-section.collapsed .cart-summary {
+        display: none !important;
+    }
+
+    .cart-section.collapsed .order-controls {
+        padding: 1rem;
+    }
+
+    .cart-section.collapsed .control-group {
+        margin-bottom: 0.75rem;
+    }
+
+    .cart-section.collapsed .status-badges,
+    .cart-section.collapsed .priority-badges {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .cart-section.collapsed .status-badge,
+    .cart-section.collapsed .priority-badge {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.7rem;
+        text-align: center;
+    }
+
+    .cart-section.collapsed .action-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .product-search {
+        padding: 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    .search-input-group {
+        position: relative;
+    }
+
+    .search-input-group input {
+        padding-left: 2.5rem;
+        background: white;
+    }
+
+    .search-input-group .search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .product-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .suggestion-item {
+        padding: 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f3f4f6;
+        transition: var(--transition);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .suggestion-item:hover {
+        background: #f3f4f6;
+    }
+
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+
+    .cart-items {
+        padding: 1rem;
+        min-height: 150px;
+    }
+
+    .cart-empty {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #6b7280;
+    }
+
+    .cart-empty i {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        opacity: 0.5;
+    }
+
+    .cart-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        border: 1px solid #e5e7eb;
+        transition: var(--transition);
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .cart-item:hover {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .item-info {
+        flex: 1;
+    }
+
+    .item-name {
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .item-price {
+        color: #6b7280;
+        font-size: 0.75rem;
+        font-family: monospace;
+    }
+
+    .quantity-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: white;
+        border-radius: 6px;
+        padding: 0.25rem;
+    }
+
+    .quantity-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: #f3f4f6;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition);
+        color: #6b7280;
+        font-size: 0.75rem;
+    }
+
+    .quantity-btn:hover {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .quantity-input {
+        width: 40px;
+        text-align: center;
+        border: none;
+        background: transparent;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
+    }
+
+    .remove-item {
+        background: #fef2f2;
+        color: #ef4444;
+        border: none;
+        border-radius: 6px;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition);
+        font-size: 0.75rem;
+    }
+
+    .remove-item:hover {
+        background: #fee2e2;
+    }
+
+    .cart-summary {
+        padding: 1.25rem;
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .summary-row:last-child {
+        margin-bottom: 0;
+        font-weight: 700;
+        font-size: 1rem;
+        color: #374151;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .summary-label {
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .summary-value {
+        font-family: monospace;
+        font-weight: 600;
+        color: #374151;
+    }
 
     /* Contrôles de commande */
-    .order-controls { padding: 1.5rem; background: white; border-top: 1px solid #e5e7eb; border-radius: 0 0 var(--border-radius) var(--border-radius); }
-    .cart-body:visible ~ .order-controls, .cart-summary:visible ~ .order-controls { border-radius: 0; }
-    .control-group { margin-bottom: 1.25rem; }
-    .control-group:last-child { margin-bottom: 0; }
-    .control-label { font-weight: 600; color: #374151; margin-bottom: 0.5rem; display: block; font-size: 0.875rem; }
-    .status-badges, .priority-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .status-badge, .priority-badge { padding: 0.5rem 0.75rem; border-radius: 20px; border: 2px solid transparent; cursor: pointer; transition: var(--transition); font-weight: 500; font-size: 0.75rem; position: relative; overflow: hidden; }
-    .status-badge.active, .priority-badge.active { color: white; transform: scale(1.05); }
-    .status-nouvelle { background: #f3f4f6; color: #6b7280; }
-    .status-nouvelle.active { background: var(--primary-gradient); }
-    .status-confirmée { background: #ecfdf5; color: #059669; }
-    .status-confirmée.active { background: var(--success-gradient); }
-    .status-annulée { background: #fef2f2; color: #dc2626; }
-    .status-annulée.active { background: var(--danger-gradient); }
-    .status-datée { background: #fef3c7; color: #d97706; }
-    .status-datée.active { background: var(--warning-gradient); }
-    .status-en_route { background: #cffafe; color: #0891b2; }
-    .status-en_route.active { background: var(--info-gradient); }
-    .status-livrée { background: #f3e8ff; color: #8b5cf6; }
-    .status-livrée.active { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
-
-    .priority-normale { background: #f3f4f6; color: #6b7280; }
-    .priority-normale.active { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
-    .priority-urgente { background: #fef3c7; color: #d97706; }
-    .priority-urgente.active { background: var(--warning-gradient); }
-    .priority-vip { background: #fee2e2; color: #dc2626; }
-    .priority-vip.active { background: var(--danger-gradient); }
-
-    .action-buttons { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
-    .btn-save { flex: 1; background: var(--success-gradient); color: white; border: none; border-radius: 8px; padding: 0.875rem 1.5rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-    .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); }
-    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
-    .btn-secondary { background: #f3f4f6; color: #6b7280; border: none; border-radius: 8px; padding: 0.875rem 1.5rem; font-weight: 600; cursor: pointer; transition: var(--transition); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.875rem; }
-    .btn-secondary:hover { background: #e5e7eb; color: #374151; }
-
-    /* Styles for controls when cart is collapsed to a narrower width */
-    .cart-section.cart-content-collapsed .order-controls {
-        padding: 1rem; /* Slightly reduce padding in collapsed state */
+    .order-controls {
+        padding: 1.5rem;
+        background: white;
+        border-top: 1px solid #e5e7eb;
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
     }
-    .cart-section.cart-content-collapsed .action-buttons {
-        flex-direction: column; /* Stack buttons vertically */
-        align-items: stretch;   /* Make buttons take full width of the new narrow column */
+
+    .control-group {
+        margin-bottom: 1.25rem;
     }
-    .cart-section.cart-content-collapsed .action-buttons .btn-save,
-    .cart-section.cart-content-collapsed .action-buttons .btn-secondary {
-        width: 100%; /* Ensure buttons fill the column */
+
+    .control-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: block;
+        font-size: 0.875rem;
+    }
+
+    .status-badges,
+    .priority-badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .status-badge,
+    .priority-badge {
+        padding: 0.5rem 0.75rem;
+        border-radius: 20px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: var(--transition);
+        font-weight: 500;
+        font-size: 0.75rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .status-badge.active,
+    .priority-badge.active {
+        color: white;
+        transform: scale(1.05);
+    }
+
+    .status-nouvelle {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .status-nouvelle.active {
+        background: var(--primary-gradient);
+    }
+
+    .status-confirmée {
+        background: #ecfdf5;
+        color: #059669;
+    }
+
+    .status-confirmée.active {
+        background: var(--success-gradient);
+    }
+
+    .status-annulée {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .status-annulée.active {
+        background: var(--danger-gradient);
+    }
+
+    .status-datée {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .status-datée.active {
+        background: var(--warning-gradient);
+    }
+
+    .status-en_route {
+        background: #cffafe;
+        color: #0891b2;
+    }
+
+    .status-en_route.active {
+        background: var(--info-gradient);
+    }
+
+    .status-livrée {
+        background: #f3e8ff;
+        color: #8b5cf6;
+    }
+
+    .status-livrée.active {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    }
+
+    .status-ancienne {
+        background: #f8fafc;
+        color: #64748b;
+    }
+
+    .status-ancienne.active {
+        background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    }
+
+    .priority-normale {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .priority-normale.active {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    }
+
+    .priority-urgente {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .priority-urgente.active {
+        background: var(--warning-gradient);
+    }
+
+    .priority-vip {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .priority-vip.active {
+        background: var(--danger-gradient);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .btn-save {
+        flex: 1;
+        background: var(--success-gradient);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.875rem 1.5rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-save:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #6b7280;
+        border: none;
+        border-radius: 8px;
+        padding: 0.875rem 1.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-secondary:hover {
+        background: #e5e7eb;
+        color: #374151;
     }
 
     /* Modales */
@@ -359,163 +832,84 @@
         padding: 1.25rem 1.5rem;
     }
 
-    /* Amélioration du Modal Historique */
-    .history-timeline {
-        position: relative;
-        padding: 0;
+    /* Error states */
+    .is-invalid {
+        border-color: #ef4444 !important;
     }
 
-    .history-item {
-        position: relative;
-        padding: 1.5rem 0;
-        border-bottom: 1px solid #e5e7eb;
-        display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-
-    .history-item:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .history-item:first-child {
-        padding-top: 0;
-    }
-
-    .history-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        font-size: 1rem;
-        color: white;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .history-icon.status-change {
-        background: var(--primary-gradient);
-    }
-
-    .history-icon.call-attempt {
-        background: var(--success-gradient);
-    }
-
-    .history-icon.creation {
-        background: var(--warning-gradient);
-    }
-
-    .history-icon.assignment {
-        background: var(--info-gradient);
-    }
-
-    .history-content {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .history-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 0.5rem;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    .history-title {
-        font-weight: 600;
-        color: #374151;
-        font-size: 0.95rem;
-        margin: 0;
-    }
-
-    .history-date {
-        font-size: 0.8rem;
-        color: #6b7280;
-        font-family: 'JetBrains Mono', monospace;
-    }
-
-    .history-description {
-        color: #6b7280;
+    .invalid-feedback {
+        display: block;
+        width: 100%;
+        margin-top: 0.25rem;
         font-size: 0.875rem;
-        line-height: 1.5;
-        margin: 0;
-    }
-
-    .history-details {
-        margin-top: 0.75rem;
-        background: #f8fafc;
-        padding: 0.75rem;
-        border-radius: 8px;
-        border-left: 3px solid #e5e7eb;
-    }
-
-    .history-details .detail-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-
-    .history-details .detail-row:last-child {
-        margin-bottom: 0;
-    }
-
-    .detail-label {
-        font-weight: 600;
-        color: #374151;
-        font-size: 0.8rem;
-    }
-
-    .detail-value {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.8rem;
-        color: #6b7280;
-    }
-
-    .history-empty {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: #6b7280;
-    }
-
-    .history-empty i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.3;
+        color: #ef4444;
     }
 
     /* Animations */
-    @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .cart-item { animation: slideIn 0.3s ease-out; }
-    .product-suggestions { animation: slideIn 0.2s ease-out; }
-    .history-item { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
     /* Loading state */
-    .loading { position: relative; pointer-events: none; opacity: 0.7; }
-    .loading::after { content: ''; position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border: 2px solid transparent; border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 16px;
+        height: 16px;
+        margin: -8px 0 0 -8px;
+        border: 2px solid transparent;
+        border-top: 2px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
 
     /* Responsive */
     @media (max-width: 768px) {
-        .main-content { padding: 1rem; gap: 1rem; }
-        .page-header { padding: 1.25rem 1.5rem; }
-        .form-body { padding: 1.25rem; }
-        .form-row.cols-2 { grid-template-columns: 1fr; }
-        .action-buttons,
-        .cart-section.cart-content-collapsed .action-buttons { /* Ensure stacked buttons on small screens regardless of collapse state */
+        .main-content {
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .page-header {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .form-body {
+            padding: 1.25rem;
+        }
+
+        .action-buttons {
             flex-direction: column;
             align-items: stretch;
         }
-        .cart-section.cart-content-collapsed .action-buttons .btn-save,
-        .cart-section.cart-content-collapsed .action-buttons .btn-secondary,
+
         .action-buttons .btn-save,
         .action-buttons .btn-secondary {
-             width: 100%;
+            width: 100%;
         }
 
         .header-actions {
@@ -526,17 +920,6 @@
         .header-btn {
             padding: 0.5rem 1rem;
             font-size: 0.8rem;
-        }
-
-        .history-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .history-details .detail-row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.25rem;
         }
     }
 </style>
@@ -570,6 +953,9 @@
                             @break
                             @case('livrée')
                                 <i class="fas fa-gift"></i>Livrée
+                            @break
+                            @case('ancienne')
+                                <i class="fas fa-archive"></i>Ancienne
                             @break
                         @endswitch
                     </span>
@@ -618,7 +1004,7 @@
                     <h3>Informations Client</h3>
                 </div>
                 <div class="form-body">
-                    <!-- Ligne 1: Nom -->
+                    <!-- Nom -->
                     <div class="form-row cols-1">
                         <div class="form-group">
                             <label for="customer_name" class="form-label">
@@ -635,7 +1021,7 @@
                         </div>
                     </div>
 
-                    <!-- Ligne 2: Tel 1 et Tel 2 -->
+                    <!-- Téléphones -->
                     <div class="form-row cols-2">
                         <div class="form-group">
                             <label for="customer_phone" class="form-label">
@@ -666,14 +1052,14 @@
                         </div>
                     </div>
 
-                    <!-- Ligne 3: Gouvernorat et Ville -->
+                    <!-- Gouvernorat et Ville -->
                     <div class="form-row cols-2">
                         <div class="form-group">
                             <label for="customer_governorate" class="form-label">
                                 <i class="fas fa-map-marked-alt"></i>
                                 Gouvernorat
                             </label>
-                            <select class="form-select @error('customer_governorate') is-invalid @enderror"
+                            <select class="form-select form-control @error('customer_governorate') is-invalid @enderror"
                                 id="customer_governorate" name="customer_governorate">
                                 <option value="">Choisir un gouvernorat</option>
                                 @if (isset($regions))
@@ -694,7 +1080,7 @@
                                 <i class="fas fa-city"></i>
                                 Ville
                             </label>
-                            <select class="form-select @error('customer_city') is-invalid @enderror" id="customer_city"
+                            <select class="form-select form-control @error('customer_city') is-invalid @enderror" id="customer_city"
                                 name="customer_city">
                                 <option value="">Choisir une ville</option>
                                 @if (isset($cities))
@@ -712,7 +1098,7 @@
                         </div>
                     </div>
 
-                    <!-- Ligne 4: Adresse -->
+                    <!-- Adresse -->
                     <div class="form-row cols-1">
                         <div class="form-group">
                             <label for="customer_address" class="form-label">
@@ -728,7 +1114,7 @@
                         </div>
                     </div>
 
-                    <!-- Ligne 5: Commentaires -->
+                    <!-- Commentaires -->
                     <div class="form-row cols-1">
                         <div class="form-group">
                             <label for="notes" class="form-label">
@@ -744,8 +1130,8 @@
                     </div>
 
                     <!-- Champs conditionnels selon le statut -->
-                    @if ($order->status === 'datée')
-                        <div class="form-row cols-1">
+                    @if ($order->status === 'datée' || old('status') === 'datée')
+                        <div class="form-row cols-1" id="scheduled-date-row">
                             <div class="form-group">
                                 <label for="scheduled_date" class="form-label">
                                     <i class="fas fa-calendar-alt"></i>
@@ -761,18 +1147,18 @@
                         </div>
                     @endif
 
-                    @if (in_array($order->status, ['confirmée', 'datée']))
-                        <div class="form-row cols-1">
+                    @if (in_array($order->status, ['confirmée', 'datée']) || in_array(old('status'), ['confirmée', 'datée']))
+                        <div class="form-row cols-1" id="total-price-row">
                             <div class="form-group">
-                                <label for="confirmed_price" class="form-label">
+                                <label for="total_price" class="form-label">
                                     <i class="fas fa-dollar-sign"></i>
-                                    Prix Confirmé
+                                    Prix Total (optionnel)
                                 </label>
-                                <input type="number" class="form-control @error('confirmed_price') is-invalid @enderror"
-                                    id="confirmed_price" name="confirmed_price" step="0.001" min="0"
-                                    value="{{ old('confirmed_price', $order->confirmed_price) }}"
-                                    placeholder="Prix final confirmé avec le client">
-                                @error('confirmed_price')
+                                <input type="number" class="form-control @error('total_price') is-invalid @enderror"
+                                    id="total_price" name="total_price" step="0.001" min="0"
+                                    value="{{ old('total_price', $order->total_price) }}"
+                                    placeholder="Laisser vide pour calcul automatique">
+                                @error('total_price')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -783,12 +1169,12 @@
 
             <!-- Section Panier -->
             <div class="cart-section">
-                <div class="cart-header">
+                <div class="cart-header" onclick="toggleCart()">
                     <h3>
                         <i class="fas fa-shopping-cart"></i>
                         <span>Panier </span>(<span id="cart-count">{{ $order->items->count() }}</span>)
                     </h3>
-                    <button type="button" class="cart-toggle-btn" id="cart-toggle-btn" aria-label="Réduire le panier" title="Réduire/Agrandir le panier">
+                    <button type="button" class="cart-toggle-btn" id="cart-toggle-btn">
                         <i class="fas fa-chevron-up"></i>
                     </button>
                 </div>
@@ -826,19 +1212,11 @@
                         style="{{ $order->items->count() > 0 ? '' : 'display: none;' }}">
                         <div class="summary-row">
                             <span class="summary-label">Sous-total:</span>
-                            <span class="summary-value" id="subtotal">{{ number_format($order->total_price, 3) }}
-                                TND</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-label">Frais de livraison:</span>
-                            <span class="summary-value"
-                                id="shipping-cost">{{ number_format($order->shipping_cost, 3) }} TND</span>
+                            <span class="summary-value" id="subtotal">{{ number_format($order->items->sum('total_price'), 3) }} TND</span>
                         </div>
                         <div class="summary-row">
                             <span class="summary-label">Total:</span>
-                            <span class="summary-value"
-                                id="total">{{ number_format($order->total_price + $order->shipping_cost, 3) }}
-                                TND</span>
+                            <span class="summary-value" id="total">{{ number_format($order->total_price, 3) }} TND</span>
                         </div>
                     </div>
                 </div>
@@ -863,6 +1241,10 @@
                             <div class="status-badge status-datée {{ $order->status === 'datée' ? 'active' : '' }}"
                                 data-status="datée">
                                 <i class="fas fa-calendar-alt"></i> Datée
+                            </div>
+                            <div class="status-badge status-ancienne {{ $order->status === 'ancienne' ? 'active' : '' }}"
+                                data-status="ancienne">
+                                <i class="fas fa-archive"></i> Ancienne
                             </div>
                             <div class="status-badge status-en_route {{ $order->status === 'en_route' ? 'active' : '' }}"
                                 data-status="en_route">
@@ -900,10 +1282,10 @@
                             <i class="fas fa-user-tie"></i>
                             Assigner à un employé
                         </label>
-                        <select class="form-select" id="employee_id" name="employee_id">
+                        <select class="form-select form-control" id="employee_id" name="employee_id">
                             <option value="">Non assigné</option>
-                            @if (Auth::guard('admin')->user()->employees()->where('is_active', true)->count() > 0)
-                                @foreach (Auth::guard('admin')->user()->employees()->where('is_active', true)->get() as $employee)
+                            @if (isset($employees) && $employees->count() > 0)
+                                @foreach ($employees as $employee)
                                     <option value="{{ $employee->id }}"
                                         {{ $order->employee_id == $employee->id ? 'selected' : '' }}>
                                         {{ $employee->name }}
@@ -1030,6 +1412,22 @@ $(document).ready(function() {
 
     // Initialiser le panier au chargement
     updateCartDisplay();
+
+    // =========================
+    // TOGGLE DU PANIER
+    // =========================
+    window.toggleCart = function() {
+        const cartSection = $('.cart-section');
+        const toggleBtn = $('#cart-toggle-btn i');
+        
+        if (cartSection.hasClass('collapsed')) {
+            cartSection.removeClass('collapsed');
+            toggleBtn.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        } else {
+            cartSection.addClass('collapsed');
+            toggleBtn.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        }
+    };
 
     // =========================
     // RECHERCHE DE PRODUITS
@@ -1211,11 +1609,9 @@ $(document).ready(function() {
             return sum + itemTotal;
         }, 0);
         
-        const shipping = {{ $order->shipping_cost ?? 0 }};
-        const total = subtotal + shipping;
+        const total = subtotal;
 
         $('#subtotal').text(subtotal.toFixed(3) + ' TND');
-        $('#shipping-cost').text(shipping.toFixed(3) + ' TND');
         $('#total').text(total.toFixed(3) + ' TND');
     }
 
@@ -1237,10 +1633,10 @@ $(document).ready(function() {
     $('.status-badge').on('click', function() {
         $('.status-badge').removeClass('active');
         $(this).addClass('active');
-        $('#status').val($(this).data('status'));
+        const status = $(this).data('status');
+        $('#status').val(status);
 
         // Gestion conditionnelle des champs
-        const status = $(this).data('status');
         handleConditionalFields(status);
     });
 
@@ -1251,49 +1647,45 @@ $(document).ready(function() {
     });
 
     function handleConditionalFields(status) {
-        // Gérer l'affichage des champs conditionnels selon le statut
-        const scheduledDateGroup = $('#scheduled_date').closest('.form-row');
-        const confirmedPriceGroup = $('#confirmed_price').closest('.form-row');
-
-        // Supprimer les champs existants s'ils ne sont plus nécessaires
-        if (status !== 'datée') {
-            scheduledDateGroup.remove();
-        }
-
-        if (!['confirmée', 'datée'].includes(status)) {
-            confirmedPriceGroup.remove();
-        }
-
-        // Ajouter les champs nécessaires
-        if (status === 'datée' && scheduledDateGroup.length === 0) {
-            const dateField = `
-                <div class="form-row cols-1">
-                    <div class="form-group">
-                        <label for="scheduled_date" class="form-label">
-                            <i class="fas fa-calendar-alt"></i>
-                            Date de Livraison Prévue
-                        </label>
-                        <input type="date" class="form-control" id="scheduled_date" name="scheduled_date">
+        // Gestion du champ date programmée
+        if (status === 'datée') {
+            if ($('#scheduled-date-row').length === 0) {
+                const dateField = `
+                    <div class="form-row cols-1" id="scheduled-date-row">
+                        <div class="form-group">
+                            <label for="scheduled_date" class="form-label">
+                                <i class="fas fa-calendar-alt"></i>
+                                Date de Livraison Prévue
+                            </label>
+                            <input type="date" class="form-control" id="scheduled_date" name="scheduled_date">
+                        </div>
                     </div>
-                </div>
-            `;
-            $('#notes').closest('.form-row').after(dateField);
+                `;
+                $('#notes').closest('.form-row').after(dateField);
+            }
+        } else {
+            $('#scheduled-date-row').remove();
         }
 
-        if (['confirmée', 'datée'].includes(status) && confirmedPriceGroup.length === 0) {
-            const priceField = `
-                <div class="form-row cols-1">
-                    <div class="form-group">
-                        <label for="confirmed_price" class="form-label">
-                            <i class="fas fa-dollar-sign"></i>
-                            Prix Confirmé
-                        </label>
-                        <input type="number" class="form-control" id="confirmed_price" name="confirmed_price" 
-                               step="0.001" min="0" placeholder="Prix final confirmé avec le client">
+        // Gestion du champ prix total
+        if (['confirmée', 'datée'].includes(status)) {
+            if ($('#total-price-row').length === 0) {
+                const priceField = `
+                    <div class="form-row cols-1" id="total-price-row">
+                        <div class="form-group">
+                            <label for="total_price" class="form-label">
+                                <i class="fas fa-dollar-sign"></i>
+                                Prix Total (optionnel)
+                            </label>
+                            <input type="number" class="form-control" id="total_price" name="total_price" 
+                                   step="0.001" min="0" placeholder="Laisser vide pour calcul automatique">
+                        </div>
                     </div>
-                </div>
-            `;
-            $('#notes').closest('.form-row').after(priceField);
+                `;
+                $('#notes').closest('.form-row').after(priceField);
+            }
+        } else {
+            $('#total-price-row').remove();
         }
     }
 
@@ -1331,54 +1723,6 @@ $(document).ready(function() {
     if ($('#customer_governorate').val()) {
         $('#customer_governorate').trigger('change');
     }
-
-    // =========================
-    // COLLAPSIBLE CART & SECTION RESIZE
-    // =========================
-    const $cartSection = $('.cart-section'); 
-    const $cartBody = $('.cart-body');
-    const $cartSummary = $('#cart-summary');
-    const $cartItemsContainer = $('#cart-items');
-    const $cartEmptyMessage = $('#cart-empty');
-    const $cartCount = $('#cart-count');
-    const $orderControls = $('.order-controls');
-    const $toggleCartBtn = $('#cart-toggle-btn');
-
-    function updateOrderControlsBorderRadius() {
-        $orderControls.css('border-radius', ($cartBody.is(':hidden') && $cartSummary.is(':hidden')) ? '0 0 var(--border-radius) var(--border-radius)' : '0');
-    }
-    
-    var startCartCollapsed = false; // Set to true to start with cart collapsed
-
-    if (startCartCollapsed) {
-        $cartBody.hide();
-        $cartSummary.hide();
-        $cartSection.addClass('cart-content-collapsed');
-        $toggleCartBtn.find('i').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-        $toggleCartBtn.attr('aria-label', 'Agrandir le panier');
-    }
-
-    $toggleCartBtn.on('click', function() {
-        const $icon = $(this).find('i');
-        const isCurrentlyVisible = $cartBody.is(':visible');
-
-        if (isCurrentlyVisible) { 
-            $cartBody.slideUp(300);
-            if (cart.length > 0) $cartSummary.slideUp(300); 
-            $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-            $(this).attr('aria-label', 'Agrandir le panier');
-            $cartSection.addClass('cart-content-collapsed'); 
-        } else { 
-            $cartBody.slideDown(300);
-            if (cart.length > 0) $cartSummary.slideDown(300); 
-            $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
-            $(this).attr('aria-label', 'Réduire le panier');
-            $cartSection.removeClass('cart-content-collapsed'); 
-        }
-        setTimeout(updateOrderControlsBorderRadius, 310); 
-    });
-    
-    updateOrderControlsBorderRadius();
 
     // =========================
     // GESTION DES MODALES
