@@ -555,13 +555,13 @@
 @section('content')
 <div class="container-fluid" style="max-width: 1400px; margin: 0 auto; padding: 1rem;">
 
-    <!-- En-tête -->
+    <!-- En-tête modifié pour retourner au dashboard -->
     <div class="page-header">
         <div class="header-content">
             <div class="d-flex justify-content-between align-items-start mb-3">
                 <div>
-                    <a href="{{ route('admin.duplicates.index') }}" class="btn btn-outline" style="background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); color: white; margin-bottom: 1rem;">
-                        <i class="fas fa-arrow-left"></i> Retour à la liste
+                    <a href="{{ route('admin.dashboard') }}" class="btn btn-outline" style="background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); color: white; margin-bottom: 1rem;">
+                        <i class="fas fa-arrow-left"></i> Retour au Dashboard
                     </a>
                     <div class="phone-display">
                         <i class="fas fa-phone"></i>

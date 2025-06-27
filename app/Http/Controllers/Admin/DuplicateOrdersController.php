@@ -15,15 +15,11 @@ class DuplicateOrdersController extends Controller
     use DuplicateDetectionTrait;
 
     /**
-     * Interface principale des commandes doubles
+     * Redirection vers le dashboard au lieu de l'interface des doublons
      */
     public function index()
     {
-        // Nettoyage automatique au chargement
-        $this->autoCleanSingleOrders(auth('admin')->id());
-        
-        $stats = $this->getDashboardStats();
-        return view('admin.duplicates.index', compact('stats'));
+        return redirect()->route('admin.dashboard')->with('info', 'L\'interface de gestion des doublons a été désactivée. Utilisez les liens directs pour accéder aux détails spécifiques.');
     }
 
     /**
