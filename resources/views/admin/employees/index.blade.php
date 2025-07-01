@@ -3,34 +3,29 @@
 @section('title', 'Gestion des Employés')
 
 @section('content')
-<div class="animate-fade-in" x-data="employeesIndex()">
+<div class="container-fluid animate-fade-in" x-data="employeesIndex()">
     <!-- Header Section -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-        <div class="mb-4 sm:mb-0">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Gestion des Employés</h1>
-            <p class="text-gray-600">Gérez vos employés et leurs affectations</p>
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2 fw-bold text-dark mb-2">Gestion des Employés</h1>
+            <p class="text-muted">Gérez vos employés et leurs affectations</p>
         </div>
-        
-        <div class="flex-shrink-0">
+        <div class="col-md-4 text-end">
             @if($admin->employees()->count() < $admin->max_employees)
                 <a href="{{ route('admin.employees.create') }}" 
-                   class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-                    <i class="fas fa-plus mr-2"></i>
+                   class="btn btn-success btn-lg shadow">
+                    <i class="fas fa-plus me-2"></i>
                     Nouvel Employé
                 </a>
             @else
-                <div class="relative group">
+                <div class="position-relative d-inline-block">
                     <button disabled 
-                            class="inline-flex items-center px-4 py-2 bg-gray-400 text-white font-medium rounded-xl cursor-not-allowed opacity-75">
-                        <i class="fas fa-lock mr-2"></i>
+                            class="btn btn-secondary disabled"
+                            data-bs-toggle="tooltip" 
+                            title="Vous avez atteint la limite maximale d'employés">
+                        <i class="fas fa-lock me-2"></i>
                         Limite atteinte ({{ $admin->max_employees }})
                     </button>
-                    
-                    <!-- Tooltip modernisé -->
-                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                        Vous avez atteint la limite maximale d'employés
-                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                    </div>
                 </div>
             @endif
         </div>
@@ -38,197 +33,212 @@
 
     <!-- Alertes de limite -->
     @if($admin->employees()->count() >= $admin->max_employees * 0.8)
-        <div class="mb-6">
-            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 shadow-sm" 
-                 x-data="{ show: true }" 
-                 x-show="show"
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 scale-95"
-                 x-transition:enter-end="opacity-100 scale-100">
-                <div class="flex items-start space-x-3">
-                    <div class="flex-shrink-0">
-                        <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-exclamation-triangle text-amber-600 text-sm"></i>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning alert-dismissible fade show" x-data="{ show: true }" x-show="show">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            <div class="bg-warning bg-opacity-25 rounded-3 p-2">
+                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                            </div>
                         </div>
+                        <div class="flex-fill">
+                            <h6 class="alert-heading">
+                                @if($admin->employees()->count() >= $admin->max_employees)
+                                    Limite d'employés atteinte
+                                @else
+                                    Approche de la limite d'employés
+                                @endif
+                            </h6>
+                            <p class="mb-0">
+                                Vous avez <strong>{{ $admin->employees()->count() }}</strong> employé(s) sur un maximum de <strong>{{ $admin->max_employees }}</strong>.
+                                @if($admin->employees()->count() >= $admin->max_employees)
+                                    Contactez le support pour augmenter votre limite.
+                                @else
+                                    Il vous reste {{ $admin->max_employees - $admin->employees()->count() }} place(s).
+                                @endif
+                            </p>
+                        </div>
+                        <button type="button" @click="show = false" class="btn-close"></button>
                     </div>
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-amber-900 mb-1">
-                            @if($admin->employees()->count() >= $admin->max_employees)
-                                Limite d'employés atteinte
-                            @else
-                                Approche de la limite d'employés
-                            @endif
-                        </h4>
-                        <p class="text-amber-800 text-sm">
-                            Vous avez <strong>{{ $admin->employees()->count() }}</strong> employé(s) sur un maximum de <strong>{{ $admin->max_employees }}</strong>.
-                            @if($admin->employees()->count() >= $admin->max_employees)
-                                Contactez le support pour augmenter votre limite.
-                            @else
-                                Il vous reste {{ $admin->max_employees - $admin->employees()->count() }} place(s).
-                            @endif
-                        </p>
-                    </div>
-                    <button @click="show = false" 
-                            class="flex-shrink-0 p-1 rounded-lg hover:bg-amber-100 transition-colors duration-200">
-                        <i class="fas fa-times text-amber-600 text-sm"></i>
-                    </button>
                 </div>
             </div>
         </div>
     @endif
 
-    <!-- Stats Cards avec animations améliorées -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
         <!-- Total Employés -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Total Employés</p>
-                    <p class="text-3xl font-bold text-gray-900" x-data="{ count: 0 }" x-init="setTimeout(() => { count = {{ $employees->total() }} }, 300)">
-                        <span x-text="count"></span>
-                    </p>
-                    <div class="flex items-center mt-2">
-                        <div class="w-full bg-gray-200 rounded-full h-2 mr-2">
-                            <div class="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all duration-1000 ease-out" 
-                                 style="width: {{ $admin->max_employees > 0 ? ($employees->total() / $admin->max_employees * 100) : 0 }}%"></div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 card-hover">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small fw-medium mb-1">Total Employés</p>
+                            <h3 class="fw-bold mb-0" x-data="{ count: 0 }" x-init="setTimeout(() => { count = {{ $employees->total() }} }, 300)">
+                                <span x-text="count"></span>
+                            </h3>
+                            <div class="d-flex align-items-center mt-2">
+                                <div class="progress flex-fill me-2" style="height: 8px;">
+                                    <div class="progress-bar bg-success progress-bar-animated" 
+                                         style="width: {{ $admin->max_employees > 0 ? ($employees->total() / $admin->max_employees * 100) : 0 }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ $admin->max_employees > 0 ? round($employees->total() / $admin->max_employees * 100) : 0 }}%</small>
+                            </div>
                         </div>
-                        <span class="text-xs text-gray-500 whitespace-nowrap">{{ $admin->max_employees > 0 ? round($employees->total() / $admin->max_employees * 100) : 0 }}%</span>
+                        <div class="bg-success bg-opacity-10 rounded-3 p-3">
+                            <i class="fas fa-users text-success fa-lg"></i>
+                        </div>
                     </div>
-                </div>
-                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <i class="fas fa-users text-green-600 text-xl"></i>
                 </div>
             </div>
         </div>
 
         <!-- Employés Actifs -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Employés Actifs</p>
-                    <p class="text-3xl font-bold text-gray-900">{{ $admin->employees()->where('is_active', true)->count() }}</p>
-                    <p class="text-xs text-green-600 mt-2">
-                        {{ $employees->total() > 0 ? round($admin->employees()->where('is_active', true)->count() / $employees->total() * 100) : 0 }}% du total
-                    </p>
-                </div>
-                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <i class="fas fa-check-circle text-blue-600 text-xl"></i>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 card-hover">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small fw-medium mb-1">Employés Actifs</p>
+                            <h3 class="fw-bold mb-0">{{ $admin->employees()->where('is_active', true)->count() }}</h3>
+                            <small class="text-success">
+                                {{ $employees->total() > 0 ? round($admin->employees()->where('is_active', true)->count() / $employees->total() * 100) : 0 }}% du total
+                            </small>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-3 p-3">
+                            <i class="fas fa-check-circle text-primary fa-lg"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Limite Employés -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Limite Employés</p>
-                    <p class="text-3xl font-bold text-gray-900">{{ $admin->max_employees }}</p>
-                    <p class="text-xs text-gray-600 mt-2">
-                        {{ $admin->max_employees - $employees->total() }} place(s) restante(s)
-                    </p>
-                </div>
-                <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <i class="fas fa-chart-bar text-amber-600 text-xl"></i>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 card-hover">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small fw-medium mb-1">Limite Employés</p>
+                            <h3 class="fw-bold mb-0">{{ $admin->max_employees }}</h3>
+                            <small class="text-muted">
+                                {{ $admin->max_employees - $employees->total() }} place(s) restante(s)
+                            </small>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 rounded-3 p-3">
+                            <i class="fas fa-chart-bar text-warning fa-lg"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Sans Manager -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm font-medium mb-1">Sans Manager</p>
-                    <p class="text-3xl font-bold text-gray-900">{{ $admin->employees()->whereNull('manager_id')->count() }}</p>
-                    @if($admin->employees()->whereNull('manager_id')->count() > 0)
-                        <p class="text-xs text-orange-600 mt-2">
-                            <i class="fas fa-exclamation-triangle mr-1"></i>
-                            À assigner
-                        </p>
-                    @else
-                        <p class="text-xs text-green-600 mt-2">
-                            <i class="fas fa-check mr-1"></i>
-                            Tous assignés
-                        </p>
-                    @endif
-                </div>
-                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <i class="fas fa-user-slash text-purple-600 text-xl"></i>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 card-hover">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small fw-medium mb-1">Sans Manager</p>
+                            <h3 class="fw-bold mb-0">{{ $admin->employees()->whereNull('manager_id')->count() }}</h3>
+                            @if($admin->employees()->whereNull('manager_id')->count() > 0)
+                                <small class="text-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    À assigner
+                                </small>
+                            @else
+                                <small class="text-success">
+                                    <i class="fas fa-check me-1"></i>
+                                    Tous assignés
+                                </small>
+                            @endif
+                        </div>
+                        <div class="bg-info bg-opacity-10 rounded-3 p-3">
+                            <i class="fas fa-user-slash text-info fa-lg"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Table Card -->
-    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <!-- Card Header amélioré -->
-        <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-slate-50">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h2 class="text-lg font-semibold text-gray-900">Liste des Employés</h2>
-                    <p class="text-sm text-gray-600">{{ $employees->total() }} employé(s) au total</p>
+    <div class="card shadow-lg border-0">
+        <!-- Card Header -->
+        <div class="card-header bg-light border-bottom">
+            <div class="row align-items-center g-3">
+                <div class="col-md-6">
+                    <h5 class="card-title mb-0">Liste des Employés</h5>
+                    <small class="text-muted">{{ $employees->total() }} employé(s) au total</small>
                 </div>
                 
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <!-- Filter by Manager avec style moderne -->
-                    <div class="relative">
-                        <select class="appearance-none bg-white px-4 py-2 pr-8 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors cursor-pointer"
-                                onchange="filterByManager(this.value)"
-                                x-model="selectedManager">
-                            <option value="">Tous les managers</option>
-                            <option value="no-manager">Sans manager</option>
-                            @foreach($admin->managers as $manager)
-                                <option value="{{ $manager->id }}">{{ $manager->name }}</option>
-                            @endforeach
-                        </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <i class="fas fa-chevron-down text-gray-400 text-sm"></i>
+                <div class="col-md-6">
+                    <div class="row g-2">
+                        <!-- Filter by Manager -->
+                        <div class="col-md-6">
+                            <select class="form-select form-select-sm" 
+                                    onchange="filterByManager(this.value)"
+                                    x-model="selectedManager">
+                                <option value="">Tous les managers</option>
+                                <option value="no-manager">Sans manager</option>
+                                @foreach($admin->managers as $manager)
+                                    <option value="{{ $manager->id }}">{{ $manager->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                    </div>
-                    
-                    <!-- Search Input modernisé -->
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-400 text-sm"></i>
-                        </div>
-                        <input type="text" 
-                               class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                               placeholder="Rechercher un employé..." 
-                               id="searchInput"
-                               x-model="searchTerm"
-                               @input="filterEmployees">
-                    </div>
-                    
-                    <!-- Actions groupées -->
-                    <div class="relative" x-show="selectedEmployees.length > 0" x-transition>
-                        <button @click="showBulkActions = !showBulkActions"
-                                class="inline-flex items-center px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors">
-                            <i class="fas fa-cog mr-2"></i>
-                            Actions (<span x-text="selectedEmployees.length"></span>)
-                        </button>
                         
-                        <div x-show="showBulkActions" 
-                             @click.away="showBulkActions = false"
-                             x-transition:enter="transition ease-out duration-200"
-                             x-transition:enter-start="opacity-0 scale-95"
-                             x-transition:enter-end="opacity-100 scale-100"
-                             class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                            <div class="py-1">
-                                <button @click="bulkActivate()" 
-                                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
-                                    <i class="fas fa-check mr-2 w-4"></i>
-                                    Activer sélectionnés
+                        <!-- Search Input -->
+                        <div class="col-md-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control"
+                                       placeholder="Rechercher un employé..." 
+                                       id="searchInput"
+                                       x-model="searchTerm"
+                                       @input="filterEmployees">
+                            </div>
+                        </div>
+                        
+                        <!-- Actions groupées -->
+                        <div class="col-12" x-show="selectedEmployees.length > 0" x-transition>
+                            <div class="dropdown position-relative">
+                                <button class="btn btn-primary btn-sm dropdown-toggle" 
+                                        type="button"
+                                        id="bulkActionsDropdown"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false">
+                                    <i class="fas fa-cog me-2"></i>
+                                    Actions (<span x-text="selectedEmployees.length"></span>)
                                 </button>
-                                <button @click="bulkDeactivate()" 
-                                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                                    <i class="fas fa-ban mr-2 w-4"></i>
-                                    Désactiver sélectionnés
-                                </button>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <button @click="bulkDelete()" 
-                                        class="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50">
-                                    <i class="fas fa-trash mr-2 w-4"></i>
-                                    Supprimer sélectionnés
-                                </button>
+                                
+                                <ul class="dropdown-menu" aria-labelledby="bulkActionsDropdown">
+                                    <li>
+                                        <button @click="bulkActivate(); $refs.bulkDropdown.blur()" 
+                                                class="dropdown-item" type="button">
+                                            <i class="fas fa-check me-2"></i>
+                                            Activer sélectionnés
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button @click="bulkDeactivate(); $refs.bulkDropdown.blur()" 
+                                                class="dropdown-item" type="button">
+                                            <i class="fas fa-ban me-2"></i>
+                                            Désactiver sélectionnés
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button @click="bulkDelete(); $refs.bulkDropdown.blur()" 
+                                                class="dropdown-item text-danger" type="button">
+                                            <i class="fas fa-trash me-2"></i>
+                                            Supprimer sélectionnés
+                                        </button>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -237,83 +247,77 @@
         </div>
         
         <!-- Table Content -->
-        <div class="p-6">
+        <div class="card-body p-0">
             @if($employees->count() > 0)
-                <div class="overflow-x-auto">
-                    <table class="min-w-full" id="employeesTable">
-                        <thead>
-                            <tr class="border-b border-gray-200">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="employeesTable">
+                        <thead class="table-light">
+                            <tr>
                                 <!-- Checkbox pour sélection groupée -->
-                                <th class="text-left py-3 px-4 w-4">
+                                <th style="width: 40px;">
                                     <input type="checkbox" 
                                            @change="toggleAllEmployees($event.target.checked)"
-                                           class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                                           class="form-check-input">
                                 </th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:text-green-600 transition-colors"
-                                    @click="sortBy('name')">
+                                <th class="sortable-header cursor-pointer" @click="sortBy('name')">
                                     Employé 
-                                    <i class="fas fa-sort text-xs ml-1" :class="getSortIcon('name')"></i>
+                                    <i class="fas fa-sort ms-1" :class="getSortIcon('name')"></i>
                                 </th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Contact</th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:text-green-600 transition-colors"
-                                    @click="sortBy('manager')">
+                                <th>Contact</th>
+                                <th class="sortable-header cursor-pointer" @click="sortBy('manager')">
                                     Manager
-                                    <i class="fas fa-sort text-xs ml-1" :class="getSortIcon('manager')"></i>
+                                    <i class="fas fa-sort ms-1" :class="getSortIcon('manager')"></i>
                                 </th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:text-green-600 transition-colors"
-                                    @click="sortBy('status')">
+                                <th class="sortable-header cursor-pointer" @click="sortBy('status')">
                                     Statut
-                                    <i class="fas fa-sort text-xs ml-1" :class="getSortIcon('status')"></i>
+                                    <i class="fas fa-sort ms-1" :class="getSortIcon('status')"></i>
                                 </th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:text-green-600 transition-colors"
-                                    @click="sortBy('created_at')">
+                                <th class="sortable-header cursor-pointer" @click="sortBy('created_at')">
                                     Créé le
-                                    <i class="fas fa-sort text-xs ml-1" :class="getSortIcon('created_at')"></i>
+                                    <i class="fas fa-sort ms-1" :class="getSortIcon('created_at')"></i>
                                 </th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody>
                             @foreach($employees as $employee)
-                                <tr class="hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all duration-200 group" 
+                                <tr class="table-row-hover" 
                                     data-manager-id="{{ $employee->manager_id }}"
                                     data-employee-id="{{ $employee->id }}">
                                     <!-- Checkbox -->
-                                    <td class="py-4 px-4">
+                                    <td>
                                         <input type="checkbox" 
                                                value="{{ $employee->id }}"
                                                @change="toggleEmployee({{ $employee->id }}, $event.target.checked)"
-                                               class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                                               class="form-check-input">
                                     </td>
                                     
                                     <!-- Employé -->
-                                    <td class="py-4 px-4">
-                                        <div class="flex items-center">
-                                            <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mr-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                                                <span class="text-white font-semibold text-sm">
-                                                    {{ substr($employee->name, 0, 1) }}
-                                                </span>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-success rounded-3 p-2 me-3 text-white fw-bold text-center" style="width: 40px; height: 40px; line-height: 24px;">
+                                                {{ substr($employee->name, 0, 1) }}
                                             </div>
                                             <div>
-                                                <div class="font-semibold text-gray-900 group-hover:text-green-700 transition-colors">{{ $employee->name }}</div>
-                                                <div class="text-sm text-gray-500">Employé</div>
+                                                <div class="fw-semibold">{{ $employee->name }}</div>
+                                                <small class="text-muted">Employé</small>
                                             </div>
                                         </div>
                                     </td>
                                     
                                     <!-- Contact -->
-                                    <td class="py-4 px-4">
-                                        <div class="space-y-1">
-                                            <div class="text-sm text-gray-900 flex items-center">
-                                                <i class="fas fa-envelope text-gray-400 mr-2 w-3"></i>
-                                                <a href="mailto:{{ $employee->email }}" class="hover:text-green-600 transition-colors">
+                                    <td>
+                                        <div>
+                                            <div class="small d-flex align-items-center mb-1">
+                                                <i class="fas fa-envelope text-muted me-2"></i>
+                                                <a href="mailto:{{ $employee->email }}" class="text-decoration-none">
                                                     {{ $employee->email }}
                                                 </a>
                                             </div>
                                             @if($employee->phone)
-                                                <div class="text-sm text-gray-500 flex items-center">
-                                                    <i class="fas fa-phone text-gray-400 mr-2 w-3"></i>
-                                                    <a href="tel:{{ $employee->phone }}" class="hover:text-blue-600 transition-colors">
+                                                <div class="small d-flex align-items-center text-muted">
+                                                    <i class="fas fa-phone text-muted me-2"></i>
+                                                    <a href="tel:{{ $employee->phone }}" class="text-decoration-none">
                                                         {{ $employee->phone }}
                                                     </a>
                                                 </div>
@@ -322,83 +326,82 @@
                                     </td>
                                     
                                     <!-- Manager -->
-                                    <td class="py-4 px-4">
+                                    <td>
                                         @if($employee->manager)
-                                            <div class="flex items-center">
-                                                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mr-2 flex-shrink-0">
-                                                    <span class="text-white font-semibold text-xs">
-                                                        {{ substr($employee->manager->name, 0, 1) }}
-                                                    </span>
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-primary rounded-circle p-2 me-2 text-white fw-bold text-center" style="width: 32px; height: 32px; line-height: 16px; font-size: 12px;">
+                                                    {{ substr($employee->manager->name, 0, 1) }}
                                                 </div>
                                                 <div>
-                                                    <div class="font-medium text-gray-900 text-sm">{{ $employee->manager->name }}</div>
-                                                    <div class="text-xs text-gray-500">Manager</div>
+                                                    <div class="fw-medium small">{{ $employee->manager->name }}</div>
+                                                    <small class="text-muted">Manager</small>
                                                 </div>
                                             </div>
                                         @else
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                <i class="fas fa-user-slash mr-1 text-xs"></i>
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-user-slash me-1"></i>
                                                 Sans manager
                                             </span>
                                         @endif
                                     </td>
                                     
                                     <!-- Statut -->
-                                    <td class="py-4 px-4">
-                                        <div class="flex items-center space-x-2">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $employee->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                                <div class="w-1.5 h-1.5 rounded-full {{ $employee->is_active ? 'bg-green-500' : 'bg-red-500' }} mr-1.5"></div>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge {{ $employee->is_active ? 'bg-success' : 'bg-danger' }}">
+                                                <i class="fas fa-circle me-1" style="font-size: 8px;"></i>
                                                 {{ $employee->is_active ? 'Actif' : 'Inactif' }}
                                             </span>
                                             @if($employee->loginHistory()->latest()->first())
                                                 @php $lastLogin = $employee->loginHistory()->latest()->first(); @endphp
-                                                <div class="relative group">
-                                                    <i class="fas fa-clock text-gray-400 text-xs cursor-help"></i>
-                                                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                                        Dernière connexion: {{ $lastLogin->login_at->diffForHumans() }}
-                                                    </div>
-                                                </div>
+                                                <button type="button" 
+                                                        class="btn btn-link p-0 border-0 bg-transparent text-muted"
+                                                        data-bs-toggle="tooltip" 
+                                                        data-bs-placement="top"
+                                                        title="Dernière connexion: {{ $lastLogin->login_at->diffForHumans() }}">
+                                                    <i class="fas fa-clock small"></i>
+                                                </button>
                                             @endif
                                         </div>
                                     </td>
                                     
                                     <!-- Date -->
-                                    <td class="py-4 px-4">
-                                        <div class="text-sm text-gray-900">{{ $employee->created_at->format('d/m/Y') }}</div>
-                                        <div class="text-xs text-gray-500">{{ $employee->created_at->diffForHumans() }}</div>
+                                    <td>
+                                        <div class="small">{{ $employee->created_at->format('d/m/Y') }}</div>
+                                        <small class="text-muted">{{ $employee->created_at->diffForHumans() }}</small>
                                     </td>
                                     
                                     <!-- Actions -->
-                                    <td class="py-4 px-4">
-                                        <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <td>
+                                        <div class="btn-group btn-group-sm action-buttons">
                                             <!-- Voir -->
                                             <a href="{{ route('admin.employees.show', $employee) }}" 
-                                               class="inline-flex items-center justify-center w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-all duration-200 hover:scale-110"
-                                               title="Voir les détails">
-                                                <i class="fas fa-eye text-sm"></i>
+                                               class="btn btn-outline-primary btn-sm"
+                                               data-bs-toggle="tooltip" title="Voir les détails">
+                                                <i class="fas fa-eye"></i>
                                             </a>
                                             
                                             <!-- Modifier -->
                                             <a href="{{ route('admin.employees.edit', $employee) }}" 
-                                               class="inline-flex items-center justify-center w-8 h-8 bg-amber-100 hover:bg-amber-200 text-amber-600 rounded-lg transition-all duration-200 hover:scale-110"
-                                               title="Modifier">
-                                                <i class="fas fa-edit text-sm"></i>
+                                               class="btn btn-outline-warning btn-sm"
+                                               data-bs-toggle="tooltip" title="Modifier">
+                                                <i class="fas fa-edit"></i>
                                             </a>
                                             
                                             <!-- Toggle Active -->
                                             <button type="button"
                                                     @click="toggleEmployeeStatus({{ $employee->id }}, {{ $employee->is_active ? 'false' : 'true' }})"
-                                                    class="inline-flex items-center justify-center w-8 h-8 {{ $employee->is_active ? 'bg-gray-100 hover:bg-gray-200 text-gray-600' : 'bg-green-100 hover:bg-green-200 text-green-600' }} rounded-lg transition-all duration-200 hover:scale-110"
-                                                    title="{{ $employee->is_active ? 'Désactiver' : 'Activer' }}">
-                                                <i class="fas {{ $employee->is_active ? 'fa-ban' : 'fa-check' }} text-sm"></i>
+                                                    class="btn btn-outline-{{ $employee->is_active ? 'secondary' : 'success' }} btn-sm"
+                                                    data-bs-toggle="tooltip" title="{{ $employee->is_active ? 'Désactiver' : 'Activer' }}">
+                                                <i class="fas {{ $employee->is_active ? 'fa-ban' : 'fa-check' }}"></i>
                                             </button>
                                             
                                             <!-- Supprimer -->
                                             <button type="button"
                                                     @click="deleteEmployee({{ $employee->id }}, '{{ $employee->name }}')"
-                                                    class="inline-flex items-center justify-center w-8 h-8 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-all duration-200 hover:scale-110"
-                                                    title="Supprimer">
-                                                <i class="fas fa-trash text-sm"></i>
+                                                    class="btn btn-outline-danger btn-sm"
+                                                    data-bs-toggle="tooltip" title="Supprimer">
+                                                <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -408,62 +411,71 @@
                     </table>
                 </div>
                 
-                <!-- Pagination modernisée -->
+                <!-- Pagination -->
                 @if($employees->hasPages())
-                    <div class="flex flex-col sm:flex-row justify-between items-center mt-6 pt-6 border-t border-gray-200">
-                        <div class="text-sm text-gray-700 mb-4 sm:mb-0">
-                            Affichage de {{ $employees->firstItem() }} à {{ $employees->lastItem() }} sur {{ $employees->total() }} résultats
+                    <div class="card-footer bg-light">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    Affichage de {{ $employees->firstItem() }} à {{ $employees->lastItem() }} sur {{ $employees->total() }} résultats
+                                </small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <nav class="d-flex justify-content-end">
+                                    <ul class="pagination pagination-sm mb-0">
+                                        {{-- Previous Page Link --}}
+                                        @if ($employees->onFirstPage())
+                                            <li class="page-item disabled">
+                                                <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                                            </li>
+                                        @else
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ $employees->previousPageUrl() }}">
+                                                    <i class="fas fa-chevron-left"></i>
+                                                </a>
+                                            </li>
+                                        @endif
+
+                                        {{-- Pagination Elements --}}
+                                        @foreach ($employees->getUrlRange(max(1, $employees->currentPage() - 2), min($employees->lastPage(), $employees->currentPage() + 2)) as $page => $url)
+                                            @if ($page == $employees->currentPage())
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ $page }}</span>
+                                                </li>
+                                            @else
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ $url }}">{{ $page }}</a>
+                                                </li>
+                                            @endif
+                                        @endforeach
+
+                                        {{-- Next Page Link --}}
+                                        @if ($employees->hasMorePages())
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ $employees->nextPageUrl() }}">
+                                                    <i class="fas fa-chevron-right"></i>
+                                                </a>
+                                            </li>
+                                        @else
+                                            <li class="page-item disabled">
+                                                <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                                            </li>
+                                        @endif
+                                    </ul>
+                                </nav>
+                            </div>
                         </div>
-                        
-                        <nav class="flex items-center space-x-2">
-                            {{-- Previous Page Link --}}
-                            @if ($employees->onFirstPage())
-                                <span class="px-3 py-2 text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
-                                    <i class="fas fa-chevron-left text-sm"></i>
-                                </span>
-                            @else
-                                <a href="{{ $employees->previousPageUrl() }}" 
-                                   class="px-3 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
-                                    <i class="fas fa-chevron-left text-sm"></i>
-                                </a>
-                            @endif
-
-                            {{-- Pagination Elements --}}
-                            @foreach ($employees->getUrlRange(max(1, $employees->currentPage() - 2), min($employees->lastPage(), $employees->currentPage() + 2)) as $page => $url)
-                                @if ($page == $employees->currentPage())
-                                    <span class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium shadow-sm">
-                                        {{ $page }}
-                                    </span>
-                                @else
-                                    <a href="{{ $url }}" 
-                                       class="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
-                                        {{ $page }}
-                                    </a>
-                                @endif
-                            @endforeach
-
-                            {{-- Next Page Link --}}
-                            @if ($employees->hasMorePages())
-                                <a href="{{ $employees->nextPageUrl() }}" 
-                                   class="px-3 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
-                                    <i class="fas fa-chevron-right text-sm"></i>
-                                </a>
-                            @else
-                                <span class="px-3 py-2 text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
-                                    <i class="fas fa-chevron-right text-sm"></i>
-                                </span>
-                            @endif
-                        </nav>
                     </div>
                 @endif
             @else
-                <!-- Empty State modernisé -->
-                <div class="text-center py-16">
-                    <div class="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                        <i class="fas fa-users text-gray-400 text-3xl"></i>
+                <!-- Empty State -->
+                <div class="text-center py-5">
+                    <div class="bg-light rounded-4 p-4 d-inline-block mb-4">
+                        <i class="fas fa-users text-muted" style="font-size: 3rem;"></i>
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Aucun employé trouvé</h3>
-                    <p class="text-gray-500 mb-8 max-w-md mx-auto">
+                    <h5 class="fw-semibold">Aucun employé trouvé</h5>
+                    <p class="text-muted mb-4">
                         @if(request()->has('search') || request()->has('manager'))
                             Aucun employé ne correspond à vos critères de recherche. Essayez de modifier vos filtres.
                         @else
@@ -471,20 +483,18 @@
                         @endif
                     </p>
                     @if($admin->employees()->count() < $admin->max_employees)
-                        <div class="space-y-3">
+                        <div class="d-flex flex-column align-items-center gap-3">
                             <a href="{{ route('admin.employees.create') }}" 
-                               class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-                                <i class="fas fa-plus mr-2"></i>
+                               class="btn btn-success btn-lg">
+                                <i class="fas fa-plus me-2"></i>
                                 Créer un Employé
                             </a>
                             @if(request()->has('search') || request()->has('manager'))
-                                <div>
-                                    <a href="{{ route('admin.employees.index') }}" 
-                                       class="inline-flex items-center px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors">
-                                        <i class="fas fa-times mr-2"></i>
-                                        Effacer les filtres
-                                    </a>
-                                </div>
+                                <a href="{{ route('admin.employees.index') }}" 
+                                   class="btn btn-link">
+                                    <i class="fas fa-times me-2"></i>
+                                    Effacer les filtres
+                                </a>
                             @endif
                         </div>
                     @endif
@@ -493,107 +503,86 @@
         </div>
     </div>
 
-    <!-- Modal de confirmation moderne -->
-    <div x-show="showModal" 
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
-         @click.away="closeModal()">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100 scale-100"
-             x-transition:leave-end="opacity-0 scale-95">
-            
-            <!-- Header dynamique -->
-            <div class="px-6 py-4 rounded-t-2xl"
-                 :class="{
-                     'bg-gradient-to-r from-red-500 to-pink-600': modalType === 'delete',
-                     'bg-gradient-to-r from-amber-500 to-orange-600': modalType === 'toggle',
-                     'bg-gradient-to-r from-blue-500 to-indigo-600': modalType === 'bulk'
-                 }">
-                <div class="flex items-center justify-between text-white">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center mr-3">
-                            <i :class="{
-                                'fas fa-exclamation-triangle': modalType === 'delete',
-                                'fas fa-question-circle': modalType === 'toggle',
-                                'fas fa-cog': modalType === 'bulk'
-                            }"></i>
+    <!-- Modal de confirmation -->
+    <div class="modal fade" :class="{ 'show d-block': showModal }" 
+         x-show="showModal" 
+         x-transition
+         tabindex="-1" 
+         style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <!-- Header dynamique -->
+                <div class="modal-header"
+                     :class="{
+                         'bg-danger text-white': modalType === 'delete',
+                         'bg-warning text-dark': modalType === 'toggle',
+                         'bg-primary text-white': modalType === 'bulk'
+                     }">
+                    <h5 class="modal-title">
+                        <i :class="{
+                            'fas fa-exclamation-triangle': modalType === 'delete',
+                            'fas fa-question-circle': modalType === 'toggle',
+                            'fas fa-cog': modalType === 'bulk'
+                        }" class="me-2"></i>
+                        <span x-text="modalTitle"></span>
+                    </h5>
+                    <button type="button" @click="closeModal()" class="btn-close" :class="{ 'btn-close-white': modalType !== 'toggle' }"></button>
+                </div>
+                
+                <!-- Body -->
+                <div class="modal-body">
+                    <div x-show="modalType === 'delete'">
+                        <p x-html="modalMessage"></p>
+                        <div class="alert alert-danger">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
+                                <div>
+                                    <p class="fw-semibold mb-1 small">Attention !</p>
+                                    <p class="mb-0 small">Cette action est irréversible et supprimera définitivement l'employé.</p>
+                                </div>
+                            </div>
                         </div>
-                        <h3 class="text-lg font-semibold" x-text="modalTitle"></h3>
                     </div>
-                    <button @click="closeModal()" 
-                            class="p-1 hover:bg-white/20 rounded-lg transition-colors">
-                        <i class="fas fa-times"></i>
+                    
+                    <div x-show="modalType === 'toggle'">
+                        <p x-html="modalMessage"></p>
+                    </div>
+                    
+                    <div x-show="modalType === 'bulk'">
+                        <p x-html="modalMessage"></p>
+                        <div class="alert alert-info">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-info-circle me-2 mt-1"></i>
+                                <div>
+                                    <p class="fw-semibold mb-1 small">Information</p>
+                                    <p class="mb-0 small">Cette action s'appliquera à tous les employés sélectionnés.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button type="button" @click="closeModal()" class="btn btn-secondary">
+                        <i class="fas fa-times me-2"></i>
+                        Annuler
+                    </button>
+                    <button type="button" @click="confirmAction()" 
+                            class="btn"
+                            :class="{
+                                'btn-danger': modalType === 'delete',
+                                'btn-warning': modalType === 'toggle',
+                                'btn-primary': modalType === 'bulk'
+                            }">
+                        <i class="me-2" :class="{
+                            'fas fa-trash': modalType === 'delete',
+                            'fas fa-check': modalType === 'toggle',
+                            'fas fa-cog': modalType === 'bulk'
+                        }"></i>
+                        <span x-text="modalConfirmText"></span>
                     </button>
                 </div>
-            </div>
-            
-            <!-- Body -->
-            <div class="p-6">
-                <div x-show="modalType === 'delete'">
-                    <p class="text-gray-700 mb-4" x-html="modalMessage"></p>
-                    <div class="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-4">
-                        <div class="flex items-start space-x-3">
-                            <div class="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-exclamation-triangle text-red-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-red-900 text-sm">Attention !</p>
-                                <p class="text-red-800 text-sm">Cette action est irréversible et supprimera définitivement l'employé.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div x-show="modalType === 'toggle'">
-                    <p class="text-gray-700" x-html="modalMessage"></p>
-                </div>
-                
-                <div x-show="modalType === 'bulk'">
-                    <p class="text-gray-700 mb-4" x-html="modalMessage"></p>
-                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-                        <div class="flex items-start space-x-3">
-                            <div class="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-info-circle text-blue-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-blue-900 text-sm">Information</p>
-                                <p class="text-blue-800 text-sm">Cette action s'appliquera à tous les employés sélectionnés.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Footer -->
-            <div class="bg-gray-50 px-6 py-4 rounded-b-2xl flex justify-end space-x-3">
-                <button @click="closeModal()" 
-                        class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-xl transition-colors duration-200">
-                    <i class="fas fa-times mr-2"></i>
-                    Annuler
-                </button>
-                <button @click="confirmAction()" 
-                        class="inline-flex items-center px-4 py-2 font-medium rounded-xl transition-colors duration-200"
-                        :class="{
-                            'bg-red-500 hover:bg-red-600 text-white': modalType === 'delete',
-                            'bg-amber-500 hover:bg-amber-600 text-white': modalType === 'toggle',
-                            'bg-blue-500 hover:bg-blue-600 text-white': modalType === 'bulk'
-                        }">
-                    <i class="mr-2" :class="{
-                        'fas fa-trash': modalType === 'delete',
-                        'fas fa-check': modalType === 'toggle',
-                        'fas fa-cog': modalType === 'bulk'
-                    }"></i>
-                    <span x-text="modalConfirmText"></span>
-                </button>
             </div>
         </div>
     </div>
@@ -607,7 +596,6 @@ function employeesIndex() {
         searchTerm: '',
         selectedManager: '',
         selectedEmployees: [],
-        showBulkActions: false,
         showModal: false,
         modalType: '',
         modalTitle: '',
@@ -619,6 +607,31 @@ function employeesIndex() {
         
         init() {
             this.filterEmployees();
+            // Initialiser les tooltips Bootstrap
+            this.$nextTick(() => {
+                this.initTooltips();
+            });
+        },
+        
+        initTooltips() {
+            // Attendre que Bootstrap soit chargé
+            if (typeof bootstrap === 'undefined') {
+                setTimeout(() => this.initTooltips(), 100);
+                return;
+            }
+            
+            try {
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    // Éviter de créer des tooltips multiples sur le même élément
+                    if (!tooltipTriggerEl._tooltip) {
+                        tooltipTriggerEl._tooltip = new bootstrap.Tooltip(tooltipTriggerEl);
+                    }
+                    return tooltipTriggerEl._tooltip;
+                });
+            } catch (error) {
+                console.warn('Erreur lors de l\'initialisation des tooltips:', error);
+            }
         },
         
         // Filtrage des employés
@@ -630,13 +643,19 @@ function employeesIndex() {
                 const text = row.textContent.toLowerCase();
                 const managerId = row.dataset.managerId;
                 
-                let showRow = text.includes(searchTerm);
+                let showRow = true;
                 
-                if (this.selectedManager) {
+                // Filtrage par recherche
+                if (searchTerm.length > 0) {
+                    showRow = text.includes(searchTerm);
+                }
+                
+                // Filtrage par manager
+                if (this.selectedManager && showRow) {
                     if (this.selectedManager === 'no-manager') {
-                        showRow = showRow && (managerId === '' || managerId === 'null');
+                        showRow = managerId === '' || managerId === 'null' || !managerId;
                     } else {
-                        showRow = showRow && (managerId === this.selectedManager);
+                        showRow = managerId === this.selectedManager;
                     }
                 }
                 
@@ -657,15 +676,28 @@ function employeesIndex() {
         
         toggleAllEmployees(checked) {
             const visibleRows = document.querySelectorAll('#employeesTable tbody tr:not([style*="display: none"])');
-            this.selectedEmployees = [];
             
-            visibleRows.forEach(row => {
-                const checkbox = row.querySelector('input[type="checkbox"]');
-                checkbox.checked = checked;
-                if (checked) {
-                    this.selectedEmployees.push(parseInt(checkbox.value));
-                }
-            });
+            if (checked) {
+                this.selectedEmployees = [];
+                visibleRows.forEach(row => {
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        const employeeId = parseInt(checkbox.value);
+                        if (!this.selectedEmployees.includes(employeeId)) {
+                            this.selectedEmployees.push(employeeId);
+                        }
+                    }
+                });
+            } else {
+                visibleRows.forEach(row => {
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = false;
+                    }
+                });
+                this.selectedEmployees = [];
+            }
         },
         
         // Actions individuelles
@@ -715,22 +747,19 @@ function employeesIndex() {
             this.showModal = true;
         },
         
-        // Exécution des actions avec notifications modernes
+        // Exécution des actions
         executeToggleStatus(employeeId) {
-            // Afficher une notification de chargement
-            const loadingNotif = window.notifications.show('Modification du statut en cours...', 'info', {
-                persistent: true,
-                showProgress: false
-            });
+            this.showToast('Modification du statut en cours...', 'info');
             
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = `/admin/employees/${employeeId}/toggle-active`;
+            form.style.display = 'none';
             
             const csrf = document.createElement('input');
             csrf.type = 'hidden';
             csrf.name = '_token';
-            csrf.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            csrf.value = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             
             const method = document.createElement('input');
             method.type = 'hidden';
@@ -741,28 +770,24 @@ function employeesIndex() {
             form.appendChild(method);
             document.body.appendChild(form);
             
-            // Simuler un délai pour montrer le loading
             setTimeout(() => {
-                window.notifications.hide(loadingNotif);
-                window.notifications.success('Statut modifié avec succès !');
+                this.showToast('Statut modifié avec succès !', 'success');
                 form.submit();
             }, 800);
         },
         
         executeDelete(employeeId) {
-            const loadingNotif = window.notifications.show('Suppression en cours...', 'warning', {
-                persistent: true,
-                showProgress: false
-            });
+            this.showToast('Suppression en cours...', 'warning');
             
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = `/admin/employees/${employeeId}`;
+            form.style.display = 'none';
             
             const csrf = document.createElement('input');
             csrf.type = 'hidden';
             csrf.name = '_token';
-            csrf.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            csrf.value = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             
             const method = document.createElement('input');
             method.type = 'hidden';
@@ -774,39 +799,29 @@ function employeesIndex() {
             document.body.appendChild(form);
             
             setTimeout(() => {
-                window.notifications.hide(loadingNotif);
-                window.notifications.success('Employé supprimé avec succès !');
+                this.showToast('Employé supprimé avec succès !', 'success');
                 form.submit();
             }, 800);
         },
         
         executeBulkAction(action) {
-            const loadingNotif = window.notifications.show(`Traitement de ${this.selectedEmployees.length} employé(s)...`, 'info', {
-                persistent: true,
-                showProgress: false
-            });
+            this.showToast(`Traitement de ${this.selectedEmployees.length} employé(s)...`, 'info');
             
-            // Simulation d'une requête AJAX
             setTimeout(() => {
-                window.notifications.hide(loadingNotif);
-                
                 const messages = {
                     activate: `${this.selectedEmployees.length} employé(s) activé(s) avec succès !`,
                     deactivate: `${this.selectedEmployees.length} employé(s) désactivé(s) avec succès !`,
                     delete: `${this.selectedEmployees.length} employé(s) supprimé(s) avec succès !`
                 };
                 
-                window.notifications.success(messages[action] || 'Action terminée avec succès !', {
-                    duration: 6000
-                });
+                this.showToast(messages[action] || 'Action terminée avec succès !', 'success');
                 
                 this.selectedEmployees = [];
-                this.showBulkActions = false;
                 this.toggleAllEmployees(false);
             }, 1500);
         },
         
-        // Tri avec notifications
+        // Tri
         sortBy(field) {
             if (this.sortField === field) {
                 this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -823,15 +838,11 @@ function employeesIndex() {
             };
             
             const directionText = this.sortDirection === 'asc' ? 'croissant' : 'décroissant';
-            
-            window.notifications.info(`Tri par ${fieldNames[field] || field} (${directionText})`, {
-                duration: 2000,
-                showProgress: false
-            });
+            this.showToast(`Tri par ${fieldNames[field] || field} (${directionText})`, 'info');
         },
         
         getSortIcon(field) {
-            if (this.sortField !== field) return '';
+            if (this.sortField !== field) return 'fa-sort';
             return this.sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
         },
         
@@ -848,19 +859,73 @@ function employeesIndex() {
             this.pendingAction = null;
         },
         
-        // Toast notifications avec le nouveau système
-        showToast(message, type = 'info', options = {}) {
-            return window.notifications.show(message, type, {
-                duration: 4000,
-                ...options
-            });
+        // Toast notifications
+        showToast(message, type = 'info') {
+            // Vérifier si window.toast existe, sinon utiliser une méthode de fallback
+            if (typeof window.toast !== 'undefined') {
+                return window.toast.show(message, type, { duration: 4000 });
+            } else {
+                // Fallback: créer un toast Bootstrap simple
+                this.createBootstrapToast(message, type);
+            }
+        },
+        
+        createBootstrapToast(message, type) {
+            const toastContainer = document.getElementById('toast-container') || this.createToastContainer();
+            
+            const colors = {
+                success: 'text-bg-success',
+                error: 'text-bg-danger',
+                info: 'text-bg-info',
+                warning: 'text-bg-warning'
+            };
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                info: 'fa-info-circle',
+                warning: 'fa-exclamation-triangle'
+            };
+            
+            const toastId = 'toast-' + Date.now();
+            const toastHtml = `
+                <div id="${toastId}" class="toast ${colors[type]} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body d-flex align-items-center">
+                            <i class="fas ${icons[type]} me-2"></i>
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            const toastElement = document.getElementById(toastId);
+            
+            if (typeof bootstrap !== 'undefined') {
+                const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
+                toast.show();
+                
+                toastElement.addEventListener('hidden.bs.toast', () => {
+                    toastElement.remove();
+                });
+            }
+        },
+        
+        createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+            return container;
         }
     }
 }
 
 // Fonction de filtrage par manager (conservée pour compatibilité)
 function filterByManager(managerId) {
-    // Utilise Alpine.js maintenant
     Alpine.$data(document.querySelector('[x-data*="employeesIndex"]')).selectedManager = managerId;
     Alpine.$data(document.querySelector('[x-data*="employeesIndex"]')).filterEmployees();
 }
@@ -868,7 +933,7 @@ function filterByManager(managerId) {
 // Animation d'apparition progressive
 document.addEventListener('DOMContentLoaded', function() {
     // Animer les cartes de stats
-    const statCards = document.querySelectorAll('.grid > div');
+    const statCards = document.querySelectorAll('.card-hover');
     statCards.forEach((card, index) => {
         setTimeout(() => {
             card.classList.add('animate-slide-up');
@@ -886,6 +951,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* Animations personnalisées */
 @keyframes slideUp {
     from {
         opacity: 0;
@@ -897,33 +963,98 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
 .animate-slide-up {
     animation: slideUp 0.5s ease-out forwards;
 }
 
+/* Amélioration des cartes */
+.card-hover {
+    transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Amélioration des boutons d'action */
+.action-buttons {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.table-row-hover:hover .action-buttons {
+    opacity: 1;
+}
+
+/* Style pour les lignes du tableau */
+.table-row-hover:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Curseur pointeur pour les en-têtes triables */
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.sortable-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Amélioration du dropdown */
+.dropdown-menu.show {
+    display: block;
+}
+
 /* Animation pour les barres de progression */
-@keyframes progressFill {
-    from { width: 0%; }
-    to { width: var(--target-width); }
+.progress-bar {
+    transition: width 1.5s ease-out;
 }
 
-/* Amélioration des transitions au survol */
-.group:hover .group-hover\:scale-110 {
-    transform: scale(1.1);
+/* Style pour les badges */
+.badge {
+    font-size: 0.75em;
 }
 
-.group:hover .group-hover\:text-green-700 {
-    color: #15803d;
+/* Amélioration des boutons */
+.btn {
+    transition: all 0.2s ease-in-out;
 }
 
-/* Animation des compteurs */
-@keyframes countUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+.btn:hover {
+    transform: translateY(-1px);
 }
 
-[x-data] [x-text] {
-    animation: countUp 0.5s ease-out;
+/* Toast container */
+.toast-container {
+    z-index: 9999;
+}
+
+/* Responsive amélioré */
+@media (max-width: 768px) {
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.7rem;
+    }
+    
+    .action-buttons {
+        opacity: 1;
+    }
 }
 </style>
 @endsection

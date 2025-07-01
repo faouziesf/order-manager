@@ -3,319 +3,295 @@
 @section('title', 'Créer un Employé')
 
 @section('content')
-<div class="animate-fade-in" x-data="createEmployeeForm()">
+<div class="container-fluid animate-fade-in" x-data="createEmployeeForm()">
     <!-- Header Section -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-        <div class="mb-4 sm:mb-0">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Nouvel Employé</h1>
-            <p class="text-gray-600">Créer un nouveau compte employé</p>
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2 fw-bold text-dark mb-2">Nouvel Employé</h1>
+            <p class="text-muted">Créer un nouveau compte employé</p>
         </div>
-        <a href="{{ route('admin.employees.index') }}" 
-           class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-xl transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5">
-            <i class="fas fa-arrow-left mr-2"></i>
-            Retour
-        </a>
+        <div class="col-md-4 text-end">
+            <a href="{{ route('admin.employees.index') }}" 
+               class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Retour
+            </a>
+        </div>
     </div>
 
     <!-- Main Form Card -->
-    <div class="max-w-4xl mx-auto">
-        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <!-- Card Header -->
-            <div class="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4">
-                <div class="flex items-center text-white">
-                    <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mr-3">
-                        <i class="fas fa-user-friends text-xl"></i>
+    <div class="row justify-content-center">
+        <div class="col-xl-10">
+            <div class="card shadow-lg border-0">
+                <!-- Card Header -->
+                <div class="card-header bg-gradient-success text-white py-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-white bg-opacity-25 rounded-3 p-2 me-3">
+                            <i class="fas fa-user-friends fa-lg"></i>
+                        </div>
+                        <h4 class="card-title mb-0">Informations de l'Employé</h4>
                     </div>
-                    <h2 class="text-xl font-semibold">Informations de l'Employé</h2>
                 </div>
-            </div>
 
-            <!-- Form Content -->
-            <div class="p-6">
-                <form method="POST" action="{{ route('admin.employees.store') }}" x-ref="form">
-                    @csrf
-                    
-                    <!-- Informations personnelles -->
-                    <div class="mb-8">
-                        <div class="flex items-center mb-4 pb-2 border-b border-green-200">
-                            <i class="fas fa-user text-green-600 mr-2"></i>
-                            <h3 class="text-lg font-semibold text-green-700">Informations personnelles</h3>
-                        </div>
+                <!-- Form Content -->
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ route('admin.employees.store') }}" x-ref="form">
+                        @csrf
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Nom complet -->
-                            <div class="space-y-2">
-                                <label for="name" class="block text-sm font-medium text-gray-700">
-                                    Nom complet <span class="text-red-500">*</span>
-                                </label>
-                                <input type="text" 
-                                       id="name" 
-                                       name="name" 
-                                       value="{{ old('name') }}" 
-                                       placeholder="Ex: Fatma Ben Salem"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('name') border-red-500 ring-2 ring-red-200 @enderror"
-                                       required>
-                                @error('name')
-                                    <div class="mt-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-3 animate-shake">
-                                        <div class="flex items-center space-x-2">
-                                            <div class="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-exclamation-circle text-red-600 text-xs"></i>
-                                            </div>
-                                            <p class="text-red-800 text-sm font-medium">{{ $message }}</p>
-                                        </div>
-                                    </div>
-                                @enderror
+                        <!-- Informations personnelles -->
+                        <div class="mb-5">
+                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
+                                <i class="fas fa-user text-success me-2"></i>
+                                <h5 class="text-success mb-0">Informations personnelles</h5>
                             </div>
                             
-                            <!-- Email -->
-                            <div class="space-y-2">
-                                <label for="email" class="block text-sm font-medium text-gray-700">
-                                    Adresse email <span class="text-red-500">*</span>
-                                </label>
-                                <input type="email" 
-                                       id="email" 
-                                       name="email" 
-                                       value="{{ old('email') }}" 
-                                       placeholder="employee@example.com"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('email') border-red-500 ring-2 ring-red-200 @enderror"
-                                       required>
-                                @error('email')
-                                    <div class="mt-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-3 animate-shake">
-                                        <div class="flex items-center space-x-2">
-                                            <div class="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-exclamation-circle text-red-600 text-xs"></i>
+                            <div class="row g-3">
+                                <!-- Nom complet -->
+                                <div class="col-md-6">
+                                    <label for="name" class="form-label fw-medium">
+                                        Nom complet <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           id="name" 
+                                           name="name" 
+                                           value="{{ old('name') }}" 
+                                           placeholder="Ex: Fatma Ben Salem"
+                                           class="form-control form-control-lg @error('name') is-invalid @enderror"
+                                           required>
+                                    @error('name')
+                                        <div class="invalid-feedback">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-exclamation-circle me-2"></i>
+                                                {{ $message }}
                                             </div>
-                                            <p class="text-red-800 text-sm font-medium">{{ $message }}</p>
                                         </div>
-                                    </div>
-                                @enderror
-                            </div>
-                        </div>
-                        
-                        <!-- Téléphone -->
-                        <div class="mt-6 space-y-2">
-                            <label for="phone" class="block text-sm font-medium text-gray-700">Numéro de téléphone</label>
-                            <input type="tel" 
-                                   id="phone" 
-                                   name="phone" 
-                                   value="{{ old('phone') }}" 
-                                   placeholder="+216 XX XXX XXX"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('phone') border-red-500 ring-2 ring-red-200 @enderror">
-                            @error('phone')
-                                <div class="mt-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-3 animate-shake">
-                                    <div class="flex items-center space-x-2">
-                                        <div class="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <i class="fas fa-exclamation-circle text-red-600 text-xs"></i>
-                                        </div>
-                                        <p class="text-red-800 text-sm font-medium">{{ $message }}</p>
-                                    </div>
+                                    @enderror
                                 </div>
-                            @enderror
-                        </div>
-                    </div>
-                    
-                    <!-- Attribution à un manager -->
-                    <div class="mb-8">
-                        <div class="flex items-center mb-4 pb-2 border-b border-green-200">
-                            <i class="fas fa-user-tie text-green-600 mr-2"></i>
-                            <h3 class="text-lg font-semibold text-green-700">Attribution à un manager</h3>
-                        </div>
-                        
-                        <div class="space-y-2">
-                            <label for="manager_id" class="block text-sm font-medium text-gray-700">Manager superviseur</label>
-                            <select id="manager_id" 
-                                    name="manager_id" 
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('manager_id') border-red-500 ring-2 ring-red-200 @enderror">
-                                <option value="">Aucun manager (employé indépendant)</option>
-                                @foreach($managers as $manager)
-                                    <option value="{{ $manager->id }}" {{ old('manager_id') == $manager->id ? 'selected' : '' }}>
-                                        {{ $manager->name }} - {{ $manager->email }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('manager_id')
-                                <div class="mt-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-3 animate-shake">
-                                    <div class="flex items-center space-x-2">
-                                        <div class="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <i class="fas fa-exclamation-circle text-red-600 text-xs"></i>
-                                        </div>
-                                        <p class="text-red-800 text-sm font-medium">{{ $message }}</p>
-                                    </div>
-                                </div>
-                            @enderror
-                            <p class="text-gray-500 text-sm">
-                                L'employé peut être assigné à un manager pour une supervision ou travailler de manière indépendante.
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <!-- Informations de connexion -->
-                    <div class="mb-8">
-                        <div class="flex items-center mb-4 pb-2 border-b border-green-200">
-                            <i class="fas fa-key text-green-600 mr-2"></i>
-                            <h3 class="text-lg font-semibold text-green-700">Informations de connexion</h3>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Mot de passe -->
-                            <div class="space-y-2">
-                                <label for="password" class="block text-sm font-medium text-gray-700">
-                                    Mot de passe <span class="text-red-500">*</span>
-                                </label>
-                                <div class="relative">
-                                    <input type="password" 
-                                           id="password" 
-                                           name="password" 
-                                           placeholder="Minimum 8 caractères"
-                                           class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('password') border-red-500 ring-2 ring-red-200 @enderror"
-                                           required
-                                           x-model="password"
-                                           @input="checkPasswordMatch">
-                                    <button type="button" 
-                                            @click="togglePassword('password')"
-                                            class="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                                        <i class="fas fa-eye" x-ref="passwordIcon"></i>
-                                    </button>
-                                </div>
-                                @error('password')
-                                    <div class="mt-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-3 animate-shake">
-                                        <div class="flex items-center space-x-2">
-                                            <div class="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-exclamation-circle text-red-600 text-xs"></i>
+                                
+                                <!-- Email -->
+                                <div class="col-md-6">
+                                    <label for="email" class="form-label fw-medium">
+                                        Adresse email <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" 
+                                           id="email" 
+                                           name="email" 
+                                           value="{{ old('email') }}" 
+                                           placeholder="employee@example.com"
+                                           class="form-control form-control-lg @error('email') is-invalid @enderror"
+                                           required>
+                                    @error('email')
+                                        <div class="invalid-feedback">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-exclamation-circle me-2"></i>
+                                                {{ $message }}
                                             </div>
-                                            <p class="text-red-800 text-sm font-medium">{{ $message }}</p>
                                         </div>
-                                    </div>
-                                @enderror
-                                <p class="text-gray-500 text-sm">Minimum 8 caractères</p>
+                                    @enderror
+                                </div>
                             </div>
                             
-                            <!-- Confirmation mot de passe -->
-                            <div class="space-y-2">
-                                <label for="password_confirmation" class="block text-sm font-medium text-gray-700">
-                                    Confirmer le mot de passe <span class="text-red-500">*</span>
-                                </label>
-                                <div class="relative">
-                                    <input type="password" 
-                                           id="password_confirmation" 
-                                           name="password_confirmation" 
-                                           placeholder="Confirmer le mot de passe"
-                                           class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
-                                           :class="{ 'border-red-500 ring-2 ring-red-200': !passwordMatch && passwordConfirmation.length > 0, 'border-green-500 ring-2 ring-green-200': passwordMatch && passwordConfirmation.length > 0 }"
-                                           required
-                                           x-model="passwordConfirmation"
-                                           @input="checkPasswordMatch">
-                                    <button type="button" 
-                                            @click="togglePassword('password_confirmation')"
-                                            class="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                                        <i class="fas fa-eye" x-ref="passwordConfirmationIcon"></i>
-                                    </button>
-                                </div>
-                                <div x-show="!passwordMatch && passwordConfirmation.length > 0" 
-                                     x-transition:enter="transition ease-out duration-200"
-                                     x-transition:enter-start="opacity-0 scale-95"
-                                     x-transition:enter-end="opacity-100 scale-100"
-                                     class="mt-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-3">
-                                    <div class="flex items-center space-x-2">
-                                        <div class="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <i class="fas fa-exclamation-circle text-red-600 text-xs"></i>
+                            <!-- Téléphone -->
+                            <div class="mt-3">
+                                <label for="phone" class="form-label fw-medium">Numéro de téléphone</label>
+                                <input type="tel" 
+                                       id="phone" 
+                                       name="phone" 
+                                       value="{{ old('phone') }}" 
+                                       placeholder="+216 XX XXX XXX"
+                                       class="form-control form-control-lg @error('phone') is-invalid @enderror">
+                                @error('phone')
+                                    <div class="invalid-feedback">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-exclamation-circle me-2"></i>
+                                            {{ $message }}
                                         </div>
-                                        <p class="text-red-800 text-sm font-medium">Les mots de passe ne correspondent pas</p>
                                     </div>
-                                </div>
-                                <div x-show="passwordMatch && passwordConfirmation.length > 0" 
-                                     x-transition:enter="transition ease-out duration-200"
-                                     x-transition:enter-start="opacity-0 scale-95"
-                                     x-transition:enter-end="opacity-100 scale-100"
-                                     class="mt-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3">
-                                    <div class="flex items-center space-x-2">
-                                        <div class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <i class="fas fa-check-circle text-green-600 text-xs"></i>
-                                        </div>
-                                        <p class="text-green-800 text-sm font-medium">Les mots de passe correspondent</p>
-                                    </div>
-                                </div>
+                                @enderror
                             </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Paramètres du compte -->
-                    <div class="mb-8">
-                        <div class="flex items-center mb-4 pb-2 border-b border-green-200">
-                            <i class="fas fa-cog text-green-600 mr-2"></i>
-                            <h3 class="text-lg font-semibold text-green-700">Paramètres du compte</h3>
                         </div>
                         
-                        <div class="bg-gray-50 rounded-xl p-4">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                <input type="checkbox" 
-                                       id="is_active" 
-                                       name="is_active" 
-                                       value="1" 
-                                       checked
-                                       class="mt-1 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500 focus:ring-2">
-                                <div>
-                                    <div class="font-semibold text-gray-900">Compte actif</div>
-                                    <p class="text-sm text-gray-600">L'employé pourra se connecter immédiatement</p>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Informations importantes -->
-                    <div class="mb-8">
-                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6">
-                            <div class="flex items-start space-x-4">
-                                <div class="flex-shrink-0">
-                                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                                        <i class="fas fa-info-circle text-green-600 text-xl"></i>
+                        <!-- Attribution à un manager -->
+                        <div class="mb-5">
+                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
+                                <i class="fas fa-user-tie text-success me-2"></i>
+                                <h5 class="text-success mb-0">Attribution à un manager</h5>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label for="manager_id" class="form-label fw-medium">Manager superviseur</label>
+                                <select id="manager_id" 
+                                        name="manager_id" 
+                                        class="form-select form-select-lg @error('manager_id') is-invalid @enderror">
+                                    <option value="">Aucun manager (employé indépendant)</option>
+                                    @foreach($managers as $manager)
+                                        <option value="{{ $manager->id }}" {{ old('manager_id') == $manager->id ? 'selected' : '' }}>
+                                            {{ $manager->name }} - {{ $manager->email }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('manager_id')
+                                    <div class="invalid-feedback">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-exclamation-circle me-2"></i>
+                                            {{ $message }}
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="flex-1">
-                                    <h4 class="text-lg font-semibold text-green-900 mb-3">Informations importantes</h4>
-                                    <ul class="space-y-2 text-green-800">
-                                        <li class="flex items-start">
-                                            <i class="fas fa-check text-green-600 mr-2 mt-1 text-sm"></i>
-                                            L'employé aura accès à un tableau de bord simplifié
-                                        </li>
-                                        <li class="flex items-start">
-                                            <i class="fas fa-check text-green-600 mr-2 mt-1 text-sm"></i>
-                                            Il pourra consulter et traiter les commandes assignées
-                                        </li>
-                                        <li class="flex items-start">
-                                            <i class="fas fa-check text-green-600 mr-2 mt-1 text-sm"></i>
-                                            Si assigné à un manager, ce dernier pourra superviser son travail
-                                        </li>
-                                        <li class="flex items-start">
-                                            <i class="fas fa-check text-green-600 mr-2 mt-1 text-sm"></i>
-                                            Un email de bienvenue sera envoyé avec les informations de connexion
-                                        </li>
-                                        <li class="flex items-start">
-                                            <i class="fas fa-check text-green-600 mr-2 mt-1 text-sm"></i>
-                                            L'employé ne peut pas gérer d'autres comptes utilisateurs
-                                        </li>
-                                    </ul>
+                                @enderror
+                                <div class="form-text">
+                                    L'employé peut être assigné à un manager pour une supervision ou travailler de manière indépendante.
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Boutons d'action -->
-                    <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
-                        <a href="{{ route('admin.employees.index') }}" 
-                           class="inline-flex items-center justify-center px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-xl transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5">
-                            <i class="fas fa-times mr-2"></i>
-                            Annuler
-                        </a>
-                        <button type="submit" 
-                                class="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                                :disabled="!canSubmit"
-                                :class="{ 'opacity-50 cursor-not-allowed': !canSubmit }">
-                            <i class="fas fa-save mr-2"></i>
-                            Créer l'Employé
-                        </button>
-                    </div>
-                </form>
+                        
+                        <!-- Informations de connexion -->
+                        <div class="mb-5">
+                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
+                                <i class="fas fa-key text-success me-2"></i>
+                                <h5 class="text-success mb-0">Informations de connexion</h5>
+                            </div>
+                            
+                            <div class="row g-3">
+                                <!-- Mot de passe -->
+                                <div class="col-md-6">
+                                    <label for="password" class="form-label fw-medium">
+                                        Mot de passe <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="password" 
+                                               id="password" 
+                                               name="password" 
+                                               placeholder="Minimum 8 caractères"
+                                               class="form-control form-control-lg @error('password') is-invalid @enderror"
+                                               required
+                                               x-model="password"
+                                               @input="checkPasswordMatch">
+                                        <button type="button" 
+                                                @click="togglePassword('password')"
+                                                class="btn btn-outline-secondary"
+                                                tabindex="-1">
+                                            <i class="fas fa-eye" x-ref="passwordIcon"></i>
+                                        </button>
+                                    </div>
+                                    @error('password')
+                                        <div class="invalid-feedback">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-exclamation-circle me-2"></i>
+                                                {{ $message }}
+                                            </div>
+                                        </div>
+                                    @enderror
+                                    <div class="form-text">Minimum 8 caractères</div>
+                                </div>
+                                
+                                <!-- Confirmation mot de passe -->
+                                <div class="col-md-6">
+                                    <label for="password_confirmation" class="form-label fw-medium">
+                                        Confirmer le mot de passe <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="password" 
+                                               id="password_confirmation" 
+                                               name="password_confirmation" 
+                                               placeholder="Confirmer le mot de passe"
+                                               class="form-control form-control-lg"
+                                               x-bind:class="{ 
+                                                   'is-invalid': password.length > 0 && passwordConfirmation.length > 0 && !passwordMatch, 
+                                                   'is-valid': password.length > 0 && passwordConfirmation.length > 0 && passwordMatch 
+                                               }"
+                                               required
+                                               x-model="passwordConfirmation"
+                                               @input="checkPasswordMatch">
+                                        <button type="button" 
+                                                @click="togglePassword('password_confirmation')"
+                                                class="btn btn-outline-secondary"
+                                                tabindex="-1">
+                                            <i class="fas fa-eye" x-ref="passwordConfirmationIcon"></i>
+                                        </button>
+                                    </div>
+                                    <div x-show="password.length > 0 && passwordConfirmation.length > 0 && !passwordMatch" 
+                                         x-transition
+                                         class="invalid-feedback d-block">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-exclamation-circle me-2"></i>
+                                            Les mots de passe ne correspondent pas
+                                        </div>
+                                    </div>
+                                    <div x-show="password.length > 0 && passwordConfirmation.length > 0 && passwordMatch" 
+                                         x-transition
+                                         class="valid-feedback d-block">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            Les mots de passe correspondent
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Paramètres du compte -->
+                        <div class="mb-5">
+                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
+                                <i class="fas fa-cog text-success me-2"></i>
+                                <h5 class="text-success mb-0">Paramètres du compte</h5>
+                            </div>
+                            
+                            <div class="bg-light rounded p-3">
+                                <div class="form-check">
+                                    <input type="checkbox" 
+                                           id="is_active" 
+                                           name="is_active" 
+                                           value="1" 
+                                           checked
+                                           class="form-check-input">
+                                    <label class="form-check-label" for="is_active">
+                                        <div class="fw-semibold">Compte actif</div>
+                                        <small class="text-muted">L'employé pourra se connecter immédiatement</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Informations importantes -->
+                        <div class="mb-4">
+                            <div class="alert alert-success">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        <div class="bg-success bg-opacity-25 rounded-3 p-2">
+                                            <i class="fas fa-info-circle text-success"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h6 class="alert-heading">Informations importantes</h6>
+                                        <ul class="mb-0 small">
+                                            <li class="mb-1">L'employé aura accès à un tableau de bord simplifié</li>
+                                            <li class="mb-1">Il pourra consulter et traiter les commandes assignées</li>
+                                            <li class="mb-1">Si assigné à un manager, ce dernier pourra superviser son travail</li>
+                                            <li class="mb-1">Un email de bienvenue sera envoyé avec les informations de connexion</li>
+                                            <li class="mb-1">L'employé ne peut pas gérer d'autres comptes utilisateurs</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Boutons d'action -->
+                        <div class="d-flex flex-column flex-sm-row justify-content-end gap-2">
+                            <a href="{{ route('admin.employees.index') }}" 
+                               class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times me-2"></i>
+                                Annuler
+                            </a>
+                            <button type="submit" 
+                                    class="btn btn-success btn-lg"
+                                    x-bind:disabled="!canSubmit"
+                                    x-bind:class="{ 'opacity-50': !canSubmit }">
+                                <i class="fas fa-save me-2"></i>
+                                Créer l'Employé
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -335,16 +311,27 @@ function createEmployeeForm() {
         },
         
         checkPasswordMatch() {
-            this.passwordMatch = this.password === this.passwordConfirmation && this.password.length > 0;
+            if (this.password.length === 0 && this.passwordConfirmation.length === 0) {
+                this.passwordMatch = true;
+            } else if (this.password.length > 0 && this.passwordConfirmation.length > 0) {
+                this.passwordMatch = this.password === this.passwordConfirmation;
+            } else {
+                this.passwordMatch = false;
+            }
         },
         
         get canSubmit() {
-            return this.password.length >= 8 && this.passwordMatch;
+            return this.password.length >= 8 && this.passwordConfirmation.length >= 8 && this.passwordMatch;
         },
         
         togglePassword(fieldId) {
             const field = document.getElementById(fieldId);
             const icon = this.$refs[fieldId + 'Icon'];
+            
+            if (!field || !icon) {
+                console.warn('Élément non trouvé pour toggle password:', fieldId);
+                return;
+            }
             
             if (field.type === 'password') {
                 field.type = 'text';
@@ -361,7 +348,7 @@ function createEmployeeForm() {
 
 // Animation d'apparition progressive
 document.addEventListener('DOMContentLoaded', function() {
-    const sections = document.querySelectorAll('.mb-8');
+    const sections = document.querySelectorAll('.mb-5');
     sections.forEach((section, index) => {
         setTimeout(() => {
             section.classList.add('animate-slide-up');
@@ -371,6 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* Animations personnalisées */
 @keyframes slideUp {
     from {
         opacity: 0;
@@ -382,46 +370,49 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-    20%, 40%, 60%, 80% { transform: translateX(2px); }
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
 }
 
 .animate-slide-up {
     animation: slideUp 0.5s ease-out forwards;
 }
 
-.animate-shake {
-    animation: shake 0.5s ease-in-out;
+/* Gradient de succès personnalisé */
+.bg-gradient-success {
+    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
 }
 
-/* Amélioration des inputs avec erreur */
-.border-red-500 {
-    animation: shake 0.5s ease-in-out;
+/* Amélioration des transitions */
+.btn {
+    transition: all 0.2s ease-in-out;
 }
 
-/* Animation des messages de validation */
-[x-transition] {
-    transition-property: opacity, transform;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Hover effects pour les boutons */
-button:hover, a:hover {
+.btn:hover {
     transform: translateY(-1px);
 }
 
-/* Focus visible pour l'accessibilité */
-input:focus, select:focus, button:focus {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    border-color: #198754;
 }
 
-/* Animation des checkboxes */
-input[type="checkbox"]:checked {
-    transform: scale(1.1);
-    transition: transform 0.2s ease;
+/* Amélioration des cartes */
+.card {
+    border-radius: 1rem;
+    transition: transform 0.2s ease-in-out;
+    border: 0;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
 }
 </style>
 @endsection
