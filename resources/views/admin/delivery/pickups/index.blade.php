@@ -1,317 +1,355 @@
-@extends('layouts.admin')
+@extends('admin.layouts.app')
 
-@section('title', 'Gestion des enlèvements')
+@section('title', 'Gestion des Enlèvements')
 
 @section('content')
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <!-- En-tête -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-1">
-                        <i class="fas fa-warehouse text-primary me-2"></i>
-                        Gestion des enlèvements
-                    </h1>
-                    <p class="text-muted mb-0">Gérez vos enlèvements et suivez leur statut</p>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('admin.delivery.preparation') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>Nouvel enlèvement
-                    </a>
-                    <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">
-                        <i class="fas fa-sync-alt me-2"></i>Actualiser
-                    </button>
-                </div>
-            </div>
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3 mb-0">Gestion des Enlèvements</h1>
+            <p class="text-muted">Suivez et gérez vos enlèvements Jax Delivery</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <a href="{{ route('admin.delivery.preparation') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nouvel Enlèvement
+            </a>
+        </div>
+    </div>
 
-            <!-- Statistiques -->
-            <div class="row mb-4">
-                <div class="col-lg-3 col-md-6">
-                    <div class="card border-secondary">
-                        <div class="card-body text-center">
-                            <i class="fas fa-list-alt fa-2x text-secondary mb-2"></i>
-                            <h4 class="mb-1">{{ $stats['total'] }}</h4>
-                            <p class="text-muted mb-0">Total</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="card border-warning">
-                        <div class="card-body text-center">
-                            <i class="fas fa-edit fa-2x text-warning mb-2"></i>
-                            <h4 class="mb-1">{{ $stats['draft'] }}</h4>
-                            <p class="text-muted mb-0">Brouillons</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="card border-success">
-                        <div class="card-body text-center">
-                            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                            <h4 class="mb-1">{{ $stats['validated'] }}</h4>
-                            <p class="text-muted mb-0">Validés</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="card border-info">
-                        <div class="card-body text-center">
-                            <i class="fas fa-truck fa-2x text-info mb-2"></i>
-                            <h4 class="mb-1">{{ $stats['picked_up'] }}</h4>
-                            <p class="text-muted mb-0">Collectés</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Liste des enlèvements -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-warehouse me-2"></i>
-                        Liste des enlèvements
-                    </h5>
-                </div>
+    <!-- Statistiques rapides -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-left-secondary">
                 <div class="card-body">
-                    @if($pickups->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Transporteur</th>
-                                        <th>Adresse d'enlèvement</th>
-                                        <th>Expéditions</th>
-                                        <th>Statut</th>
-                                        <th>Date de création</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($pickups as $pickup)
-                                    <tr>
-                                        <td>
-                                            <strong>#{{ $pickup->id }}</strong>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-truck me-2 text-primary"></i>
-                                                <div>
-                                                    <strong>{{ ucfirst($pickup->carrier_slug) }}</strong>
-                                                    @if($pickup->deliveryConfiguration)
-                                                        <br><small class="text-muted">{{ $pickup->deliveryConfiguration->integration_name }}</small>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            @if($pickup->pickupAddress)
-                                                <strong>{{ $pickup->pickupAddress->name }}</strong>
-                                                <br><small class="text-muted">{{ $pickup->pickupAddress->contact_name }}</small>
-                                            @else
-                                                <span class="text-muted">Adresse par défaut</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info">{{ $pickup->shipments_count }}</span>
-                                            expédition(s)
-                                        </td>
-                                        <td>
-                                            @switch($pickup->status)
-                                                @case('draft')
-                                                    <span class="badge bg-warning">Brouillon</span>
-                                                    @break
-                                                @case('validated')
-                                                    <span class="badge bg-success">Validé</span>
-                                                    @break
-                                                @case('picked_up')
-                                                    <span class="badge bg-info">Collecté</span>
-                                                    @break
-                                                @case('problem')
-                                                    <span class="badge bg-danger">Problème</span>
-                                                    @break
-                                                @default
-                                                    <span class="badge bg-secondary">{{ $pickup->status }}</span>
-                                            @endswitch
-                                        </td>
-                                        <td>
-                                            <small>{{ $pickup->created_at->format('d/m/Y H:i') }}</small>
-                                            @if($pickup->pickup_date)
-                                                <br><small class="text-muted">Prévu: {{ \Carbon\Carbon::parse($pickup->pickup_date)->format('d/m/Y') }}</small>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <!-- Voir les détails -->
-                                                <a href="{{ route('admin.delivery.pickups.show', $pickup) }}" 
-                                                   class="btn btn-sm btn-outline-primary"
-                                                   title="Voir les détails">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                
-                                                @if($pickup->status === 'draft')
-                                                    <!-- Valider si brouillon -->
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-success" 
-                                                            onclick="validatePickup({{ $pickup->id }})"
-                                                            title="Valider l'enlèvement">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                    <!-- Supprimer si brouillon -->
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-danger" 
-                                                            onclick="deletePickup({{ $pickup->id }})"
-                                                            title="Supprimer">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                @endif
-                                                
-                                                @if($pickup->status === 'validated')
-                                                    <!-- Générer étiquettes -->
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-info" 
-                                                            onclick="generateLabels({{ $pickup->id }})"
-                                                            title="Générer les étiquettes">
-                                                        <i class="fas fa-tags"></i>
-                                                    </button>
-                                                    <!-- Rafraîchir statut -->
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-secondary" 
-                                                            onclick="refreshStatus({{ $pickup->id }})"
-                                                            title="Rafraîchir le statut">
-                                                        <i class="fas fa-sync"></i>
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Pagination -->
-                        @if($pickups->hasPages())
-                            <div class="d-flex justify-content-center mt-4">
-                                {{ $pickups->links() }}
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                                Total
                             </div>
-                        @endif
-                    @else
-                        <div class="text-center py-5">
-                            <i class="fas fa-warehouse fa-3x text-muted mb-3"></i>
-                            <h5 class="text-muted">Aucun enlèvement créé</h5>
-                            <p class="text-muted mb-4">Commencez par créer votre premier enlèvement</p>
-                            <a href="{{ route('admin.delivery.preparation') }}" class="btn btn-primary">
-                                <i class="fas fa-plus me-2"></i>Créer un enlèvement
-                            </a>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total'] }}</div>
                         </div>
-                    @endif
+                        <div class="col-auto">
+                            <i class="fas fa-warehouse fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-warning">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Brouillons
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['draft'] }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-edit fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-primary">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Validés
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['validated'] }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Récupérés
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['picked_up'] }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-truck fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="GET" class="row align-items-end">
+                <div class="col-md-3">
+                    <label for="status">Statut</label>
+                    <select name="status" id="status" class="form-control">
+                        <option value="">Tous les statuts</option>
+                        <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Brouillon</option>
+                        <option value="validated" {{ request('status') === 'validated' ? 'selected' : '' }}>Validé</option>
+                        <option value="picked_up" {{ request('status') === 'picked_up' ? 'selected' : '' }}>Récupéré</option>
+                        <option value="problem" {{ request('status') === 'problem' ? 'selected' : '' }}>Problème</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from">Date de création (du)</label>
+                    <input type="date" name="date_from" id="date_from" class="form-control" 
+                           value="{{ request('date_from') }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to">Date de création (au)</label>
+                    <input type="date" name="date_to" id="date_to" class="form-control" 
+                           value="{{ request('date_to') }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                    <a href="{{ route('admin.delivery.pickups') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des enlèvements -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Enlèvements</h6>
+        </div>
+        <div class="card-body">
+            @if($pickups->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Configuration</th>
+                                <th>Statut</th>
+                                <th>Expéditions</th>
+                                <th>Date Création</th>
+                                <th>Date Validation</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($pickups as $pickup)
+                            <tr>
+                                <td>
+                                    <strong>#{{ $pickup->id }}</strong>
+                                    @if($pickup->pickup_date)
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar"></i> {{ $pickup->pickup_date->format('d/m/Y') }}
+                                        </small>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ $pickup->deliveryConfiguration->integration_name ?? 'N/A' }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-truck"></i> Jax Delivery
+                                            ({{ ucfirst($pickup->deliveryConfiguration->environment ?? 'N/A') }})
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge {{ $pickup->status_badge_class }}">
+                                        {{ $pickup->status_label }}
+                                    </span>
+                                    @if($pickup->status === 'problem')
+                                        <br>
+                                        <small class="text-danger">
+                                            <i class="fas fa-exclamation-triangle"></i> 
+                                            {{ $pickup->days_in_current_status }} jours
+                                        </small>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="mr-2">
+                                            <strong>{{ $pickup->shipment_count }}</strong> expédition(s)
+                                        </div>
+                                        @if($pickup->shipment_count > 0 && $pickup->status !== 'draft')
+                                            <div class="progress flex-grow-1" style="height: 20px;">
+                                                <div class="progress-bar bg-success" 
+                                                     style="width: {{ $pickup->progress_percentage }}%">
+                                                    {{ $pickup->progress_percentage }}%
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    @if($pickup->total_value > 0)
+                                        <small class="text-muted">
+                                            Valeur: {{ number_format($pickup->total_value, 3) }} TND
+                                        </small>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div>
+                                        {{ $pickup->created_at->format('d/m/Y') }}
+                                        <br>
+                                        <small class="text-muted">{{ $pickup->created_at->format('H:i') }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if($pickup->validated_at)
+                                        <div>
+                                            {{ $pickup->validated_at->format('d/m/Y') }}
+                                            <br>
+                                            <small class="text-muted">{{ $pickup->validated_at->format('H:i') }}</small>
+                                        </div>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ route('admin.delivery.pickups.show', $pickup) }}" 
+                                           class="btn btn-sm btn-outline-info" title="Voir">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        
+                                        @if($pickup->status === 'draft')
+                                            <button type="button" class="btn btn-sm btn-outline-success" 
+                                                    onclick="validatePickup({{ $pickup->id }})" title="Valider">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="deletePickup({{ $pickup->id }})" title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        @endif
+
+                                        @if($pickup->status === 'validated')
+                                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                    onclick="refreshStatus({{ $pickup->id }})" title="Actualiser">
+                                                <i class="fas fa-sync"></i>
+                                            </button>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if($pickups->hasPages())
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div>
+                            <small class="text-muted">
+                                Affichage de {{ $pickups->firstItem() }} à {{ $pickups->lastItem() }} 
+                                sur {{ $pickups->total() }} enlèvements
+                            </small>
+                        </div>
+                        <div>
+                            {{ $pickups->appends(request()->query())->links() }}
+                        </div>
+                    </div>
+                @endif
+            @else
+                <div class="text-center py-5">
+                    <i class="fas fa-warehouse fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-600">Aucun enlèvement trouvé</h5>
+                    <p class="text-muted">
+                        @if(request()->hasAny(['status', 'date_from', 'date_to']))
+                            Aucun enlèvement ne correspond à vos critères.
+                        @else
+                            Vous n'avez pas encore créé d'enlèvement.
+                        @endif
+                    </p>
+                    <a href="{{ route('admin.delivery.preparation') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Créer un Enlèvement
+                    </a>
+                </div>
+            @endif
+        </div>
+    </div>
 </div>
+
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
+// Valider un enlèvement
 function validatePickup(pickupId) {
-    if (!confirm('Êtes-vous sûr de vouloir valider cet enlèvement ?')) {
-        return;
+    if (confirm('Êtes-vous sûr de vouloir valider cet enlèvement ?\n\nCela créera les expéditions chez Jax Delivery.')) {
+        const btn = event.target.closest('button');
+        const originalHtml = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+        
+        fetch(`/admin/delivery/pickups/${pickupId}/validate`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message);
+                location.reload();
+            } else {
+                toastr.error(data.message);
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            toastr.error('Erreur lors de la validation');
+            console.error('Error:', error);
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        });
     }
-    
-    const btn = event.target.closest('button');
-    const originalHtml = btn.innerHTML;
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    btn.disabled = true;
-    
-    fetch(`/admin/delivery/pickups/${pickupId}/validate`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('success', data.message);
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showNotification('error', data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('error', 'Erreur lors de la validation');
-    })
-    .finally(() => {
-        btn.innerHTML = originalHtml;
-        btn.disabled = false;
-    });
 }
 
+// Supprimer un enlèvement
 function deletePickup(pickupId) {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet enlèvement ?')) {
-        return;
+    if (confirm('Êtes-vous sûr de vouloir supprimer cet enlèvement ?\n\nToutes les expéditions associées seront également supprimées.')) {
+        fetch(`/admin/delivery/pickups/${pickupId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message);
+                location.reload();
+            } else {
+                toastr.error(data.message);
+            }
+        })
+        .catch(error => {
+            toastr.error('Erreur lors de la suppression');
+            console.error('Error:', error);
+        });
     }
-    
-    fetch(`/admin/delivery/pickups/${pickupId}`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('success', data.message);
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showNotification('error', data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('error', 'Erreur lors de la suppression');
-    });
 }
 
-function generateLabels(pickupId) {
-    const btn = event.target.closest('button');
-    const originalHtml = btn.innerHTML;
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    btn.disabled = true;
-    
-    fetch(`/admin/delivery/pickups/${pickupId}/labels`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('success', data.message);
-        } else {
-            showNotification('error', data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('error', 'Erreur lors de la génération');
-    })
-    .finally(() => {
-        btn.innerHTML = originalHtml;
-        btn.disabled = false;
-    });
-}
-
+// Actualiser le statut
 function refreshStatus(pickupId) {
     const btn = event.target.closest('button');
     const originalHtml = btn.innerHTML;
@@ -322,51 +360,27 @@ function refreshStatus(pickupId) {
     fetch(`/admin/delivery/pickups/${pickupId}/refresh`, {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Accept': 'application/json'
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
         }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification('success', data.message);
-            setTimeout(() => location.reload(), 1000);
+            toastr.success(data.message);
+            location.reload();
         } else {
-            showNotification('error', data.message);
+            toastr.error(data.message);
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('error', 'Erreur lors de la mise à jour');
+        toastr.error('Erreur lors de l\'actualisation');
+        console.error('Error:', error);
     })
     .finally(() => {
         btn.innerHTML = originalHtml;
         btn.disabled = false;
     });
 }
-
-function showNotification(type, message) {
-    const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-danger' : 'alert-info';
-    const icon = type === 'success' ? 'fas fa-check-circle' : type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-info-circle';
-
-    const notification = document.createElement('div');
-    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    notification.innerHTML = `
-        <div class="d-flex align-items-center">
-            <i class="${icon} me-2"></i>
-            <span>${message}</span>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 5000);
-}
 </script>
-@endsection
+@endpush

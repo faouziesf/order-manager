@@ -16,12 +16,12 @@ class Shipment extends Model
         'order_id',
         'pickup_id',
         'pos_barcode',
-        'return_barcode',
         'pos_reference',
         'order_number',
         'status',
+        'carrier_slug',
         'carrier_last_status_update',
-        'fparcel_data',
+        'carrier_data',
         'weight',
         'value',
         'cod_amount',
@@ -35,7 +35,7 @@ class Shipment extends Model
     ];
 
     protected $casts = [
-        'fparcel_data' => 'array',
+        'carrier_data' => 'array',
         'sender_info' => 'array',
         'recipient_info' => 'array',
         'weight' => 'decimal:2',
@@ -84,7 +84,7 @@ class Shipment extends Model
     
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        $labels = [
             self::STATUS_CREATED => 'Créé',
             self::STATUS_VALIDATED => 'Validé',
             self::STATUS_PICKED_UP_BY_CARRIER => 'Récupéré par transporteur',
@@ -93,13 +93,14 @@ class Shipment extends Model
             self::STATUS_CANCELLED => 'Annulé',
             self::STATUS_IN_RETURN => 'En retour',
             self::STATUS_ANOMALY => 'Anomalie',
-            default => $this->status,
-        };
+        ];
+
+        return $labels[$this->status] ?? $this->status;
     }
 
     public function getStatusBadgeClassAttribute(): string
     {
-        return match($this->status) {
+        $classes = [
             self::STATUS_CREATED => 'badge-secondary',
             self::STATUS_VALIDATED => 'badge-primary',
             self::STATUS_PICKED_UP_BY_CARRIER => 'badge-info',
@@ -108,23 +109,36 @@ class Shipment extends Model
             self::STATUS_CANCELLED => 'badge-dark',
             self::STATUS_IN_RETURN => 'badge-warning',
             self::STATUS_ANOMALY => 'badge-danger',
-            default => 'badge-secondary',
-        };
+        ];
+
+        return $classes[$this->status] ?? 'badge-secondary';
     }
 
     public function getTrackingUrlAttribute(): ?string
     {
-        if (!$this->pos_barcode) {
+        if (!$this->pos_barcode || !$this->carrier_slug) {
             return null;
         }
 
-        // URL de tracking pour Fparcel
-        return "https://tracking.fparcel.com/{$this->pos_barcode}";
+        // URLs de tracking par transporteur
+        $trackingUrls = [
+            'jax_delivery' => "https://tracking.jax-delivery.com/{$this->pos_barcode}",
+            'fparcel' => "https://tracking.fparcel.com/{$this->pos_barcode}",
+            'aramex' => "https://www.aramex.com/track/results?ShipmentNumber={$this->pos_barcode}",
+            // Ajouter d'autres transporteurs ici
+        ];
+
+        return $trackingUrls[$this->carrier_slug] ?? null;
     }
 
-    public function getCarrierNameAttribute(): string
+    public function getCarrierDisplayNameAttribute(): string
     {
-        return $this->pickup->carrier_slug ?? 'N/A';
+        if (!$this->carrier_slug) {
+            return 'Transporteur non défini';
+        }
+
+        $carriers = config('carriers', []);
+        return $carriers[$this->carrier_slug]['display_name'] ?? ucfirst($this->carrier_slug);
     }
 
     public function getCustomerNameAttribute(): string
@@ -174,59 +188,90 @@ class Shipment extends Model
     }
 
     // ========================================
-    // MÉTHODES
+    // MÉTHODES EXTENSIBLES
     // ========================================
     
+    /**
+     * Créer l'expédition avec le transporteur approprié
+     */
     public function createWithCarrier(): bool
     {
         if (!$this->pickup || !$this->pickup->deliveryConfiguration) {
             throw new \Exception('Configuration de livraison manquante');
         }
 
+        // S'assurer que carrier_slug est défini
+        if (!$this->carrier_slug) {
+            $this->carrier_slug = $this->pickup->carrier_slug;
+        }
+
+        // Utiliser le service factory pour obtenir le bon service
         $shippingService = app(\App\Services\Shipping\ShippingServiceFactory::class)
-            ->make($this->pickup->carrier_slug, $this->pickup->deliveryConfiguration);
+            ->make($this->carrier_slug, $this->pickup->deliveryConfiguration);
 
         try {
-            $result = $shippingService->createShipment($this->order, $this->pickup->pickupAddress);
+            // Récupérer l'adresse de pickup si elle existe (pour les transporteurs qui la supportent)
+            $pickupAddress = null;
+            if (method_exists($this->pickup, 'pickupAddress') && $this->pickup->pickupAddress) {
+                $pickupAddress = $this->pickup->pickupAddress;
+            }
+
+            $result = $shippingService->createShipment($this->order, $pickupAddress);
             
             $this->update([
-                'pos_barcode' => $result['pos_barcode'],
-                'return_barcode' => $this->generateReturnBarcode($result['pos_barcode']),
-                'pos_reference' => $result['pos_reference'] ?? null,
+                'pos_barcode' => $result['tracking_number'] ?? $result['pos_barcode'] ?? $result['ean'],
+                'pos_reference' => $result['reference'] ?? null,
                 'status' => self::STATUS_VALIDATED,
-                'fparcel_data' => $result,
+                'carrier_slug' => $this->carrier_slug,
+                'carrier_data' => $result,
             ]);
 
             // Mettre à jour la commande
             $this->order->markAsShipped(
                 $this->pos_barcode,
-                $this->pickup->carrier_slug,
-                "Expédition créée via {$this->pickup->carrier_slug}"
+                $this->carrier_slug,
+                "Expédition créée via {$this->carrier_display_name}"
             );
 
             $this->logStatusChange(self::STATUS_CREATED, self::STATUS_VALIDATED);
             
             return true;
         } catch (\Exception $e) {
-            \Log::error('Shipment creation failed: ' . $e->getMessage());
+            \Log::error('Shipment creation failed', [
+                'carrier' => $this->carrier_slug,
+                'error' => $e->getMessage(),
+                'shipment_id' => $this->id,
+            ]);
             throw $e;
         }
     }
 
+    /**
+     * Suivre le statut avec le transporteur approprié
+     */
     public function trackStatus(): void
     {
-        if (!$this->pos_barcode || !$this->pickup) {
+        if (!$this->pos_barcode || !$this->carrier_slug) {
             return;
         }
 
+        if (!$this->pickup || !$this->pickup->deliveryConfiguration) {
+            \Log::warning('Shipment tracking skipped: missing pickup or config', [
+                'shipment_id' => $this->id,
+                'pos_barcode' => $this->pos_barcode,
+            ]);
+            return;
+        }
+
+        // Utiliser le service factory pour obtenir le bon service
         $shippingService = app(\App\Services\Shipping\ShippingServiceFactory::class)
-            ->make($this->pickup->carrier_slug, $this->pickup->deliveryConfiguration);
+            ->make($this->carrier_slug, $this->pickup->deliveryConfiguration);
 
         try {
             $trackingData = $shippingService->trackShipment($this->pos_barcode);
             
             if ($trackingData && isset($trackingData['status'])) {
-                $newStatus = $this->mapCarrierStatus($trackingData['status']);
+                $newStatus = $this->mapCarrierStatusToInternal($trackingData['status']);
                 
                 if ($newStatus !== $this->status) {
                     $oldStatus = $this->status;
@@ -247,63 +292,91 @@ class Shipment extends Model
                 }
             }
         } catch (\Exception $e) {
-            \Log::error('Shipment tracking failed: ' . $e->getMessage());
+            \Log::error('Shipment tracking failed', [
+                'carrier' => $this->carrier_slug,
+                'tracking_number' => $this->pos_barcode,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
+    /**
+     * Mapper le statut du transporteur vers le statut interne
+     */
+    private function mapCarrierStatusToInternal(string $carrierStatus): string
+    {
+        // Vérifier que carrier_slug existe
+        if (!$this->carrier_slug) {
+            \Log::warning('Cannot map carrier status: carrier_slug is null', [
+                'shipment_id' => $this->id,
+                'carrier_status' => $carrierStatus,
+            ]);
+            return $this->status;
+        }
+
+        // Récupérer le mapping depuis la config du transporteur
+        $carriers = config('carriers', []);
+        $mapping = $carriers[$this->carrier_slug]['status_mapping'] ?? [];
+
+        $mappedStatus = $mapping[$carrierStatus] ?? null;
+        
+        if (!$mappedStatus) {
+            \Log::info('Unknown carrier status, keeping current status', [
+                'carrier' => $this->carrier_slug,
+                'carrier_status' => $carrierStatus,
+                'current_status' => $this->status,
+            ]);
+            return $this->status;
+        }
+
+        return $mappedStatus;
+    }
+
+    /**
+     * Mettre à jour le statut de la commande
+     */
     private function updateOrderStatus(string $shipmentStatus, array $trackingData): void
     {
-        $orderStatus = match($shipmentStatus) {
+        $statusMapping = [
             self::STATUS_PICKED_UP_BY_CARRIER => 'expédiée',
             self::STATUS_IN_TRANSIT => 'en_transit',
             self::STATUS_DELIVERED => 'livrée',
             self::STATUS_IN_RETURN => 'en_retour',
             self::STATUS_ANOMALY => 'anomalie_livraison',
-            default => null,
-        };
+        ];
+
+        $orderStatus = $statusMapping[$shipmentStatus] ?? null;
 
         if ($orderStatus) {
             $this->order->updateDeliveryStatus(
                 $orderStatus,
                 $trackingData['status'] ?? null,
                 $trackingData['status_label'] ?? null,
-                "Mise à jour automatique du suivi",
+                "Mise à jour automatique du suivi {$this->carrier_display_name}",
                 $this->pos_barcode
             );
         }
     }
 
-    private function mapCarrierStatus(string $carrierStatus): string
-    {
-        // Mapping Fparcel EVENT_ID vers statuts internes
-        $mapping = [
-            '1' => self::STATUS_CREATED,
-            '3' => self::STATUS_PICKED_UP_BY_CARRIER,
-            '6' => self::STATUS_IN_TRANSIT,
-            '7' => self::STATUS_DELIVERED,
-            '9' => self::STATUS_IN_RETURN,
-            '11' => self::STATUS_ANOMALY,
-        ];
-
-        return $mapping[$carrierStatus] ?? $this->status;
-    }
-
+    /**
+     * Enregistrer un changement de statut dans l'historique
+     */
     private function logStatusChange(
         ?string $oldStatus,
         string $newStatus,
         ?string $carrierCode = null,
         ?string $carrierLabel = null
     ): void {
-        // Utiliser OrderHistory comme demandé
-        $action = match($newStatus) {
+        $actionMapping = [
             self::STATUS_VALIDATED => 'shipment_validated',
             self::STATUS_PICKED_UP_BY_CARRIER => 'picked_up_by_carrier',
             self::STATUS_IN_TRANSIT => 'in_transit',
             self::STATUS_DELIVERED => 'livraison',
             self::STATUS_IN_RETURN => 'in_return',
             self::STATUS_ANOMALY => 'delivery_anomaly',
-            default => 'tracking_updated',
-        };
+        ];
+
+        $action = $actionMapping[$newStatus] ?? 'tracking_updated';
 
         $this->order->recordHistory(
             $action,
@@ -312,6 +385,7 @@ class Shipment extends Model
                 'shipment_id' => $this->id,
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
+                'carrier' => $this->carrier_slug,
                 'carrier_status_code' => $carrierCode,
                 'carrier_status_label' => $carrierLabel,
             ],
@@ -320,13 +394,8 @@ class Shipment extends Model
             $carrierCode,
             $carrierLabel,
             $this->pos_barcode,
-            $this->carrier_name
+            $this->carrier_slug
         );
-    }
-
-    private function generateReturnBarcode(string $posBarcode): string
-    {
-        return 'RET_' . $posBarcode . '_' . Str::random(6);
     }
 
     public function cancel(string $reason = null): void
@@ -344,6 +413,7 @@ class Shipment extends Model
             [
                 'shipment_id' => $this->id,
                 'cancelled_reason' => $reason,
+                'carrier' => $this->carrier_slug,
             ],
             $oldStatus,
             'annulée'
@@ -362,7 +432,7 @@ class Shipment extends Model
 
         $this->order->updateDeliveryStatus(
             'livrée',
-            '7',
+            'delivered',
             'Colis livré',
             $notes ?: 'Livraison confirmée manuellement',
             $this->pos_barcode
@@ -384,6 +454,11 @@ class Shipment extends Model
     public function scopeByStatus($query, string $status)
     {
         return $query->where('status', $status);
+    }
+
+    public function scopeByCarrier($query, string $carrier)
+    {
+        return $query->where('carrier_slug', $carrier);
     }
 
     public function scopeNeedsTracking($query)
@@ -431,13 +506,6 @@ class Shipment extends Model
     public function scopeWithTracking($query)
     {
         return $query->whereNotNull('pos_barcode');
-    }
-
-    public function scopeByCarrier($query, string $carrier)
-    {
-        return $query->whereHas('pickup', function($q) use ($carrier) {
-            $q->where('carrier_slug', $carrier);
-        });
     }
 
     public function scopeRecent($query, int $days = 30)

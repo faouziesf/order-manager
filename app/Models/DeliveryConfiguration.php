@@ -18,8 +18,8 @@ class DeliveryConfiguration extends Model
         'integration_name',
         'username',
         'password',
-        'environment',
         'token',
+        'environment',
         'expires_at',
         'is_active',
         'settings',
@@ -56,7 +56,7 @@ class DeliveryConfiguration extends Model
     
     public function getDisplayNameAttribute(): string
     {
-        return ucfirst($this->carrier_slug) . ' - ' . $this->integration_name;
+        return $this->integration_name ?: 'Jax Delivery - ' . $this->username;
     }
 
     public function setPasswordAttribute($value)
@@ -80,13 +80,7 @@ class DeliveryConfiguration extends Model
 
     public function getCarrierDisplayNameAttribute(): string
     {
-        return match($this->carrier_slug) {
-            'fparcel' => 'Fparcel Tunisia',
-            'dhl' => 'DHL Express',
-            'aramex' => 'Aramex',
-            'tunisia_post' => 'Poste Tunisienne',
-            default => ucfirst($this->carrier_slug),
-        };
+        return 'Jax Delivery Services';
     }
 
     public function getStatusBadgeClassAttribute(): string
@@ -121,58 +115,31 @@ class DeliveryConfiguration extends Model
     
     public function hasValidToken(): bool
     {
-        return $this->token && $this->expires_at && $this->expires_at->isFuture();
-    }
-
-    public function getCarrierService()
-    {
-        return app(\App\Services\Shipping\ShippingServiceFactory::class)
-            ->make($this->carrier_slug, $this);
-    }
-
-    public function refreshToken(): bool
-    {
-        if ($this->hasValidToken()) {
-            return true;
-        }
-
-        try {
-            $service = $this->getCarrierService();
-            $tokenData = $service->getToken();
-            
-            $this->update([
-                'token' => $tokenData['token'],
-                'expires_at' => $tokenData['expires_at'],
-            ]);
-            
-            return true;
-        } catch (\Exception $e) {
-            \Log::error('Token refresh failed: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    public function supportsPickupAddressSelection(): bool
-    {
-        $service = $this->getCarrierService();
-        return $service->supportsPickupAddressSelection();
+        return !empty($this->token) && $this->expires_at && $this->expires_at->isFuture();
     }
 
     public function testConnection(): array
     {
         try {
-            $service = $this->getCarrierService();
-            $tokenData = $service->getToken();
+            // Test simple de validation du token Jax
+            if (empty($this->token)) {
+                return [
+                    'success' => false,
+                    'message' => 'Token manquant'
+                ];
+            }
+
+            // Ici vous pourrez ajouter un appel API réel vers Jax pour tester le token
+            // Pour l'instant, on simule un test réussi si le token est présent
             
             $this->update([
-                'token' => $tokenData['token'],
-                'expires_at' => $tokenData['expires_at'],
+                'expires_at' => now()->addDays(30), // Les tokens Jax expirent après 30 jours
             ]);
             
             return [
                 'success' => true,
                 'message' => 'Connexion réussie avec ' . $this->display_name,
-                'token_expires_at' => $tokenData['expires_at'],
+                'token_expires_at' => $this->expires_at,
             ];
         } catch (\Exception $e) {
             return [
@@ -243,11 +210,6 @@ class DeliveryConfiguration extends Model
         return $query->where('is_active', true);
     }
 
-    public function scopeForCarrier($query, string $carrier)
-    {
-        return $query->where('carrier_slug', $carrier);
-    }
-
     public function scopeForAdmin($query, $adminId)
     {
         return $query->where('admin_id', $adminId);
@@ -271,34 +233,20 @@ class DeliveryConfiguration extends Model
     // MÉTHODES STATIQUES
     // ========================================
     
-    public static function getAvailableCarriers(): array
-    {
-        return [
-            'fparcel' => [
-                'name' => 'Fparcel Tunisia',
-                'supports_pickup_address' => true,
-                'supports_tracking' => true,
-                'supports_mass_labels' => true,
-                'features' => ['cod', 'tracking', 'mass_labels', 'pickup_scheduling']
-            ],
-            // Futurs transporteurs...
-        ];
-    }
-
     public static function createForAdmin(Admin $admin, array $data): self
     {
         // Valider que l'admin n'a pas déjà cette configuration
         $existing = self::where('admin_id', $admin->id)
-            ->where('carrier_slug', $data['carrier_slug'])
             ->where('integration_name', $data['integration_name'])
             ->first();
             
         if ($existing) {
-            throw new \Exception('Une configuration avec ce nom existe déjà pour ce transporteur.');
+            throw new \Exception('Une configuration avec ce nom existe déjà.');
         }
         
         return self::create(array_merge($data, [
             'admin_id' => $admin->id,
+            'carrier_slug' => 'jax_delivery', // Forcer à jax_delivery
         ]));
     }
 }

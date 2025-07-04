@@ -1,147 +1,107 @@
-@if($orders->isNotEmpty())
+@if($orders->count() > 0)
     <div class="table-responsive">
-        <table class="table table-sm table-hover">
+        <table class="table table-hover">
             <thead>
                 <tr>
                     <th width="50">
-                        <input type="checkbox" class="form-check-input" id="selectAllOrders" onchange="toggleAllOrders()">
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
                     </th>
-                    <th>Commande</th>
+                    <th>N° Commande</th>
                     <th>Client</th>
-                    <th>Téléphone</th>
                     <th>Adresse</th>
                     <th>Montant</th>
                     <th>Date</th>
+                    <th>Statut</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($orders as $order)
-                    <tr onclick="toggleOrderSelection({{ $order->id }})">
-                        <td>
-                            <input type="checkbox" class="form-check-input order-checkbox" 
-                                   data-order-id="{{ $order->id }}"
-                                   onchange="updateOrderSelection()">
-                        </td>
-                        <td>
-                            <strong>#{{ $order->id }}</strong>
-                        </td>
-                        <td>
-                            <strong>{{ $order->customer_name ?: 'N/A' }}</strong>
-                        </td>
-                        <td>
-                            <span class="font-monospace">{{ $order->customer_phone ?: 'N/A' }}</span>
-                        </td>
-                        <td>
-                            <small>{{ Str::limit($order->customer_address ?: 'N/A', 40) }}</small>
-                        </td>
-                        <td>
-                            <strong>{{ number_format($order->total_price, 3) }} DT</strong>
-                        </td>
-                        <td>
-                            <small>{{ $order->created_at->format('d/m/Y H:i') }}</small>
-                        </td>
-                    </tr>
+                <tr>
+                    <td>
+                        <input type="checkbox" class="order-checkbox" value="{{ $order->id }}" 
+                               onchange="toggleOrder({{ $order->id }})">
+                    </td>
+                    <td>
+                        <strong>#{{ $order->id }}</strong>
+                    </td>
+                    <td>
+                        <div>
+                            <strong>{{ $order->customer_name }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-phone"></i> {{ $order->customer_phone }}
+                                @if($order->customer_phone_2)
+                                    / {{ $order->customer_phone_2 }}
+                                @endif
+                            </small>
+                            @if($order->customer_email)
+                                <br>
+                                <small class="text-muted">
+                                    <i class="fas fa-envelope"></i> {{ $order->customer_email }}
+                                </small>
+                            @endif
+                        </div>
+                    </td>
+                    <td>
+                        <div class="text-truncate" style="max-width: 200px;" title="{{ $order->customer_address }}">
+                            {{ $order->customer_address }}
+                        </div>
+                        @if($order->customer_governorate)
+                            <small class="text-muted">{{ $order->customer_governorate }}</small>
+                        @endif
+                    </td>
+                    <td>
+                        <strong class="text-success">{{ number_format($order->total_price, 3) }} TND</strong>
+                        @if($order->items_count ?? 0 > 0)
+                            <br>
+                            <small class="text-muted">{{ $order->items_count }} article(s)</small>
+                        @endif
+                    </td>
+                    <td>
+                        <div>
+                            {{ $order->created_at->format('d/m/Y') }}
+                            <br>
+                            <small class="text-muted">{{ $order->created_at->format('H:i') }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge badge-success">{{ ucfirst($order->status) }}</span>
+                        @if($order->is_suspended)
+                            <br>
+                            <span class="badge badge-warning badge-sm">Suspendue</span>
+                        @endif
+                    </td>
+                </tr>
                 @endforeach
             </tbody>
         </table>
     </div>
 
+    <!-- Pagination -->
     @if($orders->hasPages())
-        <div class="d-flex justify-content-center mt-3">
-            {{ $orders->links() }}
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                <small class="text-muted">
+                    Affichage de {{ $orders->firstItem() }} à {{ $orders->lastItem() }} 
+                    sur {{ $orders->total() }} commandes
+                </small>
+            </div>
+            <div>
+                {{ $orders->appends(request()->query())->links() }}
+            </div>
         </div>
     @endif
-
-    <div class="d-flex justify-content-between align-items-center mt-3">
-        <span class="text-muted">
-            {{ $orders->total() }} commande(s) disponible(s)
-        </span>
-        <div>
-            <span id="selectedOrdersCount" class="badge bg-primary">0 sélectionnée(s)</span>
-        </div>
-    </div>
 @else
     <div class="text-center py-5">
-        <i class="fas fa-inbox fa-2x text-muted mb-3"></i>
-        <h6 class="text-muted">Aucune commande disponible</h6>
-        <p class="text-muted">Toutes les commandes confirmées ont déjà été assignées à un enlèvement.</p>
+        <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+        <h5 class="text-gray-600">Aucune commande trouvée</h5>
+        <p class="text-muted">
+            @if(request()->hasAny(['search', 'date_from', 'date_to', 'min_amount', 'max_amount']))
+                Aucune commande ne correspond à vos critères de recherche.
+                <br>Essayez de modifier les filtres.
+            @else
+                Toutes vos commandes confirmées ont déjà été expédiées.
+            @endif
+        </p>
     </div>
 @endif
-
-<script>
-let selectedOrders = new Set();
-
-function toggleOrderSelection(orderId) {
-    if (selectedOrders.has(orderId)) {
-        selectedOrders.delete(orderId);
-    } else {
-        selectedOrders.add(orderId);
-    }
-    updateOrdersUI();
-}
-
-function toggleAllOrders() {
-    const selectAllCheckbox = document.getElementById('selectAllOrders');
-    const checkboxes = document.querySelectorAll('.order-checkbox');
-    
-    if (selectAllCheckbox.checked) {
-        checkboxes.forEach(cb => {
-            const orderId = parseInt(cb.getAttribute('data-order-id'));
-            selectedOrders.add(orderId);
-        });
-    } else {
-        selectedOrders.clear();
-    }
-    updateOrdersUI();
-}
-
-function updateOrderSelection() {
-    const checkbox = event.target;
-    const orderId = parseInt(checkbox.getAttribute('data-order-id'));
-    
-    if (checkbox.checked) {
-        selectedOrders.add(orderId);
-    } else {
-        selectedOrders.delete(orderId);
-    }
-    updateOrdersUI();
-}
-
-function updateOrdersUI() {
-    // Mettre à jour les checkboxes
-    document.querySelectorAll('.order-checkbox').forEach(cb => {
-        const orderId = parseInt(cb.getAttribute('data-order-id'));
-        cb.checked = selectedOrders.has(orderId);
-    });
-    
-    // Mettre à jour le compteur
-    const countElement = document.getElementById('selectedOrdersCount');
-    if (countElement) {
-        countElement.textContent = `${selectedOrders.size} sélectionnée(s)`;
-    }
-    
-    // Mettre à jour la checkbox "Tout sélectionner"
-    const selectAllCheckbox = document.getElementById('selectAllOrders');
-    if (selectAllCheckbox) {
-        const totalCheckboxes = document.querySelectorAll('.order-checkbox').length;
-        selectAllCheckbox.checked = selectedOrders.size === totalCheckboxes && totalCheckboxes > 0;
-        selectAllCheckbox.indeterminate = selectedOrders.size > 0 && selectedOrders.size < totalCheckboxes;
-    }
-    
-    // Émettre un événement pour les formulaires parents
-    if (typeof window.updateSelectedOrders === 'function') {
-        window.updateSelectedOrders(Array.from(selectedOrders));
-    }
-}
-
-// Fonction pour récupérer les commandes sélectionnées
-function getSelectedOrders() {
-    return Array.from(selectedOrders);
-}
-
-// Fonction pour vider la sélection
-function clearOrderSelection() {
-    selectedOrders.clear();
-    updateOrdersUI();
-}
-</script>

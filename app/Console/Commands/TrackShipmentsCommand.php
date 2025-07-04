@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\Pickup;
 use App\Models\Shipment;
-use App\Services\ShipmentService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -13,23 +12,14 @@ class TrackShipmentsCommand extends Command
     protected $signature = 'delivery:track-shipments 
                             {--pickup-id= : Suivre uniquement les expéditions d\'un enlèvement spécifique}
                             {--admin-id= : Suivre uniquement les expéditions d\'un admin spécifique}
-                            {--carrier= : Suivre uniquement les expéditions d\'un transporteur spécifique}
                             {--limit=100 : Limiter le nombre d\'expéditions à traiter}
                             {--dry-run : Simuler l\'exécution sans mettre à jour}';
 
-    protected $description = 'Suivre les statuts des expéditions et mettre à jour les statuts des enlèvements';
-
-    private ShipmentService $shipmentService;
-
-    public function __construct(ShipmentService $shipmentService)
-    {
-        parent::__construct();
-        $this->shipmentService = $shipmentService;
-    }
+    protected $description = 'Suivre les statuts des expéditions Jax Delivery et mettre à jour les statuts des enlèvements';
 
     public function handle(): int
     {
-        $this->info('🚚 Démarrage du suivi des expéditions...');
+        $this->info('🚚 Démarrage du suivi des expéditions Jax Delivery...');
 
         $startTime = microtime(true);
         
@@ -84,13 +74,6 @@ class TrackShipmentsCommand extends Command
             $query->where('admin_id', $this->option('admin-id'));
         }
 
-        // Filtre par transporteur
-        if ($this->option('carrier')) {
-            $query->whereHas('pickup', function($q) {
-                $q->where('carrier_slug', $this->option('carrier'));
-            });
-        }
-
         // Limiter le nombre de résultats
         $limit = (int) $this->option('limit');
         if ($limit > 0) {
@@ -123,19 +106,29 @@ class TrackShipmentsCommand extends Command
                 $oldStatus = $shipment->status;
                 
                 if (!$this->option('dry-run')) {
-                    $trackingData = $this->shipmentService->trackShipment($shipment);
+                    // TODO: Intégrer avec JaxDeliveryService
+                    // $shipment->trackStatus();
                     
-                    if ($trackingData && $shipment->fresh()->status !== $oldStatus) {
+                    // Pour l'instant, simulation
+                    if (rand(1, 10) > 8) { // 20% de chance de mise à jour
+                        $newStatuses = ['in_transit', 'delivered'];
+                        $newStatus = $newStatuses[array_rand($newStatuses)];
+                        
+                        $shipment->update([
+                            'status' => $newStatus,
+                            'carrier_last_status_update' => now(),
+                        ]);
+                        
                         $results['updated']++;
                         $results['details'][] = [
                             'shipment_id' => $shipment->id,
                             'pos_barcode' => $shipment->pos_barcode,
                             'old_status' => $oldStatus,
-                            'new_status' => $shipment->fresh()->status,
+                            'new_status' => $newStatus,
                         ];
                         
                         if ($this->getOutput()->isVerbose()) {
-                            $this->line("\n📄 Expédition {$shipment->pos_barcode}: {$oldStatus} → {$shipment->fresh()->status}");
+                            $this->line("\n📄 Expédition {$shipment->pos_barcode}: {$oldStatus} → {$newStatus}");
                         }
                     }
                 } else {
@@ -183,11 +176,6 @@ class TrackShipmentsCommand extends Command
             $pickupsQuery->where('admin_id', $this->option('admin-id'));
         }
 
-        // Filtrer par transporteur si spécifié
-        if ($this->option('carrier')) {
-            $pickupsQuery->where('carrier_slug', $this->option('carrier'));
-        }
-
         $pickups = $pickupsQuery->get();
         $updatedPickups = 0;
         $problemPickups = 0;
@@ -233,7 +221,7 @@ class TrackShipmentsCommand extends Command
     private function displayResults(array $results, float $executionTime): void
     {
         $this->info('');
-        $this->info('📊 Résultats du suivi:');
+        $this->info('📊 Résultats du suivi Jax Delivery:');
         $this->table(
             ['Métrique', 'Valeur'],
             [

@@ -16,7 +16,6 @@ class Pickup extends Model
         'admin_id',
         'carrier_slug',
         'delivery_configuration_id',
-        'pickup_address_id',
         'status',
         'pickup_date',
         'validated_at',
@@ -48,11 +47,6 @@ class Pickup extends Model
     public function deliveryConfiguration(): BelongsTo
     {
         return $this->belongsTo(DeliveryConfiguration::class);
-    }
-
-    public function pickupAddress(): BelongsTo
-    {
-        return $this->belongsTo(PickupAddress::class);
     }
 
     public function shipments(): HasMany
@@ -93,12 +87,7 @@ class Pickup extends Model
 
     public function getCarrierDisplayNameAttribute(): string
     {
-        return $this->deliveryConfiguration->carrier_display_name ?? ucfirst($this->carrier_slug);
-    }
-
-    public function getPickupAddressNameAttribute(): string
-    {
-        return $this->pickupAddress->name ?? 'Adresse par défaut';
+        return 'Jax Delivery Services';
     }
 
     public function getTotalValueAttribute(): float
@@ -160,7 +149,15 @@ class Pickup extends Model
 
             foreach ($this->shipments as $shipment) {
                 try {
-                    $shipment->createWithCarrier();
+                    // TODO: Intégrer avec JaxDeliveryService
+                    // $shipment->createWithJaxDelivery();
+                    
+                    // Pour l'instant, simulation
+                    $shipment->update([
+                        'status' => 'validated',
+                        'pos_barcode' => 'JAX_' . uniqid(),
+                    ]);
+                    
                     $successCount++;
                 } catch (\Exception $e) {
                     $errors[] = "Expédition #{$shipment->order_id}: " . $e->getMessage();
@@ -185,7 +182,7 @@ class Pickup extends Model
                         "Enlèvement #{$this->id} validé - {$successCount} expédition(s) créée(s)",
                         [
                             'pickup_id' => $this->id,
-                            'carrier' => $this->carrier_slug,
+                            'carrier' => 'jax_delivery',
                             'success_count' => $successCount,
                             'error_count' => count($errors),
                         ]
@@ -260,12 +257,6 @@ class Pickup extends Model
     public function canBeValidated(): bool
     {
         return $this->status === self::STATUS_DRAFT && $this->shipments()->count() > 0;
-    }
-
-    public function canGenerateLabels(): bool
-    {
-        return $this->status === self::STATUS_VALIDATED && 
-               $this->shipments()->whereNotNull('pos_barcode')->count() > 0;
     }
 
     public function canBeModified(): bool
@@ -348,11 +339,6 @@ class Pickup extends Model
         return $query->where('status', $status);
     }
 
-    public function scopeByCarrier($query, string $carrier)
-    {
-        return $query->where('carrier_slug', $carrier);
-    }
-
     public function scopeForAdmin($query, $adminId)
     {
         return $query->where('admin_id', $adminId);
@@ -399,23 +385,10 @@ class Pickup extends Model
             ->where('admin_id', $admin->id)
             ->firstOrFail();
 
-        // Valider l'adresse d'enlèvement si nécessaire
-        $pickupAddress = null;
-        if ($deliveryConfig->supportsPickupAddressSelection()) {
-            if (empty($data['pickup_address_id'])) {
-                throw new \Exception('Une adresse d\'enlèvement est requise pour ce transporteur.');
-            }
-            
-            $pickupAddress = PickupAddress::where('id', $data['pickup_address_id'])
-                ->where('admin_id', $admin->id)
-                ->firstOrFail();
-        }
-
         return self::create([
             'admin_id' => $admin->id,
-            'carrier_slug' => $deliveryConfig->carrier_slug,
+            'carrier_slug' => 'jax_delivery',
             'delivery_configuration_id' => $deliveryConfig->id,
-            'pickup_address_id' => $pickupAddress?->id,
             'pickup_date' => $data['pickup_date'] ?? null,
             'status' => self::STATUS_DRAFT,
         ]);

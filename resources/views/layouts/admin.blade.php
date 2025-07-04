@@ -1574,11 +1574,11 @@
                 <ul class="sidebar-submenu {{ request()->routeIs('admin.delivery.*') ? 'show' : '' }}"
                     id="deliverySubmenu">
                     
-                    <!-- Configuration des transporteurs -->
+                    <!-- Configuration Jax Delivery -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.delivery.configuration') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.configuration') ? 'active' : '' }}">
-                            <i class="fas fa-cog"></i>Configuration
+                            <i class="fas fa-cog"></i>Configuration Jax
                         </a>
                     </li>
                     
@@ -1587,6 +1587,17 @@
                         <a href="{{ route('admin.delivery.preparation') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.preparation*') ? 'active' : '' }}">
                             <i class="fas fa-boxes"></i>Préparation
+                            @php
+                                $availableOrders = \App\Models\Order::where('admin_id', auth('admin')->id())
+                                    ->where('status', 'confirmée')
+                                    ->whereDoesntHave('shipments')
+                                    ->count();
+                            @endphp
+                            @if($availableOrders > 0)
+                                <span class="badge badge-success badge-sm ml-1">
+                                    {{ $availableOrders }}
+                                </span>
+                            @endif
                         </a>
                     </li>
                     
@@ -1595,9 +1606,14 @@
                         <a href="{{ route('admin.delivery.pickups') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.pickups*') ? 'active' : '' }}">
                             <i class="fas fa-warehouse"></i>Enlèvements
-                            @if(auth('admin')->user()->pickups()->where('status', 'draft')->count() > 0)
+                            @php
+                                $draftPickups = \App\Models\Pickup::where('admin_id', auth('admin')->id())
+                                    ->where('status', 'draft')
+                                    ->count();
+                            @endphp
+                            @if($draftPickups > 0)
                                 <span class="badge badge-warning badge-sm ml-1">
-                                    {{ auth('admin')->user()->pickups()->where('status', 'draft')->count() }}
+                                    {{ $draftPickups }}
                                 </span>
                             @endif
                         </a>
@@ -1608,27 +1624,16 @@
                         <a href="{{ route('admin.delivery.shipments') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.shipments*') ? 'active' : '' }}">
                             <i class="fas fa-shipping-fast"></i>Expéditions
-                            @if(auth('admin')->user()->shipments()->active()->count() > 0)
+                            @php
+                                $activeShipments = \App\Models\Shipment::where('admin_id', auth('admin')->id())
+                                    ->whereIn('status', ['validated', 'picked_up_by_carrier', 'in_transit'])
+                                    ->count();
+                            @endphp
+                            @if($activeShipments > 0)
                                 <span class="badge badge-info badge-sm ml-1">
-                                    {{ auth('admin')->user()->shipments()->active()->count() }}
+                                    {{ $activeShipments }}
                                 </span>
                             @endif
-                        </a>
-                    </li>
-                    
-                    <!-- Adresses d'enlèvement -->
-                    <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.delivery.pickup-addresses.index') }}"
-                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.pickup-addresses*') ? 'active' : '' }}">
-                            <i class="fas fa-map-marker-alt"></i>Adresses
-                        </a>
-                    </li>
-                    
-                    <!-- Templates BL -->
-                    <li class="sidebar-submenu-item">
-                        <a href="{{ route('admin.delivery.bl-templates.index') }}"
-                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.bl-templates*') ? 'active' : '' }}">
-                            <i class="fas fa-file-pdf"></i>Templates BL
                         </a>
                     </li>
                     
