@@ -207,30 +207,6 @@
                         </ul>
                     </li>
                     
-                    <!-- Delivery -->
-                    <li class="mb-2" x-data="{ open: {{ request()->routeIs('admin.delivery.*') ? 'true' : 'false' }} }">
-                        <div @click="open = !open" 
-                             class="nav-item {{ request()->routeIs('admin.delivery.*') ? 'nav-item-active' : 'nav-item-inactive' }} cursor-pointer">
-                            <i class="fas fa-truck sidebar-icon"></i>
-                            <span class="sidebar-text">Livraison</span>
-                            <i class="fas fa-chevron-down ml-auto transform transition-transform duration-200"
-                               :class="{'rotate-180': open}"></i>
-                        </div>
-                        <ul x-show="open" 
-                            x-transition:enter="transition ease-out duration-200" 
-                            x-transition:enter-start="opacity-0 transform -translate-y-2" 
-                            x-transition:enter-end="opacity-100 transform translate-y-0"
-                            class="submenu" x-cloak>
-                            <li>
-                                <a href="{{ route('admin.delivery.configuration') }}" 
-                                   class="submenu-item {{ request()->routeIs('admin.delivery.configuration') ? 'submenu-item-active' : 'submenu-item-inactive' }}">
-                                    <i class="fas fa-cog sidebar-icon text-xs"></i>
-                                    <span class="sidebar-text">Configuration</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    
                     <!-- Analytics -->
                     <li class="mb-2">
                         <a href="{{ route('admin.analytics') }}" 
@@ -502,17 +478,9 @@
         </div>
     </div>
     
-    <!-- Mobile menu overlay -->
-    <div x-show="sidebarOpen" 
-         @click="sidebarOpen = false"
-         x-transition:enter="transition-opacity ease-linear duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity ease-linear duration-300"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-40 bg-black bg-opacity-25 lg:hidden"></div>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
-    @stack('scripts')
+    @yield('js')
 </body>
 </html>

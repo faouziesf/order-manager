@@ -4,429 +4,462 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <!-- En-tête -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center">
+                <a href="{{ route('admin.delivery.shipments') }}" class="btn btn-outline-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
                 <div>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item">
-                                <a href="{{ route('admin.delivery.shipments') }}">Expéditions</a>
-                            </li>
-                            <li class="breadcrumb-item active">Expédition #{{ $shipment->id }}</li>
-                        </ol>
-                    </nav>
-                    <h1 class="h3 mb-1">
-                        <i class="fas fa-shipping-fast text-primary me-2"></i>
-                        Expédition #{{ $shipment->id }}
-                        @php
-                            $statusConfig = [
-                                'created' => ['badge' => 'bg-primary', 'icon' => 'fas fa-plus-circle', 'label' => 'Créée'],
-                                'validated' => ['badge' => 'bg-info', 'icon' => 'fas fa-check-circle', 'label' => 'Validée'],
-                                'picked_up_by_carrier' => ['badge' => 'bg-warning', 'icon' => 'fas fa-truck', 'label' => 'Récupérée'],
-                                'in_transit' => ['badge' => 'bg-info', 'icon' => 'fas fa-road', 'label' => 'En transit'],
-                                'delivered' => ['badge' => 'bg-success', 'icon' => 'fas fa-check-circle', 'label' => 'Livrée'],
-                                'in_return' => ['badge' => 'bg-warning', 'icon' => 'fas fa-undo', 'label' => 'En retour'],
-                                'anomaly' => ['badge' => 'bg-danger', 'icon' => 'fas fa-exclamation-triangle', 'label' => 'Anomalie'],
-                                'cancelled' => ['badge' => 'bg-secondary', 'icon' => 'fas fa-times-circle', 'label' => 'Annulée']
-                            ];
-                            $config = $statusConfig[$shipment->status] ?? ['badge' => 'bg-secondary', 'icon' => 'fas fa-question', 'label' => ucfirst($shipment->status)];
-                        @endphp
-                        <span class="badge {{ $config['badge'] }} ms-2">
-                            <i class="{{ $config['icon'] }} me-1"></i>{{ $config['label'] }}
-                        </span>
-                    </h1>
+                    <h1 class="h3 mb-0">Expédition #{{ $shipment->id }}</h1>
                     <p class="text-muted mb-0">
                         @if($shipment->pos_barcode)
-                            Code de suivi: <code class="bg-light px-2 py-1 rounded">{{ $shipment->pos_barcode }}</code>
-                        @endif
-                        @if($shipment->order)
-                            • Commande #{{ $shipment->order->id }}
+                            Code de suivi: <code>{{ $shipment->pos_barcode }}</code>
+                        @else
+                            Aucun code de suivi généré
                         @endif
                     </p>
                 </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('admin.delivery.shipments') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Retour
-                    </a>
-                    @if($shipment->pos_barcode)
-                        <button type="button" class="btn btn-outline-primary" onclick="trackShipment()">
-                            <i class="fas fa-sync-alt me-2"></i>Actualiser le suivi
-                        </button>
-                    @endif
-                    @if($shipment->status !== 'delivered' && $shipment->status !== 'cancelled')
-                        <button type="button" class="btn btn-success" onclick="markAsDelivered()">
-                            <i class="fas fa-check me-2"></i>Marquer comme livré
-                        </button>
-                    @endif
-                </div>
             </div>
+        </div>
+        <div class="col-md-4 text-right">
+            <span class="badge {{ $shipment->status_badge_class }} badge-lg">
+                {{ $shipment->status_label }}
+            </span>
+        </div>
+    </div>
 
-            <div class="row">
-                <!-- Informations principales -->
-                <div class="col-lg-8">
-                    <!-- Informations de l'expédition -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Informations de l'expédition
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <dl class="row">
-                                        <dt class="col-sm-5">ID Expédition:</dt>
-                                        <dd class="col-sm-7">#{{ $shipment->id }}</dd>
-
-                                        <dt class="col-sm-5">Commande:</dt>
-                                        <dd class="col-sm-7">
-                                            @if($shipment->order)
-                                                <a href="{{ route('admin.orders.show', $shipment->order) }}" target="_blank">
-                                                    #{{ $shipment->order->id }}
-                                                    <i class="fas fa-external-link-alt ms-1"></i>
-                                                </a>
-                                            @else
-                                                <span class="text-muted">N/A</span>
-                                            @endif
-                                        </dd>
-
-                                        @if($shipment->order_number)
-                                            <dt class="col-sm-5">N° Commande:</dt>
-                                            <dd class="col-sm-7">{{ $shipment->order_number }}</dd>
-                                        @endif
-
-                                        @if($shipment->pos_barcode)
-                                            <dt class="col-sm-5">Code de suivi:</dt>
-                                            <dd class="col-sm-7">
-                                                <code class="bg-light px-2 py-1 rounded">{{ $shipment->pos_barcode }}</code>
-                                                @if($shipment->tracking_url)
-                                                    <br><a href="{{ $shipment->tracking_url }}" target="_blank" class="small">
-                                                        <i class="fas fa-external-link-alt me-1"></i>Suivre en ligne
-                                                    </a>
-                                                @endif
-                                            </dd>
-                                        @endif
-
-                                        @if($shipment->return_barcode)
-                                            <dt class="col-sm-5">Code retour:</dt>
-                                            <dd class="col-sm-7">
-                                                <code class="bg-warning bg-opacity-25 px-2 py-1 rounded">{{ $shipment->return_barcode }}</code>
-                                            </dd>
-                                        @endif
-                                    </dl>
-                                </div>
-                                <div class="col-md-6">
-                                    <dl class="row">
-                                        <dt class="col-sm-5">Transporteur:</dt>
-                                        <dd class="col-sm-7">
-                                            @if($shipment->pickup && $shipment->pickup->deliveryConfiguration)
-                                                <div>
-                                                    <span class="badge bg-info">{{ ucfirst($shipment->pickup->carrier_slug) }}</span>
-                                                    <br><small class="text-muted">{{ $shipment->pickup->deliveryConfiguration->integration_name }}</small>
-                                                </div>
-                                            @else
-                                                <span class="text-muted">N/A</span>
-                                            @endif
-                                        </dd>
-
-                                        <dt class="col-sm-5">Enlèvement:</dt>
-                                        <dd class="col-sm-7">
-                                            @if($shipment->pickup)
-                                                <a href="{{ route('admin.delivery.pickups.show', $shipment->pickup) }}">
-                                                    Enlèvement #{{ $shipment->pickup_id }}
-                                                    <i class="fas fa-external-link-alt ms-1"></i>
-                                                </a>
-                                            @else
-                                                <span class="text-muted">N/A</span>
-                                            @endif
-                                        </dd>
-
-                                        <dt class="col-sm-5">Valeur:</dt>
-                                        <dd class="col-sm-7">
-                                            <strong class="text-primary">{{ number_format($shipment->value ?? 0, 3) }} DT</strong>
-                                            @if($shipment->cod_amount && $shipment->cod_amount != $shipment->value)
-                                                <br><small class="text-muted">COD: {{ number_format($shipment->cod_amount, 3) }} DT</small>
-                                            @endif
-                                        </dd>
-
-                                        <dt class="col-sm-5">Créé le:</dt>
-                                        <dd class="col-sm-7">{{ $shipment->created_at->format('d/m/Y H:i') }}</dd>
-
-                                        @if($shipment->delivered_at)
-                                            <dt class="col-sm-5">Livré le:</dt>
-                                            <dd class="col-sm-7">
-                                                <span class="text-success fw-bold">{{ $shipment->delivered_at->format('d/m/Y H:i') }}</span>
-                                            </dd>
-                                        @endif
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Informations client -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-user me-2"></i>
-                                Informations du client
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <dl class="row">
-                                        <dt class="col-sm-4">Nom:</dt>
-                                        <dd class="col-sm-8">{{ $shipment->customer_name ?: 'N/A' }}</dd>
-
-                                        <dt class="col-sm-4">Téléphone:</dt>
-                                        <dd class="col-sm-8">
-                                            @if($shipment->customer_phone)
-                                                <span class="font-monospace">{{ $shipment->customer_phone }}</span>
-                                                <a href="tel:{{ $shipment->customer_phone }}" class="btn btn-sm btn-outline-primary ms-2">
-                                                    <i class="fas fa-phone"></i>
-                                                </a>
-                                            @else
-                                                <span class="text-muted">N/A</span>
-                                            @endif
-                                        </dd>
-                                    </dl>
-                                </div>
-                                <div class="col-md-6">
-                                    <dl class="row">
-                                        <dt class="col-sm-4">Adresse:</dt>
-                                        <dd class="col-sm-8">
-                                            @if($shipment->customer_address)
-                                                {{ $shipment->customer_address }}
-                                                @if($shipment->customer_city)
-                                                    <br><small class="text-muted">{{ $shipment->customer_city }}</small>
-                                                @endif
-                                            @else
-                                                <span class="text-muted">N/A</span>
-                                            @endif
-                                        </dd>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Historique de suivi -->
-                    @if(isset($trackingHistory) && count($trackingHistory) > 0)
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-route me-2"></i>
-                                    Historique de suivi
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="timeline">
-                                    @foreach($trackingHistory as $entry)
-                                        <div class="timeline-item">
-                                            <div class="timeline-marker">
-                                                @php
-                                                    $markerClass = match($entry['status']) {
-                                                        'delivered' => 'bg-success',
-                                                        'in_transit', 'picked_up_by_carrier' => 'bg-info',
-                                                        'anomaly' => 'bg-danger',
-                                                        'in_return' => 'bg-warning',
-                                                        default => 'bg-primary'
-                                                    };
-                                                @endphp
-                                                <div class="timeline-marker-dot {{ $markerClass }}"></div>
-                                            </div>
-                                            <div class="timeline-content">
-                                                <h6 class="mb-1">{{ $entry['label'] }}</h6>
-                                                @if($entry['description'])
-                                                    <p class="text-muted mb-1">{{ $entry['description'] }}</p>
-                                                @endif
-                                                <small class="text-muted">
-                                                    <i class="fas fa-clock me-1"></i>
-                                                    {{ $entry['created_at']->format('d/m/Y H:i') }}
-                                                </small>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    @endif
+    <div class="row">
+        <!-- Informations de l'expédition -->
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Informations de l'Expédition
+                    </h6>
                 </div>
-
-                <!-- Actions et informations secondaires -->
-                <div class="col-lg-4">
-                    <!-- Actions rapides -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-bolt me-2"></i>
-                                Actions rapides
-                            </h6>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>ID Expédition:</strong>
                         </div>
-                        <div class="card-body">
-                            <div class="d-grid gap-2">
-                                @if($shipment->pos_barcode)
-                                    <button type="button" class="btn btn-outline-primary" onclick="trackShipment()">
-                                        <i class="fas fa-sync-alt me-2"></i>Actualiser le suivi
-                                    </button>
-                                @endif
-
-                                @if($shipment->status !== 'delivered' && $shipment->status !== 'cancelled')
-                                    <button type="button" class="btn btn-success" onclick="markAsDelivered()">
-                                        <i class="fas fa-check me-2"></i>Marquer comme livré
-                                    </button>
-                                @endif
-
-                                @if($shipment->pickup)
-                                    <a href="{{ route('admin.delivery.pickups.show', $shipment->pickup) }}" class="btn btn-outline-info">
-                                        <i class="fas fa-warehouse me-2"></i>Voir l'enlèvement
-                                    </a>
-                                @endif
-
-                                @if($shipment->order)
-                                    <a href="{{ route('admin.orders.show', $shipment->order) }}" class="btn btn-outline-secondary" target="_blank">
-                                        <i class="fas fa-shopping-cart me-2"></i>Voir la commande
-                                    </a>
-                                @endif
-                            </div>
+                        <div class="col-sm-6">
+                            #{{ $shipment->id }}
                         </div>
                     </div>
 
-                    <!-- Résumé -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-chart-pie me-2"></i>
-                                Résumé
-                            </h6>
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Statut:</strong>
                         </div>
-                        <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-12 mb-3">
-                                    <h4 class="text-primary mb-1">{{ number_format($shipment->value ?? 0, 3) }}</h4>
-                                    <small class="text-muted">Valeur (DT)</small>
-                                </div>
-                            </div>
-                            
-                            @if($shipment->created_at && $shipment->delivered_at)
-                                <hr>
-                                <div class="text-center">
-                                    <h5 class="text-info mb-1">{{ $shipment->created_at->diffInDays($shipment->delivered_at) }}</h5>
-                                    <small class="text-muted">Jours de livraison</small>
-                                </div>
+                        <div class="col-sm-6">
+                            <span class="badge {{ $shipment->status_badge_class }}">
+                                {{ $shipment->status_label }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Code de suivi:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            @if($shipment->pos_barcode)
+                                <code>{{ $shipment->pos_barcode }}</code>
+                                @if($shipment->tracking_url)
+                                    <br>
+                                    <a href="{{ $shipment->tracking_url }}" target="_blank" 
+                                       class="btn btn-outline-info btn-sm mt-1">
+                                        <i class="fas fa-external-link-alt"></i> Suivre en ligne
+                                    </a>
+                                @endif
+                            @else
+                                <span class="text-muted">Non généré</span>
                             @endif
                         </div>
                     </div>
 
-                    <!-- Informations techniques -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-cog me-2"></i>
-                                Informations techniques
-                            </h6>
+                    @if($shipment->return_barcode)
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Code retour:</strong>
                         </div>
-                        <div class="card-body">
-                            <dl class="mb-0">
-                                <dt class="small">ID interne:</dt>
-                                <dd class="small text-muted mb-2">#{{ $shipment->id }}</dd>
-
-                                @if($shipment->carrier_last_status_update)
-                                    <dt class="small">Dernière MAJ transporteur:</dt>
-                                    <dd class="small text-muted mb-2">{{ $shipment->carrier_last_status_update->format('d/m/Y H:i') }}</dd>
-                                @endif
-
-                                <dt class="small">Créé le:</dt>
-                                <dd class="small text-muted mb-2">{{ $shipment->created_at->format('d/m/Y H:i') }}</dd>
-
-                                <dt class="small">Modifié le:</dt>
-                                <dd class="small text-muted mb-0">{{ $shipment->updated_at->format('d/m/Y H:i') }}</dd>
-                            </dl>
+                        <div class="col-sm-6">
+                            <code>{{ $shipment->return_barcode }}</code>
                         </div>
                     </div>
+                    @endif
+
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Transporteur:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            <i class="fas fa-truck text-primary"></i> Jax Delivery
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Poids:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            {{ $shipment->weight ?? 'N/A' }} kg
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Valeur:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            <strong class="text-success">
+                                {{ number_format($shipment->value ?? 0, 3) }} TND
+                            </strong>
+                        </div>
+                    </div>
+
+                    @if($shipment->cod_amount)
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Montant COD:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            <strong class="text-warning">
+                                {{ number_format($shipment->cod_amount, 3) }} TND
+                            </strong>
+                        </div>
+                    </div>
+                    @endif
+
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Nb. pièces:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            {{ $shipment->nb_pieces ?? 1 }}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Créé le:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            {{ $shipment->created_at->format('d/m/Y H:i') }}
+                        </div>
+                    </div>
+
+                    @if($shipment->delivered_at)
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Livré le:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            {{ $shipment->delivered_at->format('d/m/Y H:i') }}
+                        </div>
+                    </div>
+                    @endif
+
+                    @if($shipment->carrier_last_status_update)
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <strong>Dernière MAJ:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            {{ $shipment->carrier_last_status_update->format('d/m/Y H:i') }}
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-cogs"></i> Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if($shipment->is_active)
+                        <button type="button" class="btn btn-warning btn-block mb-2" 
+                                onclick="trackShipment({{ $shipment->id }})">
+                            <i class="fas fa-sync"></i> Actualiser le Statut
+                        </button>
+                        <button type="button" class="btn btn-success btn-block mb-2" 
+                                onclick="markAsDelivered({{ $shipment->id }})">
+                            <i class="fas fa-check"></i> Marquer comme Livré
+                        </button>
+                    @endif
+
+                    @if($shipment->order)
+                        <a href="{{ route('admin.orders.show', $shipment->order) }}" 
+                           class="btn btn-info btn-block mb-2">
+                            <i class="fas fa-eye"></i> Voir la Commande
+                        </a>
+                    @endif
+
+                    @if($shipment->pickup)
+                        <a href="{{ route('admin.delivery.pickups.show', $shipment->pickup) }}" 
+                           class="btn btn-outline-info btn-block">
+                            <i class="fas fa-warehouse"></i> Voir l'Enlèvement
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations de la commande et du client -->
+        <div class="col-md-8">
+            <!-- Informations du client -->
+            @if($shipment->order)
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-user"></i> Informations de la Commande #{{ $shipment->order->id }}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Client</h6>
+                                <p>
+                                    <strong>{{ $shipment->order->customer_name ?: 'N/A' }}</strong><br>
+                                    @if($shipment->order->customer_phone)
+                                        <i class="fas fa-phone text-primary"></i> {{ $shipment->order->customer_phone }}<br>
+                                    @endif
+                                    @if($shipment->order->customer_phone_2)
+                                        <i class="fas fa-phone text-muted"></i> {{ $shipment->order->customer_phone_2 }}<br>
+                                    @endif
+                                    @if($shipment->order->customer_email)
+                                        <i class="fas fa-envelope text-primary"></i> {{ $shipment->order->customer_email }}
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Commande</h6>
+                                <p>
+                                    <strong>Statut:</strong> 
+                                    <span class="badge badge-info">{{ $shipment->order->status }}</span><br>
+                                    <strong>Total:</strong> 
+                                    <span class="text-success">{{ number_format($shipment->order->total_price, 3) }} TND</span><br>
+                                    <strong>Créée le:</strong> {{ $shipment->order->created_at->format('d/m/Y H:i') }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Adresse de livraison -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-map-marker-alt"></i> Adresse de Livraison
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if($shipment->recipient_info)
+                        @php $recipient = $shipment->recipient_info; @endphp
+                        <div class="alert alert-light">
+                            <h6><i class="fas fa-user"></i> {{ $recipient['name'] ?? $shipment->customer_name }}</h6>
+                            @if(isset($recipient['phone']))
+                                <p><i class="fas fa-phone text-primary"></i> {{ $recipient['phone'] }}</p>
+                            @endif
+                            @if(isset($recipient['address']))
+                                <p><i class="fas fa-map-marker-alt text-danger"></i> {{ $recipient['address'] }}</p>
+                            @endif
+                            @if(isset($recipient['city']) || isset($recipient['governorate']))
+                                <p>
+                                    <i class="fas fa-city text-info"></i> 
+                                    {{ $recipient['city'] ?? '' }}
+                                    @if(isset($recipient['governorate']))
+                                        - {{ $recipient['governorate'] }}
+                                    @endif
+                                </p>
+                            @endif
+                            @if(isset($recipient['email']))
+                                <p><i class="fas fa-envelope text-primary"></i> {{ $recipient['email'] }}</p>
+                            @endif
+                        </div>
+                    @elseif($shipment->order)
+                        <div class="alert alert-light">
+                            <h6><i class="fas fa-user"></i> {{ $shipment->order->customer_name ?: 'N/A' }}</h6>
+                            @if($shipment->order->customer_phone)
+                                <p><i class="fas fa-phone text-primary"></i> {{ $shipment->order->customer_phone }}</p>
+                            @endif
+                            @if($shipment->order->customer_address)
+                                <p><i class="fas fa-map-marker-alt text-danger"></i> {{ $shipment->order->customer_address }}</p>
+                            @endif
+                            @if($shipment->order->customer_city || $shipment->order->customer_governorate)
+                                <p>
+                                    <i class="fas fa-city text-info"></i> 
+                                    {{ $shipment->order->customer_city ?? '' }}
+                                    @if($shipment->order->customer_governorate)
+                                        - {{ $shipment->order->customer_governorate }}
+                                    @endif
+                                </p>
+                            @endif
+                        </div>
+                    @else
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Aucune information d'adresse disponible
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Historique de suivi -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history"></i> Historique de Suivi
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if($shipment->order)
+                        @php 
+                            $trackingHistory = $shipment->order->history()
+                                ->where('tracking_number', $shipment->pos_barcode)
+                                ->orWhere('action', 'LIKE', '%shipment%')
+                                ->orWhere('action', 'LIKE', '%pickup%')
+                                ->orderBy('created_at', 'desc')
+                                ->get();
+                        @endphp
+                        
+                        @if($trackingHistory->count() > 0)
+                            <div class="timeline">
+                                @foreach($trackingHistory as $entry)
+                                <div class="timeline-item">
+                                    <div class="timeline-marker 
+                                        @if($entry->action === 'livraison') bg-success
+                                        @elseif(str_contains($entry->action, 'pickup')) bg-primary
+                                        @elseif(str_contains($entry->action, 'shipment')) bg-info
+                                        @else bg-secondary
+                                        @endif
+                                    "></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">{{ ucfirst(str_replace('_', ' ', $entry->action)) }}</h6>
+                                        <p class="timeline-description">{{ $entry->notes }}</p>
+                                        <small class="text-muted">
+                                            {{ $entry->created_at->format('d/m/Y H:i') }}
+                                            @if($entry->carrier_status_label)
+                                                - Transporteur: {{ $entry->carrier_status_label }}
+                                            @endif
+                                        </small>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-4">
+                                <i class="fas fa-history fa-2x text-gray-300 mb-3"></i>
+                                <p class="text-muted">Aucun historique de suivi disponible</p>
+                            </div>
+                        @endif
+                    @else
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Aucune commande associée à cette expédition
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 @endsection
 
-@section('css')
+@push('styles')
 <style>
 .timeline {
     position: relative;
     padding-left: 30px;
 }
 
-.timeline-item {
-    position: relative;
-    padding-bottom: 30px;
-}
-
-.timeline-item:not(:last-child)::before {
+.timeline::before {
     content: '';
     position: absolute;
-    left: -21px;
-    top: 20px;
-    height: calc(100% - 10px);
+    left: 15px;
+    top: 0;
+    bottom: 0;
     width: 2px;
-    background: #dee2e6;
+    background: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
 }
 
 .timeline-marker {
     position: absolute;
-    left: -30px;
-    top: 0;
-}
-
-.timeline-marker-dot {
+    left: -37px;
+    top: 5px;
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px #dee2e6;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #e9ecef;
 }
 
 .timeline-content {
-    padding-left: 10px;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 3px solid #007bff;
+}
+
+.timeline-title {
+    margin-bottom: 5px;
+    color: #007bff;
+}
+
+.timeline-description {
+    margin-bottom: 5px;
+    color: #6c757d;
+}
+
+.badge-lg {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
 }
 </style>
-@endsection
+@endpush
 
-@section('scripts')
+@push('scripts')
 <script>
-const shipmentId = {{ $shipment->id }};
-
-function trackShipment() {
-    const btn = event.target.closest('button');
+// Suivre l'expédition
+function trackShipment(shipmentId) {
+    const btn = event.target;
     const originalHtml = btn.innerHTML;
     
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Actualisation...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualisation...';
     btn.disabled = true;
     
     fetch(`/admin/delivery/shipments/${shipmentId}/track`, {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Content-Type': 'application/json'
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
         }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification('success', data.message);
-            setTimeout(() => location.reload(), 1500);
+            toastr.success(data.message || 'Statut mis à jour');
+            location.reload();
         } else {
-            showNotification('error', data.message);
+            toastr.error(data.message || 'Erreur lors du suivi');
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('error', 'Erreur lors du suivi');
+        toastr.error('Erreur lors du suivi');
+        console.error('Error:', error);
     })
     .finally(() => {
         btn.innerHTML = originalHtml;
@@ -434,57 +467,32 @@ function trackShipment() {
     });
 }
 
-function markAsDelivered() {
-    const notes = prompt('Notes sur la livraison (optionnel):');
-    if (notes === null) return; // Utilisateur a annulé
-    
-    fetch(`/admin/delivery/shipments/${shipmentId}/mark-delivered`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            notes: notes
+// Marquer comme livré
+function markAsDelivered(shipmentId) {
+    const notes = prompt('Notes de livraison (optionnel):');
+    if (notes !== null) { // L'utilisateur n'a pas annulé
+        fetch(`/admin/delivery/shipments/${shipmentId}/mark-delivered`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ notes: notes })
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('success', data.message);
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showNotification('error', data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('error', 'Erreur lors de la mise à jour');
-    });
-}
-
-function showNotification(type, message) {
-    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-    const icon = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
-
-    const notification = document.createElement('div');
-    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    notification.innerHTML = `
-        <div class="d-flex align-items-center">
-            <i class="${icon} me-2"></i>
-            <span>${message}</span>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 5000);
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message);
+                location.reload();
+            } else {
+                toastr.error(data.message);
+            }
+        })
+        .catch(error => {
+            toastr.error('Erreur lors de la mise à jour');
+            console.error('Error:', error);
+        });
+    }
 }
 </script>
-@endsection
+@endpush

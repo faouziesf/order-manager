@@ -308,6 +308,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('api.track-all');
         });
 
+        // Routes EXPÉDITIONS additionnelles (à ajouter après les routes existantes)
+        Route::post('shipments/{shipment}/track', [DeliveryController::class, 'trackShipmentStatus'])
+            ->name('shipments.track');
+        Route::post('shipments/{shipment}/mark-delivered', [DeliveryController::class, 'markShipmentAsDelivered'])
+            ->name('shipments.mark-delivered');
+
+        // Routes PICKUPS additionnelles
+        Route::post('pickups/{pickup}/refresh', [DeliveryController::class, 'refreshPickupStatus'])
+            ->name('pickups.refresh');
+
+        // Route pour obtenir les données d'une configuration (pour le modal d'édition)
+        Route::get('configuration/{config}', [DeliveryController::class, 'getConfiguration'])
+            ->name('configuration.get');
+
         // ========================================
         // DEBUG ET DIAGNOSTICS
         // ========================================

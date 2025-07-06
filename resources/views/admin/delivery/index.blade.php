@@ -1,5 +1,5 @@
-{{-- resources/views/admin/delivery/index.blade.php - VERSION ROBUSTE --}}
-@extends('admin.layouts.app')
+@extends('layouts.admin')
+
 
 @section('title', 'Gestion des Livraisons')
 

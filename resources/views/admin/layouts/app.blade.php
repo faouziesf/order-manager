@@ -8,216 +8,552 @@
     <title>@yield('title', 'Admin Panel') - {{ config('app.name', 'Order Manager') }}</title>
     
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Scripts -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/heroicons/2.0.18/outline/heroicons-outline.min.css">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Toastr CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .sidebar-transition { transition: all 0.3s ease-in-out; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8f9fa;
+        }
+        
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1050;
+            transform: translateX(-100%);
+        }
+        
+        .sidebar.show {
+            transform: translateX(0);
+        }
+        
+        @media (min-width: 992px) {
+            .sidebar {
+                position: relative;
+                transform: translateX(0) !important;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+        
+        .sidebar-brand {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            color: white !important;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .nav-link.active {
+            color: white !important;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .submenu {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            margin-top: 8px;
+            padding: 8px;
+        }
+        
+        .submenu .nav-link {
+            font-size: 0.875rem;
+            padding: 8px 12px;
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        
+        .badge-counter {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .header-card {
+            background: white;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .content-card {
+            background: white;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 12px;
+        }
+        
+        .alert-dismissible {
+            border: none;
+            border-radius: 12px;
+        }
+        
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .profile-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+        }
+        
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .main-content {
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-brand-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+        
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 20px;
+        }
+        
+        [x-cloak] { 
+            display: none !important; 
+        }
     </style>
     
     @stack('styles')
 </head>
-<body class="bg-gray-50 font-sans antialiased" x-data="{ sidebarOpen: false }">
-    <div class="min-h-screen flex">
-        <!-- Sidebar -->
-        <div class="sidebar-transition" 
-             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-             class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform lg:translate-x-0 lg:static lg:inset-0">
-            
-            <div class="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-blue-600 to-purple-600">
-                <h1 class="text-xl font-bold text-white">{{ auth('admin')->user()->shop_name ?? 'Admin Panel' }}</h1>
-            </div>
-            
-            <nav class="mt-8">
-                <div class="px-4 space-y-2">
-                    <!-- Dashboard -->
+<body x-data="{ sidebarOpen: false }" class="bg-light">
+    <!-- Sidebar -->
+    <div class="sidebar" :class="{ 'show': sidebarOpen }" style="width: 280px;" x-cloak>
+        <!-- Brand -->
+        <div class="sidebar-brand d-flex align-items-center justify-content-center p-4">
+            <h4 class="text-white mb-0 fw-bold">
+                <i class="fas fa-store me-2"></i>
+                {{ auth('admin')->user()->shop_name ?? 'Admin Panel' }}
+            </h4>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="px-3 pb-4" style="height: calc(100vh - 120px); overflow-y: auto;">
+            <ul class="nav flex-column">
+                <!-- Dashboard -->
+                <li class="nav-item">
                     <a href="{{ route('admin.dashboard') }}" 
-                       class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors {{ request()->routeIs('admin.dashboard') ? 'bg-blue-50 text-blue-700' : '' }}">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                        </svg>
+                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        <i class="fas fa-tachometer-alt me-3"></i>
                         Dashboard
                     </a>
-                    
-                    <!-- Gestion des utilisateurs -->
-                    <div x-data="{ open: {{ request()->routeIs('admin.managers.*') || request()->routeIs('admin.employees.*') ? 'true' : 'false' }} }">
-                        <button @click="open = !open" 
-                                class="flex items-center justify-between w-full px-4 py-3 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors {{ request()->routeIs('admin.managers.*') || request()->routeIs('admin.employees.*') ? 'bg-blue-50 text-blue-700' : '' }}">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
-                                </svg>
-                                Gestion Utilisateurs
-                            </div>
-                            <svg class="w-4 h-4 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </button>
-                        
-                        <div x-show="open" x-transition class="ml-4 mt-2 space-y-1">
-                            <a href="{{ route('admin.managers.index') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors {{ request()->routeIs('admin.managers.*') ? 'bg-gray-100 text-gray-900' : '' }}">
-                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
-                                Managers
-                                <span class="ml-auto bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
-                                    {{ auth('admin')->user()->managers()->count() }}/{{ auth('admin')->user()->max_managers }}
-                                </span>
-                            </a>
-                            
-                            <a href="{{ route('admin.employees.index') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors {{ request()->routeIs('admin.employees.*') ? 'bg-gray-100 text-gray-900' : '' }}">
-                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                </svg>
-                                Employés
-                                <span class="ml-auto bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">
-                                    {{ auth('admin')->user()->employees()->count() }}/{{ auth('admin')->user()->max_employees }}
-                                </span>
-                            </a>
+                </li>
+                
+                <!-- Gestion des utilisateurs -->
+                <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.managers.*') || request()->routeIs('admin.employees.*') ? 'true' : 'false' }} }">
+                    <a href="#" @click.prevent="open = !open" 
+                       class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.managers.*') || request()->routeIs('admin.employees.*') ? 'active' : '' }}">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-users me-3"></i>
+                            Gestion Utilisateurs
                         </div>
-                    </div>
-                    
-                    <!-- Autres liens existants -->
-                    <a href="{{ route('admin.products.index') }}" 
-                       class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors {{ request()->routeIs('admin.products.*') ? 'bg-blue-50 text-blue-700' : '' }}">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                        </svg>
-                        Produits
+                        <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
                     </a>
                     
-                    <a href="{{ route('admin.orders.index') }}" 
-                       class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors {{ request()->routeIs('admin.orders.*') ? 'bg-blue-50 text-blue-700' : '' }}">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Commandes
-                    </a>
-                </div>
-            </nav>
-            
-            <!-- Profile section -->
-            <div class="absolute bottom-0 w-full p-4 border-t">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                        <span class="text-white text-sm font-semibold">{{ substr(auth('admin')->user()->name, 0, 1) }}</span>
+                    <div x-show="open" x-transition class="submenu">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.managers.index') }}" 
+                                   class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.managers.*') ? 'active' : '' }}">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-user-tie me-2"></i>
+                                        Managers
+                                    </div>
+                                    <span class="badge badge-counter rounded-pill">
+                                        {{ auth('admin')->user()->managers()->count() }}/{{ auth('admin')->user()->max_managers }}
+                                    </span>
+                                </a>
+                            </li>
+                            
+                            <li class="nav-item">
+                                <a href="{{ route('admin.employees.index') }}" 
+                                   class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.employees.*') ? 'active' : '' }}">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-users me-2"></i>
+                                        Employés
+                                    </div>
+                                    <span class="badge badge-counter rounded-pill">
+                                        {{ auth('admin')->user()->employees()->count() }}/{{ auth('admin')->user()->max_employees }}
+                                    </span>
+                                </a>
+                            </li>
+                        </ul>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 truncate">{{ auth('admin')->user()->name }}</p>
-                        <p class="text-xs text-gray-500 truncate">{{ auth('admin')->user()->email }}</p>
+                </li>
+                
+                <!-- Produits -->
+                <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.products.*') ? 'true' : 'false' }} }">
+                    <a href="#" @click.prevent="open = !open" 
+                       class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.products.*') ? 'active' : '' }}">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-box me-3"></i>
+                            Produits
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
+                    </a>
+                    
+                    <div x-show="open" x-transition class="submenu">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.products.index') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.products.index') ? 'active' : '' }}">
+                                    <i class="fas fa-list me-2"></i>
+                                    Liste des produits
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.products.create') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.products.create') ? 'active' : '' }}">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Ajouter un produit
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                
+                <!-- Commandes -->
+                <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.orders.*') ? 'true' : 'false' }} }">
+                    <a href="#" @click.prevent="open = !open" 
+                       class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-shopping-cart me-3"></i>
+                            Commandes
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
+                    </a>
+                    
+                    <div x-show="open" x-transition class="submenu">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.orders.index') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
+                                    <i class="fas fa-list me-2"></i>
+                                    Toutes les commandes
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.process.interface') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.process.*') ? 'active' : '' }}">
+                                    <i class="fas fa-tasks me-2"></i>
+                                    Traitement
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                
+                <!-- Livraison -->
+                <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.delivery.*') ? 'true' : 'false' }} }">
+                    <a href="#" @click.prevent="open = !open" 
+                       class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.delivery.*') ? 'active' : '' }}">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-truck me-3"></i>
+                            Livraison
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
+                    </a>
+                    
+                    <div x-show="open" x-transition class="submenu">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.delivery.configuration') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.configuration') ? 'active' : '' }}">
+                                    <i class="fas fa-cog me-2"></i>
+                                    Configuration
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.delivery.preparation') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.preparation') ? 'active' : '' }}">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Nouvel enlèvement
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.delivery.pickups') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.pickups*') ? 'active' : '' }}">
+                                    <i class="fas fa-warehouse me-2"></i>
+                                    Enlèvements
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.delivery.shipments') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.shipments*') ? 'active' : '' }}">
+                                    <i class="fas fa-shipping-fast me-2"></i>
+                                    Expéditions
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.delivery.stats') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.stats') ? 'active' : '' }}">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    Statistiques
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                
+                <!-- Intégrations -->
+                <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.woocommerce.*') || request()->routeIs('admin.import.*') ? 'true' : 'false' }} }">
+                    <a href="#" @click.prevent="open = !open" 
+                       class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.woocommerce.*') || request()->routeIs('admin.import.*') ? 'active' : '' }}">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-plug me-3"></i>
+                            Intégrations
+                        </div>
+                        <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
+                    </a>
+                    
+                    <div x-show="open" x-transition class="submenu">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a href="{{ route('admin.woocommerce.index') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.woocommerce.*') ? 'active' : '' }}">
+                                    <i class="fab fa-wordpress me-2"></i>
+                                    WooCommerce
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('admin.import.index') }}" 
+                                   class="nav-link d-flex align-items-center {{ request()->routeIs('admin.import.*') ? 'active' : '' }}">
+                                    <i class="fas fa-file-import me-2"></i>
+                                    Import CSV/XML
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                
+                <!-- Paramètres -->
+                <li class="nav-item">
+                    <a href="{{ route('admin.settings.index') }}" 
+                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
+                        <i class="fas fa-cog me-3"></i>
+                        Paramètres
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- Profile section -->
+        <div class="position-absolute bottom-0 w-100 p-3">
+            <div class="profile-section p-3">
+                <div class="d-flex align-items-center">
+                    <div class="profile-avatar rounded-circle d-flex align-items-center justify-content-center me-3">
+                        <span class="text-white fw-bold">{{ substr(auth('admin')->user()->name, 0, 1) }}</span>
+                    </div>
+                    <div class="flex-grow-1 text-truncate">
+                        <div class="text-white fw-medium text-truncate">{{ auth('admin')->user()->name }}</div>
+                        <div class="text-white-50 small text-truncate">{{ auth('admin')->user()->email }}</div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Main content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top navigation -->
-            <header class="bg-white shadow-sm border-b">
-                <div class="flex items-center justify-between px-6 py-4">
-                    <div class="flex items-center">
-                        <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                            </svg>
-                        </button>
-                        
-                        <div class="ml-4 lg:ml-0">
-                            <h1 class="text-2xl font-semibold text-gray-900">@yield('page-title', 'Dashboard')</h1>
-                            @hasSection('breadcrumb')
-                                <nav class="flex mt-1" aria-label="Breadcrumb">
-                                    <ol class="flex items-center space-x-2 text-sm text-gray-500">
-                                        @yield('breadcrumb')
-                                    </ol>
-                                </nav>
-                            @endhasSection
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center space-x-4">
-                        <!-- Account Status -->
-                        <div class="flex items-center space-x-2 text-sm">
-                            @if(auth('admin')->user()->expiry_date)
-                                <span class="px-2 py-1 {{ auth('admin')->user()->expiry_date->isPast() ? 'bg-red-100 text-red-700' : (auth('admin')->user()->expiry_date->diffInDays() <= 7 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700') }} rounded-full">
-                                    Expire: {{ auth('admin')->user()->expiry_date->format('d/m/Y') }}
-                                </span>
-                            @endif
+    </div>
+    
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" :class="{ 'show': sidebarOpen }" @click="sidebarOpen = false" x-cloak></div>
+    
+    <!-- Main content -->
+    <div class="main-content" style="margin-left: 0;">
+        <div class="d-lg-flex">
+            <div style="width: 280px;" class="d-none d-lg-block"></div>
+            <div class="flex-grow-1">
+                <!-- Top navigation -->
+                <header class="header-card mb-4">
+                    <div class="container-fluid">
+                        <div class="d-flex align-items-center justify-content-between py-3">
+                            <div class="d-flex align-items-center">
+                                <button @click="sidebarOpen = !sidebarOpen" class="btn btn-link d-lg-none p-2 text-muted">
+                                    <i class="fas fa-bars fa-lg"></i>
+                                </button>
+                                
+                                <div class="ms-3 ms-lg-0">
+                                    <h2 class="navbar-brand-text mb-0">@yield('page-title', 'Dashboard')</h2>
+                                    @hasSection('breadcrumb')
+                                        <nav aria-label="breadcrumb">
+                                            <ol class="breadcrumb mb-0 small text-muted">
+                                                @yield('breadcrumb')
+                                            </ol>
+                                        </nav>
+                                    @endhasSection
+                                </div>
+                            </div>
                             
-                            <span class="px-2 py-1 {{ auth('admin')->user()->is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }} rounded-full">
-                                {{ auth('admin')->user()->is_active ? 'Actif' : 'Inactif' }}
-                            </span>
+                            <div class="d-flex align-items-center">
+                                <!-- Account Status -->
+                                <div class="d-flex align-items-center me-3">
+                                    @if(auth('admin')->user()->expiry_date)
+                                        <span class="status-badge me-2 {{ auth('admin')->user()->expiry_date->isPast() ? 'bg-danger text-white' : (auth('admin')->user()->expiry_date->diffInDays() <= 7 ? 'bg-warning text-dark' : 'bg-success text-white') }}">
+                                            Expire: {{ auth('admin')->user()->expiry_date->format('d/m/Y') }}
+                                        </span>
+                                    @endif
+                                    
+                                    <span class="status-badge {{ auth('admin')->user()->is_active ? 'bg-success text-white' : 'bg-danger text-white' }}">
+                                        {{ auth('admin')->user()->is_active ? 'Actif' : 'Inactif' }}
+                                    </span>
+                                </div>
+                                
+                                <!-- Logout -->
+                                <form method="POST" action="{{ route('admin.logout') }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm d-flex align-items-center">
+                                        <i class="fas fa-sign-out-alt me-2"></i>
+                                        Déconnexion
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                        
-                        <!-- Logout -->
-                        <form method="POST" action="{{ route('admin.logout') }}">
-                            @csrf
-                            <button type="submit" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                                </svg>
-                                Déconnexion
-                            </button>
-                        </form>
                     </div>
-                </div>
-            </header>
-            
-            <!-- Page content -->
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-                <div class="container mx-auto px-6 py-8">
+                </header>
+                
+                <!-- Page content -->
+                <main class="container-fluid">
                     <!-- Flash Messages -->
                     @if(session('success'))
-                        <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg" x-data="{ show: true }" x-show="show">
-                            <div class="flex justify-between items-center">
-                                <span>{{ session('success') }}</span>
-                                <button @click="show = false" class="text-green-500 hover:text-green-700">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </div>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert" x-data="{ show: true }" x-show="show">
+                            <i class="fas fa-check-circle me-2"></i>
+                            {{ session('success') }}
+                            <button type="button" class="btn-close" @click="show = false" aria-label="Close"></button>
                         </div>
                     @endif
                     
                     @if(session('error'))
-                        <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg" x-data="{ show: true }" x-show="show">
-                            <div class="flex justify-between items-center">
-                                <span>{{ session('error') }}</span>
-                                <button @click="show = false" class="text-red-500 hover:text-red-700">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </div>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert" x-data="{ show: true }" x-show="show">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            {{ session('error') }}
+                            <button type="button" class="btn-close" @click="show = false" aria-label="Close"></button>
+                        </div>
+                    @endif
+                    
+                    @if(session('warning'))
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert" x-data="{ show: true }" x-show="show">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            {{ session('warning') }}
+                            <button type="button" class="btn-close" @click="show = false" aria-label="Close"></button>
+                        </div>
+                    @endif
+                    
+                    @if(session('info'))
+                        <div class="alert alert-info alert-dismissible fade show" role="alert" x-data="{ show: true }" x-show="show">
+                            <i class="fas fa-info-circle me-2"></i>
+                            {{ session('info') }}
+                            <button type="button" class="btn-close" @click="show = false" aria-label="Close"></button>
                         </div>
                     @endif
                     
                     @yield('content')
-                </div>
-            </main>
+                </main>
+            </div>
         </div>
     </div>
     
-    <!-- Overlay for mobile sidebar -->
-    <div x-show="sidebarOpen" 
-         @click="sidebarOpen = false"
-         x-transition:enter="transition-opacity ease-linear duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity ease-linear duration-300"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-40 bg-black bg-opacity-25 lg:hidden"></div>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Toastr JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    
+    <script>
+        // Configuration Toastr
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "newestOnTop": true,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        };
+        
+        // Auto-hide alerts après 5 secondes
+        setTimeout(function() {
+            $('.alert').fadeOut('slow');
+        }, 5000);
+        
+        // Fermer la sidebar en cliquant en dehors (mobile)
+        $(document).ready(function() {
+            // Smooth transitions pour les chevrons
+            $('.nav-link').on('click', function() {
+                const chevron = $(this).find('.fa-chevron-down');
+                if (chevron.length) {
+                    chevron.toggleClass('rotate-180');
+                }
+            });
+        });
+    </script>
     
     @stack('scripts')
 </body>
