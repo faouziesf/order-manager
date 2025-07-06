@@ -17,7 +17,54 @@ use Exception;
 class DeliveryController extends Controller
 {
     /**
-     * Page principale de configuration Jax Delivery
+     * NOUVELLE MÉTHODE - Page principale de sélection des transporteurs (multi-transporteurs)
+     */
+    public function index()
+    {
+        $admin = auth('admin')->user();
+        
+        // Récupérer les transporteurs supportés depuis la config
+        $supportedCarriers = config('carriers', [
+            'jax_delivery' => [
+                'display_name' => 'Jax Delivery Services',
+                'logo' => 'jax_delivery.png',
+                'description' => 'Service de livraison avec configuration simplifiée',
+                'supports_pickup_address' => false,
+                'supports_bl_templates' => false,
+                'supports_mass_labels' => false,
+                'supports_drop_points' => false,
+                'supports_payment_methods' => false,
+            ]
+        ]);
+        
+        // Configurations utilisateur pour chaque transporteur
+        $userConfigurations = collect();
+        foreach($supportedCarriers as $slug => $carrier) {
+            $config = DeliveryConfiguration::where('admin_id', $admin->id)
+                ->where('carrier_slug', $slug)
+                ->where('is_active', true)
+                ->first();
+            $userConfigurations->put($slug, $config);
+        }
+        
+        // Statistiques globales
+        $globalStats = [
+            'total_configs' => $userConfigurations->filter()->count(),
+            'active_configs' => $userConfigurations->filter(fn($c) => $c?->is_active)->count(),
+            'draft_pickups' => Pickup::where('admin_id', $admin->id)->where('status', 'draft')->count(),
+            'active_shipments' => Shipment::where('admin_id', $admin->id)
+                ->whereIn('status', ['validated', 'picked_up_by_carrier', 'in_transit'])->count(),
+        ];
+        
+        return view('admin.delivery.index', compact(
+            'supportedCarriers', 
+            'userConfigurations', 
+            'globalStats'
+        ));
+    }
+
+    /**
+     * Page principale de configuration Jax Delivery (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function configuration()
     {
@@ -51,7 +98,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page de préparation d'enlèvement
+     * Page de préparation d'enlèvement (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function preparation()
     {
@@ -85,7 +132,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Récupérer les commandes disponibles pour l'enlèvement (AJAX)
+     * Récupérer les commandes disponibles pour l'enlèvement (AJAX) (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function getAvailableOrders(Request $request)
     {
@@ -179,7 +226,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Créer un nouvel enlèvement (pickup) en statut draft
+     * Créer un nouvel enlèvement (pickup) en statut draft (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function createPickup(Request $request)
     {
@@ -298,7 +345,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page de gestion des enlèvements
+     * Page de gestion des enlèvements (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function pickups()
     {
@@ -323,7 +370,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Afficher un enlèvement spécifique avec ses expéditions
+     * Afficher un enlèvement spécifique avec ses expéditions (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function showPickup(Pickup $pickup)
     {
@@ -344,7 +391,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Valider un enlèvement - Appelle l'API Jax Delivery
+     * Valider un enlèvement - Appelle l'API Jax Delivery (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function validatePickup(Pickup $pickup)
     {
@@ -414,7 +461,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page de gestion des expéditions
+     * Page de gestion des expéditions (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function shipments()
     {
@@ -429,7 +476,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Afficher une expédition spécifique
+     * Afficher une expédition spécifique (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function showShipment(Shipment $shipment)
     {
@@ -443,7 +490,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page des statistiques
+     * Page des statistiques (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function stats()
     {
@@ -465,7 +512,7 @@ class DeliveryController extends Controller
     }
 
     // =========================================
-    // MÉTHODES DE CONFIGURATION
+    // MÉTHODES DE CONFIGURATION (TOUTES EXISTANTES - INCHANGÉES)
     // =========================================
 
     /**
@@ -641,7 +688,7 @@ class DeliveryController extends Controller
     }
 
     // =========================================
-    // MÉTHODES UTILITAIRES
+    // MÉTHODES UTILITAIRES (TOUTES EXISTANTES - INCHANGÉES)
     // =========================================
 
     /**
@@ -694,7 +741,7 @@ class DeliveryController extends Controller
     }
 
     // =========================================
-    // MÉTHODES DE SUPPRESSION ET AUTRES ACTIONS
+    // MÉTHODES DE SUPPRESSION ET AUTRES ACTIONS (TOUTES EXISTANTES - INCHANGÉES)
     // =========================================
 
     public function deleteConfiguration(DeliveryConfiguration $config)

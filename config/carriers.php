@@ -1,7 +1,6 @@
 <?php
 
-// config/carriers.php
-// Configuration centralisée des transporteurs supportés - JaxDelivery uniquement
+// config/carriers.php - Version MINIMALE mais extensible pour le prompt
 
 return [
     'jax_delivery' => [
@@ -10,24 +9,23 @@ return [
         'website' => 'https://jax-delivery.com',
         'description' => 'Service de livraison avec configuration simplifiée',
         
-        // Capacités simplifiées pour Jax
-        'supports_pickup_address' => false,    // Utilise l'adresse du compte Jax
-        'supports_bl_templates' => false,      // BL générés par Jax
-        'supports_mass_labels' => false,       // Étiquettes individuelles uniquement
-        'supports_drop_points' => false,       // Pas de points de dépôt
-        'supports_payment_methods' => false,   // Méthodes fixes
+        // Capacités Jax (limitées comme actuellement)
+        'supports_pickup_address' => false,
+        'supports_bl_templates' => false,
+        'supports_mass_labels' => false,
+        'supports_drop_points' => false,
+        'supports_payment_methods' => false,
         
-        // Endpoints API
+        // Configuration API
         'api_endpoints' => [
             'test' => 'https://core.jax-delivery.com/api',
             'prod' => 'https://core.jax-delivery.com/api'
         ],
         
-        // Configuration simplifiée avec token direct
         'required_fields' => ['token'],
         'optional_fields' => ['environment'],
         
-        // Mapping des statuts Jax vers statuts internes
+        // Mapping des statuts (votre mapping existant)
         'status_mapping' => [
             '10' => 'picked_up_by_carrier',
             '20' => 'in_transit',
@@ -46,18 +44,7 @@ return [
             'return_labels' => false,
         ],
         
-        // Limites
-        'limits' => [
-            'max_weight' => 25,
-            'max_dimensions' => [
-                'length' => 80,
-                'width' => 80,
-                'height' => 80,
-            ],
-            'max_value' => 5000,
-        ],
-        
-        // Configuration par défaut
+        // Configuration par défaut (votre config existante)
         'default_settings' => [
             'auto_create_pickup' => true,
             'default_governorate_mapping' => [
@@ -86,7 +73,27 @@ return [
                 'Médenine' => 'MED',
                 'Tataouine' => 'TAT',
             ],
-            'notification_emails' => [],
         ]
     ],
+    
+    // PLACEHOLDER pour futurs transporteurs - Structure prête
+    /*
+    'fparcel' => [
+        'display_name' => 'Fparcel Tunisia',
+        'logo' => 'fparcel.png',
+        'supports_pickup_address' => true,
+        'supports_bl_templates' => true,
+        'supports_mass_labels' => true,
+        // ... config complète quand vous l'ajouterez
+    ],
+    
+    'aramex' => [
+        'display_name' => 'Aramex Tunisia', 
+        'logo' => 'aramex.png',
+        'supports_pickup_address' => true,
+        'supports_bl_templates' => false,
+        'supports_mass_labels' => true,
+        // ... config complète quand vous l'ajouterez
+    ]
+    */
 ];

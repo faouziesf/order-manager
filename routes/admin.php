@@ -242,14 +242,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // GESTION DES LIVRAISONS (JAX DELIVERY UNIQUEMENT)
+        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
-            // Route principale pour la livraison (redirection)
-            Route::get('/', [DeliveryController::class, 'configuration'])
+            // ================================
+            // PAGE PRINCIPALE MULTI-TRANSPORTEURS (MODIFICATION)
+            // ================================
+            Route::get('/', [DeliveryController::class, 'index'])
                 ->name('index');
             
-            // Configuration Jax Delivery
+            // Configuration Jax Delivery (page actuelle)
             Route::get('configuration', [DeliveryController::class, 'configuration'])
                 ->name('configuration');
             Route::post('configuration', [DeliveryController::class, 'storeConfiguration'])

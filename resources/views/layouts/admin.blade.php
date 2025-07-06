@@ -1574,11 +1574,38 @@
                 <ul class="sidebar-submenu {{ request()->routeIs('admin.delivery.*') ? 'show' : '' }}"
                     id="deliverySubmenu">
                     
-                    <!-- Configuration Jax Delivery -->
+                    <!-- Vue d'ensemble Multi-transporteurs -->
+                    <li class="sidebar-submenu-item">
+                        <a href="{{ route('admin.delivery.index') }}"
+                            class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.index') ? 'active' : '' }}">
+                            <i class="fas fa-tachometer-alt"></i>Vue d'ensemble
+                            @php
+                                $activeConfigs = \App\Models\DeliveryConfiguration::where('admin_id', auth('admin')->id())
+                                    ->where('is_active', true)
+                                    ->count();
+                            @endphp
+                            @if($activeConfigs > 0)
+                                <span class="badge badge-success badge-sm ml-1">
+                                    {{ $activeConfigs }}
+                                </span>
+                            @endif
+                        </a>
+                    </li>
+                    
+                    <!-- Configuration des Transporteurs -->
                     <li class="sidebar-submenu-item">
                         <a href="{{ route('admin.delivery.configuration') }}"
                             class="sidebar-submenu-link {{ request()->routeIs('admin.delivery.configuration') ? 'active' : '' }}">
-                            <i class="fas fa-cog"></i>Configuration Jax
+                            <i class="fas fa-cog"></i>Configuration
+                            @php
+                                $totalConfigs = \App\Models\DeliveryConfiguration::where('admin_id', auth('admin')->id())
+                                    ->count();
+                            @endphp
+                            @if($totalConfigs > 0)
+                                <span class="badge badge-primary badge-sm ml-1">
+                                    {{ $totalConfigs }}
+                                </span>
+                            @endif
                         </a>
                     </li>
                     
@@ -1610,10 +1637,17 @@
                                 $draftPickups = \App\Models\Pickup::where('admin_id', auth('admin')->id())
                                     ->where('status', 'draft')
                                     ->count();
+                                $activePickups = \App\Models\Pickup::where('admin_id', auth('admin')->id())
+                                    ->whereIn('status', ['validated', 'picked_up'])
+                                    ->count();
                             @endphp
                             @if($draftPickups > 0)
                                 <span class="badge badge-warning badge-sm ml-1">
                                     {{ $draftPickups }}
+                                </span>
+                            @elseif($activePickups > 0)
+                                <span class="badge badge-info badge-sm ml-1">
+                                    {{ $activePickups }}
                                 </span>
                             @endif
                         </a>
@@ -1628,10 +1662,18 @@
                                 $activeShipments = \App\Models\Shipment::where('admin_id', auth('admin')->id())
                                     ->whereIn('status', ['validated', 'picked_up_by_carrier', 'in_transit'])
                                     ->count();
+                                $deliveredToday = \App\Models\Shipment::where('admin_id', auth('admin')->id())
+                                    ->where('status', 'delivered')
+                                    ->whereDate('delivered_at', today())
+                                    ->count();
                             @endphp
                             @if($activeShipments > 0)
                                 <span class="badge badge-info badge-sm ml-1">
                                     {{ $activeShipments }}
+                                </span>
+                            @elseif($deliveredToday > 0)
+                                <span class="badge badge-success badge-sm ml-1">
+                                    {{ $deliveredToday }}
                                 </span>
                             @endif
                         </a>
