@@ -98,6 +98,44 @@ class DeliveryController extends Controller
     }
 
     /**
+     * Récupérer les données d'une configuration pour l'édition (AJAX)
+     */
+    public function getConfiguration(DeliveryConfiguration $config)
+    {
+        try {
+            // Vérifier que la configuration appartient à l'admin connecté
+            if ($config->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $config->id,
+                    'integration_name' => $config->integration_name,
+                    'environment' => $config->environment,
+                    'is_active' => $config->is_active,
+                    'expires_at' => $config->expires_at ? $config->expires_at->format('Y-m-d H:i:s') : null,
+                    'created_at' => $config->created_at->format('Y-m-d H:i:s'),
+                    'status_info' => $this->getConfigurationStatus($config),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération de configuration', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id ?? null,
+                'admin_id' => auth('admin')->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement de la configuration'
+            ], 500);
+        }
+    }
+
+    /**
      * Page de préparation d'enlèvement (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function preparation()
@@ -461,6 +499,92 @@ class DeliveryController extends Controller
     }
 
     /**
+     * Actualiser le statut d'un enlèvement
+     */
+    public function refreshPickupStatus(Pickup $pickup)
+    {
+        try {
+            if ($pickup->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
+            if (!in_array($pickup->status, ['validated', 'picked_up'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seuls les enlèvements validés ou récupérés peuvent être actualisés',
+                ], 400);
+            }
+
+            $updatedCount = 0;
+            $errorCount = 0;
+            $statusChanges = [];
+
+            // Actualiser chaque expédition
+            foreach ($pickup->shipments as $shipment) {
+                try {
+                    $oldStatus = $shipment->status;
+                    
+                    // Simuler une mise à jour (remplacer par vraie API Jax)
+                    if (rand(1, 10) > 8) { // 20% de chance
+                        $newStatuses = ['in_transit', 'delivered'];
+                        $newStatus = $newStatuses[array_rand($newStatuses)];
+                        
+                        $shipment->update([
+                            'status' => $newStatus,
+                            'carrier_last_status_update' => now(),
+                        ]);
+                        
+                        $updatedCount++;
+                        $statusChanges[] = [
+                            'shipment_id' => $shipment->id,
+                            'order_id' => $shipment->order_id,
+                            'old_status' => $oldStatus,
+                            'new_status' => $newStatus,
+                            'pos_barcode' => $shipment->pos_barcode,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    $errorCount++;
+                    Log::error('Erreur lors de l\'actualisation d\'expédition', [
+                        'shipment_id' => $shipment->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // Mettre à jour le statut de l'enlèvement
+            $oldPickupStatus = $pickup->status;
+            $pickup->updateStatus();
+            $pickup->checkForProblems();
+
+            $message = "Actualisation terminée. {$updatedCount} expédition(s) mise(s) à jour";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} erreur(s)";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'updated_count' => $updatedCount,
+                'error_count' => $errorCount,
+                'status_changes' => $statusChanges,
+                'pickup_status_changed' => $pickup->fresh()->status !== $oldPickupStatus,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'actualisation d\'enlèvement', [
+                'pickup_id' => $pickup->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'actualisation: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Page de gestion des expéditions (MÉTHODE EXISTANTE - INCHANGÉE)
      */
     public function shipments()
@@ -487,6 +611,134 @@ class DeliveryController extends Controller
         $shipment->load(['pickup.deliveryConfiguration', 'order', 'statusHistory']);
         
         return view('admin.delivery.shipments.show', compact('shipment'));
+    }
+
+    /**
+     * Suivre le statut d'une expédition spécifique
+     */
+    public function trackShipmentStatus(Shipment $shipment)
+    {
+        try {
+            if ($shipment->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
+            // TODO: Implémenter le service de suivi Jax
+            // $trackingService = app(ShipmentService::class);
+            // $result = $trackingService->trackShipment($shipment);
+
+            // Pour l'instant, simulation d'une mise à jour
+            $oldStatus = $shipment->status;
+            
+            // Simuler une chance de changement de statut
+            if (rand(1, 10) > 7) { // 30% de chance
+                $possibleStatuses = ['in_transit', 'delivered'];
+                $newStatus = $possibleStatuses[array_rand($possibleStatuses)];
+                
+                $shipment->update([
+                    'status' => $newStatus,
+                    'carrier_last_status_update' => now(),
+                ]);
+                
+                // Mettre à jour la commande
+                if ($newStatus === 'delivered') {
+                    $shipment->order->updateDeliveryStatus(
+                        'livrée',
+                        'delivered',
+                        'Colis livré',
+                        'Statut mis à jour via suivi automatique',
+                        $shipment->pos_barcode
+                    );
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "Statut mis à jour: {$oldStatus} → {$newStatus}",
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Aucune mise à jour disponible',
+                'status' => $shipment->status,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du suivi d\'expédition', [
+                'shipment_id' => $shipment->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du suivi: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Marquer une expédition comme livrée manuellement
+     */
+    public function markShipmentAsDelivered(Request $request, Shipment $shipment)
+    {
+        try {
+            if ($shipment->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
+            if ($shipment->status === 'delivered') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cette expédition est déjà marquée comme livrée',
+                ], 400);
+            }
+
+            $notes = $request->input('notes', 'Marqué comme livré manuellement');
+            $oldStatus = $shipment->status;
+
+            $shipment->update([
+                'status' => 'delivered',
+                'delivered_at' => now(),
+                'delivery_notes' => $notes,
+                'carrier_last_status_update' => now(),
+            ]);
+
+            // Mettre à jour la commande
+            $shipment->order->updateDeliveryStatus(
+                'livrée',
+                'delivered',
+                'Colis livré',
+                $notes,
+                $shipment->pos_barcode
+            );
+
+            Log::info('Expédition marquée comme livrée manuellement', [
+                'shipment_id' => $shipment->id,
+                'order_id' => $shipment->order_id,
+                'admin_id' => auth('admin')->id(),
+                'notes' => $notes,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Expédition marquée comme livrée',
+                'old_status' => $oldStatus,
+                'new_status' => 'delivered',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du marquage comme livré', [
+                'shipment_id' => $shipment->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -536,6 +788,13 @@ class DeliveryController extends Controller
             ]);
 
             if ($validator->fails()) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'errors' => $validator->errors()
+                    ], 422);
+                }
+
                 return redirect()->back()
                     ->withErrors($validator)
                     ->withInput()
@@ -558,6 +817,14 @@ class DeliveryController extends Controller
                 'integration_name' => $request->integration_name
             ]);
 
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuration Jax Delivery créée avec succès',
+                    'config' => $configuration
+                ]);
+            }
+
             return redirect()->route('admin.delivery.configuration')
                 ->with('success', 'Configuration Jax Delivery créée avec succès. Testez maintenant la connexion.');
 
@@ -567,6 +834,13 @@ class DeliveryController extends Controller
                 'admin_id' => auth('admin')->id(),
                 'request_data' => $request->except(['token'])
             ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la création : ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()
                 ->withInput()
@@ -601,6 +875,13 @@ class DeliveryController extends Controller
             ]);
 
             if ($validator->fails()) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'errors' => $validator->errors()
+                    ], 422);
+                }
+
                 return redirect()->back()
                     ->withErrors($validator)
                     ->withInput()
@@ -626,6 +907,14 @@ class DeliveryController extends Controller
                 'changes' => array_keys($updateData)
             ]);
 
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuration mise à jour avec succès',
+                    'config' => $config->fresh()
+                ]);
+            }
+
             return redirect()->route('admin.delivery.configuration')
                 ->with('success', 'Configuration mise à jour avec succès.');
 
@@ -636,6 +925,13 @@ class DeliveryController extends Controller
                 'admin_id' => auth('admin')->id(),
                 'request_data' => $request->except(['token'])
             ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la mise à jour : ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()
                 ->withInput()
@@ -747,6 +1043,11 @@ class DeliveryController extends Controller
     public function deleteConfiguration(DeliveryConfiguration $config)
     {
         try {
+            // Vérifier que la configuration appartient à l'admin connecté
+            if ($config->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
             $config->delete();
             return response()->json(['success' => true, 'message' => 'Configuration supprimée']);
         } catch (Exception $e) {
@@ -757,6 +1058,10 @@ class DeliveryController extends Controller
     public function destroyPickup(Pickup $pickup)
     {
         try {
+            if ($pickup->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
             if ($pickup->status !== 'draft') {
                 return response()->json([
                     'success' => false,
@@ -784,6 +1089,11 @@ class DeliveryController extends Controller
     public function toggleConfiguration(DeliveryConfiguration $config)
     {
         try {
+            // Vérifier que la configuration appartient à l'admin connecté
+            if ($config->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
             $config->update(['is_active' => !$config->is_active]);
             $status = $config->is_active ? 'activée' : 'désactivée';
             return response()->json(['success' => true, 'message' => "Configuration {$status}"]);
