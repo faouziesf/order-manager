@@ -17,7 +17,7 @@ use Exception;
 class DeliveryController extends Controller
 {
     /**
-     * NOUVELLE MÉTHODE - Page principale de sélection des transporteurs (multi-transporteurs)
+     * Page principale de sélection des transporteurs (multi-transporteurs)
      */
     public function index()
     {
@@ -64,7 +64,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page principale de configuration Jax Delivery (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Page principale de configuration Jax Delivery (liste)
      */
     public function configuration()
     {
@@ -72,6 +72,7 @@ class DeliveryController extends Controller
         
         // Récupérer les configurations existantes
         $configurations = DeliveryConfiguration::where('admin_id', $admin->id)
+            ->where('carrier_slug', 'jax_delivery')
             ->latest()
             ->get()
             ->map(function($config) {
@@ -98,9 +99,122 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Récupérer les données d'une configuration pour l'édition (AJAX)
+     * Afficher le formulaire de création d'une nouvelle configuration
      */
-    public function getConfiguration(DeliveryConfiguration $config)
+    public function createConfiguration()
+    {
+        return view('admin.delivery.configuration.create');
+    }
+
+    /**
+     * Créer une nouvelle configuration Jax Delivery
+     */
+    public function storeConfiguration(Request $request)
+    {
+        try {
+            $admin = auth('admin')->user();
+
+            $validator = Validator::make($request->all(), [
+                'integration_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('delivery_configurations')
+                        ->where('admin_id', $admin->id)
+                        ->where('carrier_slug', 'jax_delivery'),
+                ],
+                'token' => 'required|string|min:10',
+                'environment' => 'required|in:test,prod',
+            ], [
+                'integration_name.required' => 'Le nom d\'intégration est obligatoire.',
+                'integration_name.unique' => 'Ce nom d\'intégration existe déjà.',
+                'token.required' => 'Le token d\'API est obligatoire.',
+                'token.min' => 'Le token doit contenir au moins 10 caractères.',
+                'environment.required' => 'L\'environnement est obligatoire.',
+                'environment.in' => 'L\'environnement doit être "test" ou "prod".',
+            ]);
+
+            if ($validator->fails()) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'errors' => $validator->errors()
+                    ], 422);
+                }
+
+                return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput()
+                    ->with('error', 'Erreur de validation des données.');
+            }
+
+            $configuration = DeliveryConfiguration::create([
+                'admin_id' => $admin->id,
+                'carrier_slug' => 'jax_delivery',
+                'integration_name' => $request->integration_name,
+                'token' => $request->token,
+                'environment' => $request->environment,
+                'expires_at' => now()->addDays(30), // Les tokens Jax expirent après 30 jours
+                'is_active' => true,
+            ]);
+
+            Log::info('Configuration Jax créée avec succès', [
+                'admin_id' => $admin->id,
+                'config_id' => $configuration->id,
+                'integration_name' => $request->integration_name
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuration Jax Delivery créée avec succès',
+                    'config' => $configuration
+                ]);
+            }
+
+            return redirect()->route('admin.delivery.configuration')
+                ->with('success', 'Configuration Jax Delivery créée avec succès. Testez maintenant la connexion.');
+
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la création de configuration', [
+                'error' => $e->getMessage(),
+                'admin_id' => auth('admin')->id(),
+                'request_data' => $request->except(['token'])
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la création : ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Erreur lors de la création : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Afficher le formulaire d'édition d'une configuration
+     */
+    public function editConfiguration(DeliveryConfiguration $config)
+    {
+        // Vérifier que la configuration appartient à l'admin connecté
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403);
+        }
+
+        // Enrichir les informations de statut
+        $config->status_info = $this->getConfigurationStatus($config);
+
+        return view('admin.delivery.configuration.edit', compact('config'));
+    }
+
+    /**
+     * Mettre à jour une configuration existante
+     */
+    public function updateConfiguration(Request $request, DeliveryConfiguration $config)
     {
         try {
             // Vérifier que la configuration appartient à l'admin connecté
@@ -108,35 +222,224 @@ class DeliveryController extends Controller
                 abort(403);
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $config->id,
-                    'integration_name' => $config->integration_name,
-                    'environment' => $config->environment,
-                    'is_active' => $config->is_active,
-                    'expires_at' => $config->expires_at ? $config->expires_at->format('Y-m-d H:i:s') : null,
-                    'created_at' => $config->created_at->format('Y-m-d H:i:s'),
-                    'status_info' => $this->getConfigurationStatus($config),
-                ]
+            $admin = auth('admin')->user();
+
+            $validator = Validator::make($request->all(), [
+                'integration_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('delivery_configurations')
+                        ->where('admin_id', $admin->id)
+                        ->where('carrier_slug', 'jax_delivery')
+                        ->ignore($config->id),
+                ],
+                'token' => 'nullable|string|min:10',
+                'environment' => 'required|in:test,prod',
+            ], [
+                'integration_name.required' => 'Le nom d\'intégration est obligatoire.',
+                'integration_name.unique' => 'Ce nom d\'intégration existe déjà.',
+                'token.min' => 'Le token doit contenir au moins 10 caractères.',
+                'environment.required' => 'L\'environnement est obligatoire.',
+                'environment.in' => 'L\'environnement doit être "test" ou "prod".',
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération de configuration', [
+            if ($validator->fails()) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'errors' => $validator->errors()
+                    ], 422);
+                }
+
+                return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput()
+                    ->with('error', 'Erreur de validation des données.');
+            }
+
+            $updateData = [
+                'integration_name' => $request->integration_name,
+                'environment' => $request->environment,
+            ];
+
+            // Si un nouveau token est fourni
+            if ($request->filled('token')) {
+                $updateData['token'] = $request->token;
+                $updateData['expires_at'] = now()->addDays(30);
+            }
+
+            $config->update($updateData);
+
+            Log::info('Configuration mise à jour avec succès', [
+                'admin_id' => $admin->id,
+                'config_id' => $config->id,
+                'changes' => array_keys($updateData)
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuration mise à jour avec succès',
+                    'config' => $config->fresh()
+                ]);
+            }
+
+            return redirect()->route('admin.delivery.configuration')
+                ->with('success', 'Configuration mise à jour avec succès.');
+
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la mise à jour de configuration', [
                 'error' => $e->getMessage(),
-                'config_id' => $config->id ?? null,
+                'config_id' => $config->id,
+                'admin_id' => auth('admin')->id(),
+                'request_data' => $request->except(['token'])
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la mise à jour : ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Erreur lors de la mise à jour : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Tester la connexion d'une configuration
+     */
+    public function testConnection(DeliveryConfiguration $config)
+    {
+        try {
+            // Vérifier que la configuration appartient à l'admin connecté
+            if ($config->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
+            $result = $config->testConnection();
+
+            if ($result['success']) {
+                Log::info('Test de connexion réussi', [
+                    'config_id' => $config->id,
+                    'admin_id' => auth('admin')->id(),
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'],
+                ], 400);
+            }
+
+        } catch (Exception $e) {
+            Log::error('Erreur lors du test de connexion', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id,
                 'admin_id' => auth('admin')->id()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du chargement de la configuration'
+                'message' => 'Erreur lors du test : ' . $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Page de préparation d'enlèvement (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Activer/Désactiver une configuration
+     */
+    public function toggleConfiguration(DeliveryConfiguration $config)
+    {
+        try {
+            // Vérifier que la configuration appartient à l'admin connecté
+            if ($config->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
+            $config->update(['is_active' => !$config->is_active]);
+            $status = $config->is_active ? 'activée' : 'désactivée';
+            
+            Log::info('Configuration ' . $status, [
+                'config_id' => $config->id,
+                'admin_id' => auth('admin')->id(),
+                'new_status' => $config->is_active
+            ]);
+            
+            return response()->json([
+                'success' => true, 
+                'message' => "Configuration {$status} avec succès"
+            ]);
+            
+        } catch (Exception $e) {
+            Log::error('Erreur lors du changement de statut', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id,
+                'admin_id' => auth('admin')->id()
+            ]);
+            
+            return response()->json([
+                'success' => false, 
+                'message' => 'Erreur : ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Supprimer une configuration
+     */
+    public function deleteConfiguration(DeliveryConfiguration $config)
+    {
+        try {
+            // Vérifier que la configuration appartient à l'admin connecté
+            if ($config->admin_id !== auth('admin')->id()) {
+                abort(403);
+            }
+
+            // Vérifier qu'aucun enlèvement n'utilise cette configuration
+            if ($config->pickups()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossible de supprimer cette configuration car elle est utilisée par des enlèvements existants.'
+                ], 400);
+            }
+
+            $configName = $config->integration_name;
+            $config->delete();
+            
+            Log::info('Configuration supprimée', [
+                'config_name' => $configName,
+                'admin_id' => auth('admin')->id()
+            ]);
+            
+            return response()->json([
+                'success' => true, 
+                'message' => 'Configuration supprimée avec succès'
+            ]);
+            
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la suppression', [
+                'error' => $e->getMessage(),
+                'config_id' => $config->id,
+                'admin_id' => auth('admin')->id()
+            ]);
+            
+            return response()->json([
+                'success' => false, 
+                'message' => 'Erreur : ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Page de préparation d'enlèvement
      */
     public function preparation()
     {
@@ -144,6 +447,7 @@ class DeliveryController extends Controller
         
         // Récupérer les configurations actives Jax Delivery
         $configurations = DeliveryConfiguration::where('admin_id', $admin->id)
+            ->where('carrier_slug', 'jax_delivery')
             ->where('is_active', true)
             ->latest()
             ->get()
@@ -170,7 +474,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Récupérer les commandes disponibles pour l'enlèvement (AJAX) (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Récupérer les commandes disponibles pour l'enlèvement (AJAX)
      */
     public function getAvailableOrders(Request $request)
     {
@@ -264,7 +568,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Créer un nouvel enlèvement (pickup) en statut draft (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Créer un nouvel enlèvement (pickup) en statut draft
      */
     public function createPickup(Request $request)
     {
@@ -276,6 +580,13 @@ class DeliveryController extends Controller
                 'pickup_date' => 'nullable|date|after_or_equal:today',
                 'order_ids' => 'required|array|min:1',
                 'order_ids.*' => 'exists:orders,id',
+            ], [
+                'delivery_configuration_id.required' => 'Veuillez sélectionner une configuration Jax Delivery.',
+                'delivery_configuration_id.exists' => 'Configuration invalide.',
+                'pickup_date.after_or_equal' => 'La date d\'enlèvement ne peut pas être dans le passé.',
+                'order_ids.required' => 'Veuillez sélectionner au moins une commande.',
+                'order_ids.min' => 'Veuillez sélectionner au moins une commande.',
+                'order_ids.*.exists' => 'Une des commandes sélectionnées n\'existe pas.',
             ]);
 
             if ($validator->fails()) {
@@ -383,7 +694,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page de gestion des enlèvements (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Page de gestion des enlèvements
      */
     public function pickups()
     {
@@ -408,7 +719,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Afficher un enlèvement spécifique avec ses expéditions (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Afficher un enlèvement spécifique avec ses expéditions
      */
     public function showPickup(Pickup $pickup)
     {
@@ -429,7 +740,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Valider un enlèvement - Appelle l'API Jax Delivery (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Valider un enlèvement - Appelle l'API Jax Delivery
      */
     public function validatePickup(Pickup $pickup)
     {
@@ -585,7 +896,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page de gestion des expéditions (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Page de gestion des expéditions
      */
     public function shipments()
     {
@@ -600,7 +911,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Afficher une expédition spécifique (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Afficher une expédition spécifique
      */
     public function showShipment(Shipment $shipment)
     {
@@ -742,7 +1053,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page des statistiques (MÉTHODE EXISTANTE - INCHANGÉE)
+     * Page des statistiques
      */
     public function stats()
     {
@@ -763,298 +1074,9 @@ class DeliveryController extends Controller
         return view('admin.delivery.stats', compact('stats'));
     }
 
-    // =========================================
-    // MÉTHODES DE CONFIGURATION (TOUTES EXISTANTES - INCHANGÉES)
-    // =========================================
-
     /**
-     * Créer une nouvelle configuration Jax Delivery
+     * Supprimer un enlèvement (seulement en brouillon)
      */
-    public function storeConfiguration(Request $request)
-    {
-        try {
-            $admin = auth('admin')->user();
-
-            $validator = Validator::make($request->all(), [
-                'integration_name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('delivery_configurations')
-                        ->where('admin_id', $admin->id),
-                ],
-                'token' => 'required|string|min:10',
-                'environment' => 'required|in:test,prod',
-            ]);
-
-            if ($validator->fails()) {
-                if ($request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'errors' => $validator->errors()
-                    ], 422);
-                }
-
-                return redirect()->back()
-                    ->withErrors($validator)
-                    ->withInput()
-                    ->with('error', 'Erreur de validation des données.');
-            }
-
-            $configuration = DeliveryConfiguration::create([
-                'admin_id' => $admin->id,
-                'carrier_slug' => 'jax_delivery',
-                'integration_name' => $request->integration_name,
-                'token' => $request->token,
-                'environment' => $request->environment,
-                'expires_at' => now()->addDays(30), // Les tokens Jax expirent après 30 jours
-                'is_active' => true,
-            ]);
-
-            Log::info('Configuration créée avec succès', [
-                'admin_id' => $admin->id,
-                'config_id' => $configuration->id,
-                'integration_name' => $request->integration_name
-            ]);
-
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Configuration Jax Delivery créée avec succès',
-                    'config' => $configuration
-                ]);
-            }
-
-            return redirect()->route('admin.delivery.configuration')
-                ->with('success', 'Configuration Jax Delivery créée avec succès. Testez maintenant la connexion.');
-
-        } catch (Exception $e) {
-            Log::error('Erreur lors de la création de configuration', [
-                'error' => $e->getMessage(),
-                'admin_id' => auth('admin')->id(),
-                'request_data' => $request->except(['token'])
-            ]);
-
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erreur lors de la création : ' . $e->getMessage()
-                ], 500);
-            }
-
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Erreur lors de la création : ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Mettre à jour une configuration existante
-     */
-    public function updateConfiguration(Request $request, DeliveryConfiguration $config)
-    {
-        try {
-            // Vérifier que la configuration appartient à l'admin connecté
-            if ($config->admin_id !== auth('admin')->id()) {
-                abort(403);
-            }
-
-            $admin = auth('admin')->user();
-
-            $validator = Validator::make($request->all(), [
-                'integration_name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('delivery_configurations')
-                        ->where('admin_id', $admin->id)
-                        ->ignore($config->id),
-                ],
-                'token' => 'nullable|string|min:10',
-                'environment' => 'required|in:test,prod',
-            ]);
-
-            if ($validator->fails()) {
-                if ($request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'errors' => $validator->errors()
-                    ], 422);
-                }
-
-                return redirect()->back()
-                    ->withErrors($validator)
-                    ->withInput()
-                    ->with('error', 'Erreur de validation des données.');
-            }
-
-            $updateData = [
-                'integration_name' => $request->integration_name,
-                'environment' => $request->environment,
-            ];
-
-            // Si un nouveau token est fourni
-            if ($request->filled('token')) {
-                $updateData['token'] = $request->token;
-                $updateData['expires_at'] = now()->addDays(30);
-            }
-
-            $config->update($updateData);
-
-            Log::info('Configuration mise à jour avec succès', [
-                'admin_id' => $admin->id,
-                'config_id' => $config->id,
-                'changes' => array_keys($updateData)
-            ]);
-
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Configuration mise à jour avec succès',
-                    'config' => $config->fresh()
-                ]);
-            }
-
-            return redirect()->route('admin.delivery.configuration')
-                ->with('success', 'Configuration mise à jour avec succès.');
-
-        } catch (Exception $e) {
-            Log::error('Erreur lors de la mise à jour de configuration', [
-                'error' => $e->getMessage(),
-                'config_id' => $config->id,
-                'admin_id' => auth('admin')->id(),
-                'request_data' => $request->except(['token'])
-            ]);
-
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erreur lors de la mise à jour : ' . $e->getMessage()
-                ], 500);
-            }
-
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Erreur lors de la mise à jour : ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Tester la connexion d'une configuration
-     */
-    public function testConnection(DeliveryConfiguration $config)
-    {
-        try {
-            // Vérifier que la configuration appartient à l'admin connecté
-            if ($config->admin_id !== auth('admin')->id()) {
-                abort(403);
-            }
-
-            $result = $config->testConnection();
-
-            if ($result['success']) {
-                Log::info('Test de connexion réussi', [
-                    'config_id' => $config->id,
-                    'admin_id' => auth('admin')->id(),
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => $result['message'],
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => $result['message'],
-                ], 400);
-            }
-
-        } catch (Exception $e) {
-            Log::error('Erreur lors du test de connexion', [
-                'error' => $e->getMessage(),
-                'config_id' => $config->id,
-                'admin_id' => auth('admin')->id()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du test : ' . $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    // =========================================
-    // MÉTHODES UTILITAIRES (TOUTES EXISTANTES - INCHANGÉES)
-    // =========================================
-
-    /**
-     * Obtenir le statut d'une configuration pour l'affichage
-     */
-    public function getConfigurationStatus(DeliveryConfiguration $config): array
-    {
-        if (!$config->token) {
-            return [
-                'status' => 'not_tested',
-                'badge_class' => 'bg-secondary',
-                'badge_text' => 'Non testé',
-                'message' => 'Configuration non testée'
-            ];
-        }
-
-        if (!$config->expires_at) {
-            return [
-                'status' => 'invalid',
-                'badge_class' => 'bg-danger',
-                'badge_text' => 'Invalide',
-                'message' => 'Token sans date d\'expiration'
-            ];
-        }
-
-        if ($config->expires_at->isPast()) {
-            return [
-                'status' => 'expired',
-                'badge_class' => 'bg-danger',
-                'badge_text' => 'Expiré',
-                'message' => 'Token expiré le ' . $config->expires_at->format('d/m/Y H:i')
-            ];
-        }
-
-        if ($config->expires_at->isBefore(now()->addDays(7))) {
-            return [
-                'status' => 'expiring_soon',
-                'badge_class' => 'bg-warning',
-                'badge_text' => 'Expire bientôt',
-                'message' => 'Token expire le ' . $config->expires_at->format('d/m/Y H:i')
-            ];
-        }
-
-        return [
-            'status' => 'valid',
-            'badge_class' => 'bg-success',
-            'badge_text' => 'Connecté',
-            'message' => 'Token valide jusqu\'au ' . $config->expires_at->format('d/m/Y H:i')
-        ];
-    }
-
-    // =========================================
-    // MÉTHODES DE SUPPRESSION ET AUTRES ACTIONS (TOUTES EXISTANTES - INCHANGÉES)
-    // =========================================
-
-    public function deleteConfiguration(DeliveryConfiguration $config)
-    {
-        try {
-            // Vérifier que la configuration appartient à l'admin connecté
-            if ($config->admin_id !== auth('admin')->id()) {
-                abort(403);
-            }
-
-            $config->delete();
-            return response()->json(['success' => true, 'message' => 'Configuration supprimée']);
-        } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-    }
-
     public function destroyPickup(Pickup $pickup)
     {
         try {
@@ -1086,22 +1108,9 @@ class DeliveryController extends Controller
         }
     }
 
-    public function toggleConfiguration(DeliveryConfiguration $config)
-    {
-        try {
-            // Vérifier que la configuration appartient à l'admin connecté
-            if ($config->admin_id !== auth('admin')->id()) {
-                abort(403);
-            }
-
-            $config->update(['is_active' => !$config->is_active]);
-            $status = $config->is_active ? 'activée' : 'désactivée';
-            return response()->json(['success' => true, 'message' => "Configuration {$status}"]);
-        } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-    }
-
+    /**
+     * API pour obtenir les statistiques
+     */
     public function getApiStats()
     {
         $admin = auth('admin')->user();
@@ -1115,9 +1124,65 @@ class DeliveryController extends Controller
         return response()->json(['success' => true, 'stats' => $stats]);
     }
 
+    /**
+     * API pour suivre toutes les expéditions
+     */
     public function trackAllShipments()
     {
         // TODO: Implémenter le suivi automatique Jax
         return response()->json(['success' => true, 'message' => 'Suivi lancé']);
+    }
+
+    // ========================================
+    // MÉTHODES UTILITAIRES
+    // ========================================
+
+    /**
+     * Obtenir le statut d'une configuration pour l'affichage
+     */
+    public function getConfigurationStatus(DeliveryConfiguration $config): array
+    {
+        if (!$config->token) {
+            return [
+                'status' => 'not_tested',
+                'badge_class' => 'badge-secondary',
+                'badge_text' => 'Non testé',
+                'message' => 'Configuration non testée'
+            ];
+        }
+
+        if (!$config->expires_at) {
+            return [
+                'status' => 'invalid',
+                'badge_class' => 'badge-danger',
+                'badge_text' => 'Invalide',
+                'message' => 'Token sans date d\'expiration'
+            ];
+        }
+
+        if ($config->expires_at->isPast()) {
+            return [
+                'status' => 'expired',
+                'badge_class' => 'badge-danger',
+                'badge_text' => 'Expiré',
+                'message' => 'Token expiré le ' . $config->expires_at->format('d/m/Y H:i')
+            ];
+        }
+
+        if ($config->expires_at->isBefore(now()->addDays(7))) {
+            return [
+                'status' => 'expiring_soon',
+                'badge_class' => 'badge-warning',
+                'badge_text' => 'Expire bientôt',
+                'message' => 'Token expire le ' . $config->expires_at->format('d/m/Y H:i')
+            ];
+        }
+
+        return [
+            'status' => 'valid',
+            'badge_class' => 'badge-success',
+            'badge_text' => 'Connecté',
+            'message' => 'Token valide jusqu\'au ' . $config->expires_at->format('d/m/Y H:i')
+        ];
     }
 }

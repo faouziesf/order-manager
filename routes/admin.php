@@ -242,20 +242,27 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS
+        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION CORRIGÉE
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
+            
             // ================================
-            // PAGE PRINCIPALE MULTI-TRANSPORTEURS (MODIFICATION)
+            // PAGE PRINCIPALE MULTI-TRANSPORTEURS
             // ================================
             Route::get('/', [DeliveryController::class, 'index'])
                 ->name('index');
             
-            // Configuration Jax Delivery (page actuelle)
+            // ================================
+            // CONFIGURATION JAX DELIVERY - PAGES SÉPARÉES (NOUVEAU)
+            // ================================
             Route::get('configuration', [DeliveryController::class, 'configuration'])
                 ->name('configuration');
+            Route::get('configuration/create', [DeliveryController::class, 'createConfiguration'])
+                ->name('configuration.create');
             Route::post('configuration', [DeliveryController::class, 'storeConfiguration'])
                 ->name('configuration.store');
+            Route::get('configuration/{config}/edit', [DeliveryController::class, 'editConfiguration'])
+                ->name('configuration.edit');
             Route::patch('configuration/{config}', [DeliveryController::class, 'updateConfiguration'])
                 ->name('configuration.update');
             Route::delete('configuration/{config}', [DeliveryController::class, 'deleteConfiguration'])
@@ -265,7 +272,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('configuration/{config}/toggle', [DeliveryController::class, 'toggleConfiguration'])
                 ->name('configuration.toggle');
             
-            // PRÉPARATION D'ENLÈVEMENT (Page principale du workflow)
+            // ================================
+            // PRÉPARATION D'ENLÈVEMENT
+            // ================================
             Route::get('preparation', [DeliveryController::class, 'preparation'])
                 ->name('preparation');
             Route::get('preparation/orders', [DeliveryController::class, 'getAvailableOrders'])
@@ -273,56 +282,46 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('preparation', [DeliveryController::class, 'createPickup'])
                 ->name('preparation.store');
             
-            // ========================================
-            // ROUTES PICKUPS
-            // ========================================
-            
-            // Route principale pour les pickups
+            // ================================
+            // GESTION DES ENLÈVEMENTS (PICKUPS)
+            // ================================
             Route::get('pickups', [DeliveryController::class, 'pickups'])
                 ->name('pickups');
-            
-            // Routes détaillées des pickups
             Route::get('pickups/list', [DeliveryController::class, 'pickups'])
                 ->name('pickups.index');
             Route::get('pickups/{pickup}/details', [DeliveryController::class, 'showPickup'])
                 ->name('pickups.show');
             Route::post('pickups/{pickup}/validate', [DeliveryController::class, 'validatePickup'])
                 ->name('pickups.validate');
+            Route::post('pickups/{pickup}/refresh', [DeliveryController::class, 'refreshPickupStatus'])
+                ->name('pickups.refresh');
             Route::delete('pickups/{pickup}', [DeliveryController::class, 'destroyPickup'])
                 ->name('pickups.destroy');
             
-            // GESTION DES EXPÉDITIONS
+            // ================================
+            // GESTION DES EXPÉDITIONS (SHIPMENTS)
+            // ================================
             Route::get('shipments', [DeliveryController::class, 'shipments'])
                 ->name('shipments');
             Route::get('shipments/list', [DeliveryController::class, 'shipments'])
                 ->name('shipments.index');
             Route::get('shipments/{shipment}', [DeliveryController::class, 'showShipment'])
                 ->name('shipments.show');
+            Route::post('shipments/{shipment}/track', [DeliveryController::class, 'trackShipmentStatus'])
+                ->name('shipments.track');
+            Route::post('shipments/{shipment}/mark-delivered', [DeliveryController::class, 'markShipmentAsDelivered'])
+                ->name('shipments.mark-delivered');
             
-            // STATISTIQUES
+            // ================================
+            // STATISTIQUES ET APIs
+            // ================================
             Route::get('stats', [DeliveryController::class, 'stats'])
                 ->name('stats');
-            
-            // APIS UTILITAIRES
             Route::get('api/stats', [DeliveryController::class, 'getApiStats'])
                 ->name('api.stats');
             Route::post('api/track-all', [DeliveryController::class, 'trackAllShipments'])
                 ->name('api.track-all');
         });
-
-        // Routes EXPÉDITIONS additionnelles (à ajouter après les routes existantes)
-        Route::post('shipments/{shipment}/track', [DeliveryController::class, 'trackShipmentStatus'])
-            ->name('shipments.track');
-        Route::post('shipments/{shipment}/mark-delivered', [DeliveryController::class, 'markShipmentAsDelivered'])
-            ->name('shipments.mark-delivered');
-
-        // Routes PICKUPS additionnelles
-        Route::post('pickups/{pickup}/refresh', [DeliveryController::class, 'refreshPickupStatus'])
-            ->name('pickups.refresh');
-
-        // Route pour obtenir les données d'une configuration (pour le modal d'édition)
-        Route::get('configuration/{config}', [DeliveryController::class, 'getConfiguration'])
-            ->name('configuration.get');
 
         // ========================================
         // DEBUG ET DIAGNOSTICS
@@ -344,6 +343,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'process_api_old' => route('admin.process.api.queue', 'old'),
                     'process_api_restock' => route('admin.process.api.queue', 'restock'),
                     'process_counts' => route('admin.process.getCounts'),
+                    'delivery_index' => route('admin.delivery.index'),
+                    'delivery_configuration' => route('admin.delivery.configuration'),
+                    'delivery_preparation' => route('admin.delivery.preparation'),
                 ]
             ];
         })->name('debug-auth');
@@ -363,6 +365,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'suspended_orders' => $admin->orders()->where('is_suspended', true)->count(),
                 'products_count' => $admin->products()->count(),
                 'active_products' => $admin->products()->where('is_active', true)->count(),
+                'delivery_configs' => $admin->deliveryConfigurations()->count(),
+                'active_delivery_configs' => $admin->deliveryConfigurations()->where('is_active', true)->count(),
+                'total_pickups' => $admin->pickups()->count(),
+                'draft_pickups' => $admin->pickups()->where('status', 'draft')->count(),
             ];
         })->name('debug-process');
     });
