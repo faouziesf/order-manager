@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Intervention\Image\Facades\Image;
 
 class ProductController extends Controller
 {
@@ -269,7 +268,7 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string|max:2000',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,bmp|max:10240',
         ], [
             'reference.integer' => 'La référence doit être un nombre entier.',
             'reference.unique' => 'Cette référence existe déjà pour vos produits.',
@@ -283,8 +282,8 @@ class ProductController extends Controller
             'stock.min' => 'La quantité ne peut pas être négative.',
             'description.max' => 'La description ne peut pas dépasser 2000 caractères.',
             'image.image' => 'Le fichier doit être une image.',
-            'image.mimes' => 'L\'image doit être au format: jpeg, png, jpg, gif.',
-            'image.max' => 'L\'image ne peut pas dépasser 5MB.',
+            'image.mimes' => 'L\'image doit être au format: jpeg, png, jpg, gif, webp, bmp.',
+            'image.max' => 'L\'image ne peut pas dépasser 10MB.',
         ]);
 
         try {
@@ -326,38 +325,159 @@ class ProductController extends Controller
     }
 
     /**
-     * Traiter et redimensionner l'image
+     * Traiter et sauvegarder l'image - Version simple sans dépendances
      */
     private function processAndStoreImage($file)
     {
         try {
             // Créer un nom unique pour le fichier
-            $filename = uniqid() . '_' . time() . '.jpg';
-            
-            // Redimensionner l'image
-            $image = Image::make($file);
-            
-            // Redimensionner en gardant les proportions (max 400x400)
-            $image->resize(400, 400, function ($constraint) {
-                $constraint->aspectRatio();
-                $constraint->upsize(); // Empêche d'agrandir les petites images
-            });
-            
-            // Optimiser la qualité (80% pour un bon compromis taille/qualité)
-            $image->encode('jpg', 80);
+            $extension = $file->getClientOriginalExtension();
+            $filename = uniqid() . '_' . time() . '.' . strtolower($extension);
             
             // Créer le chemin de stockage
             $path = 'products/' . $filename;
             
-            // Sauvegarder l'image redimensionnée
-            Storage::disk('public')->put($path, (string) $image);
-            
-            return $path;
+            // Vérifier si GD est disponible pour le redimensionnement
+            if (extension_loaded('gd')) {
+                return $this->processImageWithGD($file, $path);
+            } else {
+                // Fallback : simplement sauvegarder le fichier original
+                return $this->saveOriginalImage($file, $path);
+            }
             
         } catch (\Exception $e) {
             Log::error('Erreur lors du traitement de l\'image: ' . $e->getMessage());
             throw $e;
         }
+    }
+    
+    /**
+     * Traiter l'image avec GD (si disponible)
+     */
+    private function processImageWithGD($file, $path)
+    {
+        // Obtenir les informations de l'image
+        $imageInfo = getimagesize($file->getPathname());
+        
+        if (!$imageInfo) {
+            throw new \Exception('Fichier image invalide');
+        }
+        
+        $originalWidth = $imageInfo[0];
+        $originalHeight = $imageInfo[1];
+        $mimeType = $imageInfo['mime'];
+        
+        // Si l'image est déjà petite, la sauvegarder directement
+        if ($originalWidth <= 400 && $originalHeight <= 400) {
+            return $this->saveOriginalImage($file, $path);
+        }
+        
+        // Créer une ressource image selon le type
+        $sourceImage = null;
+        switch ($mimeType) {
+            case 'image/jpeg':
+                if (function_exists('imagecreatefromjpeg')) {
+                    $sourceImage = imagecreatefromjpeg($file->getPathname());
+                }
+                break;
+            case 'image/png':
+                if (function_exists('imagecreatefrompng')) {
+                    $sourceImage = imagecreatefrompng($file->getPathname());
+                }
+                break;
+            case 'image/gif':
+                if (function_exists('imagecreatefromgif')) {
+                    $sourceImage = imagecreatefromgif($file->getPathname());
+                }
+                break;
+            case 'image/webp':
+                if (function_exists('imagecreatefromwebp')) {
+                    $sourceImage = imagecreatefromwebp($file->getPathname());
+                }
+                break;
+        }
+        
+        // Si impossible de créer la ressource, sauvegarder l'original
+        if (!$sourceImage) {
+            return $this->saveOriginalImage($file, $path);
+        }
+        
+        // Calculer les nouvelles dimensions (max 400x400 en gardant les proportions)
+        $maxWidth = 400;
+        $maxHeight = 400;
+        
+        $ratio = min($maxWidth / $originalWidth, $maxHeight / $originalHeight);
+        $newWidth = (int)($originalWidth * $ratio);
+        $newHeight = (int)($originalHeight * $ratio);
+        
+        // Créer une nouvelle image redimensionnée
+        $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+        
+        // Préserver la transparence pour PNG
+        if ($mimeType === 'image/png') {
+            imagealphablending($resizedImage, false);
+            imagesavealpha($resizedImage, true);
+            $transparent = imagecolorallocatealpha($resizedImage, 255, 255, 255, 127);
+            imagefill($resizedImage, 0, 0, $transparent);
+        }
+        
+        // Redimensionner l'image
+        imagecopyresampled(
+            $resizedImage, $sourceImage,
+            0, 0, 0, 0,
+            $newWidth, $newHeight,
+            $originalWidth, $originalHeight
+        );
+        
+        // Créer le dossier s'il n'existe pas
+        $directory = dirname(storage_path('app/public/' . $path));
+        if (!file_exists($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        
+        // Sauvegarder l'image
+        $fullPath = storage_path('app/public/' . $path);
+        $success = false;
+        
+        // Sauvegarder selon le type original ou en JPEG pour compression
+        if ($mimeType === 'image/png' && function_exists('imagepng')) {
+            $success = imagepng($resizedImage, $fullPath, 8); // Compression PNG
+        } else if (function_exists('imagejpeg')) {
+            // Convertir en JPEG pour une meilleure compression
+            $jpegPath = preg_replace('/\.[^.]+$/', '.jpg', $path);
+            $fullPath = storage_path('app/public/' . $jpegPath);
+            $success = imagejpeg($resizedImage, $fullPath, 80);
+            $path = $jpegPath;
+        }
+        
+        // Libérer la mémoire
+        imagedestroy($sourceImage);
+        imagedestroy($resizedImage);
+        
+        if (!$success) {
+            return $this->saveOriginalImage($file, $path);
+        }
+        
+        return $path;
+    }
+    
+    /**
+     * Sauvegarder l'image originale sans modification
+     */
+    private function saveOriginalImage($file, $path)
+    {
+        // Utiliser le système de stockage Laravel
+        $stored = Storage::disk('public')->putFileAs(
+            dirname($path),
+            $file,
+            basename($path)
+        );
+        
+        if (!$stored) {
+            throw new \Exception('Impossible de sauvegarder l\'image');
+        }
+        
+        return $path;
     }
 
     /**
@@ -393,7 +513,7 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string|max:2000',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,bmp|max:10240',
         ], [
             'reference.integer' => 'La référence doit être un nombre entier.',
             'reference.unique' => 'Cette référence existe déjà pour vos produits.',
@@ -407,8 +527,8 @@ class ProductController extends Controller
             'stock.min' => 'La quantité ne peut pas être négative.',
             'description.max' => 'La description ne peut pas dépasser 2000 caractères.',
             'image.image' => 'Le fichier doit être une image.',
-            'image.mimes' => 'L\'image doit être au format: jpeg, png, jpg, gif.',
-            'image.max' => 'L\'image ne peut pas dépasser 5MB.',
+            'image.mimes' => 'L\'image doit être au format: jpeg, png, jpg, gif, webp, bmp.',
+            'image.max' => 'L\'image ne peut pas dépasser 10MB.',
         ]);
 
         try {

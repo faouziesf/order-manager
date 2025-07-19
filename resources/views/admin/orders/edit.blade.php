@@ -1,79 +1,50 @@
 @extends('layouts.admin')
 
-@section('title', 'Modifier la Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
-@section('page-title', 'Modifier la Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
+@section('title', 'Modifier Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
+@section('page-title', 'Modifier Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
 
 @section('css')
 <style>
     :root {
-        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        --info-gradient: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-        --glass-bg: rgba(255, 255, 255, 0.95);
-        --shadow-elevated: 0 8px 25px -8px rgba(0, 0, 0, 0.12);
-        --border-radius: 12px;
-        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --royal-blue: #1e3a8a;
+        --royal-blue-light: #3b82f6;
+        --royal-blue-dark: #1e40af;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --glass-bg: rgba(255, 255, 255, 0.98);
+        --shadow: 0 2px 15px rgba(30, 58, 138, 0.08);
+        --border-radius: 8px;
+        --transition: all 0.2s ease;
     }
 
     body {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
         font-family: 'Inter', sans-serif;
     }
 
     .page-container {
-        background: var(--glass-bg);
-        backdrop-filter: blur(20px);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow-elevated);
-        margin: 1rem;
-        overflow: hidden;
-        min-height: calc(100vh - 2rem);
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1rem;
     }
 
     .page-header {
-        background: var(--primary-gradient);
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
         color: white;
-        padding: 1.5rem 2rem;
-        border-radius: var(--border-radius) var(--border-radius) 0 0;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .page-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 100%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-        transform: rotate(15deg);
-    }
-
-    .header-content {
+        padding: 1.25rem 1.5rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow);
         display: flex;
         justify-content: space-between;
-        align-items: start;
-        position: relative;
-        z-index: 2;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
     }
 
-    @media (max-width: 1200px) {
-        .header-content {
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .header-actions {
-            width: 100%;
-            justify-content: center;
-        }
-    }
-
-    .page-header h1 {
-        font-size: 1.75rem;
+    .page-header-left h1 {
+        font-size: 1.5rem;
         font-weight: 700;
         margin: 0;
         display: flex;
@@ -82,23 +53,19 @@
     }
 
     .order-status-badge {
-        padding: 0.375rem 0.75rem;
-        border-radius: 15px;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
         font-size: 0.75rem;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
         background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
+        margin-left: 0.5rem;
     }
 
     .breadcrumb {
         background: transparent;
         margin: 0.5rem 0 0 0;
         padding: 0;
+        font-size: 0.875rem;
     }
 
     .breadcrumb-item a {
@@ -123,7 +90,7 @@
         border: 1px solid rgba(255, 255, 255, 0.3);
         color: white;
         padding: 0.625rem 1.25rem;
-        border-radius: 8px;
+        border-radius: 6px;
         font-weight: 600;
         text-decoration: none;
         display: flex;
@@ -149,267 +116,311 @@
         background: linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(124, 58, 237, 0.8) 100%);
     }
 
-    /* Layout Principal */
-    .main-content {
-        display: grid;
-        grid-template-columns: 1fr 400px;
-        gap: 2rem;
-        padding: 2rem;
-        min-height: calc(100vh - 200px);
+    .header-btn.btn-duplicates {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.8) 0%, rgba(217, 119, 6, 0.8) 100%);
     }
 
-    @media (max-width: 1400px) {
-        .main-content {
-            grid-template-columns: 1fr 350px;
-            gap: 1.5rem;
-        }
-    }
-
-    @media (max-width: 1200px) {
-        .main-content {
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-        
-        .cart-section {
-            position: static !important;
-            width: 100% !important;
-            max-width: none !important;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .main-content {
-            padding: 1rem;
-            gap: 1rem;
-        }
-    }
-
-    /* Formulaire Client */
-    .customer-form {
-        background: white;
+    /* Alert de doublons en haut */
+    .duplicate-warning {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+        border: 2px solid rgba(245, 158, 11, 0.4);
         border-radius: var(--border-radius);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-    }
-
-    .form-header {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 1rem;
+        animation: slideIn 0.3s ease;
+    }
+
+    .duplicate-warning-header {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-    }
-
-    .form-header h3 {
-        margin: 0;
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #374151;
-    }
-
-    .form-header .icon {
-        width: 32px;
-        height: 32px;
-        background: var(--primary-gradient);
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 0.875rem;
-    }
-
-    .form-body {
-        padding: 1.5rem;
-    }
-
-    .form-row {
-        display: grid;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        flex-wrap: wrap;
         gap: 1rem;
+    }
+
+    .duplicate-warning-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+        color: #92400e;
+        font-size: 1.1rem;
+    }
+
+    .duplicate-warning-content {
+        color: #78350f;
+        font-size: 0.9rem;
+        line-height: 1.5;
         margin-bottom: 1rem;
     }
 
-    .form-row.cols-1 {
+    .duplicate-warning-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-warning-action {
+        background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-warning-action:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    /* Layout en grid optimisé */
+    .edit-container {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    @media (max-width: 1200px) {
+        .edit-container {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .header-actions {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    .main-form {
+        background: var(--glass-bg);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+    }
+
+    .sidebar-controls {
+        background: var(--glass-bg);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        padding: 1.25rem;
+        position: sticky;
+        top: 1rem;
+        height: fit-content;
+    }
+
+    .form-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--royal-blue);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .form-grid.single {
         grid-template-columns: 1fr;
     }
 
-    .form-row.cols-2 {
-        grid-template-columns: 1fr 1fr;
-    }
-
     @media (max-width: 768px) {
-        .form-row.cols-2 {
+        .form-grid {
             grid-template-columns: 1fr;
         }
     }
 
     .form-group {
-        display: flex;
-        flex-direction: column;
+        margin-bottom: 1rem;
     }
 
     .form-label {
         font-weight: 600;
         color: #374151;
-        margin-bottom: 0.375rem;
+        margin-bottom: 0.4rem;
         font-size: 0.875rem;
         display: flex;
         align-items: center;
-        gap: 0.375rem;
-    }
-
-    .form-label .required {
-        color: #ef4444;
-        font-size: 0.75rem;
+        gap: 0.4rem;
     }
 
     .form-control {
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 0.6rem;
         transition: var(--transition);
         font-size: 0.875rem;
-        background: #fafafa;
-        font-family: inherit;
+        width: 100%;
     }
 
     .form-control:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        background: white;
+        border-color: var(--royal-blue);
+        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
         outline: none;
     }
 
-    .form-control:invalid {
-        border-color: #ef4444;
-    }
-
-    .form-select {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-        background-position: right 0.75rem center;
-        background-repeat: no-repeat;
-        background-size: 1.25em 1.25em;
-        padding-right: 2.5rem;
-    }
-
-    /* Section Panier */
-    .cart-section {
-        background: white;
-        border-radius: var(--border-radius);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        height: fit-content;
-        position: sticky;
-        top: 1rem;
-        width: 100%;
-        max-width: 400px;
-        transition: all 0.3s ease;
-    }
-
-    .cart-section.collapsed {
-        max-width: 250px;
-    }
-
-    .cart-header {
-        background: var(--success-gradient);
-        color: white;
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border-radius: var(--border-radius) var(--border-radius) 0 0;
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .cart-header h3 {
-        margin: 0;
-        font-size: 1.125rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        white-space: nowrap;
-    }
-
-    .cart-toggle-btn {
-        background: transparent;
-        border: none;
-        color: white;
-        font-size: 1.2rem;
-        cursor: pointer;
-        padding: 0.25rem;
-        border-radius: 4px;
-        transition: var(--transition);
-    }
-
-    .cart-toggle-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    .cart-body {
-        max-height: 500px;
-        overflow-y: auto;
-        transition: all 0.3s ease;
-    }
-
-    .cart-section.collapsed .cart-body {
+    .phone-validation-indicator {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.875rem;
         display: none;
+        z-index: 10;
     }
 
-    .cart-section.collapsed .cart-summary {
-        display: none !important;
+    .phone-validation-indicator.checking {
+        display: block;
+        color: #6b7280;
+        animation: pulse 1.5s infinite;
     }
 
-    .cart-section.collapsed .order-controls {
-        padding: 1rem;
+    .phone-validation-indicator.has-duplicates {
+        display: block;
+        color: var(--warning);
     }
 
-    .cart-section.collapsed .control-group {
-        margin-bottom: 0.75rem;
+    .phone-validation-indicator.clean {
+        display: block;
+        color: var(--success);
     }
 
-    .cart-section.collapsed .status-badges,
-    .cart-section.collapsed .priority-badges {
-        flex-direction: column;
-        gap: 0.25rem;
+    /* Alert de doublons dans le formulaire */
+    .duplicate-alert {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+        display: none;
+        font-size: 0.8rem;
     }
 
-    .cart-section.collapsed .status-badge,
-    .cart-section.collapsed .priority-badge {
-        padding: 0.375rem 0.5rem;
-        font-size: 0.7rem;
-        text-align: center;
+    .duplicate-alert.show {
+        display: block;
+        animation: slideIn 0.3s ease;
     }
 
-    .cart-section.collapsed .action-buttons {
-        flex-direction: column;
+    .duplicate-alert-content {
+        display: flex;
+        align-items: center;
         gap: 0.5rem;
+        color: #92400e;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .duplicate-alert-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-royal {
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-light) 100%);
+        color: white;
+        border: none;
+        padding: 0.375rem 0.75rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+    }
+
+    .btn-royal:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+    }
+
+    .btn-success-small {
+        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 0.375rem 0.75rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+    }
+
+    .btn-outline-small {
+        background: white;
+        color: var(--royal-blue);
+        border: 1px solid var(--royal-blue);
+        padding: 0.375rem 0.75rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+    }
+
+    /* Champs conditionnels */
+    .conditional-field {
+        display: none;
+        animation: slideIn 0.3s ease;
+    }
+
+    .conditional-field.show {
+        display: block;
+    }
+
+    .conditional-field .form-control {
+        border-color: var(--royal-blue);
+        background: rgba(30, 58, 138, 0.05);
+    }
+
+    /* Gestion des produits */
+    .products-section {
+        background: #f8fafc;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1rem;
     }
 
     .product-search {
-        padding: 1.25rem;
-        border-bottom: 1px solid #e5e7eb;
-        background: #f9fafb;
-    }
-
-    .search-input-group {
         position: relative;
-    }
-
-    .search-input-group input {
-        padding-left: 2.5rem;
-        background: white;
-    }
-
-    .search-input-group .search-icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #6b7280;
-        font-size: 0.875rem;
+        margin-bottom: 1rem;
     }
 
     .product-suggestions {
@@ -419,12 +430,12 @@
         right: 0;
         background: white;
         border: 1px solid #e5e7eb;
-        border-top: none;
-        border-radius: 0 0 8px 8px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         z-index: 1000;
         max-height: 200px;
         overflow-y: auto;
+        display: none;
     }
 
     .suggestion-item {
@@ -438,322 +449,231 @@
     }
 
     .suggestion-item:hover {
-        background: #f3f4f6;
+        background: rgba(30, 58, 138, 0.05);
     }
 
-    .suggestion-item:last-child {
-        border-bottom: none;
+    .product-ref {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--royal-blue);
+        background: rgba(30, 58, 138, 0.1);
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        margin-left: 0.5rem;
     }
 
-    .cart-items {
-        padding: 1rem;
-        min-height: 150px;
+    .product-list {
+        max-height: 250px;
+        overflow-y: auto;
     }
 
-    .cart-empty {
-        text-align: center;
-        padding: 2rem 1rem;
-        color: #6b7280;
-    }
-
-    .cart-empty i {
-        font-size: 2rem;
-        margin-bottom: 0.75rem;
-        opacity: 0.5;
-    }
-
-    .cart-item {
+    .product-item {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 0.75rem;
-        background: #f9fafb;
-        border-radius: 8px;
-        margin-bottom: 0.75rem;
-        border: 1px solid #e5e7eb;
-        transition: var(--transition);
-        animation: slideIn 0.3s ease-out;
     }
 
-    .cart-item:hover {
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .item-info {
+    .product-info {
         flex: 1;
     }
 
-    .item-name {
+    .product-name {
         font-weight: 600;
-        color: #374151;
         font-size: 0.875rem;
-        margin-bottom: 0.25rem;
+        color: #374151;
     }
 
-    .item-price {
-        color: #6b7280;
+    .product-price {
         font-size: 0.75rem;
-        font-family: monospace;
+        color: #6b7280;
+        font-family: 'JetBrains Mono', monospace;
     }
 
     .quantity-control {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        background: white;
-        border-radius: 6px;
-        padding: 0.25rem;
     }
 
     .quantity-btn {
         width: 28px;
         height: 28px;
-        border: none;
-        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        background: white;
         border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         transition: var(--transition);
-        color: #6b7280;
         font-size: 0.75rem;
     }
 
     .quantity-btn:hover {
-        background: #e5e7eb;
-        color: #374151;
+        border-color: var(--royal-blue);
+        background: rgba(30, 58, 138, 0.05);
     }
 
     .quantity-input {
-        width: 40px;
+        width: 60px;
         text-align: center;
-        border: none;
-        background: transparent;
-        font-weight: 600;
-        color: #374151;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 0.25rem;
         font-size: 0.875rem;
     }
 
-    .remove-item {
+    .remove-btn {
         background: #fef2f2;
-        color: #ef4444;
-        border: none;
-        border-radius: 6px;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
         cursor: pointer;
         transition: var(--transition);
         font-size: 0.75rem;
     }
 
-    .remove-item:hover {
+    .remove-btn:hover {
         background: #fee2e2;
     }
 
-    .cart-summary {
-        padding: 1.25rem;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
+    /* Contrôles sidebar */
+    .control-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .control-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .control-title {
+        font-weight: 600;
+        color: var(--royal-blue);
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .status-badge {
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        position: relative;
+    }
+
+    .status-badge.active {
+        transform: scale(1.02);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .status-nouvelle { background: #f3f4f6; color: #6b7280; }
+    .status-nouvelle.active { background: var(--royal-blue); color: white; }
+
+    .status-confirmée { background: #ecfdf5; color: #059669; }
+    .status-confirmée.active { background: var(--success); color: white; }
+
+    .status-annulée { background: #fef2f2; color: #dc2626; }
+    .status-annulée.active { background: var(--danger); color: white; }
+
+    .status-datée { background: #fef3c7; color: #d97706; }
+    .status-datée.active { background: var(--warning); color: white; }
+
+    .priority-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .priority-badge {
+        padding: 0.4rem;
+        border-radius: 6px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .priority-badge.active {
+        transform: scale(1.02);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .priority-normale { background: #f3f4f6; color: #6b7280; }
+    .priority-normale.active { background: #6b7280; color: white; }
+
+    .priority-urgente { background: #fef3c7; color: #d97706; }
+    .priority-urgente.active { background: var(--warning); color: white; }
+
+    .priority-vip { background: #fef2f2; color: #dc2626; }
+    .priority-vip.active { background: var(--danger); color: white; }
+
+    .summary-box {
+        background: #f8fafc;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1rem;
     }
 
     .summary-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
         font-size: 0.875rem;
     }
 
     .summary-row:last-child {
         margin-bottom: 0;
         font-weight: 700;
-        font-size: 1rem;
-        color: #374151;
-        padding-top: 0.75rem;
+        padding-top: 0.5rem;
         border-top: 1px solid #e5e7eb;
-    }
-
-    .summary-label {
-        color: #6b7280;
-        font-weight: 500;
-    }
-
-    .summary-value {
-        font-family: monospace;
-        font-weight: 600;
-        color: #374151;
-    }
-
-    /* Contrôles de commande */
-    .order-controls {
-        padding: 1.5rem;
-        background: white;
-        border-top: 1px solid #e5e7eb;
-        border-radius: 0 0 var(--border-radius) var(--border-radius);
-    }
-
-    .control-group {
-        margin-bottom: 1.25rem;
-    }
-
-    .control-group:last-child {
-        margin-bottom: 0;
-    }
-
-    .control-label {
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.5rem;
-        display: block;
-        font-size: 0.875rem;
-    }
-
-    .status-badges,
-    .priority-badges {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
-    .status-badge,
-    .priority-badge {
-        padding: 0.5rem 0.75rem;
-        border-radius: 20px;
-        border: 2px solid transparent;
-        cursor: pointer;
-        transition: var(--transition);
-        font-weight: 500;
-        font-size: 0.75rem;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .status-badge.active,
-    .priority-badge.active {
-        color: white;
-        transform: scale(1.05);
-    }
-
-    .status-nouvelle {
-        background: #f3f4f6;
-        color: #6b7280;
-    }
-
-    .status-nouvelle.active {
-        background: var(--primary-gradient);
-    }
-
-    .status-confirmée {
-        background: #ecfdf5;
-        color: #059669;
-    }
-
-    .status-confirmée.active {
-        background: var(--success-gradient);
-    }
-
-    .status-annulée {
-        background: #fef2f2;
-        color: #dc2626;
-    }
-
-    .status-annulée.active {
-        background: var(--danger-gradient);
-    }
-
-    .status-datée {
-        background: #fef3c7;
-        color: #d97706;
-    }
-
-    .status-datée.active {
-        background: var(--warning-gradient);
-    }
-
-    .status-en_route {
-        background: #cffafe;
-        color: #0891b2;
-    }
-
-    .status-en_route.active {
-        background: var(--info-gradient);
-    }
-
-    .status-livrée {
-        background: #f3e8ff;
-        color: #8b5cf6;
-    }
-
-    .status-livrée.active {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    }
-
-    .status-ancienne {
-        background: #f8fafc;
-        color: #64748b;
-    }
-
-    .status-ancienne.active {
-        background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-    }
-
-    .priority-normale {
-        background: #f3f4f6;
-        color: #6b7280;
-    }
-
-    .priority-normale.active {
-        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-    }
-
-    .priority-urgente {
-        background: #fef3c7;
-        color: #d97706;
-    }
-
-    .priority-urgente.active {
-        background: var(--warning-gradient);
-    }
-
-    .priority-vip {
-        background: #fee2e2;
-        color: #dc2626;
-    }
-
-    .priority-vip.active {
-        background: var(--danger-gradient);
+        color: var(--royal-blue);
     }
 
     .action-buttons {
         display: flex;
         gap: 0.75rem;
-        margin-top: 1.5rem;
     }
 
     .btn-save {
         flex: 1;
-        background: var(--success-gradient);
+        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
         color: white;
         border: none;
-        border-radius: 8px;
-        padding: 0.875rem 1.5rem;
+        padding: 0.75rem;
+        border-radius: 6px;
         font-weight: 600;
-        font-size: 0.875rem;
         cursor: pointer;
         transition: var(--transition);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
+        font-size: 0.875rem;
     }
 
     .btn-save:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
 
     .btn-save:disabled {
@@ -763,51 +683,62 @@
         box-shadow: none;
     }
 
-    .btn-secondary {
+    .btn-cancel {
         background: #f3f4f6;
         color: #6b7280;
         border: none;
-        border-radius: 8px;
-        padding: 0.875rem 1.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
         font-weight: 600;
         cursor: pointer;
         transition: var(--transition);
         text-decoration: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
         font-size: 0.875rem;
     }
 
-    .btn-secondary:hover {
+    .btn-cancel:hover {
         background: #e5e7eb;
         color: #374151;
+        text-decoration: none;
     }
 
-    /* Modales */
-    .modal-content {
+    .stock-warning {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+        font-size: 0.8rem;
+        color: #92400e;
+        display: none;
+    }
+
+    .stock-warning.show {
+        display: block;
+    }
+
+    /* Styles pour les modals */
+    .modal-royal .modal-content {
         border: none;
         border-radius: var(--border-radius);
-        box-shadow: var(--shadow-elevated);
-        overflow: hidden;
+        box-shadow: var(--shadow);
     }
 
-    .modal-header {
-        background: var(--primary-gradient);
+    .modal-royal .modal-header {
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
         color: white;
         border: none;
-        padding: 1.25rem 1.5rem;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
     }
 
-    .modal-header .modal-title {
+    .modal-royal .modal-title {
         font-weight: 600;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.5rem;
     }
 
-    .modal-header .btn-close {
+    .modal-royal .btn-close {
         background: rgba(255, 255, 255, 0.2);
         border-radius: 50%;
         opacity: 1;
@@ -818,503 +749,477 @@
         justify-content: center;
     }
 
-    .modal-header .btn-close:hover {
-        background: rgba(255, 255, 255, 0.3);
+    .history-timeline {
+        max-height: 400px;
+        overflow-y: auto;
     }
 
-    .modal-body {
-        padding: 1.5rem;
+    .history-item {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: var(--transition);
     }
 
-    .modal-footer {
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-        padding: 1.25rem 1.5rem;
+    .history-item:hover {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    /* Error states */
-    .is-invalid {
-        border-color: #ef4444 !important;
+    .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.5rem;
     }
 
-    .invalid-feedback {
-        display: block;
-        width: 100%;
-        margin-top: 0.25rem;
+    .history-action {
+        font-weight: 600;
+        color: var(--royal-blue);
+        font-size: 0.9rem;
+    }
+
+    .history-date {
+        color: #6b7280;
+        font-size: 0.75rem;
+    }
+
+    .history-notes {
+        color: #374151;
         font-size: 0.875rem;
-        color: #ef4444;
+        line-height: 1.5;
     }
 
-    /* Animations */
+    .duplicates-list {
+        max-height: 350px;
+        overflow-y: auto;
+    }
+
+    .duplicate-item {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: var(--transition);
+    }
+
+    .duplicate-item:hover {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .duplicate-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .duplicate-id {
+        font-weight: 600;
+        color: var(--royal-blue);
+    }
+
+    .status-badge-mini {
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-nouvelle-mini { background: #e5e7eb; color: #374151; }
+    .status-confirmée-mini { background: #d1fae5; color: #065f46; }
+    .status-annulée-mini { background: #fee2e2; color: #991b1b; }
+    .status-datée-mini { background: #fef3c7; color: #92400e; }
+
     @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Loading state */
-    .loading {
-        position: relative;
-        pointer-events: none;
-        opacity: 0.7;
-    }
-
-    .loading::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 16px;
-        height: 16px;
-        margin: -8px 0 0 -8px;
-        border: 2px solid transparent;
-        border-top: 2px solid #667eea;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .main-content {
-            padding: 1rem;
-            gap: 1rem;
-        }
-
-        .page-header {
-            padding: 1.25rem 1.5rem;
-        }
-
-        .form-body {
-            padding: 1.25rem;
-        }
-
-        .action-buttons {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .action-buttons .btn-save,
-        .action-buttons .btn-secondary {
-            width: 100%;
-        }
-
-        .header-actions {
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-
-        .header-btn {
-            padding: 0.5rem 1rem;
-            font-size: 0.8rem;
-        }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 </style>
 @endsection
 
 @section('content')
 <div class="page-container">
-    <!-- En-tête de page -->
     <div class="page-header">
-        <div class="header-content">
-            <div>
-                <h1>
-                    <i class="fas fa-edit"></i>
-                    Commande #{{ str_pad($order->id, 6, '0', STR_PAD_LEFT) }}
-                    <span class="order-status-badge">
-                        @switch($order->status)
-                            @case('nouvelle')
-                                <i class="fas fa-circle"></i>Nouvelle
-                            @break
-                            @case('confirmée')
-                                <i class="fas fa-check-circle"></i>Confirmée
-                            @break
-                            @case('annulée')
-                                <i class="fas fa-times-circle"></i>Annulée
-                            @break
-                            @case('datée')
-                                <i class="fas fa-calendar-alt"></i>Datée
-                            @break
-                            @case('en_route')
-                                <i class="fas fa-shipping-fast"></i>En Route
-                            @break
-                            @case('livrée')
-                                <i class="fas fa-gift"></i>Livrée
-                            @break
-                            @case('ancienne')
-                                <i class="fas fa-archive"></i>Ancienne
-                            @break
-                        @endswitch
-                    </span>
-                </h1>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item">
-                            <a href="{{ route('admin.dashboard') }}">
-                                <i class="fas fa-home"></i> Accueil
-                            </a>
-                        </li>
-                        <li class="breadcrumb-item">
-                            <a href="{{ route('admin.orders.index') }}">Commandes</a>
-                        </li>
-                        <li class="breadcrumb-item active">Modifier #{{ $order->id }}</li>
-                    </ol>
-                </nav>
-            </div>
+        <div class="page-header-left">
+            <h1>
+                <i class="fas fa-edit"></i>
+                Commande #{{ str_pad($order->id, 6, '0', STR_PAD_LEFT) }}
+                <span class="order-status-badge">{{ ucfirst($order->status) }}</span>
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('admin.orders.index') }}">Commandes</a></li>
+                    <li class="breadcrumb-item active">Modifier #{{ $order->id }}</li>
+                </ol>
+            </nav>
+        </div>
 
-            <div class="header-actions">
-                <button type="button" class="header-btn btn-call" data-bs-toggle="modal"
-                    data-bs-target="#callAttemptModal">
-                    <i class="fas fa-phone"></i>
-                    Tentative d'Appel
+        <div class="header-actions">
+            <button type="button" class="header-btn btn-call" onclick="showCallAttemptModal()">
+                <i class="fas fa-phone"></i>
+                Tentative d'Appel
+            </button>
+            
+            <button type="button" class="header-btn btn-history" onclick="showOrderHistoryModal()">
+                <i class="fas fa-history"></i>
+                Historique
+            </button>
+            
+            @if($order->is_duplicate)
+                <button type="button" class="header-btn btn-duplicates" onclick="showDuplicatesModal()">
+                    <i class="fas fa-copy"></i>
+                    Voir Doublons
                 </button>
-                <button type="button" class="header-btn btn-history" data-bs-toggle="modal"
-                    data-bs-target="#historyModal">
-                    <i class="fas fa-history"></i>
-                    Historique
-                </button>
-            </div>
+            @endif
         </div>
     </div>
 
-    <!-- Contenu principal -->
+    <!-- Alert de doublons en haut si applicable -->
+    @if($order->is_duplicate)
+        <div class="duplicate-warning">
+            <div class="duplicate-warning-header">
+                <div class="duplicate-warning-title">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Cette commande fait partie d'un groupe de doublons
+                </div>
+            </div>
+            <div class="duplicate-warning-content">
+                <strong>Attention :</strong> Cette commande partage le même numéro de téléphone avec d'autres commandes dans votre système.
+                Il est recommandé de vérifier s'il s'agit du même client ou de commandes distinctes avant toute modification.
+            </div>
+            <div class="duplicate-warning-actions">
+                <button type="button" class="btn-warning-action" onclick="showDuplicatesModal()">
+                    <i class="fas fa-eye"></i> Voir tous les doublons
+                </button>
+                <button type="button" class="btn-warning-action" onclick="window.open('/admin/duplicates/detail/{{ urlencode($order->customer_phone) }}', '_blank')">
+                    <i class="fas fa-external-link-alt"></i> Gérer les doublons
+                </button>
+            </div>
+        </div>
+    @endif
+
     <form id="orderForm" action="{{ route('admin.orders.update', $order) }}" method="POST">
         @csrf
         @method('PUT')
-        <div class="main-content">
-            <!-- Formulaire Client -->
-            <div class="customer-form">
-                <div class="form-header">
-                    <div class="icon">
+        
+        <div class="edit-container">
+            <!-- Formulaire principal -->
+            <div class="main-form">
+                <!-- Informations client -->
+                <div class="form-section">
+                    <h3 class="section-title">
                         <i class="fas fa-user"></i>
-                    </div>
-                    <h3>Informations Client</h3>
-                </div>
-                <div class="form-body">
-                    <!-- Nom -->
-                    <div class="form-row cols-1">
+                        Informations Client
+                    </h3>
+                    
+                    <div class="form-grid">
                         <div class="form-group">
                             <label for="customer_name" class="form-label">
-                                <i class="fas fa-user"></i>
-                                Nom Complet
+                                <i class="fas fa-user"></i> Nom complet
                             </label>
-                            <input type="text" class="form-control @error('customer_name') is-invalid @enderror"
-                                id="customer_name" name="customer_name"
-                                value="{{ old('customer_name', $order->customer_name) }}"
-                                placeholder="Nom et prénom du client" autocomplete="name">
-                            @error('customer_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <input type="text" class="form-control @error('customer_name') is-invalid @enderror" 
+                                   id="customer_name" name="customer_name" 
+                                   value="{{ old('customer_name', $order->customer_name) }}"
+                                   placeholder="Nom et prénom">
+                            @error('customer_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                    </div>
 
-                    <!-- Téléphones -->
-                    <div class="form-row cols-2">
                         <div class="form-group">
                             <label for="customer_phone" class="form-label">
-                                <i class="fas fa-phone"></i>
-                                Téléphone Principal
-                                <span class="required">*</span>
+                                <i class="fas fa-phone"></i> Téléphone principal <span class="text-danger">*</span>
                             </label>
-                            <input type="tel" class="form-control @error('customer_phone') is-invalid @enderror"
-                                id="customer_phone" name="customer_phone"
-                                value="{{ old('customer_phone', $order->customer_phone) }}"
-                                placeholder="Ex: +216 XX XXX XXX" required autocomplete="tel">
-                            @error('customer_phone')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="form-group">
-                            <label for="customer_phone_2" class="form-label">
-                                <i class="fas fa-phone-alt"></i>
-                                Téléphone Secondaire
-                            </label>
-                            <input type="tel" class="form-control @error('customer_phone_2') is-invalid @enderror"
-                                id="customer_phone_2" name="customer_phone_2"
-                                value="{{ old('customer_phone_2', $order->customer_phone_2) }}"
-                                placeholder="Téléphone alternatif" autocomplete="tel">
-                            @error('customer_phone_2')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <div style="position: relative;">
+                                <input type="tel" class="form-control @error('customer_phone') is-invalid @enderror" 
+                                       id="customer_phone" name="customer_phone" 
+                                       value="{{ old('customer_phone', $order->customer_phone) }}"
+                                       placeholder="+216 XX XXX XXX" required>
+                                <div class="phone-validation-indicator" id="phone-indicator">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </div>
+                            </div>
+                            @error('customer_phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            
+                            <!-- Alert doublons -->
+                            <div class="duplicate-alert" id="duplicate-alert">
+                                <div class="duplicate-alert-content">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span id="duplicate-message"></span>
+                                </div>
+                                <div class="duplicate-alert-actions">
+                                    <button type="button" class="btn-royal" id="view-history-btn">
+                                        <i class="fas fa-history"></i> Voir l'historique
+                                    </button>
+                                    <button type="button" class="btn-success-small" id="fill-data-btn">
+                                        <i class="fas fa-fill"></i> Pré-remplir
+                                    </button>
+                                    <button type="button" class="btn-outline-small" onclick="dismissDuplicateAlert()">
+                                        <i class="fas fa-times"></i> Ignorer
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Gouvernorat et Ville -->
-                    <div class="form-row cols-2">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="customer_phone_2" class="form-label">
+                                <i class="fas fa-phone-alt"></i> Téléphone secondaire
+                            </label>
+                            <input type="tel" class="form-control @error('customer_phone_2') is-invalid @enderror" 
+                                   id="customer_phone_2" name="customer_phone_2" 
+                                   value="{{ old('customer_phone_2', $order->customer_phone_2) }}"
+                                   placeholder="Numéro alternatif">
+                            @error('customer_phone_2') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
                         <div class="form-group">
                             <label for="customer_governorate" class="form-label">
-                                <i class="fas fa-map-marked-alt"></i>
-                                Gouvernorat
+                                <i class="fas fa-map-marked-alt"></i> Gouvernorat
                             </label>
-                            <select class="form-select form-control @error('customer_governorate') is-invalid @enderror"
-                                id="customer_governorate" name="customer_governorate">
+                            <select class="form-control @error('customer_governorate') is-invalid @enderror" 
+                                    id="customer_governorate" name="customer_governorate">
                                 <option value="">Choisir un gouvernorat</option>
                                 @if (isset($regions))
                                     @foreach ($regions as $region)
-                                        <option value="{{ $region->id }}"
-                                            {{ old('customer_governorate', $order->customer_governorate) == $region->id ? 'selected' : '' }}>
+                                        <option value="{{ $region->id }}" 
+                                                {{ old('customer_governorate', $order->customer_governorate) == $region->id ? 'selected' : '' }}>
                                             {{ $region->name }}
                                         </option>
                                     @endforeach
                                 @endif
                             </select>
-                            @error('customer_governorate')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="form-group">
-                            <label for="customer_city" class="form-label">
-                                <i class="fas fa-city"></i>
-                                Ville
-                            </label>
-                            <select class="form-select form-control @error('customer_city') is-invalid @enderror" id="customer_city"
-                                name="customer_city">
-                                <option value="">Choisir une ville</option>
-                                @if (isset($cities))
-                                    @foreach ($cities as $city)
-                                        <option value="{{ $city->id }}"
-                                            {{ old('customer_city', $order->customer_city) == $city->id ? 'selected' : '' }}>
-                                            {{ $city->name }}
-                                        </option>
-                                    @endforeach
-                                @endif
-                            </select>
-                            @error('customer_city')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            @error('customer_governorate') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
 
-                    <!-- Adresse -->
-                    <div class="form-row cols-1">
+                    <div class="form-grid single">
                         <div class="form-group">
                             <label for="customer_address" class="form-label">
-                                <i class="fas fa-map-marker-alt"></i>
-                                Adresse Complète
+                                <i class="fas fa-map-marker-alt"></i> Adresse complète
                             </label>
-                            <textarea class="form-control @error('customer_address') is-invalid @enderror" id="customer_address"
-                                name="customer_address" rows="3" placeholder="Adresse détaillée du client" 
-                                autocomplete="street-address">{{ old('customer_address', $order->customer_address) }}</textarea>
-                            @error('customer_address')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-
-                    <!-- Commentaires -->
-                    <div class="form-row cols-1">
-                        <div class="form-group">
-                            <label for="notes" class="form-label">
-                                <i class="fas fa-sticky-note"></i>
-                                Commentaires
-                            </label>
-                            <textarea class="form-control @error('notes') is-invalid @enderror" id="notes" name="notes" rows="3"
-                                placeholder="Notes supplémentaires sur la commande">{{ old('notes', $order->notes) }}</textarea>
-                            @error('notes')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <textarea class="form-control @error('customer_address') is-invalid @enderror" 
+                                      id="customer_address" name="customer_address" rows="2"
+                                      placeholder="Adresse détaillée">{{ old('customer_address', $order->customer_address) }}</textarea>
+                            @error('customer_address') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
 
                     <!-- Champs conditionnels selon le statut -->
-                    @if ($order->status === 'datée' || old('status') === 'datée')
-                        <div class="form-row cols-1" id="scheduled-date-row">
-                            <div class="form-group">
-                                <label for="scheduled_date" class="form-label">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    Date de Livraison Prévue
-                                </label>
-                                <input type="date" class="form-control @error('scheduled_date') is-invalid @enderror"
-                                    id="scheduled_date" name="scheduled_date"
-                                    value="{{ old('scheduled_date', $order->scheduled_date ? $order->scheduled_date->format('Y-m-d') : '') }}">
-                                @error('scheduled_date')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                    <div class="form-grid single">
+                        <div class="form-group conditional-field" id="scheduled-date-field" 
+                             {{ $order->status === 'datée' ? 'style=display:block' : '' }}>
+                            <label for="scheduled_date" class="form-label">
+                                <i class="fas fa-calendar-alt"></i> Date de livraison prévue <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control @error('scheduled_date') is-invalid @enderror"
+                                   id="scheduled_date" name="scheduled_date"
+                                   value="{{ old('scheduled_date', $order->scheduled_date ? $order->scheduled_date->format('Y-m-d') : '') }}">
+                            @error('scheduled_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                    @endif
+                    </div>
 
-                    @if (in_array($order->status, ['confirmée', 'datée']) || in_array(old('status'), ['confirmée', 'datée']))
-                        <div class="form-row cols-1" id="total-price-row">
-                            <div class="form-group">
-                                <label for="total_price" class="form-label">
-                                    <i class="fas fa-dollar-sign"></i>
-                                    Prix Total (optionnel)
-                                </label>
-                                <input type="number" class="form-control @error('total_price') is-invalid @enderror"
-                                    id="total_price" name="total_price" step="0.001" min="0"
-                                    value="{{ old('total_price', $order->total_price) }}"
-                                    placeholder="Laisser vide pour calcul automatique">
-                                @error('total_price')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                    <div class="form-grid single">
+                        <div class="form-group conditional-field" id="total-price-field" 
+                             {{ $order->status === 'confirmée' ? 'style=display:block' : '' }}>
+                            <label for="total_price" class="form-label">
+                                <i class="fas fa-dollar-sign"></i> Prix total de la commande
+                            </label>
+                            <input type="number" class="form-control @error('total_price') is-invalid @enderror"
+                                   id="total_price" name="total_price" step="0.001" min="0"
+                                   value="{{ old('total_price', $order->total_price) }}"
+                                   placeholder="Laisser vide pour calcul automatique">
+                            @error('total_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                    @endif
+                    </div>
+
+                    <div class="form-grid single">
+                        <div class="form-group">
+                            <label for="notes" class="form-label">
+                                <i class="fas fa-sticky-note"></i> Commentaires
+                            </label>
+                            <textarea class="form-control @error('notes') is-invalid @enderror" 
+                                      id="notes" name="notes" rows="2"
+                                      placeholder="Notes supplémentaires">{{ old('notes', $order->notes) }}</textarea>
+                            @error('notes') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gestion des produits -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-box"></i>
+                        Produits (<span id="product-count">{{ $order->items->count() }}</span>)
+                    </h3>
+                    
+                    <div class="products-section">
+                        <div class="product-search">
+                            <input type="text" class="form-control" id="product-search" 
+                                   placeholder="Rechercher par nom ou référence...">
+                            <div class="product-suggestions" id="product-suggestions"></div>
+                        </div>
+
+                        <div class="stock-warning" id="stock-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Attention : Certains produits n'ont pas assez de stock pour être confirmés.
+                        </div>
+
+                        <div class="product-list" id="product-list">
+                            <!-- Les produits seront chargés ici -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Section Panier -->
-            <div class="cart-section">
-                <div class="cart-header" onclick="toggleCart()">
-                    <h3>
-                        <i class="fas fa-shopping-cart"></i>
-                        <span>Panier </span>(<span id="cart-count">{{ $order->items->count() }}</span>)
-                    </h3>
-                    <button type="button" class="cart-toggle-btn" id="cart-toggle-btn">
-                        <i class="fas fa-chevron-up"></i>
-                    </button>
-                </div>
-
-                <div class="cart-body" id="cart-body">
-                    <!-- Recherche de produits -->
-                    <div class="product-search">
-                        <div class="search-input-group">
-                            <i class="fas fa-search search-icon"></i>
-                            <input type="text" class="form-control" id="product-search"
-                                placeholder="Rechercher un produit..." autocomplete="off">
-                            <div class="product-suggestions" id="product-suggestions" style="display: none;"></div>
+            <!-- Sidebar de contrôle -->
+            <div class="sidebar-controls">
+                <!-- Tentatives d'appel -->
+                <div class="control-section">
+                    <h4 class="control-title">
+                        <i class="fas fa-phone"></i>
+                        Tentatives d'appel
+                    </h4>
+                    <div class="summary-box">
+                        <div class="summary-row">
+                            <span>Total tentatives:</span>
+                            <span id="total-attempts">{{ $order->attempts_count ?? 0 }}</span>
                         </div>
-                    </div>
-
-                    <!-- Liste des produits -->
-                    <div class="cart-items" id="cart-items">
-                        @if ($order->items->count() === 0)
-                            <div class="cart-empty" id="cart-empty">
-                                <i class="fas fa-shopping-basket"></i>
-                                <h5>Panier vide</h5>
-                                <p>Recherchez et ajoutez des produits</p>
+                        <div class="summary-row">
+                            <span>Aujourd'hui:</span>
+                            <span id="daily-attempts">{{ $order->daily_attempts_count ?? 0 }}</span>
+                        </div>
+                        @if($order->last_attempt_at)
+                            <div class="summary-row">
+                                <span>Dernière:</span>
+                                <span id="last-attempt">{{ $order->last_attempt_at->format('d/m H:i') }}</span>
                             </div>
                         @else
-                            <div class="cart-empty" id="cart-empty" style="display: none;">
-                                <i class="fas fa-shopping-basket"></i>
-                                <h5>Panier vide</h5>
-                                <p>Recherchez et ajoutez des produits</p>
+                            <div class="summary-row">
+                                <span>Dernière:</span>
+                                <span id="last-attempt">Aucune</span>
                             </div>
                         @endif
                     </div>
+                </div>
 
-                    <!-- Résumé du panier -->
-                    <div class="cart-summary" id="cart-summary"
-                        style="{{ $order->items->count() > 0 ? '' : 'display: none;' }}">
+                <!-- Statut -->
+                <div class="control-section">
+                    <h4 class="control-title">
+                        <i class="fas fa-flag"></i>
+                        Statut de la commande
+                    </h4>
+                    <div class="status-grid">
+                        <div class="status-badge status-nouvelle {{ $order->status === 'nouvelle' ? 'active' : '' }}" 
+                             data-status="nouvelle">
+                            Nouvelle
+                        </div>
+                        <div class="status-badge status-confirmée {{ $order->status === 'confirmée' ? 'active' : '' }}" 
+                             data-status="confirmée">
+                            Confirmée
+                        </div>
+                        <div class="status-badge status-annulée {{ $order->status === 'annulée' ? 'active' : '' }}" 
+                             data-status="annulée">
+                            Annulée
+                        </div>
+                        <div class="status-badge status-datée {{ $order->status === 'datée' ? 'active' : '' }}" 
+                             data-status="datée">
+                            Datée
+                        </div>
+                    </div>
+                    <input type="hidden" name="status" id="status" value="{{ $order->status }}">
+                </div>
+
+                <!-- Priorité -->
+                <div class="control-section">
+                    <h4 class="control-title">
+                        <i class="fas fa-star"></i>
+                        Priorité
+                    </h4>
+                    <div class="priority-grid">
+                        <div class="priority-badge priority-normale {{ $order->priority === 'normale' ? 'active' : '' }}" 
+                             data-priority="normale">
+                            Normale
+                        </div>
+                        <div class="priority-badge priority-urgente {{ $order->priority === 'urgente' ? 'active' : '' }}" 
+                             data-priority="urgente">
+                            Urgente
+                        </div>
+                        <div class="priority-badge priority-vip {{ $order->priority === 'vip' ? 'active' : '' }}" 
+                             data-priority="vip">
+                            VIP
+                        </div>
+                    </div>
+                    <input type="hidden" name="priority" id="priority" value="{{ $order->priority }}">
+                </div>
+
+                <!-- Assignation -->
+                <div class="control-section">
+                    <h4 class="control-title">
+                        <i class="fas fa-user-tie"></i>
+                        Assignation
+                    </h4>
+                    <select class="form-control" id="employee_id" name="employee_id">
+                        <option value="">Non assigné</option>
+                        @if (isset($employees))
+                            @foreach ($employees as $employee)
+                                <option value="{{ $employee->id }}" 
+                                        {{ $order->employee_id == $employee->id ? 'selected' : '' }}>
+                                    {{ $employee->name }}
+                                </option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+
+                <!-- Résumé -->
+                <div class="control-section">
+                    <h4 class="control-title">
+                        <i class="fas fa-calculator"></i>
+                        Résumé
+                    </h4>
+                    <div class="summary-box">
                         <div class="summary-row">
-                            <span class="summary-label">Sous-total:</span>
-                            <span class="summary-value" id="subtotal">{{ number_format($order->items->sum('total_price'), 3) }} TND</span>
+                            <span>Sous-total:</span>
+                            <span id="subtotal">{{ number_format($order->items->sum('total_price'), 3) }} TND</span>
                         </div>
                         <div class="summary-row">
-                            <span class="summary-label">Total:</span>
-                            <span class="summary-value" id="total">{{ number_format($order->total_price, 3) }} TND</span>
+                            <span>Total:</span>
+                            <span id="total">{{ number_format($order->total_price, 3) }} TND</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Contrôles de commande -->
-                <div class="order-controls">
-                    <div class="control-group">
-                        <label class="control-label">Statut de la commande</label>
-                        <div class="status-badges">
-                            <div class="status-badge status-nouvelle {{ $order->status === 'nouvelle' ? 'active' : '' }}"
-                                data-status="nouvelle">
-                                <i class="fas fa-circle"></i> Nouvelle
-                            </div>
-                            <div class="status-badge status-confirmée {{ $order->status === 'confirmée' ? 'active' : '' }}"
-                                data-status="confirmée">
-                                <i class="fas fa-check-circle"></i> Confirmée
-                            </div>
-                            <div class="status-badge status-annulée {{ $order->status === 'annulée' ? 'active' : '' }}"
-                                data-status="annulée">
-                                <i class="fas fa-times-circle"></i> Annulée
-                            </div>
-                            <div class="status-badge status-datée {{ $order->status === 'datée' ? 'active' : '' }}"
-                                data-status="datée">
-                                <i class="fas fa-calendar-alt"></i> Datée
-                            </div>
-                            <div class="status-badge status-ancienne {{ $order->status === 'ancienne' ? 'active' : '' }}"
-                                data-status="ancienne">
-                                <i class="fas fa-archive"></i> Ancienne
-                            </div>
-                            <div class="status-badge status-en_route {{ $order->status === 'en_route' ? 'active' : '' }}"
-                                data-status="en_route">
-                                <i class="fas fa-shipping-fast"></i> En Route
-                            </div>
-                            <div class="status-badge status-livrée {{ $order->status === 'livrée' ? 'active' : '' }}"
-                                data-status="livrée">
-                                <i class="fas fa-gift"></i> Livrée
-                            </div>
-                        </div>
-                        <input type="hidden" name="status" id="status" value="{{ $order->status }}">
-                    </div>
-
-                    <div class="control-group">
-                        <label class="control-label">Priorité</label>
-                        <div class="priority-badges">
-                            <div class="priority-badge priority-normale {{ $order->priority === 'normale' ? 'active' : '' }}"
-                                data-priority="normale">
-                                <i class="fas fa-minus"></i> Normale
-                            </div>
-                            <div class="priority-badge priority-urgente {{ $order->priority === 'urgente' ? 'active' : '' }}"
-                                data-priority="urgente">
-                                <i class="fas fa-exclamation"></i> Urgente
-                            </div>
-                            <div class="priority-badge priority-vip {{ $order->priority === 'vip' ? 'active' : '' }}"
-                                data-priority="vip">
-                                <i class="fas fa-crown"></i> VIP
-                            </div>
-                        </div>
-                        <input type="hidden" name="priority" id="priority" value="{{ $order->priority }}">
-                    </div>
-
-                    <div class="control-group">
-                        <label for="employee_id" class="control-label">
-                            <i class="fas fa-user-tie"></i>
-                            Assigner à un employé
-                        </label>
-                        <select class="form-select form-control" id="employee_id" name="employee_id">
-                            <option value="">Non assigné</option>
-                            @if (isset($employees) && $employees->count() > 0)
-                                @foreach ($employees as $employee)
-                                    <option value="{{ $employee->id }}"
-                                        {{ $order->employee_id == $employee->id ? 'selected' : '' }}>
-                                        {{ $employee->name }}
-                                    </option>
-                                @endforeach
-                            @endif
-                        </select>
-                    </div>
-
-                    <div class="action-buttons">
-                        <a href="{{ route('admin.orders.index') }}" class="btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Retour
-                        </a>
-                        <button type="submit" class="btn-save" id="save-btn">
-                            <i class="fas fa-save"></i> Enregistrer
-                        </button>
-                    </div>
+                <!-- Actions -->
+                <div class="action-buttons">
+                    <a href="{{ route('admin.orders.index') }}" class="btn-cancel">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </a>
+                    <button type="submit" class="btn-save" id="save-btn">
+                        <i class="fas fa-save"></i> Enregistrer
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Hidden inputs pour les données du panier -->
-        <div id="cart-data" style="display: none;"></div>
+        <!-- Données cachées pour les produits -->
+        <div id="product-data" style="display: none;"></div>
     </form>
 </div>
 
 <!-- Modal Tentative d'Appel -->
-<div class="modal fade" id="callAttemptModal" tabindex="-1" aria-labelledby="callAttemptModalLabel"
-    aria-hidden="true">
+<div class="modal fade modal-royal" id="callAttemptModal" tabindex="-1" aria-labelledby="callAttemptModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -1324,20 +1229,18 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="callAttemptForm" action="{{ route('admin.orders.recordAttempt', $order) }}" method="POST">
-                @csrf
+            <form id="callAttemptForm">
                 <div class="modal-body">
                     <div class="form-group">
                         <label for="attempt_notes" class="form-label">
                             <i class="fas fa-sticky-note"></i>
-                            Notes sur la tentative d'appel
-                            <span class="required">*</span>
+                            Notes sur la tentative d'appel <span class="text-danger">*</span>
                         </label>
                         <textarea class="form-control" id="attempt_notes" name="notes"
-                            placeholder="Décrivez le résultat de votre appel (répondu, occupé, boîte vocale, etc.)" 
-                            required rows="4"></textarea>
+                                  placeholder="Décrivez le résultat de votre appel (répondu, occupé, boîte vocale, etc.)" 
+                                  required rows="4"></textarea>
                     </div>
-                    <div class="alert alert-info">
+                    <div class="alert alert-info mt-3">
                         <i class="fas fa-info-circle"></i>
                         <strong>Information :</strong> Cette action incrémentera automatiquement le compteur de
                         tentatives et sera enregistrée dans l'historique de la commande.
@@ -1347,7 +1250,7 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times"></i> Annuler
                     </button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-success">
                         <i class="fas fa-save"></i> Enregistrer la Tentative
                     </button>
                 </div>
@@ -1357,7 +1260,7 @@
 </div>
 
 <!-- Modal Historique -->
-<div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+<div class="modal fade modal-royal" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -1369,17 +1272,70 @@
             </div>
             <div class="modal-body">
                 <div class="history-timeline" id="history-timeline">
-                    <!-- Contenu chargé dynamiquement -->
                     <div class="text-center py-4">
-                        <div class="loading"></div>
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
                         <p class="mt-3 text-muted">Chargement de l'historique...</p>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i> Fermer
-                </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Doublons -->
+<div class="modal fade modal-royal" id="duplicatesModal" tabindex="-1" aria-labelledby="duplicatesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="duplicatesModalLabel">
+                    <i class="fas fa-copy"></i>
+                    Commandes en Doublon pour {{ $order->customer_phone }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>Client :</strong> {{ $order->customer_name ?? 'Non spécifié' }} - {{ $order->customer_phone }}
+                </div>
+                <div class="duplicates-list" id="duplicates-list">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Chargement des doublons...</p>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-warning" onclick="window.open('/admin/duplicates/detail/{{ urlencode($order->customer_phone) }}', '_blank')">
+                        <i class="fas fa-external-link-alt me-2"></i>Gérer tous les doublons
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historique Client -->
+<div class="modal fade modal-royal" id="clientHistoryModal" tabindex="-1" aria-labelledby="clientHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clientHistoryModalLabel">
+                    <i class="fas fa-history me-2"></i>Historique du Client
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="client-history-content">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Chargement de l'historique...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1389,359 +1345,121 @@
 @section('scripts')
 <script>
 $(document).ready(function() {
-    // Initialisation du panier depuis la base de données
-    let cart = [];
-    let searchTimeout;
+    let originalStatus = '{{ $order->status }}';
+    let products = [];
+    let phoneCheckTimeout;
+    let latestClientData = null;
 
+    // Initialiser les produits depuis la base
     @if ($order->items->count() > 0)
-        cart = [
+        products = [
             @foreach ($order->items as $item)
                 {
                     id: {{ $item->product_id }},
                     name: "{{ addslashes($item->product->name ?? 'Produit supprimé') }}",
+                    reference: "{{ $item->product->reference ?? 'N/A' }}",
                     price: {{ (float) $item->unit_price }},
                     quantity: {{ $item->quantity }},
                     stock: {{ $item->product->stock ?? 0 }}
-                }
-                @if (!$loop->last)
-                    ,
-                @endif
+                }{{ !$loop->last ? ',' : '' }}
             @endforeach
         ];
     @endif
 
-    // Initialiser le panier au chargement
-    updateCartDisplay();
+    updateProductList();
+    updateSummary();
 
     // =========================
-    // TOGGLE DU PANIER
+    // GESTION DES BOUTONS D'ACTION
     // =========================
-    window.toggleCart = function() {
-        const cartSection = $('.cart-section');
-        const toggleBtn = $('#cart-toggle-btn i');
-        
-        if (cartSection.hasClass('collapsed')) {
-            cartSection.removeClass('collapsed');
-            toggleBtn.removeClass('fa-chevron-down').addClass('fa-chevron-up');
-        } else {
-            cartSection.addClass('collapsed');
-            toggleBtn.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-        }
+    
+    window.showCallAttemptModal = function() {
+        $('#callAttemptModal').modal('show');
+    };
+
+    window.showOrderHistoryModal = function() {
+        $('#historyModal').modal('show');
+        loadOrderHistory();
+    };
+
+    window.showDuplicatesModal = function() {
+        $('#duplicatesModal').modal('show');
+        loadDuplicates();
     };
 
     // =========================
-    // RECHERCHE DE PRODUITS
+    // GESTION DES TENTATIVES D'APPEL
     // =========================
-    $('#product-search').on('input', function() {
-        const query = $(this).val().trim();
-
-        clearTimeout(searchTimeout);
-        $('#product-suggestions').hide();
+    $('#callAttemptForm').on('submit', function(e) {
+        e.preventDefault();
         
-        if (query.length >= 2) {
-            searchTimeout = setTimeout(() => {
-                searchProducts(query);
-            }, 300);
+        const notes = $('#attempt_notes').val().trim();
+        if (!notes) {
+            alert('Veuillez saisir des notes sur la tentative d\'appel.');
+            return;
         }
+
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Enregistrement...');
+
+        $.post('/admin/orders/{{ $order->id }}/record-attempt', {
+            notes: notes,
+            _token: $('meta[name="csrf-token"]').attr('content')
+        })
+        .done(function(response) {
+            $('#callAttemptModal').modal('hide');
+            $('#attempt_notes').val('');
+            
+            showNotification('success', 'Tentative d\'appel enregistrée avec succès !');
+            
+            // Mettre à jour les compteurs dans la sidebar
+            updateAttemptCounters(response);
+        })
+        .fail(function(xhr) {
+            const errorMessage = xhr.responseJSON?.message || 'Erreur lors de l\'enregistrement';
+            showNotification('error', errorMessage);
+        })
+        .always(function() {
+            submitBtn.prop('disabled', false).html(originalText);
+        });
     });
 
-    function searchProducts(query) {
-        $.get('/admin/orders/search-products', { search: query })
-            .done(function(data) {
-                showProductSuggestions(data);
-            })
-            .fail(function() {
-                console.error('Erreur lors de la recherche de produits');
-                showProductSuggestions([]);
+    function updateAttemptCounters(response) {
+        $('#total-attempts').text(response.attempts_count || 0);
+        $('#daily-attempts').text(response.daily_attempts_count || 0);
+        
+        if (response.last_attempt_at) {
+            const date = new Date(response.last_attempt_at);
+            const formatted = date.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
             });
-    }
-
-    function showProductSuggestions(products) {
-        const suggestions = $('#product-suggestions');
-        suggestions.empty();
-
-        if (products.length === 0) {
-            suggestions.html('<div class="suggestion-item">Aucun produit trouvé</div>');
-        } else {
-            products.forEach(product => {
-                const item = $(`
-                    <div class="suggestion-item" data-product-id="${product.id}">
-                        <div>
-                            <strong>${product.name}</strong>
-                            <br><small class="text-muted">Stock: ${product.stock}</small>
-                        </div>
-                        <div class="text-success fw-bold">${parseFloat(product.price).toFixed(3)} TND</div>
-                    </div>
-                `);
-
-                item.on('click', function() {
-                    addToCart(product);
-                    $('#product-search').val('');
-                    suggestions.hide();
-                });
-
-                suggestions.append(item);
-            });
+            $('#last-attempt').text(formatted);
         }
-
-        suggestions.show();
     }
-
-    // Masquer suggestions en cliquant ailleurs
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('.search-input-group').length) {
-            $('#product-suggestions').hide();
-        }
-    });
 
     // =========================
-    // GESTION DU PANIER
+    // GESTION DES MODALS
     // =========================
-    function addToCart(product) {
-        const existingItem = cart.find(item => item.id === product.id);
-
-        if (existingItem) {
-            existingItem.quantity += 1;
-        } else {
-            cart.push({
-                id: product.id,
-                name: product.name,
-                price: parseFloat(product.price),
-                quantity: 1,
-                stock: product.stock
-            });
-        }
-
-        updateCartDisplay();
-    }
-
-    function removeFromCart(productId) {
-        cart = cart.filter(item => item.id !== productId);
-        updateCartDisplay();
-    }
-
-    function updateQuantity(productId, newQuantity) {
-        const item = cart.find(item => item.id === productId);
-        if (item) {
-            const validQuantity = Math.max(1, Math.min(newQuantity, item.stock));
-            item.quantity = validQuantity;
-            updateCartDisplay();
-        }
-    }
-
-    function updateCartDisplay() {
-        const cartItems = $('#cart-items');
-        const cartEmpty = $('#cart-empty');
-        const cartSummary = $('#cart-summary');
-        const cartCount = $('#cart-count');
-
-        cartCount.text(cart.length);
-
-        if (cart.length === 0) {
-            cartEmpty.show();
-            cartSummary.hide();
-            cartItems.find('.cart-item').remove();
-        } else {
-            cartEmpty.hide();
-            cartSummary.show();
-
-            // Supprimer les anciens items
-            cartItems.find('.cart-item').remove();
-
-            // Ajouter les nouveaux items
-            cart.forEach(item => {
-                const cartItem = createCartItemElement(item);
-                cartItems.append(cartItem);
-            });
-
-            updateCartSummary();
-        }
-
-        updateFormData();
-    }
-
-    function createCartItemElement(item) {
-        const element = $(`
-            <div class="cart-item" data-product-id="${item.id}">
-                <div class="item-info">
-                    <div class="item-name">${item.name}</div>
-                    <div class="item-price">${item.price.toFixed(3)} TND × ${item.quantity}</div>
+    function loadOrderHistory() {
+        $('#history-timeline').html(`
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
                 </div>
-                <div class="quantity-control">
-                    <button type="button" class="quantity-btn minus" data-action="minus">
-                        <i class="fas fa-minus"></i>
-                    </button>
-                    <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="${item.stock}">
-                    <button type="button" class="quantity-btn plus" data-action="plus">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                </div>
-                <button type="button" class="remove-item" data-action="remove">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <p class="mt-3 text-muted">Chargement de l'historique...</p>
             </div>
         `);
 
-        // Event listeners
-        element.find('.quantity-btn.minus').on('click', function() {
-            updateQuantity(item.id, item.quantity - 1);
-        });
-
-        element.find('.quantity-btn.plus').on('click', function() {
-            updateQuantity(item.id, item.quantity + 1);
-        });
-
-        element.find('.quantity-input').on('change', function() {
-            const newQuantity = parseInt($(this).val()) || 1;
-            updateQuantity(item.id, newQuantity);
-        });
-
-        element.find('.remove-item').on('click', function() {
-            removeFromCart(item.id);
-        });
-
-        return element;
-    }
-
-    function updateCartSummary() {
-        const subtotal = cart.reduce((sum, item) => {
-            const itemTotal = (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0);
-            return sum + itemTotal;
-        }, 0);
-        
-        const total = subtotal;
-
-        $('#subtotal').text(subtotal.toFixed(3) + ' TND');
-        $('#total').text(total.toFixed(3) + ' TND');
-    }
-
-    function updateFormData() {
-        const cartData = $('#cart-data');
-        cartData.empty();
-
-        cart.forEach((item, index) => {
-            cartData.append(`
-                <input type="hidden" name="products[${index}][id]" value="${item.id}">
-                <input type="hidden" name="products[${index}][quantity]" value="${item.quantity}">
-            `);
-        });
-    }
-
-    // =========================
-    // GESTION DES BADGES
-    // =========================
-    $('.status-badge').on('click', function() {
-        $('.status-badge').removeClass('active');
-        $(this).addClass('active');
-        const status = $(this).data('status');
-        $('#status').val(status);
-
-        // Gestion conditionnelle des champs
-        handleConditionalFields(status);
-    });
-
-    $('.priority-badge').on('click', function() {
-        $('.priority-badge').removeClass('active');
-        $(this).addClass('active');
-        $('#priority').val($(this).data('priority'));
-    });
-
-    function handleConditionalFields(status) {
-        // Gestion du champ date programmée
-        if (status === 'datée') {
-            if ($('#scheduled-date-row').length === 0) {
-                const dateField = `
-                    <div class="form-row cols-1" id="scheduled-date-row">
-                        <div class="form-group">
-                            <label for="scheduled_date" class="form-label">
-                                <i class="fas fa-calendar-alt"></i>
-                                Date de Livraison Prévue
-                            </label>
-                            <input type="date" class="form-control" id="scheduled_date" name="scheduled_date">
-                        </div>
-                    </div>
-                `;
-                $('#notes').closest('.form-row').after(dateField);
-            }
-        } else {
-            $('#scheduled-date-row').remove();
-        }
-
-        // Gestion du champ prix total
-        if (['confirmée', 'datée'].includes(status)) {
-            if ($('#total-price-row').length === 0) {
-                const priceField = `
-                    <div class="form-row cols-1" id="total-price-row">
-                        <div class="form-group">
-                            <label for="total_price" class="form-label">
-                                <i class="fas fa-dollar-sign"></i>
-                                Prix Total (optionnel)
-                            </label>
-                            <input type="number" class="form-control" id="total_price" name="total_price" 
-                                   step="0.001" min="0" placeholder="Laisser vide pour calcul automatique">
-                        </div>
-                    </div>
-                `;
-                $('#notes').closest('.form-row').after(priceField);
-            }
-        } else {
-            $('#total-price-row').remove();
-        }
-    }
-
-    // =========================
-    // GESTION GÉOGRAPHIQUE
-    // =========================
-    $('#customer_governorate').on('change', function() {
-        const regionId = $(this).val();
-        const citySelect = $('#customer_city');
-
-        citySelect.html('<option value="">Chargement...</option>').prop('disabled', true);
-
-        if (regionId) {
-            $.get('/admin/orders/get-cities', { region_id: regionId })
-                .done(function(cities) {
-                    citySelect.html('<option value="">Choisir une ville</option>');
-                    cities.forEach(city => {
-                        const selected = city.id == {{ $order->customer_city ?? 'null' }} ? 'selected' : '';
-                        citySelect.append(`<option value="${city.id}" ${selected}>${city.name}</option>`);
-                    });
-                })
-                .fail(function(xhr) {
-                    console.error('Erreur lors du chargement des villes:', xhr);
-                    citySelect.html('<option value="">Erreur de chargement</option>');
-                })
-                .always(function() {
-                    citySelect.prop('disabled', false);
-                });
-        } else {
-            citySelect.html('<option value="">Choisir une ville</option>').prop('disabled', false);
-        }
-    });
-
-    // Charger les villes si un gouvernorat est sélectionné au chargement
-    if ($('#customer_governorate').val()) {
-        $('#customer_governorate').trigger('change');
-    }
-
-    // =========================
-    // GESTION DES MODALES
-    // =========================
-
-    // Modal Historique
-    $('#historyModal').on('show.bs.modal', function() {
-        loadOrderHistory();
-    });
-
-    function loadOrderHistory() {
-        const timeline = $('#history-timeline');
-
-        $.get('{{ route('admin.orders.history-modal', $order) }}')
+        $.get('/admin/orders/{{ $order->id }}/history-modal')
             .done(function(response) {
-                timeline.html(response);
+                $('#history-timeline').html(response);
             })
             .fail(function() {
-                timeline.html(`
+                $('#history-timeline').html(`
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-triangle"></i>
                         Erreur lors du chargement de l'historique
@@ -1750,74 +1468,506 @@ $(document).ready(function() {
             });
     }
 
-    // Modal Tentative d'Appel
-    $('#callAttemptForm').on('submit', function(e) {
-        e.preventDefault();
+    function loadDuplicates() {
+        $('#duplicates-list').html(`
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-3 text-muted">Chargement des doublons...</p>
+            </div>
+        `);
 
-        const form = $(this);
-        const notes = $('#attempt_notes').val().trim();
+        $.get('/admin/orders/client-history', { phone: '{{ $order->customer_phone }}' })
+            .done(function(response) {
+                let content = '';
+                
+                if (response.orders && response.orders.length > 0) {
+                    response.orders.forEach(function(order) {
+                        const statusClass = 'status-' + order.status.replace('ée', 'e').replace('ée', 'e') + '-mini';
+                        const isCurrent = order.id == {{ $order->id }};
+                        
+                        content += `
+                            <div class="duplicate-item ${isCurrent ? 'border-primary' : ''}">
+                                <div class="duplicate-header">
+                                    <div class="duplicate-id">
+                                        Commande #${order.id} ${isCurrent ? '(Actuelle)' : ''}
+                                    </div>
+                                    <span class="status-badge-mini ${statusClass}">${order.status}</span>
+                                </div>
+                                <div class="small text-muted">
+                                    <strong>Date :</strong> ${new Date(order.created_at).toLocaleDateString('fr-FR')} |
+                                    <strong>Montant :</strong> ${parseFloat(order.total_price).toFixed(3)} TND |
+                                    <strong>Produits :</strong> ${order.items ? order.items.length : 0}
+                                    ${order.customer_name ? '<br><strong>Client :</strong> ' + order.customer_name : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    content = `
+                        <div class="text-center py-4">
+                            <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                            <h6>Aucun doublon trouvé</h6>
+                            <p class="text-muted">Cette commande n'a pas de doublons détectés.</p>
+                        </div>
+                    `;
+                }
+                
+                $('#duplicates-list').html(content);
+            })
+            .fail(function() {
+                $('#duplicates-list').html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Erreur lors du chargement des doublons
+                    </div>
+                `);
+            });
+    }
 
-        if (!notes) {
-            alert('Veuillez saisir des notes sur la tentative d\'appel.');
+    function showNotification(type, message) {
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+        
+        const notification = $(`
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
+                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                <i class="fas ${icon} me-2"></i>
+                <strong>${message}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+
+        $('body').append(notification);
+        
+        setTimeout(() => {
+            notification.alert('close');
+        }, 5000);
+    }
+
+    // =========================
+    // VÉRIFICATION DES DOUBLONS EN TEMPS RÉEL
+    // =========================
+    $('#customer_phone').on('input', function() {
+        const phone = $(this).val().trim();
+        clearTimeout(phoneCheckTimeout);
+        
+        if (phone.length >= 8) {
+            phoneCheckTimeout = setTimeout(() => {
+                checkPhoneForDuplicates(phone);
+            }, 500);
+        } else {
+            resetPhoneValidation();
+        }
+    });
+
+    function checkPhoneForDuplicates(phone) {
+        $('#phone-indicator').removeClass('has-duplicates clean').addClass('checking').show();
+        
+        $.get('/admin/orders/check-phone-duplicates', { phone: phone })
+            .done(function(response) {
+                $('#phone-indicator').removeClass('checking');
+                
+                if (response.has_duplicates && response.total_orders > 1) {
+                    $('#phone-indicator').addClass('has-duplicates').html('<i class="fas fa-exclamation-triangle"></i>');
+                    $('#customer_phone').addClass('has-duplicates');
+                    showDuplicateAlert(response);
+                } else {
+                    $('#phone-indicator').addClass('clean').html('<i class="fas fa-check"></i>');
+                    $('#customer_phone').removeClass('has-duplicates');
+                    hideDuplicateAlert();
+                }
+            })
+            .fail(function() {
+                resetPhoneValidation();
+            });
+    }
+
+    function resetPhoneValidation() {
+        $('#phone-indicator').removeClass('checking has-duplicates clean').hide();
+        $('#customer_phone').removeClass('has-duplicates');
+        hideDuplicateAlert();
+    }
+
+    function showDuplicateAlert(response) {
+        $('#duplicate-message').text(`Ce numéro possède ${response.total_orders} commande(s). Vérifiez les doublons.`);
+        $('#duplicate-alert').addClass('show');
+    }
+
+    function hideDuplicateAlert() {
+        $('#duplicate-alert').removeClass('show');
+    }
+
+    window.dismissDuplicateAlert = function() {
+        hideDuplicateAlert();
+    };
+
+    // Bouton voir historique client
+    $('#view-history-btn').on('click', function() {
+        const phone = $('#customer_phone').val().trim();
+        if (phone) {
+            loadClientHistory(phone);
+            $('#clientHistoryModal').modal('show');
+        }
+    });
+
+    // Bouton pré-remplir données
+    $('#fill-data-btn').on('click', function() {
+        if (latestClientData) {
+            fillClientData(latestClientData);
+        }
+    });
+
+    function loadClientHistory(phone) {
+        $('#client-history-content').html(`
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-3 text-muted">Chargement de l'historique...</p>
+            </div>
+        `);
+
+        $.get('/admin/orders/client-history', { phone: phone })
+            .done(function(response) {
+                latestClientData = response.latest_order;
+                
+                let content = '';
+                if (response.orders && response.orders.length > 0) {
+                    content = `<div class="mb-3"><strong>Nombre total de commandes :</strong> ${response.orders.length}</div>`;
+                    
+                    response.orders.forEach(function(order) {
+                        const statusClass = 'status-' + order.status.replace('ée', 'e') + '-mini';
+                        
+                        content += `
+                            <div class="duplicate-item">
+                                <div class="duplicate-header">
+                                    <div class="duplicate-id">Commande #${order.id}</div>
+                                    <span class="status-badge-mini ${statusClass}">${order.status}</span>
+                                </div>
+                                <div class="small text-muted">
+                                    <strong>Date :</strong> ${new Date(order.created_at).toLocaleDateString('fr-FR')} |
+                                    <strong>Montant :</strong> ${parseFloat(order.total_price).toFixed(3)} TND |
+                                    <strong>Produits :</strong> ${order.items ? order.items.length : 0}
+                                    ${order.customer_name ? '<br><strong>Client :</strong> ' + order.customer_name : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    content = `
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-2x text-muted mb-3"></i>
+                            <h6>Aucun historique trouvé</h6>
+                            <p class="text-muted">Ce numéro n'a pas d'historique de commandes.</p>
+                        </div>
+                    `;
+                }
+                
+                $('#client-history-content').html(content);
+            })
+            .fail(function() {
+                $('#client-history-content').html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur lors du chargement de l'historique
+                    </div>
+                `);
+            });
+    }
+
+    function fillClientData(orderData) {
+        if (!orderData) return;
+        
+        $('#customer_name').val(orderData.customer_name || '');
+        $('#customer_phone_2').val(orderData.customer_phone_2 || '');
+        $('#customer_address').val(orderData.customer_address || '');
+        
+        if (orderData.customer_governorate) {
+            $('#customer_governorate').val(orderData.customer_governorate);
+        }
+        
+        showNotification('success', 'Données pré-remplies avec succès !');
+    }
+
+    // =========================
+    // GESTION DES PRODUITS
+    // =========================
+    $('#product-search').on('input', function() {
+        const query = $(this).val().trim();
+        if (query.length >= 2) {
+            searchProducts(query);
+        } else {
+            $('#product-suggestions').hide();
+        }
+    });
+
+    function searchProducts(query) {
+        $.get('/admin/orders/search-products', { search: query })
+            .done(function(data) {
+                showProductSuggestions(data);
+            });
+    }
+
+    function showProductSuggestions(productList) {
+        const suggestions = $('#product-suggestions').empty();
+        
+        if (productList.length === 0) {
+            suggestions.html('<div class="suggestion-item">Aucun produit trouvé</div>');
+        } else {
+            productList.forEach(product => {
+                const item = $(`
+                    <div class="suggestion-item" data-product-id="${product.id}">
+                        <div>
+                            <strong>${product.name}</strong>
+                            <span class="product-ref">Réf: ${product.reference || 'N/A'}</span>
+                            <br><small>Stock: ${product.stock}</small>
+                        </div>
+                        <div class="text-success">${parseFloat(product.price).toFixed(3)} TND</div>
+                    </div>
+                `);
+                
+                item.on('click', function() {
+                    addProduct(product);
+                    $('#product-search').val('');
+                    suggestions.hide();
+                });
+                
+                suggestions.append(item);
+            });
+        }
+        
+        suggestions.show();
+    }
+
+    function addProduct(product) {
+        const existingProduct = products.find(p => p.id === product.id);
+        
+        if (existingProduct) {
+            existingProduct.quantity += 1;
+        } else {
+            products.push({
+                id: product.id,
+                name: product.name,
+                reference: product.reference,
+                price: parseFloat(product.price),
+                quantity: 1,
+                stock: product.stock
+            });
+        }
+        
+        updateProductList();
+        updateSummary();
+        checkStock();
+    }
+
+    function removeProduct(productId) {
+        products = products.filter(p => p.id !== productId);
+        updateProductList();
+        updateSummary();
+        checkStock();
+    }
+
+    function updateQuantity(productId, newQuantity) {
+        const product = products.find(p => p.id === productId);
+        if (product) {
+            product.quantity = Math.max(1, Math.min(newQuantity, product.stock));
+            updateProductList();
+            updateSummary();
+            checkStock();
+        }
+    }
+
+    function updateProductList() {
+        const container = $('#product-list');
+        container.empty();
+        
+        if (products.length === 0) {
+            container.html('<div class="text-center text-muted py-3">Aucun produit ajouté</div>');
             return;
         }
 
-        const submitBtn = form.find('button[type="submit"]');
-        const originalText = submitBtn.html();
-        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Enregistrement...');
-
-        $.post(form.attr('action'), form.serialize())
-            .done(function(response) {
-                $('#callAttemptModal').modal('hide');
-                form[0].reset();
-
-                // Afficher un message de succès
-                const alert = $(`
-                    <div class="alert alert-success alert-dismissible fade show">
-                        <i class="fas fa-check-circle"></i>
-                        Tentative d'appel enregistrée avec succès
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        products.forEach(product => {
+            const item = $(`
+                <div class="product-item">
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-price">Réf: ${product.reference} • ${product.price.toFixed(3)} TND</div>
                     </div>
-                `);
-                $('.main-content').before(alert);
+                    <div class="quantity-control">
+                        <button type="button" class="quantity-btn minus" data-product-id="${product.id}">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" class="quantity-input" value="${product.quantity}" 
+                               min="1" max="${product.stock}" data-product-id="${product.id}">
+                        <button type="button" class="quantity-btn plus" data-product-id="${product.id}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="remove-btn" data-product-id="${product.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `);
+            
+            container.append(item);
+        });
 
-                // Masquer automatiquement après 5 secondes
-                setTimeout(() => alert.fadeOut(), 5000);
+        $('#product-count').text(products.length);
+        updateFormData();
+    }
 
-                // Recharger la page pour mettre à jour les compteurs
-                setTimeout(() => location.reload(), 2000);
-            })
-            .fail(function(xhr) {
-                let errorMessage = 'Erreur lors de l\'enregistrement';
-                
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                } else if (xhr.responseJSON && xhr.responseJSON.errors) {
-                    errorMessage = Object.values(xhr.responseJSON.errors).flat().join(', ');
+    function updateSummary() {
+        const subtotal = products.reduce((sum, product) => sum + (product.price * product.quantity), 0);
+        $('#subtotal').text(subtotal.toFixed(3) + ' TND');
+        $('#total').text(subtotal.toFixed(3) + ' TND');
+    }
+
+    function updateFormData() {
+        const container = $('#product-data');
+        container.empty();
+        
+        products.forEach((product, index) => {
+            container.append(`
+                <input type="hidden" name="products[${index}][id]" value="${product.id}">
+                <input type="hidden" name="products[${index}][quantity]" value="${product.quantity}">
+            `);
+        });
+    }
+
+    function checkStock() {
+        const currentStatus = $('#status').val();
+        let hasStockIssues = false;
+
+        if (currentStatus === 'confirmée') {
+            products.forEach(product => {
+                if (product.stock < product.quantity) {
+                    hasStockIssues = true;
                 }
-                
-                alert('Erreur: ' + errorMessage);
-            })
-            .always(function() {
-                submitBtn.prop('disabled', false).html(originalText);
             });
-    });
-
-    // =========================
-    // VALIDATION DU FORMULAIRE
-    // =========================
-    $('#orderForm').on('submit', function(e) {
-        const errors = [];
-
-        // Vérifier le téléphone
-        const phone = $('#customer_phone').val().trim();
-        if (!phone) {
-            errors.push('Le numéro de téléphone principal est obligatoire');
         }
 
-        // Vérifier le panier
-        if (cart.length === 0) {
-            errors.push('Veuillez ajouter au moins un produit à la commande');
+        if (hasStockIssues) {
+            $('#stock-warning').addClass('show');
+        } else {
+            $('#stock-warning').removeClass('show');
+        }
+    }
+
+    // =========================
+    // GESTION DES CHAMPS CONDITIONNELS
+    // =========================
+    function handleConditionalFields(status) {
+        // Gestion du champ date programmée
+        if (status === 'datée') {
+            $('#scheduled-date-field').addClass('show');
+            $('#scheduled_date').prop('required', true);
+        } else {
+            $('#scheduled-date-field').removeClass('show');
+            $('#scheduled_date').prop('required', false);
+        }
+
+        // Gestion du champ prix total
+        if (status === 'confirmée') {
+            $('#total-price-field').addClass('show');
+        } else {
+            $('#total-price-field').removeClass('show');
+        }
+    }
+
+    // =========================
+    // EVENT HANDLERS
+    // =========================
+    $(document).on('click', '.quantity-btn.minus', function() {
+        const productId = parseInt($(this).data('product-id'));
+        const product = products.find(p => p.id === productId);
+        if (product && product.quantity > 1) {
+            updateQuantity(productId, product.quantity - 1);
+        }
+    });
+
+    $(document).on('click', '.quantity-btn.plus', function() {
+        const productId = parseInt($(this).data('product-id'));
+        const product = products.find(p => p.id === productId);
+        if (product) {
+            updateQuantity(productId, product.quantity + 1);
+        }
+    });
+
+    $(document).on('change', '.quantity-input', function() {
+        const productId = parseInt($(this).data('product-id'));
+        const newQuantity = parseInt($(this).val()) || 1;
+        updateQuantity(productId, newQuantity);
+    });
+
+    $(document).on('click', '.remove-btn', function() {
+        const productId = parseInt($(this).data('product-id'));
+        removeProduct(productId);
+    });
+
+    // Gestion des statuts
+    $('.status-badge').on('click', function() {
+        $('.status-badge').removeClass('active');
+        $(this).addClass('active');
+        const newStatus = $(this).data('status');
+        $('#status').val(newStatus);
+        
+        // Gérer les champs conditionnels
+        handleConditionalFields(newStatus);
+        
+        if (newStatus === 'confirmée' && originalStatus !== 'confirmée') {
+            checkStock();
+        } else if (newStatus !== 'confirmée') {
+            $('#stock-warning').removeClass('show');
+        }
+    });
+
+    // Gestion des priorités
+    $('.priority-badge').on('click', function() {
+        $('.priority-badge').removeClass('active');
+        $(this).addClass('active');
+        $('#priority').val($(this).data('priority'));
+    });
+
+    // Masquer suggestions en cliquant ailleurs
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.product-search').length) {
+            $('#product-suggestions').hide();
+        }
+    });
+
+    // Validation du formulaire
+    $('#orderForm').on('submit', function(e) {
+        const errors = [];
+        
+        if (!$('#customer_phone').val().trim()) {
+            errors.push('Le numéro de téléphone principal est obligatoire');
+        }
+        
+        if (products.length === 0) {
+            errors.push('Veuillez ajouter au moins un produit');
+        }
+        
+        const newStatus = $('#status').val();
+        
+        // Validation du champ date si statut datée
+        if (newStatus === 'datée' && !$('#scheduled_date').val()) {
+            errors.push('La date de livraison est obligatoire pour une commande datée');
+        }
+        
+        // Validation du stock pour confirmation
+        if (newStatus === 'confirmée') {
+            let stockError = false;
+            products.forEach(product => {
+                if (product.stock < product.quantity) {
+                    stockError = true;
+                }
+            });
+            
+            if (stockError) {
+                errors.push('Impossible de confirmer : stock insuffisant pour certains produits');
+            }
         }
 
         if (errors.length > 0) {
@@ -1826,18 +1976,26 @@ $(document).ready(function() {
             return false;
         }
 
-        // Désactiver le bouton pour éviter les double soumissions
-        const submitBtn = $('#save-btn');
-        const originalText = submitBtn.html();
-        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Enregistrement...');
+        if (newStatus === 'confirmée' && originalStatus !== 'confirmée') {
+            if (!confirm('Confirmer cette commande ?\n\nLe stock sera automatiquement déduit.')) {
+                e.preventDefault();
+                return false;
+            }
+        }
         
-        // Réactiver après 10 secondes en cas de problème
-        setTimeout(() => {
-            submitBtn.prop('disabled', false).html(originalText);
-        }, 10000);
+        // Désactiver le bouton pour éviter double soumission
+        $('#save-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Enregistrement...');
     });
 
-    $('#customer_phone').focus();
+    // Vérifier le téléphone au chargement
+    const currentPhone = $('#customer_phone').val();
+    if (currentPhone && currentPhone.length >= 8) {
+        checkPhoneForDuplicates(currentPhone);
+    }
+
+    // Initialiser les champs conditionnels
+    handleConditionalFields('{{ $order->status }}');
+    checkStock();
 });
 </script>
 @endsection

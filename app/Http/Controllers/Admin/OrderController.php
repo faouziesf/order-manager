@@ -516,7 +516,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Rechercher des produits pour l'interface de traitement - CORRIGÉE
+     * Rechercher des produits pour l'interface de traitement - AMÉLIORÉE AVEC RÉFÉRENCE
      */
     public function searchProducts(Request $request)
     {
@@ -530,10 +530,14 @@ class OrderController extends Controller
 
             $products = $admin->products()
                 ->where('is_active', true)
-                ->where('name', 'like', "%{$search}%")
+                ->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('reference', 'like', "%{$search}%");
+                })
                 ->where('stock', '>', 0)
+                ->orderBy('reference')
                 ->limit(10)
-                ->get(['id', 'name', 'price', 'stock']);
+                ->get(['id', 'name', 'reference', 'price', 'stock']);
 
             return response()->json($products);
 
@@ -582,7 +586,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Vérifier les doublons pour un numéro de téléphone
+     * Vérifier les doublons avec algorithme 8 chiffres consécutifs - NOUVELLE MÉTHODE AMÉLIORÉE
      */
     public function checkPhoneForDuplicates(Request $request)
     {
@@ -594,32 +598,113 @@ class OrderController extends Controller
                 return response()->json(['has_duplicates' => false]);
             }
 
-            $existingOrders = $admin->orders()
-                ->where(function($q) use ($phone) {
-                    $q->where('customer_phone', $phone)
-                      ->orWhere('customer_phone_2', $phone);
-                })
-                ->count();
+            // Extraire tous les chiffres du numéro entré
+            $inputDigits = preg_replace('/\D/', '', $phone);
+            if (strlen($inputDigits) < 8) {
+                return response()->json(['has_duplicates' => false]);
+            }
 
-            $markedDuplicates = $admin->orders()
-                ->where(function($q) use ($phone) {
-                    $q->where('customer_phone', $phone)
-                      ->orWhere('customer_phone_2', $phone);
-                })
-                ->where('is_duplicate', true)
-                ->where('reviewed_for_duplicates', false)
-                ->count();
+            // Récupérer toutes les commandes de l'admin
+            $allOrders = $admin->orders()->get(['id', 'customer_phone', 'customer_phone_2', 'status', 'created_at', 'total_price', 'customer_name']);
+
+            // Filtrer les commandes qui partagent 8 chiffres consécutifs
+            $duplicates = [];
+            foreach ($allOrders as $order) {
+                $phone1Digits = preg_replace('/\D/', '', $order->customer_phone ?? '');
+                $phone2Digits = preg_replace('/\D/', '', $order->customer_phone_2 ?? '');
+                
+                if ($this->hasEightConsecutiveDigits($inputDigits, $phone1Digits) || 
+                    ($phone2Digits && $this->hasEightConsecutiveDigits($inputDigits, $phone2Digits))) {
+                    $duplicates[] = [
+                        'id' => $order->id,
+                        'status' => $order->status,
+                        'created_at' => $order->created_at->format('d/m/Y'),
+                        'total_price' => $order->total_price,
+                        'customer_name' => $order->customer_name,
+                        'customer_phone' => $order->customer_phone
+                    ];
+                }
+            }
 
             return response()->json([
-                'has_duplicates' => $existingOrders > 0,
-                'total_orders' => $existingOrders,
-                'marked_duplicates' => $markedDuplicates
+                'has_duplicates' => count($duplicates) > 0,
+                'total_orders' => count($duplicates),
+                'orders' => $duplicates,
+                'marked_duplicates' => 0 // Pour compatibilité avec l'ancien système
             ]);
 
         } catch (\Exception $e) {
             Log::error('Erreur dans checkPhoneForDuplicates: ' . $e->getMessage());
             return response()->json(['has_duplicates' => false], 500);
         }
+    }
+
+    /**
+     * Récupérer l'historique complet d'un client - NOUVELLE MÉTHODE
+     */
+    public function getClientHistory(Request $request)
+    {
+        try {
+            $phone = $request->get('phone');
+            $admin = Auth::guard('admin')->user();
+            
+            if (!$phone) {
+                return response()->json(['orders' => [], 'latest_order' => null]);
+            }
+
+            // Extraire tous les chiffres du numéro entré
+            $inputDigits = preg_replace('/\D/', '', $phone);
+            if (strlen($inputDigits) < 8) {
+                return response()->json(['orders' => [], 'latest_order' => null]);
+            }
+
+            // Récupérer toutes les commandes de l'admin avec leurs items
+            $allOrders = $admin->orders()
+                ->with(['items.product'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            // Filtrer les commandes qui partagent 8 chiffres consécutifs
+            $validOrders = [];
+            foreach ($allOrders as $order) {
+                $phone1Digits = preg_replace('/\D/', '', $order->customer_phone ?? '');
+                $phone2Digits = preg_replace('/\D/', '', $order->customer_phone_2 ?? '');
+                
+                if ($this->hasEightConsecutiveDigits($inputDigits, $phone1Digits) || 
+                    ($phone2Digits && $this->hasEightConsecutiveDigits($inputDigits, $phone2Digits))) {
+                    $validOrders[] = $order;
+                }
+            }
+
+            return response()->json([
+                'orders' => $validOrders,
+                'latest_order' => !empty($validOrders) ? $validOrders[0] : null
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur dans getClientHistory: ' . $e->getMessage());
+            return response()->json(['orders' => [], 'latest_order' => null], 500);
+        }
+    }
+
+    /**
+     * Vérifier si deux numéros partagent 8 chiffres consécutifs - MÉTHODE UTILITAIRE
+     */
+    private function hasEightConsecutiveDigits($digits1, $digits2)
+    {
+        if (strlen($digits1) < 8 || strlen($digits2) < 8) {
+            return false;
+        }
+        
+        // Vérifier toutes les séquences possibles de 8 chiffres dans digits1
+        for ($i = 0; $i <= strlen($digits1) - 8; $i++) {
+            $sequence = substr($digits1, $i, 8);
+            if (strpos($digits2, $sequence) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**

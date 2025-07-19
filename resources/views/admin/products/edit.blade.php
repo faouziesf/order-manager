@@ -721,9 +721,9 @@ $(document).ready(function() {
             return;
         }
         
-        // Vérification de la taille (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('L\'image ne doit pas dépasser 5MB.');
+        // Vérification de la taille (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('L\'image ne doit pas dépasser 10MB.');
             return;
         }
         

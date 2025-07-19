@@ -98,6 +98,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('orders/{order}/record-attempt', [OrderController::class, 'recordAttempt'])
             ->name('orders.recordAttempt');
 
+        // Nouvelles routes pour les améliorations
+        Route::get('orders/check-phone-duplicates', [OrderController::class, 'checkPhoneForDuplicates'])
+            ->name('orders.checkPhoneForDuplicates');
+        Route::get('orders/client-history', [OrderController::class, 'getClientHistory'])
+            ->name('orders.clientHistory');
+
+        // Dans la section des commandes, ajoutez ces routes AVANT la ligne Route::resource('orders', OrderController::class);
+        Route::get('orders/check-phone-duplicates', [OrderController::class, 'checkPhoneForDuplicates'])
+            ->name('orders.check-phone-duplicates');
+        Route::get('orders/client-history', [OrderController::class, 'getClientHistory'])
+            ->name('orders.client-history');
+
         // Routes pour l'interface de traitement - CORRIGÉES
         Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
             ->name('orders.getRegions');

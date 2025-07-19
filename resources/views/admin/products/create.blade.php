@@ -480,7 +480,7 @@
                             <div class="image-upload-area" id="imageUpload">
                                 <i class="fas fa-cloud-upload-alt"></i>
                                 <div class="upload-text">Cliquez ou glissez votre image ici</div>
-                                <div class="upload-hint">JPG, PNG, GIF (max. 5MB)</div>
+                                <div class="upload-hint">JPG, PNG, GIF, WEBP, BMP (max. 10MB)</div>
                             </div>
                             
                             <input type="file" 
@@ -592,9 +592,9 @@ $(document).ready(function() {
             return;
         }
         
-        // Vérification de la taille (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('L\'image ne doit pas dépasser 5MB.');
+        // Vérification de la taille (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('L\'image ne doit pas dépasser 10MB.');
             return;
         }
         
