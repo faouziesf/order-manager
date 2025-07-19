@@ -4,43 +4,42 @@
 
 @section('css')
 <style>
-    /* Variables CSS pour la cohérence */
     :root {
-        --primary-color: #4f46e5;
-        --success-color: #10b981;
-        --warning-color: #f59e0b;
-        --danger-color: #ef4444;
+        --royal-blue: #1e40af;
+        --royal-blue-dark: #1e3a8a;
+        --royal-blue-light: #3b82f6;
+        --royal-blue-lighter: #dbeafe;
+        --royal-blue-bg: #eff6ff;
+        --success: #059669;
+        --warning: #d97706;
+        --danger: #dc2626;
         --gray-50: #f9fafb;
         --gray-100: #f3f4f6;
         --gray-200: #e5e7eb;
         --gray-500: #6b7280;
         --gray-700: #374151;
         --gray-900: #111827;
-        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-        --radius: 0.5rem;
     }
 
     body {
-        background-color: var(--gray-50);
+        background: var(--gray-50);
     }
 
-    /* Header moderne */
+    /* Header */
     .review-header {
         background: white;
-        border-radius: var(--radius);
+        border-radius: 12px;
         padding: 2rem;
         margin-bottom: 2rem;
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--gray-200);
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
+        border: 1px solid var(--royal-blue-lighter);
         text-align: center;
     }
 
     .review-title {
+        color: var(--royal-blue-dark);
         font-size: 1.75rem;
         font-weight: 700;
-        color: var(--gray-900);
         margin-bottom: 0.5rem;
     }
 
@@ -49,11 +48,11 @@
         font-size: 1rem;
     }
 
-    /* Alert moderne */
-    .review-alert {
-        background: linear-gradient(45deg, #fef3c7, #fde68a);
-        border: 1px solid #f59e0b;
-        border-radius: var(--radius);
+    /* Alert d'information */
+    .info-alert {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px solid var(--warning);
+        border-radius: 12px;
         padding: 1rem 1.5rem;
         margin-bottom: 2rem;
         display: flex;
@@ -61,84 +60,109 @@
         gap: 0.75rem;
     }
 
-    .review-alert i {
-        color: #d97706;
+    .info-alert i {
+        color: var(--warning);
         font-size: 1.25rem;
     }
 
     /* Actions globales */
     .global-actions {
         background: white;
-        border-radius: var(--radius);
+        border-radius: 12px;
         padding: 1.5rem;
         margin-bottom: 2rem;
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--gray-200);
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
+        border: 1px solid var(--royal-blue-lighter);
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, var(--success) 0%, #047857 100%);
+        border: none;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        font-size: 0.875rem;
+    }
+
+    .btn-success:hover {
+        background: linear-gradient(135deg, #047857 0%, var(--success) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(5, 150, 105, 0.3);
+        color: white;
     }
 
     /* Cards des produits */
-    .product-review-card {
+    .product-card {
         background: white;
-        border-radius: var(--radius);
-        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        border: 1px solid var(--royal-blue-lighter);
         margin-bottom: 1.5rem;
         overflow: hidden;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.05);
     }
 
-    .product-review-card:hover {
-        box-shadow: var(--shadow-md);
-        transform: translateY(-1px);
+    .product-card:hover {
+        box-shadow: 0 8px 25px rgba(30, 64, 175, 0.15);
+        transform: translateY(-2px);
     }
 
     .product-card-header {
-        background: var(--gray-50);
+        background: linear-gradient(135deg, var(--royal-blue-bg) 0%, var(--gray-50) 100%);
         padding: 1rem 1.5rem;
-        border-bottom: 1px solid var(--gray-200);
+        border-bottom: 1px solid var(--royal-blue-lighter);
         display: flex;
         justify-content: between;
         align-items: center;
     }
 
     .product-status-badge {
-        background: linear-gradient(45deg, var(--warning-color), #f59e0b);
+        background: linear-gradient(135deg, var(--warning) 0%, #ea580c 100%);
         color: white;
         padding: 0.375rem 0.75rem;
-        border-radius: 9999px;
+        border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
     }
 
     .product-date {
         color: var(--gray-500);
         font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
     }
 
     .product-card-body {
         padding: 1.5rem;
     }
 
-    .product-info-grid {
+    .product-info {
         display: grid;
         grid-template-columns: auto 1fr auto;
-        gap: 1rem;
-        align-items: center;
+        gap: 1.5rem;
+        align-items: start;
     }
 
     .product-image {
         width: 80px;
         height: 80px;
-        border-radius: var(--radius);
+        border-radius: 8px;
         object-fit: cover;
-        border: 1px solid var(--gray-200);
+        border: 2px solid var(--royal-blue-lighter);
     }
 
     .product-placeholder {
         width: 80px;
         height: 80px;
         background: var(--gray-100);
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius);
+        border: 2px solid var(--gray-200);
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -149,20 +173,35 @@
         margin-bottom: 0.5rem;
         font-weight: 600;
         color: var(--gray-900);
+        font-size: 1.125rem;
+    }
+
+    .product-reference {
+        font-size: 0.75rem;
+        color: var(--royal-blue);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
     }
 
     .product-price {
         font-size: 1.125rem;
         font-weight: 700;
-        color: var(--primary-color);
+        color: var(--royal-blue-dark);
         margin-bottom: 0.5rem;
+    }
+
+    .product-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
     }
 
     .product-stock {
         display: inline-flex;
         align-items: center;
-        padding: 0.375rem 0.75rem;
-        border-radius: 9999px;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 600;
         gap: 0.25rem;
@@ -183,10 +222,27 @@
         color: #991b1b;
     }
 
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-secondary {
+        background: var(--gray-200);
+        color: var(--gray-700);
+    }
+
     .product-description {
         color: var(--gray-600);
         font-size: 0.875rem;
-        margin-top: 0.5rem;
+        margin-top: 0.75rem;
         line-height: 1.5;
     }
 
@@ -199,54 +255,66 @@
     }
 
     .btn-approve {
-        background: var(--success-color);
+        background: var(--success);
         color: white;
         border: none;
         padding: 0.5rem 1rem;
-        border-radius: var(--radius);
+        border-radius: 6px;
         font-size: 0.875rem;
         font-weight: 500;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
     }
 
     .btn-approve:hover {
-        background: #059669;
+        background: #047857;
         color: white;
         transform: translateY(-1px);
     }
 
     .btn-edit {
-        background: var(--warning-color);
+        background: var(--warning);
         color: white;
         border: none;
         padding: 0.5rem 1rem;
-        border-radius: var(--radius);
+        border-radius: 6px;
         font-size: 0.875rem;
         font-weight: 500;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
         text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
     }
 
     .btn-edit:hover {
-        background: #d97706;
+        background: #ea580c;
         color: white;
         transform: translateY(-1px);
         text-decoration: none;
     }
 
     .btn-delete {
-        background: var(--danger-color);
+        background: var(--danger);
         color: white;
         border: none;
         padding: 0.5rem 1rem;
-        border-radius: var(--radius);
+        border-radius: 6px;
         font-size: 0.875rem;
         font-weight: 500;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
     }
 
     .btn-delete:hover {
-        background: #dc2626;
+        background: #b91c1c;
         color: white;
         transform: translateY(-1px);
     }
@@ -256,10 +324,15 @@
         color: var(--gray-700);
         border: 1px solid var(--gray-200);
         padding: 0.375rem 0.75rem;
-        border-radius: var(--radius);
+        border-radius: 6px;
         font-size: 0.75rem;
         text-decoration: none;
         text-align: center;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
     }
 
     .btn-details:hover {
@@ -271,21 +344,24 @@
     /* État vide */
     .empty-state {
         background: white;
-        border-radius: var(--radius);
+        border-radius: 12px;
         padding: 4rem 2rem;
         text-align: center;
-        border: 1px solid var(--gray-200);
+        border: 1px solid var(--royal-blue-lighter);
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
     }
 
     .empty-state i {
         font-size: 4rem;
-        color: var(--success-color);
+        color: var(--success);
         margin-bottom: 1rem;
     }
 
     .empty-state h3 {
         color: var(--gray-900);
         margin-bottom: 0.5rem;
+        font-size: 1.5rem;
+        font-weight: 600;
     }
 
     .empty-state p {
@@ -293,21 +369,34 @@
         margin-bottom: 2rem;
     }
 
+    .btn-primary {
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
+        border: none;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        font-size: 0.875rem;
+        text-decoration: none;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, var(--royal-blue-dark) 0%, var(--royal-blue) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(30, 64, 175, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+
     /* Pagination */
     .pagination-wrapper {
         background: white;
-        padding: 1rem 1.5rem;
-        border-radius: var(--radius);
+        padding: 1.5rem;
+        border-radius: 12px;
         margin-top: 2rem;
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--gray-200);
-    }
-
-    .pagination-controls {
-        display: flex;
-        justify-content: between;
-        align-items: center;
-        gap: 1rem;
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
+        border: 1px solid var(--royal-blue-lighter);
     }
 
     .pagination-info {
@@ -315,11 +404,41 @@
         font-size: 0.875rem;
     }
 
-    .per-page-selector select {
+    .form-select-sm {
         padding: 0.5rem;
         border: 1px solid var(--gray-200);
-        border-radius: var(--radius);
+        border-radius: 6px;
         font-size: 0.875rem;
+        background: white;
+    }
+
+    .form-select-sm:focus {
+        border-color: var(--royal-blue);
+        box-shadow: 0 0 0 0.2rem rgba(30, 64, 175, 0.25);
+    }
+
+    /* Breadcrumb */
+    .breadcrumb {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
+        border: 1px solid var(--royal-blue-lighter);
+    }
+
+    .breadcrumb-item a {
+        color: var(--royal-blue);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .breadcrumb-item a:hover {
+        color: var(--royal-blue-dark);
+    }
+
+    .breadcrumb-item.active {
+        color: var(--gray-700);
+        font-weight: 600;
     }
 
     /* Responsive */
@@ -328,7 +447,7 @@
             padding: 1.5rem 1rem;
         }
         
-        .product-info-grid {
+        .product-info {
             grid-template-columns: 1fr;
             gap: 1rem;
             text-align: center;
@@ -338,15 +457,15 @@
             flex-direction: row;
             justify-content: center;
             flex-wrap: wrap;
+            min-width: auto;
         }
         
         .product-card-body {
             padding: 1rem;
         }
         
-        .pagination-controls {
-            flex-direction: column;
-            text-align: center;
+        .global-actions {
+            padding: 1rem;
         }
     }
 
@@ -358,7 +477,6 @@
         }
         
         .product-actions {
-            min-width: auto;
             width: 100%;
         }
         
@@ -375,23 +493,23 @@
     <div class="review-header">
         <div class="review-title">
             <i class="fas fa-eye text-primary me-2"></i>
-            Examiner les nouveaux produits
+            Examiner les Nouveaux Produits
         </div>
         <div class="review-subtitle">
-            {{ $products->total() }} produit(s) nécessite(nt) votre attention
+            {{ $products->total() }} produit(s) nécessite(nt) votre validation
         </div>
     </div>
 
     <!-- Navigation -->
     <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb bg-white rounded px-3 py-2 border">
+        <ol class="breadcrumb">
             <li class="breadcrumb-item">
-                <a href="{{ route('admin.dashboard') }}" class="text-decoration-none">
+                <a href="{{ route('admin.dashboard') }}">
                     <i class="fas fa-home me-1"></i>Accueil
                 </a>
             </li>
             <li class="breadcrumb-item">
-                <a href="{{ route('admin.products.index') }}" class="text-decoration-none">Produits</a>
+                <a href="{{ route('admin.products.index') }}">Produits</a>
             </li>
             <li class="breadcrumb-item active">Examiner</li>
         </ol>
@@ -399,39 +517,39 @@
 
     @if($products->count() > 0)
         <!-- Alerte d'information -->
-        <div class="review-alert">
+        <div class="info-alert">
             <i class="fas fa-info-circle"></i>
             <div>
-                <strong>Ces produits ont été créés automatiquement</strong> lors d'importations et nécessitent votre validation avant d'être mis en ligne.
+                <strong>Attention :</strong> Ces produits ont été créés automatiquement et nécessitent votre validation avant d'être mis en ligne.
             </div>
         </div>
 
         <!-- Actions globales -->
         <div class="global-actions">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
                 <div>
-                    <h5 class="mb-1">Actions groupées</h5>
-                    <p class="text-muted mb-0 small">Gérez tous les produits en une seule action</p>
+                    <h5 class="mb-1">Actions Groupées</h5>
+                    <p class="text-muted mb-0 small">Approuvez tous les produits en une seule action</p>
                 </div>
                 <form action="{{ route('admin.products.mark-all-reviewed') }}" method="POST" class="d-inline">
                     @csrf
                     <button type="button" class="btn btn-success" onclick="confirmMarkAll()">
-                        <i class="fas fa-check-double me-1"></i>
-                        Tout approuver ({{ $products->total() }})
+                        <i class="fas fa-check-double me-2"></i>
+                        Tout Approuver ({{ $products->total() }})
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- Contrôle de pagination en haut -->
+        <!-- Contrôle de pagination -->
         @if($products->total() > 15)
             <div class="pagination-wrapper">
-                <div class="pagination-controls">
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
                     <div class="pagination-info">
                         Affichage de {{ $products->firstItem() }} à {{ $products->lastItem() }} 
-                        sur {{ $products->total() }} produits à examiner
+                        sur {{ $products->total() }} produits
                     </div>
-                    <div class="per-page-selector">
+                    <div class="d-flex align-items-center">
                         <label class="form-label mb-0 me-2">Afficher :</label>
                         <select id="perPageSelect" class="form-select form-select-sm">
                             <option value="15" {{ $perPage == 15 ? 'selected' : '' }}>15</option>
@@ -443,26 +561,26 @@
             </div>
         @endif
 
-        <!-- Liste des produits -->
+        <!-- Liste des produits à examiner -->
         @foreach($products as $product)
-        <div class="product-review-card">
+        <div class="product-card">
             <!-- Header de la carte -->
             <div class="product-card-header">
                 <div class="d-flex align-items-center gap-2">
                     <span class="product-status-badge">
-                        <i class="fas fa-star me-1"></i>Nouveau
+                        <i class="fas fa-star"></i>Nouveau
                     </span>
                     <span class="fw-medium">{{ $product->name }}</span>
                 </div>
                 <div class="product-date">
-                    <i class="fas fa-clock me-1"></i>
-                    Créé le {{ $product->created_at->format('d/m/Y à H:i') }}
+                    <i class="fas fa-clock"></i>
+                    {{ $product->created_at->format('d/m/Y à H:i') }}
                 </div>
             </div>
 
             <!-- Corps de la carte -->
             <div class="product-card-body">
-                <div class="product-info-grid">
+                <div class="product-info">
                     <!-- Image -->
                     <div>
                         @if($product->image)
@@ -479,16 +597,21 @@
                     <!-- Détails -->
                     <div class="product-details">
                         <h5>{{ $product->name }}</h5>
+                        
+                        @if($product->reference)
+                            <div class="product-reference">REF: {{ $product->reference }}</div>
+                        @endif
+                        
                         <div class="product-price">{{ number_format($product->price, 3) }} DT</div>
                         
-                        <div>
+                        <div class="product-meta">
                             @if($product->stock <= 0)
                                 <span class="product-stock stock-danger">
                                     <i class="fas fa-times"></i>Rupture de stock
                                 </span>
                             @elseif($product->stock <= 10)
                                 <span class="product-stock stock-warning">
-                                    <i class="fas fa-exclamation"></i>{{ $product->stock }} unités
+                                    <i class="fas fa-exclamation-triangle"></i>{{ $product->stock }} unités
                                 </span>
                             @else
                                 <span class="product-stock stock-good">
@@ -497,9 +620,9 @@
                             @endif
                             
                             @if($product->is_active)
-                                <span class="badge bg-success ms-2">Actif</span>
+                                <span class="badge badge-success">Actif</span>
                             @else
-                                <span class="badge bg-secondary ms-2">Inactif</span>
+                                <span class="badge badge-secondary">Inactif</span>
                             @endif
                         </div>
 
@@ -516,26 +639,26 @@
                               method="POST" class="d-inline">
                             @csrf
                             <button type="submit" class="btn btn-approve w-100">
-                                <i class="fas fa-check me-1"></i>Approuver
+                                <i class="fas fa-check"></i>Approuver
                             </button>
                         </form>
 
                         <a href="{{ route('admin.products.edit', $product) }}" 
                            class="btn btn-edit w-100">
-                            <i class="fas fa-edit me-1"></i>Modifier
+                            <i class="fas fa-edit"></i>Modifier
                         </a>
 
                         <button type="button" 
                                 class="btn btn-delete w-100" 
                                 onclick="confirmDelete({{ $product->id }}, '{{ $product->name }}')">
-                            <i class="fas fa-trash me-1"></i>Supprimer
+                            <i class="fas fa-trash"></i>Supprimer
                         </button>
 
                         <button type="button" 
                                 class="btn btn-details" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#productModal{{ $product->id }}">
-                            <i class="fas fa-eye me-1"></i>Détails
+                            <i class="fas fa-eye"></i>Détails
                         </button>
                     </div>
                 </div>
@@ -555,9 +678,9 @@
         <div class="empty-state">
             <i class="fas fa-check-circle"></i>
             <h3>Excellent travail !</h3>
-            <p>Tous vos produits ont été examinés. Il n'y a rien à valider pour le moment.</p>
+            <p>Tous vos produits ont été examinés et approuvés.</p>
             <a href="{{ route('admin.products.index') }}" class="btn btn-primary">
-                <i class="fas fa-arrow-left me-1"></i>Retour à la liste des produits
+                <i class="fas fa-arrow-left me-2"></i>Retour aux Produits
             </a>
         </div>
     @endif
@@ -569,7 +692,12 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">{{ $product->name }}</h5>
+                <h5 class="modal-title">
+                    {{ $product->name }}
+                    @if($product->reference)
+                        <small class="text-muted">(REF: {{ $product->reference }})</small>
+                    @endif
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -600,9 +728,9 @@
                                 <td><strong>Statut :</strong></td>
                                 <td>
                                     @if($product->is_active)
-                                        <span class="badge bg-success">Actif</span>
+                                        <span class="badge badge-success">Actif</span>
                                     @else
-                                        <span class="badge bg-secondary">Inactif</span>
+                                        <span class="badge badge-secondary">Inactif</span>
                                     @endif
                                 </td>
                             </tr>
@@ -646,7 +774,10 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirmer la suppression</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                    Confirmer la suppression
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -658,7 +789,9 @@
                 <form id="deleteForm" method="POST" style="display: inline;">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
                 </form>
             </div>
         </div>
@@ -692,8 +825,8 @@ function confirmMarkAll() {
 }
 
 $(document).ready(function() {
-    // Animation d'entrée progressive pour les cartes
-    $('.product-review-card').each(function(index) {
+    // Animation d'entrée pour les cartes
+    $('.product-card').each(function(index) {
         $(this).css('opacity', '0').delay(index * 100).animate({
             opacity: 1
         }, 300);
@@ -701,7 +834,7 @@ $(document).ready(function() {
     
     // Feedback visuel lors des actions
     $('.btn-approve').on('click', function() {
-        $(this).html('<i class="fas fa-spinner fa-spin me-1"></i>Approbation...');
+        $(this).html('<i class="fas fa-spinner fa-spin"></i> Approbation...');
     });
     
     // Raccourcis clavier

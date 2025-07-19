@@ -24,7 +24,10 @@ class ProductController extends Controller
         
         // Filtres de base
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where(function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('reference', 'like', '%' . $request->search . '%');
+            });
         }
         
         if ($request->filled('status')) {
@@ -75,6 +78,12 @@ class ProductController extends Controller
         switch ($sort) {
             case 'created_at_asc':
                 $query->orderBy('created_at', 'asc');
+                break;
+            case 'reference_asc':
+                $query->orderBy('reference', 'asc');
+                break;
+            case 'reference_desc':
+                $query->orderBy('reference', 'desc');
                 break;
             case 'name_asc':
                 $query->orderBy('name', 'asc');
@@ -216,11 +225,12 @@ class ProductController extends Controller
             $searchTerm = $request->get('q');
             $query->where(function($q) use ($searchTerm) {
                 $q->where('name', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('description', 'like', '%' . $searchTerm . '%');
+                  ->orWhere('description', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('reference', 'like', '%' . $searchTerm . '%');
             });
         }
         
-        $products = $query->limit(10)->get(['id', 'name', 'price', 'stock', 'image', 'is_active']);
+        $products = $query->limit(10)->get(['id', 'name', 'reference', 'price', 'stock', 'image', 'is_active']);
         
         return response()->json($products);
     }
@@ -234,17 +244,35 @@ class ProductController extends Controller
     }
 
     /**
+     * Générer la prochaine référence disponible
+     */
+    private function generateNextReference()
+    {
+        $admin = Auth::guard('admin')->user();
+        $lastProduct = $admin->products()->orderBy('reference', 'desc')->first();
+        
+        if ($lastProduct && $lastProduct->reference) {
+            return $lastProduct->reference + 1;
+        }
+        
+        return 1001; // Commencer à 1001 pour avoir des références à 4 chiffres
+    }
+
+    /**
      * Créer un nouveau produit avec redimensionnement d'image
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'reference' => 'nullable|integer|unique:products,reference,NULL,id,admin_id,' . auth('admin')->id(),
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string|max:2000',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // Augmenté à 5MB car on redimensionne
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ], [
+            'reference.integer' => 'La référence doit être un nombre entier.',
+            'reference.unique' => 'Cette référence existe déjà pour vos produits.',
             'name.required' => 'Le nom du produit est obligatoire.',
             'name.max' => 'Le nom ne peut pas dépasser 255 caractères.',
             'price.required' => 'Le prix est obligatoire.',
@@ -266,6 +294,7 @@ class ProductController extends Controller
             
             $product = new Product();
             $product->admin_id = $admin->id;
+            $product->reference = $validated['reference'] ?? $this->generateNextReference();
             $product->name = $validated['name'];
             $product->price = $validated['price'];
             $product->stock = $validated['stock'];
@@ -284,7 +313,7 @@ class ProductController extends Controller
             DB::commit();
             
             return redirect()->route('admin.products.index')
-                ->with('success', 'Produit "' . $product->name . '" créé avec succès.');
+                ->with('success', 'Produit "' . $product->name . '" (Réf: ' . $product->reference . ') créé avec succès.');
                 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -359,12 +388,15 @@ class ProductController extends Controller
         $this->authorize('update', $product);
         
         $validated = $request->validate([
+            'reference' => 'nullable|integer|unique:products,reference,' . $product->id . ',id,admin_id,' . auth('admin')->id(),
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string|max:2000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ], [
+            'reference.integer' => 'La référence doit être un nombre entier.',
+            'reference.unique' => 'Cette référence existe déjà pour vos produits.',
             'name.required' => 'Le nom du produit est obligatoire.',
             'name.max' => 'Le nom ne peut pas dépasser 255 caractères.',
             'price.required' => 'Le prix est obligatoire.',
@@ -382,6 +414,7 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
             
+            $product->reference = $validated['reference'] ?? $product->reference;
             $product->name = $validated['name'];
             $product->price = $validated['price'];
             $product->stock = $validated['stock'];
@@ -406,7 +439,7 @@ class ProductController extends Controller
             DB::commit();
             
             return redirect()->route('admin.products.index')
-                ->with('success', 'Produit "' . $product->name . '" mis à jour avec succès.');
+                ->with('success', 'Produit "' . $product->name . '" (Réf: ' . $product->reference . ') mis à jour avec succès.');
                 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -419,16 +452,23 @@ class ProductController extends Controller
     }
 
     /**
-     * Supprimer un produit
+     * Supprimer un produit - AVEC PROTECTION
      */
     public function destroy(Product $product)
     {
         $this->authorize('delete', $product);
         
         try {
+            // Vérifier si le produit est utilisé dans des commandes
+            if ($product->isUsedInOrders()) {
+                return redirect()->back()
+                    ->with('error', 'Impossible de supprimer le produit "' . $product->name . '" car il est utilisé dans des commandes existantes.');
+            }
+            
             DB::beginTransaction();
             
             $productName = $product->name;
+            $productRef = $product->reference;
             
             // Supprimer l'image
             if ($product->image && Storage::disk('public')->exists($product->image)) {
@@ -440,7 +480,7 @@ class ProductController extends Controller
             DB::commit();
             
             return redirect()->route('admin.products.index')
-                ->with('success', 'Produit "' . $productName . '" supprimé avec succès.');
+                ->with('success', 'Produit "' . $productName . '" (Réf: ' . $productRef . ') supprimé avec succès.');
                 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -609,7 +649,7 @@ class ProductController extends Controller
     }
 
     /**
-     * Supprimer plusieurs produits (action groupée) - CORRIGÉ
+     * Supprimer plusieurs produits (action groupée) - AVEC PROTECTION RENFORCÉE
      */
     public function bulkDelete(Request $request)
     {
@@ -626,25 +666,69 @@ class ProductController extends Controller
             
             $admin = Auth::guard('admin')->user();
             $deletedCount = 0;
+            $protectedProducts = [];
+            $unauthorizedProducts = [];
             
             DB::beginTransaction();
             
             foreach ($productIds as $productId) {
                 $product = $admin->products()->find($productId);
-                if ($product && Gate::allows('delete', $product)) {
-                    // Supprimer l'image
-                    if ($product->image && Storage::disk('public')->exists($product->image)) {
-                        Storage::disk('public')->delete($product->image);
-                    }
-                    $product->delete();
-                    $deletedCount++;
+                
+                // Vérifier si le produit existe et appartient à l'admin
+                if (!$product) {
+                    continue;
                 }
+                
+                // Vérifier les autorisations
+                if (!Gate::allows('delete', $product)) {
+                    $unauthorizedProducts[] = $product->name . ' (Réf: ' . ($product->reference ?? 'N/A') . ')';
+                    continue;
+                }
+                
+                // Vérifier si le produit est utilisé dans des commandes - PROTECTION PRINCIPALE
+                if ($product->isUsedInOrders()) {
+                    $protectedProducts[] = $product->name . ' (Réf: ' . ($product->reference ?? 'N/A') . ')';
+                    continue;
+                }
+                
+                // Le produit peut être supprimé
+                // Supprimer l'image
+                if ($product->image && Storage::disk('public')->exists($product->image)) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                
+                $product->delete();
+                $deletedCount++;
             }
             
             DB::commit();
             
-            return redirect()->back()
-                ->with('success', $deletedCount . ' produit(s) supprimé(s) avec succès.');
+            // Construire le message de réponse
+            $message = '';
+            
+            if ($deletedCount > 0) {
+                $message = $deletedCount . ' produit(s) supprimé(s) avec succès.';
+            }
+            
+            if (!empty($protectedProducts)) {
+                $protectedMessage = ' ' . count($protectedProducts) . ' produit(s) n\'ont pas pu être supprimé(s) car ils sont utilisés dans des commandes : ' . implode(', ', array_slice($protectedProducts, 0, 3));
+                if (count($protectedProducts) > 3) {
+                    $protectedMessage .= ' et ' . (count($protectedProducts) - 3) . ' autre(s)';
+                }
+                $message .= $protectedMessage . '.';
+            }
+            
+            if (!empty($unauthorizedProducts)) {
+                $message .= ' ' . count($unauthorizedProducts) . ' produit(s) non autorisé(s) ignoré(s).';
+            }
+            
+            if ($deletedCount === 0 && (empty($protectedProducts) && empty($unauthorizedProducts))) {
+                return redirect()->back()->with('error', 'Aucun produit n\'a pu être supprimé.');
+            }
+            
+            $alertType = $deletedCount > 0 ? 'success' : 'warning';
+            
+            return redirect()->back()->with($alertType, trim($message));
                 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -664,10 +748,13 @@ class ProductController extends Controller
         $query = $admin->products()->where('is_active', true);
         
         if ($request->filled('q')) {
-            $query->where('name', 'like', '%' . $request->q . '%');
+            $query->where(function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->q . '%')
+                  ->orWhere('reference', 'like', '%' . $request->q . '%');
+            });
         }
         
-        $products = $query->limit(10)->get(['id', 'name', 'price', 'stock']);
+        $products = $query->limit(10)->get(['id', 'name', 'reference', 'price', 'stock']);
         
         return response()->json($products);
     }
