@@ -13,80 +13,110 @@
         --warning: #f59e0b;
         --danger: #ef4444;
         --glass-bg: rgba(255, 255, 255, 0.98);
-        --shadow: 0 2px 10px rgba(30, 58, 138, 0.08);
-        --border-radius: 8px;
-        --transition: all 0.2s ease;
+        --shadow: 0 4px 20px rgba(30, 58, 138, 0.12);
+        --border-radius: 12px;
+        --transition: all 0.3s ease;
     }
 
     body {
         background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
         font-family: 'Inter', sans-serif;
+        min-height: 100vh;
     }
 
     .container-fluid {
         max-width: 1400px;
         margin: 0 auto;
-        padding: 1rem;
+        padding: 1.5rem;
     }
 
-    /* Header simplifié */
+    /* Header moderne */
     .page-header {
         background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
         color: white;
-        padding: 1.25rem 1.5rem;
+        padding: 2rem;
         border-radius: var(--border-radius);
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        transform: translate(50%, -50%);
     }
 
     .page-header h1 {
-        font-size: 1.5rem;
-        font-weight: 600;
+        font-size: 1.75rem;
+        font-weight: 700;
         margin: 0;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        position: relative;
+        z-index: 2;
     }
 
-    /* Layout optimisé en 2 colonnes */
+    /* Layout moderne */
     .main-layout {
         display: grid;
-        grid-template-columns: 1fr 350px;
-        gap: 1.5rem;
+        grid-template-columns: 1fr 380px;
+        gap: 2rem;
         align-items: start;
     }
 
     @media (max-width: 1200px) {
         .main-layout {
             grid-template-columns: 1fr;
-            gap: 1rem;
+            gap: 1.5rem;
         }
     }
 
-    /* Formulaire client simplifié */
+    /* Formulaire client moderne */
     .client-form {
         background: var(--glass-bg);
         border-radius: var(--border-radius);
         box-shadow: var(--shadow);
-        padding: 1.5rem;
-        border: 1px solid rgba(30, 58, 138, 0.1);
+        padding: 2rem;
+        border: 1px solid rgba(30, 58, 138, 0.08);
+        backdrop-filter: blur(20px);
     }
 
     .form-section-title {
-        font-size: 1.1rem;
-        font-weight: 600;
+        font-size: 1.25rem;
+        font-weight: 700;
         color: var(--royal-blue-dark);
-        margin-bottom: 1.25rem;
+        margin-bottom: 1.5rem;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 2px solid #f1f5f9;
+        gap: 0.75rem;
+        padding-bottom: 1rem;
+        border-bottom: 3px solid #f1f5f9;
+        position: relative;
+    }
+
+    .form-section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -3px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(90deg, var(--royal-blue), var(--royal-blue-light));
+        border-radius: 2px;
     }
 
     .form-grid {
         display: grid;
-        gap: 1rem;
+        gap: 1.25rem;
     }
 
     .form-grid.two-cols {
@@ -102,28 +132,28 @@
     .form-field {
         display: flex;
         flex-direction: column;
-        gap: 0.4rem;
+        gap: 0.5rem;
     }
 
     .form-label {
         font-weight: 600;
         color: var(--royal-blue-dark);
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         display: flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.5rem;
     }
 
     .form-label .required {
         color: var(--danger);
-        font-size: 0.7rem;
+        font-size: 0.75rem;
     }
 
     .form-input {
         border: 2px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 0.75rem;
-        font-size: 0.875rem;
+        border-radius: 8px;
+        padding: 0.875rem;
+        font-size: 0.9rem;
         background: #fafbfc;
         transition: var(--transition);
         font-family: inherit;
@@ -131,56 +161,91 @@
 
     .form-input:focus {
         border-color: var(--royal-blue-light);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         background: white;
         outline: none;
+        transform: translateY(-1px);
     }
 
     .form-input.has-duplicates {
         border-color: var(--warning);
         background: rgba(245, 158, 11, 0.05);
+        animation: shake 0.5s ease-in-out;
     }
 
-    /* Indicateur de téléphone optimisé */
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-2px); }
+        75% { transform: translateX(2px); }
+    }
+
+    /* Indicateur de téléphone amélioré */
     .phone-field {
         position: relative;
     }
 
     .phone-indicator {
         position: absolute;
-        right: 0.75rem;
+        right: 1rem;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 0.9rem;
+        font-size: 1rem;
         display: none;
         z-index: 10;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .phone-indicator.checking {
-        display: block;
+        display: flex;
+        background: #f3f4f6;
         color: #6b7280;
         animation: pulse 1.5s infinite;
     }
 
     .phone-indicator.has-duplicates {
-        display: block;
+        display: flex;
+        background: rgba(245, 158, 11, 0.2);
         color: var(--warning);
+        animation: bounce 0.5s ease;
     }
 
     .phone-indicator.clean {
-        display: block;
+        display: flex;
+        background: rgba(16, 185, 129, 0.2);
         color: var(--success);
     }
 
-    /* Alert de doublons compact */
+    @keyframes bounce {
+        0%, 100% { transform: translateY(-50%) scale(1); }
+        50% { transform: translateY(-50%) scale(1.1); }
+    }
+
+    /* Alert de doublons moderne */
     .duplicate-alert {
-        margin-top: 0.75rem;
-        padding: 1rem;
-        border-radius: 6px;
-        border: 1px solid var(--warning);
-        background: rgba(245, 158, 11, 0.05);
+        margin-top: 1rem;
+        padding: 1.25rem;
+        border-radius: 10px;
+        border: 2px solid var(--warning);
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.03) 100%);
         display: none;
-        animation: slideDown 0.3s ease;
+        animation: slideDown 0.4s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .duplicate-alert::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--warning), #f59e0b);
     }
 
     .duplicate-alert.show {
@@ -188,55 +253,55 @@
     }
 
     .duplicate-alert-content {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         color: #92400e;
-        margin-bottom: 0.75rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .duplicate-actions {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.75rem;
         flex-wrap: wrap;
     }
 
     .btn-small {
-        padding: 0.4rem 0.8rem;
-        border-radius: 5px;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
         font-size: 0.8rem;
-        font-weight: 500;
+        font-weight: 600;
         cursor: pointer;
         transition: var(--transition);
         border: none;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.5rem;
         text-decoration: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-small:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     }
 
     .btn-royal {
-        background: var(--royal-blue);
-        color: white;
-    }
-
-    .btn-royal:hover {
-        background: var(--royal-blue-dark);
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-light) 100%);
         color: white;
     }
 
     .btn-success {
-        background: var(--success);
-        color: white;
-    }
-
-    .btn-success:hover {
-        background: #059669;
+        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
         color: white;
     }
 
     .btn-outline {
         background: white;
         color: var(--royal-blue);
-        border: 1px solid var(--royal-blue);
+        border: 2px solid var(--royal-blue);
     }
 
     .btn-outline:hover {
@@ -244,48 +309,66 @@
         color: white;
     }
 
-    /* Panier optimisé */
+    /* Panier moderne */
     .cart-panel {
         background: var(--glass-bg);
         border-radius: var(--border-radius);
         box-shadow: var(--shadow);
-        border: 1px solid rgba(30, 58, 138, 0.1);
+        border: 1px solid rgba(30, 58, 138, 0.08);
         position: sticky;
-        top: 1rem;
+        top: 1.5rem;
         height: fit-content;
+        backdrop-filter: blur(20px);
+        overflow: hidden;
     }
 
     .cart-header {
         background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
         color: white;
-        padding: 1rem 1.25rem;
-        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        padding: 1.25rem 1.5rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        position: relative;
+    }
+
+    .cart-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
     }
 
     .cart-title {
-        font-size: 1rem;
-        font-weight: 600;
+        font-size: 1.1rem;
+        font-weight: 700;
         margin: 0;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        position: relative;
+        z-index: 2;
     }
 
     .cart-count {
-        background: rgba(255, 255, 255, 0.2);
-        padding: 0.2rem 0.5rem;
-        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.25);
+        padding: 0.25rem 0.6rem;
+        border-radius: 20px;
         font-size: 0.8rem;
         font-weight: 700;
+        min-width: 24px;
+        text-align: center;
     }
 
-    /* Recherche de produits */
+    /* Recherche produits moderne */
     .product-search {
-        padding: 1rem;
-        border-bottom: 1px solid #f1f5f9;
+        padding: 1.25rem;
+        border-bottom: 1px solid rgba(241, 245, 249, 0.8);
     }
 
     .search-group {
@@ -294,26 +377,27 @@
 
     .search-icon {
         position: absolute;
-        left: 0.75rem;
+        left: 1rem;
         top: 50%;
         transform: translateY(-50%);
         color: #6b7280;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
+        z-index: 5;
     }
 
     .search-input {
         width: 100%;
-        padding: 0.7rem 0.7rem 0.7rem 2.5rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        font-size: 0.85rem;
+        padding: 0.875rem 1rem 0.875rem 2.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.9rem;
         background: white;
         transition: var(--transition);
     }
 
     .search-input:focus {
         border-color: var(--royal-blue-light);
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         outline: none;
     }
 
@@ -323,26 +407,27 @@
         left: 0;
         right: 0;
         background: white;
-        border: 1px solid #e2e8f0;
+        border: 2px solid #e2e8f0;
         border-top: none;
-        border-radius: 0 0 6px 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         z-index: 1000;
-        max-height: 200px;
+        max-height: 250px;
         overflow-y: auto;
         display: none;
     }
 
     .suggestion {
-        padding: 0.75rem;
+        padding: 1rem;
         cursor: pointer;
         border-bottom: 1px solid #f9fafb;
         transition: var(--transition);
-        font-size: 0.85rem;
+        font-size: 0.9rem;
     }
 
     .suggestion:hover {
         background: #f8fafc;
+        transform: translateX(4px);
     }
 
     .suggestion:last-child {
@@ -350,44 +435,46 @@
     }
 
     .product-ref {
-        font-family: monospace;
-        font-size: 0.7rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
         color: var(--royal-blue);
         background: rgba(30, 58, 138, 0.1);
-        padding: 0.15rem 0.4rem;
-        border-radius: 3px;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
         margin-left: 0.5rem;
+        font-weight: 600;
     }
 
-    /* Items du panier */
+    /* Items du panier améliorés */
     .cart-items {
-        padding: 1rem;
-        min-height: 120px;
-        max-height: 300px;
+        padding: 1.25rem;
+        min-height: 140px;
+        max-height: 320px;
         overflow-y: auto;
     }
 
     .cart-empty {
         text-align: center;
-        padding: 2rem 1rem;
+        padding: 2.5rem 1rem;
         color: #6b7280;
     }
 
     .cart-item {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem;
+        gap: 1rem;
+        padding: 1rem;
         background: #f8fafc;
-        border-radius: 6px;
-        margin-bottom: 0.5rem;
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
         border: 1px solid #f1f5f9;
         transition: var(--transition);
     }
 
     .cart-item:hover {
         border-color: var(--royal-blue-light);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
     }
 
     .item-info {
@@ -396,10 +483,10 @@
     }
 
     .item-name {
-        font-weight: 600;
+        font-weight: 700;
         color: var(--royal-blue-dark);
-        font-size: 0.85rem;
-        margin-bottom: 0.2rem;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -407,180 +494,249 @@
 
     .item-price {
         color: #6b7280;
-        font-size: 0.75rem;
-        font-family: monospace;
+        font-size: 0.8rem;
+        font-family: 'JetBrains Mono', monospace;
     }
 
     .quantity-control {
         display: flex;
         align-items: center;
-        gap: 0.25rem;
+        gap: 0.5rem;
         background: white;
-        border-radius: 4px;
-        padding: 0.2rem;
+        border-radius: 6px;
+        padding: 0.25rem;
         border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
     .qty-btn {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         border: none;
         background: #f3f4f6;
-        border-radius: 3px;
+        border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         color: #6b7280;
+        transition: var(--transition);
     }
 
     .qty-btn:hover {
         background: var(--royal-blue-light);
         color: white;
+        transform: scale(1.05);
     }
 
     .qty-input {
-        width: 35px;
+        width: 40px;
         text-align: center;
         border: none;
         background: transparent;
-        font-size: 0.8rem;
-        font-weight: 600;
+        font-size: 0.85rem;
+        font-weight: 700;
         color: var(--royal-blue-dark);
     }
 
     .remove-btn {
-        background: #fef2f2;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
         color: var(--danger);
         border: none;
-        border-radius: 4px;
-        width: 24px;
-        height: 24px;
+        border-radius: 6px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
+        transition: var(--transition);
     }
 
     .remove-btn:hover {
-        background: #fee2e2;
+        background: var(--danger);
+        color: white;
+        transform: scale(1.05);
     }
 
-    /* Résumé et contrôles */
+    /* Contrôles améliorés */
     .cart-summary {
-        padding: 1rem;
-        background: #f8fafc;
-        border-top: 1px solid #f1f5f9;
+        padding: 1.25rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-top: 1px solid rgba(241, 245, 249, 0.8);
     }
 
     .summary-row {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.5rem;
-        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
     }
 
     .summary-row:last-child {
         margin-bottom: 0;
-        font-weight: 700;
-        font-size: 0.95rem;
-        padding-top: 0.5rem;
-        border-top: 1px solid #e2e8f0;
+        font-weight: 800;
+        font-size: 1rem;
+        padding-top: 0.75rem;
+        border-top: 2px solid #e2e8f0;
         color: var(--royal-blue-dark);
     }
 
     .summary-value {
-        font-family: monospace;
-        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
     }
 
     .order-controls {
-        padding: 1rem;
+        padding: 1.25rem;
         background: white;
-        border-top: 1px solid #f1f5f9;
+        border-top: 1px solid rgba(241, 245, 249, 0.8);
     }
 
     .control-section {
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
     }
 
     .control-label {
-        font-weight: 600;
+        font-weight: 700;
         color: var(--royal-blue-dark);
-        margin-bottom: 0.5rem;
-        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .status-options {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.75rem;
     }
 
     .status-option {
         flex: 1;
-        padding: 0.6rem;
+        padding: 0.75rem;
         border: 2px solid transparent;
-        border-radius: 6px;
+        border-radius: 8px;
         cursor: pointer;
         text-align: center;
-        font-size: 0.8rem;
-        font-weight: 600;
+        font-size: 0.85rem;
+        font-weight: 700;
         transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .status-option::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .status-option:hover::before {
+        left: 100%;
     }
 
     .status-option.nouvelle {
-        background: #f3f4f6;
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
         color: #6b7280;
     }
 
     .status-option.nouvelle.active {
-        background: var(--royal-blue);
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
         color: white;
         border-color: var(--royal-blue-dark);
+        box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
     }
 
     .status-option.confirmée {
-        background: #ecfdf5;
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
         color: #059669;
     }
 
     .status-option.confirmée.active {
-        background: var(--success);
+        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
         color: white;
         border-color: #059669;
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Champ prix total conditionnel amélioré */
+    .total-price-field {
+        margin-top: 1rem;
+        padding: 1.25rem;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 2px solid #0ea5e9;
+        border-radius: 10px;
+        display: none;
+        animation: slideDown 0.4s ease;
+        position: relative;
+    }
+
+    .total-price-field::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #0ea5e9, #0284c7);
+        border-radius: 10px 10px 0 0;
+    }
+
+    .total-price-field.show {
+        display: block;
     }
 
     .employee-select {
         width: 100%;
-        padding: 0.6rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        font-size: 0.85rem;
+        padding: 0.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.9rem;
         background: white;
+        transition: var(--transition);
+    }
+
+    .employee-select:focus {
+        border-color: var(--royal-blue-light);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        outline: none;
     }
 
     .action-buttons {
         display: flex;
-        gap: 0.75rem;
-        margin-top: 1.25rem;
+        gap: 1rem;
+        margin-top: 1.5rem;
     }
 
     .btn-cancel {
         flex: 1;
-        background: #f3f4f6;
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
         color: #6b7280;
         border: none;
-        border-radius: 6px;
-        padding: 0.8rem;
-        font-weight: 600;
+        border-radius: 8px;
+        padding: 1rem;
+        font-weight: 700;
         cursor: pointer;
         text-decoration: none;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.4rem;
+        gap: 0.5rem;
+        transition: var(--transition);
+    }
+
+    .btn-cancel:hover {
+        background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
     }
 
     .btn-save {
@@ -588,19 +744,21 @@
         background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
         color: white;
         border: none;
-        border-radius: 6px;
-        padding: 0.8rem;
-        font-weight: 600;
+        border-radius: 8px;
+        padding: 1rem;
+        font-weight: 700;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.4rem;
+        gap: 0.5rem;
+        transition: var(--transition);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
     }
 
     .btn-save:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
     }
 
     .btn-save:disabled {
@@ -609,92 +767,96 @@
         transform: none;
     }
 
-    /* Priority badge automatique */
+    /* Priority badge automatique amélioré */
     .auto-priority {
         background: linear-gradient(135deg, #d4a147 0%, #b8941f 100%);
         color: white;
-        padding: 0.3rem 0.7rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-top: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-top: 0.75rem;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        animation: slideIn 0.3s ease;
+        gap: 0.5rem;
+        animation: slideIn 0.4s ease;
+        box-shadow: 0 4px 16px rgba(212, 161, 71, 0.3);
     }
 
-    /* Modal historique simplifié */
+    /* Modal amélioré */
     .modal-content {
         border: none;
         border-radius: var(--border-radius);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(20px);
     }
 
     .modal-header {
-        background: var(--royal-blue);
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
         color: white;
         border: none;
         border-radius: var(--border-radius) var(--border-radius) 0 0;
+        padding: 1.5rem;
     }
 
     .history-item {
-        background: #f8fafc;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
         border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        padding: 1rem;
-        margin-bottom: 0.75rem;
-        border-left: 3px solid var(--royal-blue-light);
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid var(--royal-blue-light);
+        transition: var(--transition);
     }
 
     .history-item:hover {
         background: white;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Champ prix total conditionnel */
-    .total-price-field {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: #f0f9ff;
-        border: 1px solid #0ea5e9;
-        border-radius: 6px;
-        display: none;
-    }
-
-    .total-price-field.show {
-        display: block;
-        animation: slideDown 0.3s ease;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
     }
 
     /* Animations */
     @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { 
+            opacity: 0; 
+            transform: translateY(-20px); 
+            max-height: 0;
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0); 
+            max-height: 500px;
+        }
     }
 
     @keyframes slideIn {
-        from { opacity: 0; transform: translateX(-10px); }
-        to { opacity: 1; transform: translateX(0); }
+        from { 
+            opacity: 0; 
+            transform: translateX(-20px); 
+        }
+        to { 
+            opacity: 1; 
+            transform: translateX(0); 
+        }
     }
 
     @keyframes pulse {
         0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
+        50% { opacity: 0.6; }
     }
 
-    /* Responsive */
+    /* Responsive amélioré */
     @media (max-width: 768px) {
         .container-fluid {
-            padding: 0.75rem;
+            padding: 1rem;
         }
         
         .page-header {
-            padding: 1rem;
+            padding: 1.5rem;
         }
         
         .client-form, .cart-panel {
-            padding: 1rem;
+            padding: 1.5rem;
         }
         
         .action-buttons {
@@ -704,6 +866,35 @@
         .duplicate-actions {
             flex-direction: column;
         }
+
+        .status-options {
+            flex-direction: column;
+        }
+    }
+
+    /* Effets visuels supplémentaires */
+    .form-input:valid {
+        border-color: var(--success);
+    }
+
+    .form-input:invalid:not(:placeholder-shown) {
+        border-color: var(--danger);
+    }
+
+    /* Messages d'erreur stylés */
+    .invalid-feedback {
+        color: var(--danger);
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .invalid-feedback::before {
+        content: '⚠️';
+        font-size: 0.7rem;
     }
 </style>
 @endsection
@@ -725,14 +916,16 @@
                 </div>
                 
                 <div class="form-grid">
-                    <!-- Nom -->
+                    <!-- Nom - Conditionnel selon statut -->
                     <div class="form-field">
                         <label for="customer_name" class="form-label">
-                            <i class="fas fa-user"></i> Nom Complet <span class="required">*</span>
+                            <i class="fas fa-user"></i> 
+                            Nom Complet 
+                            <span class="required" id="name-required" style="display: none;">*</span>
                         </label>
                         <input type="text" class="form-input @error('customer_name') is-invalid @enderror" 
                                id="customer_name" name="customer_name" value="{{ old('customer_name') }}" 
-                               placeholder="Nom et prénom du client" required>
+                               placeholder="Nom et prénom du client">
                         @error('customer_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     
@@ -752,12 +945,15 @@
                             </div>
                             @error('customer_phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             
-                            <!-- Alert de doublons -->
+                            <!-- Alert de doublons TOUJOURS VISIBLE -->
                             <div class="duplicate-alert" id="duplicate-alert">
-                                <div class="duplicate-alert-content" id="duplicate-alert-content"></div>
-                                <div class="duplicate-actions">
+                                <div class="duplicate-alert-content" id="duplicate-alert-content">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Vérification des doublons en cours...
+                                </div>
+                                <div class="duplicate-actions" id="duplicate-actions" style="display: none;">
                                     <button type="button" class="btn-small btn-royal" id="view-history-btn">
-                                        <i class="fas fa-history"></i> Historique
+                                        <i class="fas fa-history"></i> Voir Historique
                                     </button>
                                     <button type="button" class="btn-small btn-success" id="fill-data-btn">
                                         <i class="fas fa-fill-drip"></i> Pré-remplir
@@ -770,13 +966,13 @@
                             
                             <!-- Priorité automatique -->
                             <div class="auto-priority" id="auto-priority" style="display: none;">
-                                <i class="fas fa-copy"></i> Priorité: Doublons (automatique)
+                                <i class="fas fa-copy"></i> Priorité Doublons Activée
                             </div>
                         </div>
                         
                         <div class="form-field">
                             <label for="customer_phone_2" class="form-label">
-                                <i class="fas fa-phone-alt"></i> Téléphone 2
+                                <i class="fas fa-phone-alt"></i> Téléphone 2 (Optionnel)
                             </label>
                             <input type="tel" class="form-input @error('customer_phone_2') is-invalid @enderror" 
                                    id="customer_phone_2" name="customer_phone_2" value="{{ old('customer_phone_2') }}" 
@@ -785,14 +981,16 @@
                         </div>
                     </div>
                     
-                    <!-- Localisation -->
+                    <!-- Localisation - Conditionnel selon statut -->
                     <div class="form-grid two-cols">
                         <div class="form-field">
                             <label for="customer_governorate" class="form-label">
-                                <i class="fas fa-map-marked-alt"></i> Gouvernorat <span class="required">*</span>
+                                <i class="fas fa-map-marked-alt"></i> 
+                                Gouvernorat 
+                                <span class="required" id="gov-required" style="display: none;">*</span>
                             </label>
                             <select class="form-input @error('customer_governorate') is-invalid @enderror" 
-                                    id="customer_governorate" name="customer_governorate" required>
+                                    id="customer_governorate" name="customer_governorate">
                                 <option value="">Choisir...</option>
                                 @if (isset($regions))
                                     @foreach ($regions as $region)
@@ -807,31 +1005,35 @@
                         
                         <div class="form-field">
                             <label for="customer_city" class="form-label">
-                                <i class="fas fa-city"></i> Ville <span class="required">*</span>
+                                <i class="fas fa-city"></i> 
+                                Ville 
+                                <span class="required" id="city-required" style="display: none;">*</span>
                             </label>
                             <select class="form-input @error('customer_city') is-invalid @enderror" 
-                                    id="customer_city" name="customer_city" required>
+                                    id="customer_city" name="customer_city">
                                 <option value="">Choisir...</option>
                             </select>
                             @error('customer_city') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
                     
-                    <!-- Adresse -->
+                    <!-- Adresse - Conditionnel selon statut -->
                     <div class="form-field">
                         <label for="customer_address" class="form-label">
-                            <i class="fas fa-map-marker-alt"></i> Adresse <span class="required">*</span>
+                            <i class="fas fa-map-marker-alt"></i> 
+                            Adresse 
+                            <span class="required" id="address-required" style="display: none;">*</span>
                         </label>
                         <textarea class="form-input @error('customer_address') is-invalid @enderror" 
                                   id="customer_address" name="customer_address" rows="2" 
-                                  placeholder="Adresse complète" required>{{ old('customer_address') }}</textarea>
+                                  placeholder="Adresse complète">{{ old('customer_address') }}</textarea>
                         @error('customer_address') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     
                     <!-- Notes -->
                     <div class="form-field">
                         <label for="notes" class="form-label">
-                            <i class="fas fa-sticky-note"></i> Notes
+                            <i class="fas fa-sticky-note"></i> Notes (Optionnel)
                         </label>
                         <textarea class="form-input @error('notes') is-invalid @enderror" 
                                   id="notes" name="notes" rows="2" 
@@ -863,20 +1065,20 @@
                 <!-- Items -->
                 <div class="cart-items" id="cart-items">
                     <div class="cart-empty" id="cart-empty">
-                        <i class="fas fa-shopping-basket" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5; color: var(--royal-blue);"></i>
-                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Panier vide</div>
-                        <div style="font-size: 0.8rem;">Recherchez des produits pour commencer</div>
+                        <i class="fas fa-shopping-basket" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.5; color: var(--royal-blue);"></i>
+                        <div style="font-weight: 700; margin-bottom: 0.5rem; font-size: 1rem;">Panier vide</div>
+                        <div style="font-size: 0.85rem;">Recherchez des produits par nom ou référence</div>
                     </div>
                 </div>
                 
                 <!-- Résumé -->
                 <div class="cart-summary" id="cart-summary" style="display: none;">
                     <div class="summary-row">
-                        <span>Sous-total:</span>
+                        <span><i class="fas fa-calculator"></i> Sous-total:</span>
                         <span class="summary-value" id="subtotal">0.000 TND</span>
                     </div>
                     <div class="summary-row">
-                        <span>Total:</span>
+                        <span><i class="fas fa-coins"></i> Total:</span>
                         <span class="summary-value" id="total">0.000 TND</span>
                     </div>
                 </div>
@@ -884,7 +1086,9 @@
                 <!-- Contrôles -->
                 <div class="order-controls">
                     <div class="control-section">
-                        <div class="control-label">Statut</div>
+                        <div class="control-label">
+                            <i class="fas fa-flag"></i> Statut de la Commande
+                        </div>
                         <div class="status-options">
                             <div class="status-option nouvelle active" data-status="nouvelle">
                                 <i class="fas fa-circle"></i> Nouvelle
@@ -903,12 +1107,17 @@
                             </label>
                             <input type="number" class="form-input" id="total_price" name="total_price" 
                                    step="0.001" min="0" placeholder="Laisser vide pour calcul automatique">
-                            <small class="text-muted">Laissez vide pour utiliser le total calculé automatiquement</small>
+                            <small style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem; display: block;">
+                                <i class="fas fa-info-circle"></i> 
+                                Laissez vide pour utiliser le total calculé automatiquement
+                            </small>
                         </div>
                     </div>
                     
                     <div class="control-section">
-                        <label for="employee_id" class="control-label">Assigner à</label>
+                        <label for="employee_id" class="control-label">
+                            <i class="fas fa-user-tie"></i> Assigner à un Employé
+                        </label>
                         <select class="employee-select" id="employee_id" name="employee_id">
                             <option value="">Aucun employé</option>
                             @if (isset($employees) && $employees->count() > 0)
@@ -924,7 +1133,7 @@
                             <i class="fas fa-times"></i> Annuler
                         </a>
                         <button type="submit" class="btn-save" id="save-btn">
-                            <i class="fas fa-save"></i> Créer
+                            <i class="fas fa-save"></i> Créer Commande
                         </button>
                     </div>
                 </div>
@@ -940,7 +1149,9 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-history me-2"></i>Historique Client</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-history me-2"></i>Historique du Client
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="history-content">
@@ -960,29 +1171,43 @@ $(document).ready(function() {
     let cart = [];
     let phoneTimeout;
     let hasExistingOrders = false;
+    let latestClientData = null;
+
+    console.log('🚀 Initialisation de la création de commande');
 
     // =========================
-    // VÉRIFICATION TÉLÉPHONE CORRIGÉE
+    // VÉRIFICATION TÉLÉPHONE CORRIGÉE ET AMÉLIORÉE
     // =========================
     $('#customer_phone').on('input', function() {
         const phone = $(this).val().trim();
         clearTimeout(phoneTimeout);
         
+        // Afficher l'alert dès qu'on tape
+        $('#duplicate-alert').addClass('show');
+        $('#duplicate-actions').hide();
+        
         if (phone.length >= 8) {
-            phoneTimeout = setTimeout(() => checkPhone(phone), 500);
+            phoneTimeout = setTimeout(() => checkPhone(phone), 800);
         } else {
             resetPhone();
         }
     });
 
     function checkPhone(phone) {
+        console.log('🔍 Vérification du téléphone:', phone);
+        
         $('#phone-indicator').removeClass('has-duplicates clean').addClass('checking').show();
+        $('#duplicate-alert-content').html(`
+            <i class="fas fa-spinner fa-spin"></i>
+            Vérification des doublons pour ${phone}...
+        `);
         
         $.get('/admin/orders/check-phone-duplicates', { phone })
             .done(function(response) {
+                console.log('✅ Réponse reçue:', response);
                 $('#phone-indicator').removeClass('checking');
                 
-                if (response.has_duplicates) {
+                if (response.has_duplicates && response.total_orders > 0) {
                     $('#phone-indicator').addClass('has-duplicates').html('<i class="fas fa-exclamation-triangle"></i>');
                     $('#customer_phone').addClass('has-duplicates');
                     showDuplicateAlert(response);
@@ -990,12 +1215,16 @@ $(document).ready(function() {
                 } else {
                     $('#phone-indicator').addClass('clean').html('<i class="fas fa-check"></i>');
                     $('#customer_phone').removeClass('has-duplicates');
-                    hideAlert();
+                    showCleanAlert();
                     setAutoPriority(false);
                 }
             })
             .fail(function(xhr) {
-                console.error('Erreur vérification téléphone:', xhr);
+                console.error('❌ Erreur vérification téléphone:', xhr);
+                $('#duplicate-alert-content').html(`
+                    <i class="fas fa-exclamation-circle"></i>
+                    Erreur lors de la vérification. Vérifiez votre connexion.
+                `);
                 resetPhone();
             });
     }
@@ -1003,26 +1232,36 @@ $(document).ready(function() {
     function resetPhone() {
         $('#phone-indicator').removeClass('checking has-duplicates clean').hide();
         $('#customer_phone').removeClass('has-duplicates');
-        hideAlert();
+        $('#duplicate-alert').removeClass('show');
         setAutoPriority(false);
     }
 
     function showDuplicateAlert(response) {
-        $('#duplicate-alert-content').html(
-            `<strong>${response.total_orders} commande(s)</strong> trouvée(s) pour ce numéro.`
-        );
+        $('#duplicate-alert-content').html(`
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>${response.total_orders} commande(s)</strong> trouvée(s) pour ce numéro !
+        `);
+        $('#duplicate-actions').show();
         $('#duplicate-alert').addClass('show');
         hasExistingOrders = true;
+        
+        // Charger automatiquement les données du client
+        loadClientDataForAutofill(response.orders[0]?.customer_phone || $('#customer_phone').val());
     }
 
-    function hideAlert() {
-        $('#duplicate-alert').removeClass('show');
+    function showCleanAlert() {
+        $('#duplicate-alert-content').html(`
+            <i class="fas fa-check-circle"></i>
+            Aucun doublon détecté pour ce numéro.
+        `);
+        $('#duplicate-actions').hide();
+        $('#duplicate-alert').addClass('show');
         hasExistingOrders = false;
     }
 
     function setAutoPriority(isDuplicate) {
         if (isDuplicate) {
-            $('#priority').val('doublons');
+            $('#priority').val('urgente');
             $('#auto-priority').show();
         } else {
             $('#priority').val('normale');
@@ -1031,14 +1270,15 @@ $(document).ready(function() {
     }
 
     window.dismissAlert = function() {
-        hideAlert();
+        $('#duplicate-alert').removeClass('show');
         setAutoPriority(false);
     };
 
     // =========================
-    // HISTORIQUE ET PRÉ-REMPLISSAGE CORRIGÉS
+    // HISTORIQUE ET PRÉ-REMPLISSAGE FONCTIONNELS
     // =========================
     $('#view-history-btn').on('click', function() {
+        console.log('📋 Affichage de l\'historique');
         const phone = $('#customer_phone').val().trim();
         if (phone) {
             loadHistory(phone);
@@ -1047,30 +1287,43 @@ $(document).ready(function() {
     });
 
     $('#fill-data-btn').on('click', function() {
-        const phone = $('#customer_phone').val().trim();
-        if (phone) {
-            $.get('/admin/orders/client-history', { phone })
-                .done(function(response) {
-                    if (response.latest_order) {
-                        fillData(response.latest_order);
-                        showNotification('success', 'Données pré-remplies !');
-                    } else {
-                        showNotification('warning', 'Aucune donnée à pré-remplir.');
-                    }
-                })
-                .fail(function() {
-                    showNotification('error', 'Erreur lors du chargement des données.');
-                });
+        console.log('📝 Pré-remplissage des données');
+        if (latestClientData) {
+            fillData(latestClientData);
+            showNotification('success', '✅ Données pré-remplies avec succès !');
+        } else {
+            showNotification('warning', '⚠️ Aucune donnée disponible pour le pré-remplissage.');
         }
     });
 
+    function loadClientDataForAutofill(phone) {
+        if (!phone) return;
+        
+        $.get('/admin/orders/client-history', { phone })
+            .done(function(response) {
+                if (response.latest_order) {
+                    latestClientData = response.latest_order;
+                    console.log('💾 Données client chargées:', latestClientData);
+                }
+            })
+            .fail(function() {
+                console.warn('⚠️ Impossible de charger les données client');
+            });
+    }
+
     function loadHistory(phone) {
-        $('#history-content').html('<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>');
+        $('#history-content').html(`
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2">Chargement de l'historique...</p>
+            </div>
+        `);
         
         $.get('/admin/orders/client-history', { phone })
             .done(function(response) {
                 let content = '';
                 if (response.orders?.length) {
+                    content += `<div class="alert alert-info"><strong>Total:</strong> ${response.orders.length} commande(s) trouvée(s)</div>`;
                     response.orders.forEach(order => {
                         content += `
                             <div class="history-item">
@@ -1079,13 +1332,15 @@ $(document).ready(function() {
                                     <span class="badge bg-${getStatusColor(order.status)}">${order.status}</span>
                                 </div>
                                 <div class="small text-muted">
-                                    ${order.customer_name || 'N/A'} • ${parseFloat(order.total_price).toFixed(3)} TND • ${new Date(order.created_at).toLocaleDateString('fr-FR')}
+                                    <strong>Client:</strong> ${order.customer_name || 'N/A'}<br>
+                                    <strong>Montant:</strong> ${parseFloat(order.total_price).toFixed(3)} TND<br>
+                                    <strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString('fr-FR')}
                                 </div>
                             </div>
                         `;
                     });
                 } else {
-                    content = '<div class="text-center py-4 text-muted">Aucun historique</div>';
+                    content = '<div class="text-center py-4 text-muted">Aucun historique trouvé</div>';
                 }
                 $('#history-content').html(content);
             })
@@ -1095,17 +1350,26 @@ $(document).ready(function() {
     }
 
     function fillData(order) {
+        if (!order) return;
+        
+        console.log('🔄 Remplissage des données:', order);
+        
         $('#customer_name').val(order.customer_name || '');
         $('#customer_phone_2').val(order.customer_phone_2 || '');
         $('#customer_address').val(order.customer_address || '');
+        
         if (order.customer_governorate) {
             $('#customer_governorate').val(order.customer_governorate).trigger('change');
             setTimeout(() => {
                 if (order.customer_city) {
                     $('#customer_city').val(order.customer_city);
                 }
-            }, 500);
+            }, 1000);
         }
+        
+        // Animation de confirmation
+        $('.form-input').addClass('border-success');
+        setTimeout(() => $('.form-input').removeClass('border-success'), 2000);
     }
 
     function getStatusColor(status) {
@@ -1120,7 +1384,7 @@ $(document).ready(function() {
     }
 
     // =========================
-    // RECHERCHE PRODUITS
+    // RECHERCHE PRODUITS PAR NOM ET RÉFÉRENCE
     // =========================
     $('#product-search').on('input', function() {
         const query = $(this).val().trim();
@@ -1132,9 +1396,17 @@ $(document).ready(function() {
     });
 
     function searchProducts(query) {
+        console.log('🔎 Recherche produits:', query);
+        
         $.get('/admin/orders/search-products', { search: query })
-            .done(data => showSuggestions(data))
-            .fail(() => showSuggestions([]));
+            .done(data => {
+                console.log('📦 Produits trouvés:', data.length);
+                showSuggestions(data);
+            })
+            .fail(error => {
+                console.error('❌ Erreur recherche produits:', error);
+                showSuggestions([]);
+            });
     }
 
     function showSuggestions(products) {
@@ -1148,8 +1420,8 @@ $(document).ready(function() {
                     <div class="suggestion d-flex justify-content-between align-items-center">
                         <div>
                             <strong>${product.name}</strong>
-                            ${product.reference ? `<span class="product-ref">${product.reference}</span>` : ''}
-                            <br><small class="text-muted">Stock: ${product.stock}</small>
+                            ${product.reference ? `<span class="product-ref">Réf: ${product.reference}</span>` : ''}
+                            <br><small class="text-muted">Stock: ${product.stock} disponible(s)</small>
                         </div>
                         <div class="fw-bold text-success">${parseFloat(product.price).toFixed(3)} TND</div>
                     </div>
@@ -1172,13 +1444,16 @@ $(document).ready(function() {
     });
 
     // =========================
-    // GESTION PANIER
+    // GESTION PANIER AMÉLIORÉE
     // =========================
     function addToCart(product) {
+        console.log('🛒 Ajout au panier:', product.name);
+        
         const existing = cart.find(item => item.id === product.id);
         
         if (existing) {
             existing.quantity += 1;
+            showNotification('info', `➕ Quantité augmentée pour ${product.name}`);
         } else {
             cart.push({
                 id: product.id,
@@ -1188,10 +1463,10 @@ $(document).ready(function() {
                 quantity: 1,
                 stock: product.stock
             });
+            showNotification('success', `✅ ${product.name} ajouté au panier`);
         }
         
         updateCart();
-        showNotification('success', `${product.name} ajouté`);
     }
 
     function updateCart() {
@@ -1199,7 +1474,8 @@ $(document).ready(function() {
         const empty = $('#cart-empty');
         const summary = $('#cart-summary');
         
-        $('#cart-count').text(cart.reduce((sum, item) => sum + item.quantity, 0));
+        const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+        $('#cart-count').text(totalItems);
         
         items.find('.cart-item').remove();
         
@@ -1225,7 +1501,10 @@ $(document).ready(function() {
             <div class="cart-item">
                 <div class="item-info">
                     <div class="item-name">${item.name}</div>
-                    <div class="item-price">${item.price.toFixed(3)} TND × ${item.quantity}</div>
+                    <div class="item-price">
+                        ${item.reference ? `Réf: ${item.reference} • ` : ''}
+                        ${item.price.toFixed(3)} TND × ${item.quantity}
+                    </div>
                 </div>
                 <div class="quantity-control">
                     <button type="button" class="qty-btn minus"><i class="fas fa-minus"></i></button>
@@ -1243,14 +1522,23 @@ $(document).ready(function() {
     function updateQuantity(id, newQty) {
         const item = cart.find(i => i.id === id);
         if (item) {
+            const oldQty = item.quantity;
             item.quantity = Math.max(1, Math.min(newQty, item.stock));
-            updateCart();
+            
+            if (item.quantity !== oldQty) {
+                updateCart();
+                showNotification('info', `📊 Quantité mise à jour: ${item.name}`);
+            }
         }
     }
 
     function removeFromCart(id) {
-        cart = cart.filter(item => item.id !== id);
-        updateCart();
+        const item = cart.find(i => i.id === id);
+        if (item) {
+            cart = cart.filter(item => item.id !== id);
+            updateCart();
+            showNotification('warning', `🗑️ ${item.name} retiré du panier`);
+        }
     }
 
     function updateSummary() {
@@ -1268,7 +1556,7 @@ $(document).ready(function() {
     }
 
     // =========================
-    // STATUT ET PRIX TOTAL
+    // GESTION STATUT ET VALIDATION CONDITIONNELLE
     // =========================
     $('.status-option').on('click', function() {
         $('.status-option').removeClass('active');
@@ -1276,89 +1564,208 @@ $(document).ready(function() {
         const status = $(this).data('status');
         $('#status').val(status);
         
-        // Afficher/masquer le champ prix total
+        console.log('📋 Changement de statut:', status);
+        
         if (status === 'confirmée') {
             $('#total-price-field').addClass('show');
+            makeFieldsRequired();
+            showNotification('info', '⚠️ Statut confirmé: tous les champs sont maintenant obligatoires');
         } else {
             $('#total-price-field').removeClass('show');
+            makeBasicFieldsRequired();
+            showNotification('info', '📝 Statut nouvelle: seuls le téléphone et les produits sont obligatoires');
         }
     });
 
+    function makeFieldsRequired() {
+        // Afficher les astérisques
+        $('#name-required, #gov-required, #city-required, #address-required').show();
+        // Marquer les champs comme requis
+        $('#customer_name, #customer_governorate, #customer_city, #customer_address').prop('required', true);
+        
+        // Animation visuelle
+        $('.form-label').addClass('text-primary');
+        setTimeout(() => $('.form-label').removeClass('text-primary'), 1000);
+    }
+
+    function makeBasicFieldsRequired() {
+        // Masquer les astérisques
+        $('#name-required, #gov-required, #city-required, #address-required').hide();
+        // Retirer le requis
+        $('#customer_name, #customer_governorate, #customer_city, #customer_address').prop('required', false);
+    }
+
     // =========================
-    // VALIDATION COMPLÈTE
+    // CHARGEMENT DES VILLES
     // =========================
     $('#customer_governorate').on('change', function() {
         const regionId = $(this).val();
         const citySelect = $('#customer_city');
         
         if (regionId) {
+            console.log('🏙️ Chargement des villes pour la région:', regionId);
+            
+            citySelect.html('<option value="">Chargement...</option>');
+            
             $.get('/admin/orders/get-cities', { region_id: regionId })
                 .done(cities => {
                     citySelect.html('<option value="">Choisir...</option>');
                     cities.forEach(city => {
                         citySelect.append(`<option value="${city.id}">${city.name}</option>`);
                     });
+                    console.log('✅ Villes chargées:', cities.length);
+                })
+                .fail(() => {
+                    citySelect.html('<option value="">Erreur de chargement</option>');
+                    showNotification('error', '❌ Impossible de charger les villes');
                 });
         } else {
             citySelect.html('<option value="">Choisir...</option>');
         }
     });
 
+    // =========================
+    // VALIDATION FINALE DU FORMULAIRE
+    // =========================
     $('#orderForm').on('submit', function(e) {
+        console.log('📤 Soumission du formulaire');
+        
         const errors = [];
+        const status = $('#status').val();
         
-        // Validation des champs obligatoires
-        if (!$('#customer_name').val().trim()) {
-            errors.push('Nom complet requis');
-        }
-        
+        // Validation téléphone (toujours obligatoire)
         if (!$('#customer_phone').val().trim()) {
-            errors.push('Téléphone requis');
+            errors.push('❌ Le numéro de téléphone est obligatoire');
         }
         
-        if (!$('#customer_governorate').val()) {
-            errors.push('Gouvernorat requis');
-        }
-        
-        if (!$('#customer_city').val()) {
-            errors.push('Ville requise');
-        }
-        
-        if (!$('#customer_address').val().trim()) {
-            errors.push('Adresse requise');
-        }
-        
+        // Validation produits (toujours obligatoire)
         if (cart.length === 0) {
-            errors.push('Panier vide');
+            errors.push('❌ Le panier est vide - Ajoutez au moins un produit');
+        }
+
+        // Validation conditionnelle selon le statut
+        if (status === 'confirmée') {
+            if (!$('#customer_name').val().trim()) {
+                errors.push('❌ Le nom complet est obligatoire pour une commande confirmée');
+            }
+            if (!$('#customer_governorate').val()) {
+                errors.push('❌ Le gouvernorat est obligatoire pour une commande confirmée');
+            }
+            if (!$('#customer_city').val()) {
+                errors.push('❌ La ville est obligatoire pour une commande confirmée');
+            }
+            if (!$('#customer_address').val().trim()) {
+                errors.push('❌ L\'adresse est obligatoire pour une commande confirmée');
+            }
+        }
+
+        // Validation du stock pour les commandes confirmées
+        if (status === 'confirmée') {
+            let stockErrors = [];
+            cart.forEach(item => {
+                if (item.quantity > item.stock) {
+                    stockErrors.push(`${item.name}: ${item.quantity} demandée mais seulement ${item.stock} en stock`);
+                }
+            });
+            
+            if (stockErrors.length > 0) {
+                errors.push('❌ Stock insuffisant pour certains produits:\n' + stockErrors.join('\n'));
+            }
         }
 
         if (errors.length > 0) {
             e.preventDefault();
-            showNotification('error', errors.join(', '));
+            showNotification('error', errors.join('\n'));
             return false;
         }
 
-        $('#save-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Création...');
+        // Confirmation pour commande confirmée
+        if (status === 'confirmée') {
+            if (!confirm('🔒 Confirmer cette commande ?\n\n⚠️ Le stock sera automatiquement déduit des produits.')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+
+        // Désactiver le bouton et changer le texte
+        $('#save-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Création en cours...');
+        
+        showNotification('success', '🚀 Création de la commande en cours...');
     });
 
+    // =========================
+    // SYSTÈME DE NOTIFICATIONS
+    // =========================
     function showNotification(type, message) {
         const colors = {
             success: '#10b981',
             error: '#ef4444',
-            warning: '#f59e0b'
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
         };
         
         const notification = $(`
-            <div style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 1rem; border-radius: 6px; color: white; font-weight: 600; background: ${colors[type]}; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div style="
+                position: fixed; 
+                top: 20px; 
+                right: 20px; 
+                z-index: 9999; 
+                padding: 1rem 1.5rem; 
+                border-radius: 10px; 
+                color: white; 
+                font-weight: 600; 
+                background: ${colors[type]}; 
+                box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255,255,255,0.1);
+                max-width: 400px;
+                word-wrap: break-word;
+                white-space: pre-line;
+            ">
+                <i class="fas ${icons[type]}" style="margin-right: 0.5rem;"></i>
                 ${message}
             </div>
         `);
         
         $('body').append(notification);
-        setTimeout(() => notification.fadeOut(() => notification.remove()), 3000);
+        
+        // Animation d'entrée
+        notification.css({
+            transform: 'translateX(100%)',
+            opacity: 0
+        }).animate({
+            transform: 'translateX(0)',
+            opacity: 1
+        }, 300);
+        
+        // Auto-suppression
+        setTimeout(() => {
+            notification.animate({
+                transform: 'translateX(100%)',
+                opacity: 0
+            }, 300, function() {
+                notification.remove();
+            });
+        }, type === 'error' ? 8000 : 4000);
     }
 
+    // =========================
+    // INITIALISATION
+    // =========================
+    console.log('✅ Initialisation terminée');
+    
+    // Focus sur le téléphone
     $('#customer_phone').focus();
+    
+    // Afficher l'aide utilisateur
+    showNotification('info', '💡 Saisissez un numéro de téléphone pour vérifier les doublons automatiquement');
 });
 </script>
 @endsection

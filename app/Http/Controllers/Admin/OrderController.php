@@ -131,27 +131,50 @@ class OrderController extends Controller
     }
 
     /**
-     * Créer une nouvelle commande - VERSION CORRIGÉE
+     * Créer une nouvelle commande - VERSION CORRIGÉE COMPLÈTE
      */
     public function store(Request $request)
     {
         try {
-            $validated = $request->validate([
+            // Validation adaptée selon le statut
+            $baseRules = [
                 'customer_phone' => 'required|string|max:20',
-                'customer_name' => 'nullable|string|max:255',
-                'customer_phone_2' => 'nullable|string|max:20',
-                'customer_governorate' => 'nullable|exists:regions,id',
-                'customer_city' => 'nullable|exists:cities,id',
-                'customer_address' => 'nullable|string|max:500',
-                'notes' => 'nullable|string|max:1000',
-                'status' => 'required|in:nouvelle,confirmée',
-                'priority' => 'required|in:normale,urgente,vip',
-                'employee_id' => 'nullable|exists:employees,id',
                 'products' => 'required|array|min:1',
                 'products.*.id' => 'required|exists:products,id',
                 'products.*.quantity' => 'required|integer|min:1',
-            ], [
+                'status' => 'required|in:nouvelle,confirmée',
+                'priority' => 'required|in:normale,urgente,vip',
+                'employee_id' => 'nullable|exists:employees,id',
+            ];
+
+            // Si statut confirmée, tous les champs sont obligatoires
+            if ($request->status === 'confirmée') {
+                $additionalRules = [
+                    'customer_name' => 'required|string|max:255',
+                    'customer_governorate' => 'required|exists:regions,id',
+                    'customer_city' => 'required|exists:cities,id',
+                    'customer_address' => 'required|string|max:500',
+                    'total_price' => 'nullable|numeric|min:0',
+                ];
+                $baseRules = array_merge($baseRules, $additionalRules);
+            } else {
+                // Pour statut nouvelle, seuls téléphone et produits obligatoires
+                $baseRules['customer_name'] = 'nullable|string|max:255';
+                $baseRules['customer_governorate'] = 'nullable|exists:regions,id';
+                $baseRules['customer_city'] = 'nullable|exists:cities,id';
+                $baseRules['customer_address'] = 'nullable|string|max:500';
+            }
+
+            // Validation des champs optionnels
+            $baseRules['customer_phone_2'] = 'nullable|string|max:20';
+            $baseRules['notes'] = 'nullable|string|max:1000';
+
+            $validated = $request->validate($baseRules, [
                 'customer_phone.required' => 'Le numéro de téléphone est obligatoire',
+                'customer_name.required' => 'Le nom du client est obligatoire pour une commande confirmée',
+                'customer_governorate.required' => 'Le gouvernorat est obligatoire pour une commande confirmée',
+                'customer_city.required' => 'La ville est obligatoire pour une commande confirmée',
+                'customer_address.required' => 'L\'adresse est obligatoire pour une commande confirmée',
                 'products.required' => 'Veuillez ajouter au moins un produit',
                 'products.min' => 'Veuillez ajouter au moins un produit',
                 'products.*.id.exists' => 'Un ou plusieurs produits sélectionnés n\'existent pas',
@@ -201,14 +224,19 @@ class OrderController extends Controller
             $order->admin_id = $admin->id;
             $order->customer_phone = $validated['customer_phone'];
             $order->customer_name = $validated['customer_name'] ?? null;
-            $order->customer_phone_2 = $validated['customer_phone_2'] ?? null;
+            $order->customer_phone_2 = $request->customer_phone_2 ?? null;
             $order->customer_governorate = $validated['customer_governorate'] ?? null;
             $order->customer_city = $validated['customer_city'] ?? null;
             $order->customer_address = $validated['customer_address'] ?? null;
-            $order->notes = $validated['notes'] ?? null;
+            $order->notes = $request->notes ?? null;
             $order->status = $validated['status'];
             $order->priority = $validated['priority'];
-            $order->total_price = $totalPrice;
+            
+            // Utiliser le prix personnalisé si fourni pour commande confirmée, sinon calculé
+            $order->total_price = ($validated['status'] === 'confirmée' && $request->filled('total_price')) 
+                ? (float) $request->total_price 
+                : $totalPrice;
+            
             $order->attempts_count = 0;
             $order->daily_attempts_count = 0;
             
@@ -336,6 +364,8 @@ class OrderController extends Controller
                 'products.required' => 'Veuillez ajouter au moins un produit',
                 'products.min' => 'Veuillez ajouter au moins un produit',
                 'scheduled_date.after' => 'La date programmée doit être dans le futur',
+                'products.*.quantity.min' => 'La quantité doit être au moins de 1',
+                'products.*.id.exists' => 'Un produit sélectionné n\'existe pas',
             ]);
 
             DB::beginTransaction();
@@ -516,7 +546,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Rechercher des produits pour l'interface de traitement - AMÉLIORÉE AVEC RÉFÉRENCE
+     * Rechercher des produits pour l'interface - CORRIGÉE AVEC RÉFÉRENCE
      */
     public function searchProducts(Request $request)
     {
@@ -586,7 +616,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Vérifier les doublons avec algorithme 8 chiffres consécutifs - NOUVELLE MÉTHODE AMÉLIORÉE
+     * Vérifier les doublons avec algorithme 8 chiffres consécutifs - CORRIGÉE
      */
     public function checkPhoneForDuplicates(Request $request)
     {
@@ -629,8 +659,7 @@ class OrderController extends Controller
             return response()->json([
                 'has_duplicates' => count($duplicates) > 0,
                 'total_orders' => count($duplicates),
-                'orders' => $duplicates,
-                'marked_duplicates' => 0 // Pour compatibilité avec l'ancien système
+                'orders' => $duplicates
             ]);
 
         } catch (\Exception $e) {
@@ -640,7 +669,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Récupérer l'historique complet d'un client - NOUVELLE MÉTHODE
+     * Récupérer l'historique complet d'un client - CORRIGÉE
      */
     public function getClientHistory(Request $request)
     {

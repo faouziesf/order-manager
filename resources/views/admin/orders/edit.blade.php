@@ -1050,7 +1050,7 @@
                                 <i class="fas fa-sticky-note"></i> Commentaires
                             </label>
                             <textarea class="form-control @error('notes') is-invalid @enderror" 
-                                      id="notes" name="notes" rows="2"
+                                      id="notes" name="notes" rows="4"
                                       placeholder="Notes supplémentaires">{{ old('notes', $order->notes) }}</textarea>
                             @error('notes') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
@@ -1073,7 +1073,7 @@
 
                         <div class="stock-warning" id="stock-warning">
                             <i class="fas fa-exclamation-triangle"></i>
-                            Attention : Certains produits n'ont pas assez de stock pour être confirmés.
+                            <strong>Attention :</strong> Stock insuffisant pour certains produits.
                         </div>
 
                         <div class="product-list" id="product-list">
@@ -1839,17 +1839,23 @@ $(document).ready(function() {
     function checkStock() {
         const currentStatus = $('#status').val();
         let hasStockIssues = false;
+        let stockMessages = [];
 
         if (currentStatus === 'confirmée') {
             products.forEach(product => {
                 if (product.stock < product.quantity) {
                     hasStockIssues = true;
+                    stockMessages.push(`<strong>${product.name}</strong>: stock insuffisant (${product.stock} disponible, ${product.quantity} demandée)`);
                 }
             });
         }
 
         if (hasStockIssues) {
-            $('#stock-warning').addClass('show');
+            $('#stock-warning').html(`
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Attention :</strong> Stock insuffisant pour certains produits :<br>
+                ${stockMessages.join('<br>')}
+            `).addClass('show');
         } else {
             $('#stock-warning').removeClass('show');
         }
@@ -1937,7 +1943,7 @@ $(document).ready(function() {
         }
     });
 
-    // Validation du formulaire
+    // Validation du formulaire avec messages d'erreur français
     $('#orderForm').on('submit', function(e) {
         const errors = [];
         
@@ -1956,28 +1962,28 @@ $(document).ready(function() {
             errors.push('La date de livraison est obligatoire pour une commande datée');
         }
         
-        // Validation du stock pour confirmation
+        // Validation du stock pour confirmation avec messages français
         if (newStatus === 'confirmée') {
-            let stockError = false;
+            let stockErrors = [];
             products.forEach(product => {
                 if (product.stock < product.quantity) {
-                    stockError = true;
+                    stockErrors.push(`${product.name}: stock insuffisant (${product.stock} disponible, ${product.quantity} demandée)`);
                 }
             });
             
-            if (stockError) {
-                errors.push('Impossible de confirmer : stock insuffisant pour certains produits');
+            if (stockErrors.length > 0) {
+                errors.push('Impossible de confirmer - Stock insuffisant pour certains produits:\n' + stockErrors.join('\n'));
             }
         }
 
         if (errors.length > 0) {
             e.preventDefault();
-            alert('Erreurs:\n' + errors.join('\n'));
+            alert('Erreurs détectées:\n\n' + errors.join('\n\n'));
             return false;
         }
 
         if (newStatus === 'confirmée' && originalStatus !== 'confirmée') {
-            if (!confirm('Confirmer cette commande ?\n\nLe stock sera automatiquement déduit.')) {
+            if (!confirm('Confirmer cette commande ?\n\nLe stock sera automatiquement déduit des produits.')) {
                 e.preventDefault();
                 return false;
             }

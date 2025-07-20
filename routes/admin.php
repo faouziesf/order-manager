@@ -81,48 +81,42 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('products', ProductController::class);
 
         // ========================================
-        // GESTION DES COMMANDES - ROUTES SIMPLIFIÉES
+        // GESTION DES COMMANDES - SECTION CORRIGÉE
         // ========================================
 
-        // Routes spéciales AVANT le resource
-        Route::post('orders/bulk-assign', [OrderController::class, 'bulkAssign'])
-            ->name('orders.bulk-assign');
-        Route::post('orders/{order}/unassign', [OrderController::class, 'unassign'])
-            ->name('orders.unassign');
+        // ⚠️ ROUTES SPÉCIALES AVANT RESOURCE (ORDRE CRITIQUE POUR ÉVITER 404) ⚠️
+        Route::get('orders/check-phone-duplicates', [OrderController::class, 'checkPhoneForDuplicates'])
+            ->name('orders.check-phone-duplicates');
+        Route::get('orders/client-history', [OrderController::class, 'getClientHistory'])
+            ->name('orders.client-history');
+        Route::get('orders/search-products', [OrderController::class, 'searchProducts'])
+            ->name('orders.search-products');
+        Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
+            ->name('orders.get-regions');
+        Route::get('orders/get-cities', [OrderController::class, 'getCities'])
+            ->name('orders.get-cities');
         Route::get('orders/unassigned', [OrderController::class, 'unassigned'])
             ->name('orders.unassigned');
+
+        // Actions groupées AVANT resource
+        Route::post('orders/bulk-assign', [OrderController::class, 'bulkAssign'])
+            ->name('orders.bulk-assign');
+
+        // Actions sur commandes spécifiques AVANT resource
+        Route::post('orders/{order}/unassign', [OrderController::class, 'unassign'])
+            ->name('orders.unassign');
         Route::get('orders/{order}/history', [OrderController::class, 'showHistory'])
             ->name('orders.history');
         Route::get('orders/{order}/history-modal', [OrderController::class, 'getHistory'])
             ->name('orders.history-modal');
         Route::post('orders/{order}/record-attempt', [OrderController::class, 'recordAttempt'])
-            ->name('orders.recordAttempt');
+            ->name('orders.record-attempt');
 
-        // Nouvelles routes pour les améliorations
-        Route::get('orders/check-phone-duplicates', [OrderController::class, 'checkPhoneForDuplicates'])
-            ->name('orders.checkPhoneForDuplicates');
-        Route::get('orders/client-history', [OrderController::class, 'getClientHistory'])
-            ->name('orders.clientHistory');
-
-        // Dans la section des commandes, ajoutez ces routes AVANT la ligne Route::resource('orders', OrderController::class);
-        Route::get('orders/check-phone-duplicates', [OrderController::class, 'checkPhoneForDuplicates'])
-            ->name('orders.check-phone-duplicates');
-        Route::get('orders/client-history', [OrderController::class, 'getClientHistory'])
-            ->name('orders.client-history');
-
-        // Routes pour l'interface de traitement - CORRIGÉES
-        Route::get('orders/get-regions', [OrderController::class, 'getRegions'])
-            ->name('orders.getRegions');
-        Route::get('orders/get-cities', [OrderController::class, 'getCities'])
-            ->name('orders.getCities');
-        Route::get('orders/search-products', [OrderController::class, 'searchProducts'])
-            ->name('orders.searchProducts');
-
-        // CRUD de base
+        // ⚠️ ROUTE RESOURCE EN DERNIER (CRITICAL) ⚠️
         Route::resource('orders', OrderController::class);
 
         // ========================================
-        // TRAITEMENT DES COMMANDES - API UNIFIÉE CORRIGÉE
+        // TRAITEMENT DES COMMANDES - API UNIFIÉE (INCHANGÉ)
         // ========================================
 
         // Interface de traitement principal
@@ -149,7 +143,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('process.api.queue');
 
         // ========================================
-        // INTERFACES SPÉCIALISÉES (OPTIONNELLES)
+        // INTERFACES SPÉCIALISÉES (INCHANGÉ)
         // ========================================
         
         // INTERFACE D'EXAMEN DES COMMANDES
@@ -185,7 +179,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // ========================================
-        // GESTION DES UTILISATEURS
+        // GESTION DES UTILISATEURS (INCHANGÉ)
         // ========================================
         Route::resource('managers', ManagerController::class);
         Route::patch('managers/{manager}/toggle-active', [ManagerController::class, 'toggleActive'])
@@ -203,7 +197,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('login-history.show');
 
         // ========================================
-        // IMPORTATION ET INTÉGRATIONS
+        // IMPORTATION ET INTÉGRATIONS (INCHANGÉ)
         // ========================================
         Route::get('import', [ImportController::class, 'index'])->name('import.index');
         Route::post('import/csv', [ImportController::class, 'importCsv'])->name('import.csv');
@@ -223,7 +217,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');
 
         // ========================================
-        // GESTION DES COMMANDES DOUBLES
+        // GESTION DES COMMANDES DOUBLES (INCHANGÉ)
         // ========================================
         Route::prefix('duplicates')->name('duplicates.')->group(function () {
             Route::get('/', [DuplicateOrdersController::class, 'index'])->name('index');
@@ -242,7 +236,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // ========================================
-        // PARAMÈTRES
+        // PARAMÈTRES (INCHANGÉ)
         // ========================================
         Route::get('settings', [AdminSettingController::class, 'index'])->name('settings.index');
         Route::post('settings', [AdminSettingController::class, 'store'])->name('settings.store');
@@ -254,7 +248,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION CORRIGÉE
+        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS (INCHANGÉ)
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
             
@@ -265,7 +259,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('index');
             
             // ================================
-            // CONFIGURATION JAX DELIVERY - PAGES SÉPARÉES (NOUVEAU)
+            // CONFIGURATION JAX DELIVERY - PAGES SÉPARÉES
             // ================================
             Route::get('configuration', [DeliveryController::class, 'configuration'])
                 ->name('configuration');
@@ -336,7 +330,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // ========================================
-        // DEBUG ET DIAGNOSTICS
+        // DEBUG ET DIAGNOSTICS (INCHANGÉ)
         // ========================================
         Route::get('debug-auth', function () {
             $admin = auth('admin')->user();
