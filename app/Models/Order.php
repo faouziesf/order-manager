@@ -966,4 +966,5 @@ class Order extends Model
             ->distinct('customer_phone')
             ->count('customer_phone');
     }
+
 }

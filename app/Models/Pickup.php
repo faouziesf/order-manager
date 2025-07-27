@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 
 class Pickup extends Model
@@ -27,9 +25,9 @@ class Pickup extends Model
     ];
 
     // ========================================
-    // CONSTANTES
+    // CONSTANTES DE STATUTS
     // ========================================
-    
+
     const STATUS_DRAFT = 'draft';
     const STATUS_VALIDATED = 'validated';
     const STATUS_PICKED_UP = 'picked_up';
@@ -38,363 +36,497 @@ class Pickup extends Model
     // ========================================
     // RELATIONS
     // ========================================
-    
-    public function admin(): BelongsTo
+
+    /**
+     * L'admin propriétaire de ce pickup
+     */
+    public function admin()
     {
         return $this->belongsTo(Admin::class);
     }
 
-    public function deliveryConfiguration(): BelongsTo
+    /**
+     * La configuration de livraison utilisée
+     */
+    public function deliveryConfiguration()
     {
         return $this->belongsTo(DeliveryConfiguration::class);
     }
 
-    public function shipments(): HasMany
+    /**
+     * Les expéditions incluses dans ce pickup
+     */
+    public function shipments()
     {
         return $this->hasMany(Shipment::class);
     }
 
-    // ========================================
-    // ACCESSORS
-    // ========================================
-    
-    public function getShipmentCountAttribute(): int
+    /**
+     * Les commandes incluses via les expéditions
+     */
+    public function orders()
     {
-        return $this->shipments()->count();
+        return $this->hasManyThrough(Order::class, Shipment::class, 'pickup_id', 'id', 'id', 'order_id');
     }
 
-    public function getStatusLabelAttribute(): string
+    // ========================================
+    // ACCESSORS & MUTATORS
+    // ========================================
+
+    /**
+     * Obtenir le nom du transporteur
+     */
+    public function getCarrierNameAttribute()
+    {
+        $carriers = config('carriers');
+        return $carriers[$this->carrier_slug]['name'] ?? ucfirst(str_replace('_', ' ', $this->carrier_slug));
+    }
+
+    /**
+     * Obtenir la couleur du badge de statut
+     */
+    public function getStatusColorAttribute()
+    {
+        return match($this->status) {
+            self::STATUS_DRAFT => 'secondary',
+            self::STATUS_VALIDATED => 'success',
+            self::STATUS_PICKED_UP => 'info',
+            self::STATUS_PROBLEM => 'danger',
+            default => 'secondary',
+        };
+    }
+
+    /**
+     * Obtenir le libellé du statut
+     */
+    public function getStatusLabelAttribute()
     {
         return match($this->status) {
             self::STATUS_DRAFT => 'Brouillon',
             self::STATUS_VALIDATED => 'Validé',
             self::STATUS_PICKED_UP => 'Récupéré',
             self::STATUS_PROBLEM => 'Problème',
-            default => $this->status,
+            default => 'Inconnu',
         };
     }
 
-    public function getStatusBadgeClassAttribute(): string
+    /**
+     * Obtenir l'icône du statut
+     */
+    public function getStatusIconAttribute()
     {
         return match($this->status) {
-            self::STATUS_DRAFT => 'badge-secondary',
-            self::STATUS_VALIDATED => 'badge-primary',
-            self::STATUS_PICKED_UP => 'badge-success',
-            self::STATUS_PROBLEM => 'badge-danger',
-            default => 'badge-secondary',
+            self::STATUS_DRAFT => 'fa-edit',
+            self::STATUS_VALIDATED => 'fa-check',
+            self::STATUS_PICKED_UP => 'fa-truck',
+            self::STATUS_PROBLEM => 'fa-exclamation-triangle',
+            default => 'fa-question',
         };
     }
 
-    public function getCarrierDisplayNameAttribute(): string
+    /**
+     * Vérifier si le pickup peut être modifié
+     */
+    public function getCanBeEditedAttribute()
     {
-        return 'Jax Delivery Services';
+        return $this->status === self::STATUS_DRAFT;
     }
 
-    public function getTotalValueAttribute(): float
+    /**
+     * Vérifier si le pickup peut être validé
+     */
+    public function getCanBeValidatedAttribute()
     {
-        return $this->shipments()->sum('value') ?? 0;
+        return $this->status === self::STATUS_DRAFT && 
+               $this->shipments()->exists() &&
+               $this->deliveryConfiguration &&
+               $this->deliveryConfiguration->is_active;
     }
 
-    public function getTotalWeightAttribute(): float
+    /**
+     * Vérifier si le pickup peut être supprimé
+     */
+    public function getCanBeDeletedAttribute()
     {
-        return $this->shipments()->sum('weight') ?? 0;
+        return $this->status === self::STATUS_DRAFT;
     }
 
-    public function getDeliveredShipmentsCountAttribute(): int
+    /**
+     * Obtenir le nombre total d'expéditions
+     */
+    public function getShipmentsCountAttribute()
     {
-        return $this->shipments()->where('status', 'delivered')->count();
+        return $this->shipments()->count();
     }
 
-    public function getValidatedShipmentsCountAttribute(): int
+    /**
+     * Obtenir le nombre total de commandes
+     */
+    public function getOrdersCountAttribute()
     {
-        return $this->shipments()->whereNotNull('pos_barcode')->count();
+        return $this->orders()->count();
     }
 
-    public function getProgressPercentageAttribute(): float
+    /**
+     * Obtenir la valeur totale COD
+     */
+    public function getTotalCodAmountAttribute()
     {
-        if ($this->shipment_count === 0) {
+        return $this->shipments()->sum('cod_amount');
+    }
+
+    /**
+     * Obtenir le poids total
+     */
+    public function getTotalWeightAttribute()
+    {
+        return $this->shipments()->sum('weight');
+    }
+
+    /**
+     * Obtenir le nombre total de pièces
+     */
+    public function getTotalPiecesAttribute()
+    {
+        return $this->shipments()->sum('nb_pieces');
+    }
+
+    /**
+     * Vérifier si le pickup est en retard
+     */
+    public function getIsOverdueAttribute()
+    {
+        if (!$this->pickup_date) {
+            return false;
+        }
+        
+        return $this->pickup_date->isPast() && 
+               in_array($this->status, [self::STATUS_DRAFT, self::STATUS_VALIDATED]);
+    }
+
+    /**
+     * Obtenir les jours de retard
+     */
+    public function getDaysOverdueAttribute()
+    {
+        if (!$this->is_overdue) {
             return 0;
         }
         
-        return round(($this->delivered_shipments_count / $this->shipment_count) * 100, 1);
-    }
-
-    public function getDaysInCurrentStatusAttribute(): int
-    {
-        $referenceDate = match($this->status) {
-            self::STATUS_VALIDATED => $this->validated_at,
-            default => $this->updated_at,
-        };
-        
-        return $referenceDate ? $referenceDate->diffInDays(now()) : 0;
-    }
-
-    // ========================================
-    // MÉTHODES
-    // ========================================
-    
-    public function validate(): bool
-    {
-        if ($this->status !== self::STATUS_DRAFT) {
-            throw new \Exception('Seuls les enlèvements en brouillon peuvent être validés.');
-        }
-
-        if ($this->shipments()->count() === 0) {
-            throw new \Exception('Aucune expédition trouvée pour cet enlèvement.');
-        }
-
-        return \DB::transaction(function () {
-            $errors = [];
-            $successCount = 0;
-
-            foreach ($this->shipments as $shipment) {
-                try {
-                    // TODO: Intégrer avec JaxDeliveryService
-                    // $shipment->createWithJaxDelivery();
-                    
-                    // Pour l'instant, simulation
-                    $shipment->update([
-                        'status' => 'validated',
-                        'pos_barcode' => 'JAX_' . uniqid(),
-                    ]);
-                    
-                    $successCount++;
-                } catch (\Exception $e) {
-                    $errors[] = "Expédition #{$shipment->order_id}: " . $e->getMessage();
-                    \Log::error('Shipment creation failed', [
-                        'shipment_id' => $shipment->id,
-                        'order_id' => $shipment->order_id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            if ($successCount > 0) {
-                $this->update([
-                    'status' => self::STATUS_VALIDATED,
-                    'validated_at' => now(),
-                ]);
-
-                // Enregistrer dans l'historique de chaque commande
-                foreach ($this->shipments()->whereNotNull('pos_barcode')->get() as $shipment) {
-                    $shipment->order->recordHistory(
-                        'pickup_validated',
-                        "Enlèvement #{$this->id} validé - {$successCount} expédition(s) créée(s)",
-                        [
-                            'pickup_id' => $this->id,
-                            'carrier' => 'jax_delivery',
-                            'success_count' => $successCount,
-                            'error_count' => count($errors),
-                        ]
-                    );
-                }
-
-                \Log::info('Pickup validated', [
-                    'pickup_id' => $this->id,
-                    'success_count' => $successCount,
-                    'error_count' => count($errors),
-                ]);
-
-                return true;
-            }
-
-            throw new \Exception('Aucune expédition n\'a pu être créée: ' . implode(', ', $errors));
-        });
-    }
-
-    public function checkForProblems(): void
-    {
-        if ($this->status !== self::STATUS_VALIDATED) {
-            return;
-        }
-
-        // Si validé depuis plus de 24h et qu'il y a des expéditions non récupérées
-        if ($this->validated_at && $this->validated_at->diffInHours(now()) > 24) {
-            $notPickedUp = $this->shipments()
-                ->where('status', '!=', Shipment::STATUS_PICKED_UP_BY_CARRIER)
-                ->exists();
-
-            if ($notPickedUp) {
-                $this->update(['status' => self::STATUS_PROBLEM]);
-                
-                // Enregistrer dans l'historique
-                foreach ($this->shipments as $shipment) {
-                    $shipment->order->recordHistory(
-                        'delivery_anomaly',
-                        "Enlèvement #{$this->id} marqué comme problématique - non récupéré après 24h",
-                        ['pickup_id' => $this->id, 'hours_elapsed' => $this->validated_at->diffInHours(now())]
-                    );
-                }
-            }
-        }
-    }
-
-    public function updateStatus(): void
-    {
-        if ($this->status !== self::STATUS_VALIDATED) {
-            return;
-        }
-
-        $totalShipments = $this->shipments()->count();
-        $pickedUpShipments = $this->shipments()
-            ->where('status', Shipment::STATUS_PICKED_UP_BY_CARRIER)
-            ->count();
-
-        if ($totalShipments > 0 && $pickedUpShipments === $totalShipments) {
-            $this->update(['status' => self::STATUS_PICKED_UP]);
-            
-            // Enregistrer dans l'historique
-            foreach ($this->shipments as $shipment) {
-                $shipment->order->recordHistory(
-                    'picked_up_by_carrier',
-                    "Enlèvement #{$this->id} entièrement récupéré par le transporteur",
-                    ['pickup_id' => $this->id, 'shipments_count' => $totalShipments]
-                );
-            }
-        }
-    }
-
-    public function canBeValidated(): bool
-    {
-        return $this->status === self::STATUS_DRAFT && $this->shipments()->count() > 0;
-    }
-
-    public function canBeModified(): bool
-    {
-        return $this->status === self::STATUS_DRAFT;
-    }
-
-    public function canBeDeleted(): bool
-    {
-        return $this->status === self::STATUS_DRAFT;
-    }
-
-    public function addOrder(Order $order): Shipment
-    {
-        if (!$this->canBeModified()) {
-            throw new \Exception('Cet enlèvement ne peut plus être modifié.');
-        }
-
-        if ($order->status !== 'confirmée') {
-            throw new \Exception('Seules les commandes confirmées peuvent être ajoutées.');
-        }
-
-        if ($order->shipments()->whereNotNull('pickup_id')->exists()) {
-            throw new \Exception('Cette commande est déjà assignée à un enlèvement.');
-        }
-
-        return Shipment::create([
-            'admin_id' => $this->admin_id,
-            'order_id' => $order->id,
-            'pickup_id' => $this->id,
-            'order_number' => $order->id,
-            'status' => Shipment::STATUS_CREATED,
-            'weight' => $this->calculateOrderWeight($order),
-            'value' => $order->total_price,
-            'cod_amount' => $order->total_price,
-            'nb_pieces' => 1,
-            'content_description' => 'Commande #' . $order->id,
-            'recipient_info' => [
-                'name' => $order->customer_name,
-                'phone' => $order->customer_phone,
-                'address' => $order->customer_address,
-                'city' => $order->customer_city,
-                'governorate' => $order->customer_governorate,
-                'email' => $order->customer_email,
-            ],
-        ]);
-    }
-
-    public function removeShipment(Shipment $shipment): void
-    {
-        if (!$this->canBeModified()) {
-            throw new \Exception('Cet enlèvement ne peut plus être modifié.');
-        }
-
-        if ($shipment->pickup_id !== $this->id) {
-            throw new \Exception('Cette expédition n\'appartient pas à cet enlèvement.');
-        }
-
-        $shipment->delete();
-    }
-
-    private function calculateOrderWeight(Order $order): float
-    {
-        $totalWeight = 0;
-        
-        foreach ($order->items as $item) {
-            $itemWeight = $item->product->weight ?? 0.5; // 500g par défaut
-            $totalWeight += $itemWeight * $item->quantity;
-        }
-        
-        return max($totalWeight, 0.1); // Minimum 100g
+        return $this->pickup_date->diffInDays(now());
     }
 
     // ========================================
     // SCOPES
     // ========================================
-    
-    public function scopeByStatus($query, string $status)
-    {
-        return $query->where('status', $status);
-    }
 
-    public function scopeForAdmin($query, $adminId)
-    {
-        return $query->where('admin_id', $adminId);
-    }
-
-    public function scopeNeedsStatusCheck($query)
-    {
-        return $query->where('status', self::STATUS_VALIDATED)
-            ->where('validated_at', '<', now()->subHours(1));
-    }
-
+    /**
+     * Scope pour les pickups en brouillon
+     */
     public function scopeDraft($query)
     {
         return $query->where('status', self::STATUS_DRAFT);
     }
 
+    /**
+     * Scope pour les pickups validés
+     */
     public function scopeValidated($query)
     {
         return $query->where('status', self::STATUS_VALIDATED);
     }
 
+    /**
+     * Scope pour les pickups récupérés
+     */
     public function scopePickedUp($query)
     {
         return $query->where('status', self::STATUS_PICKED_UP);
     }
 
+    /**
+     * Scope pour les pickups avec problème
+     */
     public function scopeProblem($query)
     {
         return $query->where('status', self::STATUS_PROBLEM);
     }
 
-    public function scopeRecent($query, int $days = 30)
+    /**
+     * Scope pour un transporteur spécifique
+     */
+    public function scopeForCarrier($query, $carrierSlug)
     {
-        return $query->where('created_at', '>=', now()->subDays($days));
+        return $query->where('carrier_slug', $carrierSlug);
+    }
+
+    /**
+     * Scope pour un admin spécifique
+     */
+    public function scopeForAdmin($query, $adminId)
+    {
+        return $query->where('admin_id', $adminId);
+    }
+
+    /**
+     * Scope pour les pickups d'aujourd'hui
+     */
+    public function scopeToday($query)
+    {
+        return $query->whereDate('pickup_date', today());
+    }
+
+    /**
+     * Scope pour les pickups en retard
+     */
+    public function scopeOverdue($query)
+    {
+        return $query->where('pickup_date', '<', today())
+            ->whereIn('status', [self::STATUS_DRAFT, self::STATUS_VALIDATED]);
+    }
+
+    /**
+     * Scope pour les pickups prêts à être validés
+     */
+    public function scopeReadyToValidate($query)
+    {
+        return $query->where('status', self::STATUS_DRAFT)
+            ->whereHas('shipments')
+            ->whereHas('deliveryConfiguration', function($q) {
+                $q->where('is_active', true);
+            });
+    }
+
+    // ========================================
+    // MÉTHODES PRINCIPALES
+    // ========================================
+
+    /**
+     * Valider le pickup (envoi vers l'API transporteur)
+     */
+    public function validate()
+    {
+        if (!$this->can_be_validated) {
+            throw new \Exception('Ce pickup ne peut pas être validé');
+        }
+
+        try {
+            // TODO: Implémenter l'envoi vers l'API dans Phase 4
+            // Pour l'instant, juste changer le statut
+            
+            $this->update([
+                'status' => self::STATUS_VALIDATED,
+                'validated_at' => now(),
+            ]);
+
+            // Mettre à jour le statut des expéditions
+            $this->shipments()->update(['status' => 'validated']);
+
+            // Enregistrer dans l'historique des commandes
+            foreach ($this->orders as $order) {
+                $order->recordHistory(
+                    'pickup_validated',
+                    "Pickup #{$this->id} validé et envoyé au transporteur {$this->carrier_name}",
+                    [
+                        'pickup_id' => $this->id,
+                        'carrier_slug' => $this->carrier_slug,
+                        'pickup_date' => $this->pickup_date->toDateString(),
+                        'validated_at' => $this->validated_at->toISOString(),
+                    ],
+                    $order->status,
+                    $order->status, // Pas de changement de statut pour l'instant
+                    null,
+                    'Pickup validé',
+                    null,
+                    $this->carrier_name
+                );
+            }
+
+            return true;
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur validation pickup', [
+                'pickup_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            throw $e;
+        }
+    }
+
+    /**
+     * Marquer comme récupéré par le transporteur
+     */
+    public function markAsPickedUp()
+    {
+        if ($this->status !== self::STATUS_VALIDATED) {
+            throw new \Exception('Seuls les pickups validés peuvent être marqués comme récupérés');
+        }
+
+        $this->update(['status' => self::STATUS_PICKED_UP]);
+
+        // Mettre à jour le statut des expéditions
+        $this->shipments()->update(['status' => 'picked_up_by_carrier']);
+
+        // Enregistrer dans l'historique des commandes
+        foreach ($this->orders as $order) {
+            $order->recordHistory(
+                'picked_up_by_carrier',
+                "Pickup #{$this->id} récupéré par le transporteur {$this->carrier_name}",
+                [
+                    'pickup_id' => $this->id,
+                    'carrier_slug' => $this->carrier_slug,
+                ],
+                $order->status,
+                'en_transit',
+                null,
+                'Récupéré par transporteur',
+                null,
+                $this->carrier_name
+            );
+
+            // Mettre à jour le statut de la commande
+            $order->update(['status' => 'en_transit']);
+        }
+    }
+
+    /**
+     * Marquer comme ayant un problème
+     */
+    public function markAsProblem($reason = null)
+    {
+        $this->update(['status' => self::STATUS_PROBLEM]);
+
+        // Enregistrer dans l'historique des commandes
+        foreach ($this->orders as $order) {
+            $order->recordHistory(
+                'pickup_problem',
+                "Problème avec pickup #{$this->id}: " . ($reason ?: 'Raison non spécifiée'),
+                [
+                    'pickup_id' => $this->id,
+                    'carrier_slug' => $this->carrier_slug,
+                    'problem_reason' => $reason,
+                ],
+                $order->status,
+                $order->status,
+                null,
+                'Problème pickup',
+                null,
+                $this->carrier_name
+            );
+        }
+    }
+
+    /**
+     * Ajouter une expédition au pickup
+     */
+    public function addShipment(Shipment $shipment)
+    {
+        if (!$this->can_be_edited) {
+            throw new \Exception('Ce pickup ne peut plus être modifié');
+        }
+
+        if ($shipment->pickup_id && $shipment->pickup_id !== $this->id) {
+            throw new \Exception('Cette expédition est déjà assignée à un autre pickup');
+        }
+
+        $shipment->update(['pickup_id' => $this->id]);
+        
+        return $this;
+    }
+
+    /**
+     * Retirer une expédition du pickup
+     */
+    public function removeShipment(Shipment $shipment)
+    {
+        if (!$this->can_be_edited) {
+            throw new \Exception('Ce pickup ne peut plus être modifié');
+        }
+
+        if ($shipment->pickup_id === $this->id) {
+            $shipment->update(['pickup_id' => null, 'status' => 'created']);
+        }
+        
+        return $this;
+    }
+
+    /**
+     * Obtenir le résumé du pickup
+     */
+    public function getSummary()
+    {
+        return [
+            'id' => $this->id,
+            'status' => $this->status,
+            'status_label' => $this->status_label,
+            'carrier_name' => $this->carrier_name,
+            'pickup_date' => $this->pickup_date?->format('d/m/Y'),
+            'shipments_count' => $this->shipments_count,
+            'orders_count' => $this->orders_count,
+            'total_cod_amount' => $this->total_cod_amount,
+            'total_weight' => $this->total_weight,
+            'total_pieces' => $this->total_pieces,
+            'is_overdue' => $this->is_overdue,
+            'days_overdue' => $this->days_overdue,
+            'can_be_validated' => $this->can_be_validated,
+            'can_be_edited' => $this->can_be_edited,
+            'can_be_deleted' => $this->can_be_deleted,
+        ];
     }
 
     // ========================================
     // MÉTHODES STATIQUES
     // ========================================
-    
-    public static function createForAdmin(Admin $admin, array $data): self
-    {
-        $deliveryConfig = DeliveryConfiguration::where('id', $data['delivery_configuration_id'])
-            ->where('admin_id', $admin->id)
-            ->firstOrFail();
 
-        return self::create([
-            'admin_id' => $admin->id,
-            'carrier_slug' => 'jax_delivery',
-            'delivery_configuration_id' => $deliveryConfig->id,
-            'pickup_date' => $data['pickup_date'] ?? null,
+    /**
+     * Créer un nouveau pickup pour un admin et transporteur
+     */
+    public static function createForCarrier($adminId, $carrierSlug, $configurationId, $pickupDate = null)
+    {
+        return static::create([
+            'admin_id' => $adminId,
+            'carrier_slug' => $carrierSlug,
+            'delivery_configuration_id' => $configurationId,
             'status' => self::STATUS_DRAFT,
+            'pickup_date' => $pickupDate ?: now()->addDay()->format('Y-m-d'),
         ]);
     }
 
-    public static function getStatusOptions(): array
+    /**
+     * Obtenir les statistiques des pickups pour un admin
+     */
+    public static function getStatsForAdmin($adminId)
+    {
+        $pickups = static::where('admin_id', $adminId);
+        
+        return [
+            'total' => $pickups->count(),
+            'draft' => $pickups->where('status', self::STATUS_DRAFT)->count(),
+            'validated' => $pickups->where('status', self::STATUS_VALIDATED)->count(),
+            'picked_up' => $pickups->where('status', self::STATUS_PICKED_UP)->count(),
+            'problem' => $pickups->where('status', self::STATUS_PROBLEM)->count(),
+            'overdue' => static::where('admin_id', $adminId)->overdue()->count(),
+            'today' => static::where('admin_id', $adminId)->today()->count(),
+        ];
+    }
+
+    /**
+     * Obtenir les pickups récents pour un admin
+     */
+    public static function getRecentForAdmin($adminId, $limit = 10)
+    {
+        return static::where('admin_id', $adminId)
+            ->with(['deliveryConfiguration', 'shipments'])
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Obtenir tous les statuts disponibles
+     */
+    public static function getAvailableStatuses()
     {
         return [
             self::STATUS_DRAFT => 'Brouillon',

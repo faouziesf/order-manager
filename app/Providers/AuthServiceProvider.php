@@ -28,7 +28,8 @@ class AuthServiceProvider extends ServiceProvider
         Admin::class => AdminPolicy::class,
         // Policies pour la livraison
         \App\Models\DeliveryConfiguration::class => \App\Policies\DeliveryConfigurationPolicy::class,
-        \App\Models\PickupAddress::class => \App\Policies\PickupAddressPolicy::class,
+        Pickup::class => PickupPolicy::class,
+        Shipment::class => ShipmentPolicy::class,
     ];
 
     /**
