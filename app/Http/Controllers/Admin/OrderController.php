@@ -147,14 +147,14 @@ class OrderController extends Controller
                 'employee_id' => 'nullable|exists:employees,id',
             ];
 
-            // Si statut confirmée, tous les champs sont obligatoires
+            // Si statut confirmée, tous les champs sont obligatoires (Y COMPRIS PRIX TOTAL)
             if ($request->status === 'confirmée') {
                 $additionalRules = [
                     'customer_name' => 'required|string|max:255',
                     'customer_governorate' => 'required|exists:regions,id',
                     'customer_city' => 'required|exists:cities,id',
                     'customer_address' => 'required|string|max:500',
-                    'total_price' => 'nullable|numeric|min:0',
+                    'total_price' => 'required|numeric|min:0', // AJOUT OBLIGATOIRE
                 ];
                 $baseRules = array_merge($baseRules, $additionalRules);
             } else {
@@ -163,6 +163,7 @@ class OrderController extends Controller
                 $baseRules['customer_governorate'] = 'nullable|exists:regions,id';
                 $baseRules['customer_city'] = 'nullable|exists:cities,id';
                 $baseRules['customer_address'] = 'nullable|string|max:500';
+                $baseRules['total_price'] = 'nullable|numeric|min:0';
             }
 
             // Validation des champs optionnels
@@ -175,6 +176,7 @@ class OrderController extends Controller
                 'customer_governorate.required' => 'Le gouvernorat est obligatoire pour une commande confirmée',
                 'customer_city.required' => 'La ville est obligatoire pour une commande confirmée',
                 'customer_address.required' => 'L\'adresse est obligatoire pour une commande confirmée',
+                'total_price.required' => 'Le prix total est obligatoire pour une commande confirmée',
                 'products.required' => 'Veuillez ajouter au moins un produit',
                 'products.min' => 'Veuillez ajouter au moins un produit',
                 'products.*.id.exists' => 'Un ou plusieurs produits sélectionnés n\'existent pas',
@@ -343,24 +345,42 @@ class OrderController extends Controller
         try {
             $this->authorize('update', $order);
 
-            $validated = $request->validate([
+            // VALIDATION CONDITIONNELLE SELON STATUT
+            $validationRules = [
                 'customer_phone' => 'required|string|max:20',
-                'customer_name' => 'nullable|string|max:255',
                 'customer_phone_2' => 'nullable|string|max:20',
-                'customer_governorate' => 'nullable|exists:regions,id',
-                'customer_city' => 'nullable|exists:cities,id',
-                'customer_address' => 'nullable|string|max:500',
                 'notes' => 'nullable|string|max:1000',
                 'status' => 'required|in:nouvelle,confirmée,annulée,datée,ancienne,en_route,livrée',
                 'priority' => 'required|in:normale,urgente,vip',
                 'employee_id' => 'nullable|exists:employees,id',
                 'scheduled_date' => 'nullable|date|after:today',
-                'total_price' => 'nullable|numeric|min:0',
                 'products' => 'required|array|min:1',
                 'products.*.id' => 'required|exists:products,id',
                 'products.*.quantity' => 'required|integer|min:1',
-            ], [
+            ];
+
+            // Champs conditionnels selon le statut
+            if ($request->status === 'confirmée') {
+                $validationRules['customer_name'] = 'required|string|max:255';
+                $validationRules['customer_governorate'] = 'required|exists:regions,id';
+                $validationRules['customer_city'] = 'required|exists:cities,id';
+                $validationRules['customer_address'] = 'required|string|max:500';
+                $validationRules['total_price'] = 'required|numeric|min:0'; // PRIX OBLIGATOIRE
+            } else {
+                $validationRules['customer_name'] = 'nullable|string|max:255';
+                $validationRules['customer_governorate'] = 'nullable|exists:regions,id';
+                $validationRules['customer_city'] = 'nullable|exists:cities,id';
+                $validationRules['customer_address'] = 'nullable|string|max:500';
+                $validationRules['total_price'] = 'nullable|numeric|min:0';
+            }
+
+            $validated = $request->validate($validationRules, [
                 'customer_phone.required' => 'Le numéro de téléphone est obligatoire',
+                'customer_name.required' => 'Le nom du client est obligatoire pour une commande confirmée',
+                'customer_governorate.required' => 'Le gouvernorat est obligatoire pour une commande confirmée',
+                'customer_city.required' => 'La ville est obligatoire pour une commande confirmée',
+                'customer_address.required' => 'L\'adresse est obligatoire pour une commande confirmée',
+                'total_price.required' => 'Le prix total est obligatoire pour une commande confirmée',
                 'products.required' => 'Veuillez ajouter au moins un produit',
                 'products.min' => 'Veuillez ajouter au moins un produit',
                 'scheduled_date.after' => 'La date programmée doit être dans le futur',
@@ -374,7 +394,7 @@ class OrderController extends Controller
             $wasConfirmed = $oldStatus === 'confirmée';
             $willBeConfirmed = $validated['status'] === 'confirmée';
 
-            // Restaurer le stock si la commande était confirmée
+            // RESTAURER LE STOCK si passage de confirmée vers autre statut
             if ($wasConfirmed && !$willBeConfirmed) {
                 foreach ($order->items as $item) {
                     if ($item->product) {
