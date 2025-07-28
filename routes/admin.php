@@ -248,7 +248,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS (INCHANGÉ)
+        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
             
@@ -259,7 +259,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('index');
             
             // ================================
-            // CONFIGURATION JAX DELIVERY - PAGES SÉPARÉES
+            // CONFIGURATION DES TRANSPORTEURS
             // ================================
             Route::get('configuration', [DeliveryController::class, 'configuration'])
                 ->name('configuration');
@@ -327,10 +327,50 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('api.stats');
             Route::post('api/track-all', [DeliveryController::class, 'trackAllShipments'])
                 ->name('api.track-all');
+            
+            // ================================
+            // ROUTES ADDITIONNELLES POUR LES NOUVELLES VUES
+            // ================================
+            
+            // API pour l'activité récente
+            Route::get('api/recent-activity', [DeliveryController::class, 'getRecentActivity'])
+                ->name('api.recent-activity');
+            
+            // Export des données
+            Route::get('export/pickups', [DeliveryController::class, 'exportPickups'])
+                ->name('export.pickups');
+            Route::get('export/shipments', [DeliveryController::class, 'exportShipments'])
+                ->name('export.shipments');
+            
+            // Duplication de configuration
+            Route::post('configuration/{config}/duplicate', [DeliveryController::class, 'duplicateConfiguration'])
+                ->name('configuration.duplicate');
+            
+            // Validation en masse
+            Route::post('pickups/bulk-validate', [DeliveryController::class, 'bulkValidatePickups'])
+                ->name('pickups.bulk-validate');
+            
+            // Tracking en masse
+            Route::post('shipments/bulk-track', [DeliveryController::class, 'bulkTrackShipments'])
+                ->name('shipments.bulk-track');
+            
+            // Marquer comme récupéré
+            Route::post('pickups/{pickup}/mark-picked-up', [DeliveryController::class, 'markPickupAsPickedUp'])
+                ->name('pickups.mark-picked-up');
+            
+            // Rapport de livraison
+            Route::get('shipments/{shipment}/delivery-proof', [DeliveryController::class, 'generateDeliveryProof'])
+                ->name('shipments.delivery-proof');
+            
+            // Webhooks pour les transporteurs (si supportés)
+            Route::post('webhook/jax-delivery', [DeliveryController::class, 'webhookJaxDelivery'])
+                ->name('webhook.jax-delivery');
+            Route::post('webhook/mes-colis', [DeliveryController::class, 'webhookMesColis'])
+                ->name('webhook.mes-colis');
         });
 
         // ========================================
-        // DEBUG ET DIAGNOSTICS (INCHANGÉ)
+        // DEBUG ET DIAGNOSTICS
         // ========================================
         Route::get('debug-auth', function () {
             $admin = auth('admin')->user();
@@ -377,5 +417,44 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'draft_pickups' => $admin->pickups()->where('status', 'draft')->count(),
             ];
         })->name('debug-process');
+
+        // ========================================
+        // ROUTE DE TEST POUR LES NOUVELLES VUES DE LIVRAISON
+        // ========================================
+        Route::get('delivery-test', function () {
+            $admin = auth('admin')->user();
+            
+            return [
+                'message' => 'Routes de livraison fonctionnelles',
+                'admin' => $admin->name,
+                'delivery_routes' => [
+                    'index' => route('admin.delivery.index'),
+                    'configuration' => route('admin.delivery.configuration'),
+                    'configuration_create' => route('admin.delivery.configuration.create'),
+                    'preparation' => route('admin.delivery.preparation'),
+                    'pickups' => route('admin.delivery.pickups'),
+                    'shipments' => route('admin.delivery.shipments'),
+                    'stats' => route('admin.delivery.stats'),
+                ],
+                'available_views' => [
+                    'admin.delivery.index',
+                    'admin.delivery.configuration',
+                    'admin.delivery.configuration-create',
+                    'admin.delivery.configuration-edit',
+                    'admin.delivery.preparation',
+                    'admin.delivery.pickups',
+                    'admin.delivery.shipments',
+                    'admin.delivery.components.carrier-card',
+                    'admin.delivery.components.pickup-status-badge',
+                    'admin.delivery.components.shipment-status-badge',
+                    'admin.delivery.components.tracking-history',
+                    'admin.delivery.modals.test-connection',
+                    'admin.delivery.modals.pickup-details',
+                    'admin.delivery.modals.shipment-details',
+                    'admin.delivery.partials.recent-activity',
+                ],
+                'timestamp' => now()->toISOString()
+            ];
+        })->name('delivery-test');
     });
 });
