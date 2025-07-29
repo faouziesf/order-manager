@@ -63,42 +63,78 @@ class DeliveryConfiguration extends Model
     }
 
     // ========================================
-    // ACCESSORS & MUTATORS
+    // ACCESSORS & MUTATORS - CORRIGÉS POUR JWT ET TOKENS
     // ========================================
 
     /**
-     * Chiffrer automatiquement le mot de passe
+     * NE PAS chiffrer les tokens API (JWT ou autres)
+     * JAX Delivery et Mes Colis utilisent des tokens qui ne doivent pas être chiffrés
      */
     public function setPasswordAttribute($value)
     {
         if ($value) {
-            $this->attributes['password'] = Crypt::encryptString($value);
+            // Pour JAX Delivery et Mes Colis, ne pas chiffrer les tokens
+            if (in_array($this->carrier_slug, ['jax_delivery', 'mes_colis'])) {
+                $this->attributes['password'] = $value;
+            } else {
+                // Pour d'autres transporteurs futurs avec vrais mots de passe
+                $this->attributes['password'] = Crypt::encryptString($value);
+            }
+        } else {
+            // Permettre les valeurs null/vides pour Mes Colis
+            $this->attributes['password'] = null;
         }
     }
 
     /**
-     * Déchiffrer automatiquement le mot de passe
+     * NE PAS déchiffrer les tokens API
      */
     public function getPasswordAttribute($value)
     {
         if ($value) {
-            try {
-                return Crypt::decryptString($value);
-            } catch (\Exception $e) {
-                // Si le déchiffrement échoue, retourner la valeur brute
+            // Pour JAX Delivery et Mes Colis, retourner le token tel quel
+            if (in_array($this->carrier_slug, ['jax_delivery', 'mes_colis'])) {
                 return $value;
+            } else {
+                // Pour les autres transporteurs, tenter de déchiffrer
+                try {
+                    return Crypt::decryptString($value);
+                } catch (\Exception $e) {
+                    // Si le déchiffrement échoue, retourner la valeur brute
+                    return $value;
+                }
             }
         }
         return $value;
     }
 
     /**
-     * Chiffrer automatiquement le token
+     * Gestion du champ username (peut contenir des tokens longs)
+     */
+    public function setUsernameAttribute($value)
+    {
+        // Pour tous les transporteurs actuels, stocker tel quel (pas de chiffrement)
+        $this->attributes['username'] = $value;
+    }
+
+    public function getUsernameAttribute($value)
+    {
+        return $value;
+    }
+
+    /**
+     * Chiffrer automatiquement le token seulement si nécessaire
      */
     public function setTokenAttribute($value)
     {
         if ($value) {
-            $this->attributes['token'] = Crypt::encryptString($value);
+            // Pour les tokens JWT/API, ne pas chiffrer
+            if ($this->isJwtToken($value) || in_array($this->carrier_slug, ['jax_delivery', 'mes_colis'])) {
+                $this->attributes['token'] = $value;
+            } else {
+                // Pour d'autres types de tokens
+                $this->attributes['token'] = Crypt::encryptString($value);
+            }
         }
     }
 
@@ -108,6 +144,11 @@ class DeliveryConfiguration extends Model
     public function getTokenAttribute($value)
     {
         if ($value) {
+            // Si c'est déjà un JWT ou pour nos transporteurs, retourner tel quel
+            if ($this->isJwtToken($value) || in_array($this->carrier_slug, ['jax_delivery', 'mes_colis'])) {
+                return $value;
+            }
+            
             try {
                 return Crypt::decryptString($value);
             } catch (\Exception $e) {
@@ -116,6 +157,22 @@ class DeliveryConfiguration extends Model
             }
         }
         return $value;
+    }
+
+    /**
+     * Vérifier si une valeur est un token JWT
+     */
+    private function isJwtToken($value)
+    {
+        if (!is_string($value)) {
+            return false;
+        }
+        
+        $parts = explode('.', $value);
+        return count($parts) === 3 && 
+               strlen($parts[0]) > 10 && 
+               strlen($parts[1]) > 10 && 
+               strlen($parts[2]) > 10;
     }
 
     /**
@@ -151,6 +208,7 @@ class DeliveryConfiguration extends Model
         if ($this->carrier_slug === 'jax_delivery') {
             return !empty($this->username) && !empty($this->password);
         } elseif ($this->carrier_slug === 'mes_colis') {
+            // Mes Colis : seulement username requis (token API)
             return !empty($this->username);
         }
 
@@ -438,8 +496,6 @@ class DeliveryConfiguration extends Model
      */
     public function testConnection()
     {
-        // TODO: Implémenter le test réel dans les phases suivantes
-        // Pour l'instant, juste valider la configuration
         return $this->is_valid;
     }
 

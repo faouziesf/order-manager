@@ -8,6 +8,8 @@ use App\Models\Pickup;
 use App\Models\Shipment;
 use App\Models\Order;
 use App\Models\Region;
+use App\Services\Delivery\ShippingServiceFactory;
+use App\Services\Delivery\Contracts\CarrierServiceException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,10 +23,16 @@ class DeliveryController extends Controller
      */
     protected $carriers;
     
-    public function __construct()
+    /**
+     * Factory pour les services de transporteurs
+     */
+    protected $shippingFactory;
+    
+    public function __construct(ShippingServiceFactory $shippingFactory)
     {
         $this->middleware('auth:admin');
         $this->carriers = config('carriers');
+        $this->shippingFactory = $shippingFactory;
     }
 
     // ========================================
@@ -132,6 +140,13 @@ class DeliveryController extends Controller
         $validator = Validator::make($request->all(), $rules);
         
         if ($validator->fails()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors(),
+                    'message' => 'Données de validation invalides'
+                ], 422);
+            }
             return back()->withErrors($validator)->withInput();
         }
         
@@ -155,6 +170,16 @@ class DeliveryController extends Controller
             
             DB::commit();
             
+            // Si c'est une requête AJAX (pour test), retourner JSON
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuration créée avec succès',
+                    'config_id' => $config->id,
+                    'config' => $config
+                ]);
+            }
+            
             return redirect()->route('admin.delivery.configuration')
                 ->with('success', "Configuration {$config->integration_name} créée avec succès. Testez la connexion pour l'activer.");
                 
@@ -163,10 +188,18 @@ class DeliveryController extends Controller
             Log::error('Erreur création configuration delivery', [
                 'admin_id' => $admin->id,
                 'carrier_slug' => $carrierSlug,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return back()->with('error', 'Erreur lors de la création de la configuration')
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Erreur lors de la création: ' . $e->getMessage(),
+                ], 500);
+            }
+            
+            return back()->with('error', 'Erreur lors de la création de la configuration: ' . $e->getMessage())
                 ->withInput();
         }
     }
@@ -179,8 +212,9 @@ class DeliveryController extends Controller
         $this->authorize('update', $config);
         
         $carrier = $this->carriers[$config->carrier_slug];
+        $carrierSlug = $config->carrier_slug;
         
-        return view('admin.delivery.configuration-edit', compact('config', 'carrier'));
+        return view('admin.delivery.configuration-edit', compact('config', 'carrier', 'carrierSlug'));
     }
 
     /**
@@ -195,6 +229,13 @@ class DeliveryController extends Controller
         $validator = Validator::make($request->all(), $rules);
         
         if ($validator->fails()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors(),
+                    'message' => 'Données de validation invalides'
+                ], 422);
+            }
             return back()->withErrors($validator)->withInput();
         }
         
@@ -203,16 +244,24 @@ class DeliveryController extends Controller
             
             $oldData = $config->toArray();
             
-            $config->update([
+            $updateData = [
                 'integration_name' => $request->input('integration_name'),
                 'username' => $request->input('username'),
-                'password' => $request->input('password') ?: $config->password,
                 'settings' => $request->input('settings', []),
-            ]);
+            ];
+            
+            // Mettre à jour le mot de passe seulement si fourni
+            if ($request->filled('password')) {
+                $updateData['password'] = $request->input('password');
+            }
+            
+            $config->update($updateData);
             
             // Si les credentials ont changé, désactiver la config
-            if ($oldData['username'] !== $config->username || 
-                ($request->input('password') && $oldData['password'] !== $config->password)) {
+            $credentialsChanged = ($oldData['username'] !== $config->username) || 
+                                  ($request->filled('password') && $request->input('password') !== $oldData['password']);
+            
+            if ($credentialsChanged) {
                 $config->update(['is_active' => false]);
                 $message = 'Configuration mise à jour. Testez la connexion pour la réactiver.';
             } else {
@@ -221,10 +270,18 @@ class DeliveryController extends Controller
             
             // Enregistrer dans l'historique
             $this->recordConfigurationHistory($config, 'updated', 'Configuration mise à jour', [
-                'changes' => array_diff_assoc($config->toArray(), $oldData)
+                'changes' => array_diff_assoc($config->fresh()->toArray(), $oldData)
             ]);
             
             DB::commit();
+            
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'config' => $config->fresh()
+                ]);
+            }
             
             return redirect()->route('admin.delivery.configuration')
                 ->with('success', $message);
@@ -233,10 +290,18 @@ class DeliveryController extends Controller
             DB::rollBack();
             Log::error('Erreur mise à jour configuration delivery', [
                 'config_id' => $config->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return back()->with('error', 'Erreur lors de la mise à jour')
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Erreur lors de la mise à jour: ' . $e->getMessage(),
+                ], 500);
+            }
+            
+            return back()->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage())
                 ->withInput();
         }
     }
@@ -258,8 +323,16 @@ class DeliveryController extends Controller
                 ->count();
             
             if ($pickupsCount > 0 || $shipmentsCount > 0) {
-                return back()->with('error', 
-                    "Impossible de supprimer : {$pickupsCount} pickup(s) et {$shipmentsCount} expédition(s) utilisent cette configuration");
+                $message = "Impossible de supprimer : {$pickupsCount} pickup(s) et {$shipmentsCount} expédition(s) utilisent cette configuration";
+                
+                if (request()->wantsJson() || request()->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => $message
+                    ], 400);
+                }
+                
+                return back()->with('error', $message);
             }
             
             // Enregistrer dans l'historique avant suppression
@@ -270,6 +343,13 @@ class DeliveryController extends Controller
             
             DB::commit();
             
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Configuration {$integrationName} supprimée avec succès"
+                ]);
+            }
+            
             return redirect()->route('admin.delivery.configuration')
                 ->with('success', "Configuration {$integrationName} supprimée avec succès");
                 
@@ -277,10 +357,18 @@ class DeliveryController extends Controller
             DB::rollBack();
             Log::error('Erreur suppression configuration delivery', [
                 'config_id' => $config->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return back()->with('error', 'Erreur lors de la suppression');
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Erreur lors de la suppression: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
     }
 
@@ -292,51 +380,77 @@ class DeliveryController extends Controller
         $this->authorize('update', $config);
         
         try {
-            // TODO: Implémenter le test réel avec les services dans Phase 2/3
-            // Pour l'instant, simulation du test
-            $carrier = $this->carriers[$config->carrier_slug];
+            Log::info("Test de connexion demandé", [
+                'config_id' => $config->id,
+                'carrier_slug' => $config->carrier_slug,
+                'integration_name' => $config->integration_name
+            ]);
             
-            // Simulation d'un test de connexion
-            $testResult = $this->simulateConnectionTest($config, $carrier);
+            // Créer le service approprié
+            $service = $this->shippingFactory->createFromConfig($config);
             
-            if ($testResult['success']) {
+            // Effectuer le test
+            $result = $service->testConnection($config);
+            
+            Log::info("Résultat test de connexion", [
+                'config_id' => $config->id,
+                'success' => $result['success'],
+                'message' => $result['message'] ?? $result['error'] ?? 'No message'
+            ]);
+            
+            if ($result['success']) {
                 // Activer la configuration si le test réussit
-                $config->update(['is_active' => true]);
+                $config->markAsTestedSuccessfully();
                 
                 $this->recordConfigurationHistory($config, 'connection_test_success', 
-                    'Test de connexion réussi - Configuration activée');
+                    'Test de connexion réussi - Configuration activée', $result);
                 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Connexion réussie ! Configuration activée.',
-                    'details' => $testResult['details']
+                    'message' => $result['message'] ?? 'Connexion réussie ! Configuration activée.',
+                    'details' => $result['details'] ?? null
                 ]);
             } else {
                 // Désactiver la configuration si le test échoue
-                $config->update(['is_active' => false]);
+                $config->markAsTestFailed($result['error'] ?? 'Test échoué');
                 
                 $this->recordConfigurationHistory($config, 'connection_test_failed', 
-                    'Test de connexion échoué - Configuration désactivée', [
-                        'error' => $testResult['error']
-                    ]);
+                    'Test de connexion échoué - Configuration désactivée', $result);
                 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Test de connexion échoué',
-                    'error' => $testResult['error']
+                    'error' => $result['error'] ?? 'Test de connexion échoué',
+                    'details' => $result['details'] ?? null
                 ], 400);
             }
+            
+        } catch (CarrierServiceException $e) {
+            Log::error("Erreur service transporteur lors du test", [
+                'config_id' => $config->id,
+                'error' => $e->getMessage(),
+                'carrier_response' => $e->getCarrierResponse()
+            ]);
+            
+            $config->markAsTestFailed($e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'carrier_response' => $e->getCarrierResponse()
+            ], 400);
             
         } catch (\Exception $e) {
             Log::error('Erreur test connexion delivery', [
                 'config_id' => $config->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+            
+            $config->markAsTestFailed($e->getMessage());
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du test de connexion',
-                'error' => $e->getMessage()
+                'error' => 'Erreur lors du test de connexion: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -371,7 +485,7 @@ class DeliveryController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du changement de statut'
+                'error' => 'Erreur lors du changement de statut: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -577,7 +691,8 @@ class DeliveryController extends Controller
                 'admin_id' => $admin->id,
                 'config_id' => $request->delivery_configuration_id,
                 'order_ids' => $request->order_ids,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return response()->json([
@@ -589,7 +704,7 @@ class DeliveryController extends Controller
     }
 
     // ========================================
-    // GESTION DES PICKUPS ET SHIPMENTS (STUBS POUR PHASES SUIVANTES)
+    // GESTION DES PICKUPS ET SHIPMENTS
     // ========================================
 
     /**
@@ -627,11 +742,35 @@ class DeliveryController extends Controller
      */
     public function validatePickup(Pickup $pickup)
     {
-        // TODO: Implémenter dans Phase 4
-        return response()->json([
-            'success' => false,
-            'message' => 'Fonctionnalité à implémenter dans Phase 4'
-        ]);
+        $this->authorize('update', $pickup);
+        
+        try {
+            // Valider le pickup
+            $result = $pickup->validate();
+            
+            if ($result) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Pickup #{$pickup->id} validé avec succès"
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Impossible de valider le pickup'
+                ], 400);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur validation pickup', [
+                'pickup_id' => $pickup->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors de la validation: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -650,19 +789,197 @@ class DeliveryController extends Controller
     }
 
     /**
+     * Afficher les détails d'une expédition
+     */
+    public function showShipment(Shipment $shipment)
+    {
+        $this->authorize('view', $shipment);
+        
+        $shipment->load(['order', 'pickup']);
+        
+        return response()->json([
+            'success' => true,
+            'shipment' => $shipment,
+        ]);
+    }
+
+    /**
+     * Suivre le statut d'une expédition
+     */
+    public function trackShipmentStatus(Shipment $shipment)
+    {
+        $this->authorize('view', $shipment);
+        
+        try {
+            if (!$shipment->can_be_tracked) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Cette expédition ne peut pas être suivie'
+                ], 400);
+            }
+            
+            // Créer le service et suivre l'expédition
+            $config = $shipment->pickup->deliveryConfiguration;
+            $service = $this->shippingFactory->createFromConfig($config);
+            
+            $result = $service->trackShipment($shipment->tracking_number, $config);
+            
+            if ($result['success']) {
+                // Mettre à jour le statut si nécessaire
+                if (isset($result['internal_status']) && $result['internal_status'] !== $shipment->status) {
+                    $shipment->updateStatus(
+                        $result['internal_status'],
+                        $result['carrier_status'] ?? null,
+                        $result['carrier_status_label'] ?? null,
+                        'Mise à jour automatique du suivi'
+                    );
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'tracking_data' => $result,
+                    'shipment' => $shipment->fresh()
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => $result['error'] ?? 'Erreur de suivi'
+                ], 400);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur suivi expédition', [
+                'shipment_id' => $shipment->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors du suivi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Marquer une expédition comme livrée
+     */
+    public function markShipmentAsDelivered(Shipment $shipment)
+    {
+        $this->authorize('update', $shipment);
+        
+        try {
+            $shipment->markAsDelivered('Marqué comme livré manuellement');
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Expédition marquée comme livrée',
+                'shipment' => $shipment->fresh()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur marquage livraison', [
+                'shipment_id' => $shipment->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors du marquage: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Page des statistiques
      */
     public function stats()
     {
         $admin = auth('admin')->user();
         
-        // TODO: Implémenter les vraies statistiques
         $stats = [
-            'total_shipments' => Shipment::where('admin_id', $admin->id)->count(),
-            'delivered_shipments' => Shipment::where('admin_id', $admin->id)->where('status', 'delivered')->count(),
+            'configurations' => DeliveryConfiguration::getStatusCountsForAdmin($admin->id),
+            'pickups' => Pickup::getStatsForAdmin($admin->id),
+            'shipments' => Shipment::getStatsForAdmin($admin->id),
+            'delivery_stats' => $admin->getDeliveryStats(30),
         ];
         
         return view('admin.delivery.stats', compact('stats'));
+    }
+
+    /**
+     * API des statistiques
+     */
+    public function getApiStats()
+    {
+        $admin = auth('admin')->user();
+        
+        return response()->json([
+            'success' => true,
+            'stats' => [
+                'configurations' => DeliveryConfiguration::getStatusCountsForAdmin($admin->id),
+                'pickups' => Pickup::getStatsForAdmin($admin->id),
+                'shipments' => Shipment::getStatsForAdmin($admin->id),
+                'delivery_stats' => $admin->getDeliveryStats(30),
+            ]
+        ]);
+    }
+
+    /**
+     * Suivre toutes les expéditions actives
+     */
+    public function trackAllShipments()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            $shipments = Shipment::getTrackableShipments($admin->id);
+            $results = [];
+            
+            foreach ($shipments as $shipment) {
+                try {
+                    $config = $shipment->pickup->deliveryConfiguration;
+                    $service = $this->shippingFactory->createFromConfig($config);
+                    
+                    $result = $service->trackShipment($shipment->tracking_number, $config);
+                    
+                    if ($result['success'] && isset($result['internal_status'])) {
+                        if ($result['internal_status'] !== $shipment->status) {
+                            $shipment->updateStatus(
+                                $result['internal_status'],
+                                $result['carrier_status'] ?? null,
+                                $result['carrier_status_label'] ?? null,
+                                'Mise à jour automatique'
+                            );
+                            $results[$shipment->id] = 'updated';
+                        } else {
+                            $results[$shipment->id] = 'no_change';
+                        }
+                    } else {
+                        $results[$shipment->id] = 'error';
+                    }
+                    
+                } catch (\Exception $e) {
+                    $results[$shipment->id] = 'error: ' . $e->getMessage();
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Suivi de ' . count($shipments) . ' expéditions terminé',
+                'results' => $results
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur suivi global', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors du suivi global: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     // ========================================
@@ -690,10 +1007,10 @@ class DeliveryController extends Controller
         // Règles spécifiques selon le transporteur
         if ($carrierSlug === 'jax_delivery') {
             $rules['username'] = 'required|string|max:255'; // Numéro de compte
-            $rules['password'] = 'required|string|max:255'; // Token API
+            $rules['password'] = 'required|string|max:65535'; // Token API (TEXT field)
         } elseif ($carrierSlug === 'mes_colis') {
-            $rules['username'] = 'required|string|max:255'; // Token API
-            $rules['password'] = 'nullable|string|max:255'; // Non utilisé
+            $rules['username'] = 'required|string|max:65535'; // Token API
+            $rules['password'] = 'nullable|string|max:65535'; // Non utilisé
         }
         
         return $rules;
@@ -733,38 +1050,6 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Simuler un test de connexion (pour Phase 1)
-     */
-    protected function simulateConnectionTest($config, $carrier)
-    {
-        // Validation basique des credentials
-        if (empty($config->username)) {
-            return [
-                'success' => false,
-                'error' => 'Nom d\'utilisateur manquant'
-            ];
-        }
-        
-        if ($config->carrier_slug === 'jax_delivery' && empty($config->password)) {
-            return [
-                'success' => false,
-                'error' => 'Token API manquant'
-            ];
-        }
-        
-        // Simulation réussie
-        return [
-            'success' => true,
-            'details' => [
-                'carrier' => $carrier['name'],
-                'api_url' => $carrier['api']['base_url'],
-                'test_time' => now()->toISOString(),
-                'simulated' => true
-            ]
-        ];
-    }
-
-    /**
      * Calculer le poids d'une commande
      */
     protected function calculateOrderWeight($order)
@@ -794,8 +1079,6 @@ class DeliveryController extends Controller
      */
     protected function recordConfigurationHistory($config, $action, $notes, $data = [])
     {
-        // TODO: Créer une table d'historique pour les configurations
-        // ou utiliser order_history avec un order_id null
         Log::info("Configuration {$action}", [
             'config_id' => $config->id,
             'admin_id' => $config->admin_id,
@@ -806,13 +1089,4 @@ class DeliveryController extends Controller
             'data' => $data,
         ]);
     }
-
-    // Méthodes stubs pour les phases suivantes
-    public function refreshPickupStatus(Pickup $pickup) { /* Phase 4 */ }
-    public function destroyPickup(Pickup $pickup) { /* Phase 4 */ }
-    public function showShipment(Shipment $shipment) { /* Phase 5 */ }
-    public function trackShipmentStatus(Shipment $shipment) { /* Phase 5 */ }
-    public function markShipmentAsDelivered(Shipment $shipment) { /* Phase 5 */ }
-    public function getApiStats() { /* Phase 5 */ }
-    public function trackAllShipments() { /* Phase 5 */ }
 }

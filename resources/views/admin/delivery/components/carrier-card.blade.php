@@ -9,7 +9,8 @@
                 @if(isset($carrier['config']['logo']))
                     <img src="{{ asset($carrier['config']['logo']) }}" 
                          alt="{{ $carrier['config']['name'] }}" 
-                         class="carrier-logo">
+                         class="carrier-logo"
+                         style="height: 30px;">
                 @else
                     <div class="carrier-logo d-flex align-items-center justify-content-center">
                         <i class="fas fa-truck fa-2x text-muted"></i>
