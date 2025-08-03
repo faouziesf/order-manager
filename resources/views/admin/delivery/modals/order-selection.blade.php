@@ -1,49 +1,54 @@
-<!-- Modal de sélection des commandes pour pickup -->
+<!-- Modal de sélection des commandes pour pickup - Adaptée au layout -->
 <div class="modal fade" id="orderSelectionModal" tabindex="-1" aria-labelledby="orderSelectionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="orderSelectionModalLabel">
-                    <i class="fas fa-boxes me-2"></i>Sélectionner les commandes à expédier
+        <div class="modal-content" style="border-radius: var(--border-radius-lg); box-shadow: var(--shadow-xl); border: none;">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); border-bottom: none; border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;">
+                <h5 class="modal-title text-white fw-bold" id="orderSelectionModalLabel">
+                    <i class="fas fa-boxes me-2"></i>
+                    Sélectionner les commandes à expédier
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             
-            <div class="modal-body">
+            <div class="modal-body" style="padding: 2rem;">
                 <!-- Configuration sélectionnée -->
                 <div class="row mb-4">
                     <div class="col-md-8">
-                        <div class="card border-info">
-                            <div class="card-body">
+                        <div class="card" style="border: 2px solid var(--info-color); border-radius: var(--border-radius); background: rgba(6, 182, 212, 0.05);">
+                            <div class="card-body" style="padding: 1.5rem;">
+                                <h6 class="text-info fw-bold mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Configuration Sélectionnée
+                                </h6>
                                 <div class="row align-items-center">
                                     <div class="col-md-3">
-                                        <small class="text-muted">Transporteur</small>
-                                        <div class="fw-bold" id="selected-carrier-name">-</div>
+                                        <small class="text-muted fw-medium">Transporteur</small>
+                                        <div class="fw-bold text-dark" id="selected-carrier-name">-</div>
                                     </div>
                                     <div class="col-md-4">
-                                        <small class="text-muted">Configuration</small>
-                                        <div class="fw-bold" id="selected-integration-name">-</div>
+                                        <small class="text-muted fw-medium">Configuration</small>
+                                        <div class="fw-bold text-dark" id="selected-integration-name">-</div>
                                     </div>
                                     <div class="col-md-3">
-                                        <small class="text-muted">Date d'enlèvement</small>
-                                        <div class="fw-bold" id="selected-pickup-date">-</div>
+                                        <small class="text-muted fw-medium">Date d'enlèvement</small>
+                                        <div class="fw-bold text-dark" id="selected-pickup-date">-</div>
                                     </div>
                                     <div class="col-md-2">
-                                        <small class="text-muted">Statut</small>
-                                        <span class="badge bg-success" id="selected-config-status">Actif</span>
+                                        <small class="text-muted fw-medium">Statut</small>
+                                        <span class="badge bg-success" id="selected-config-status" style="background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%) !important;">Actif</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card bg-light">
-                            <div class="card-body text-center">
-                                <h4 class="text-primary mb-1" id="selection-summary-count">0</h4>
-                                <small class="text-muted">commande(s) sélectionnée(s)</small>
-                                <div class="mt-2">
-                                    <small class="text-muted">Total: </small>
-                                    <strong id="selection-summary-total">0.000 TND</strong>
+                        <div class="card" style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.05) 0%, rgba(30, 58, 138, 0.05) 100%); border: 1px solid rgba(30, 64, 175, 0.2); border-radius: var(--border-radius);">
+                            <div class="card-body text-center" style="padding: 1.5rem;">
+                                <h4 class="text-primary mb-2 fw-bold" id="selection-summary-count" style="font-size: 2rem;">0</h4>
+                                <small class="text-muted fw-medium">commande(s) sélectionnée(s)</small>
+                                <div class="mt-2" style="border-top: 1px solid rgba(30, 64, 175, 0.1); padding-top: 0.75rem;">
+                                    <small class="text-muted fw-medium">Total: </small>
+                                    <strong class="text-primary" id="selection-summary-total">0.000 TND</strong>
                                 </div>
                             </div>
                         </div>
@@ -51,64 +56,90 @@
                 </div>
 
                 <!-- Filtres et recherche -->
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            <input type="text" class="form-control" id="orderSearchInput" placeholder="Rechercher par nom, téléphone ou ID...">
+                <div class="card mb-4" style="background: rgba(248, 250, 252, 0.8); border: 1px solid var(--card-border); border-radius: var(--border-radius);">
+                    <div class="card-body" style="padding: 1.5rem;">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <span class="input-group-text" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); border: none; color: white;">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="orderSearchInput" 
+                                           placeholder="Rechercher par nom, téléphone ou ID..."
+                                           style="border: 2px solid var(--card-border); border-left: none; border-radius: 0 var(--border-radius) var(--border-radius) 0;">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" 
+                                        id="governorateFilter"
+                                        style="border: 2px solid var(--card-border); border-radius: var(--border-radius);">
+                                    <option value="">Tous les gouvernorats</option>
+                                    <!-- Options seront ajoutées dynamiquement -->
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" 
+                                        id="stockFilter"
+                                        style="border: 2px solid var(--card-border); border-radius: var(--border-radius);">
+                                    <option value="">Tous</option>
+                                    <option value="available">Stock disponible</option>
+                                    <option value="issues">Problèmes de stock</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <div class="btn-group" role="group">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary btn-sm" 
+                                            id="selectAllBtn"
+                                            style="border-radius: var(--border-radius) 0 0 var(--border-radius); font-weight: 500;">
+                                        <i class="fas fa-check-square me-1"></i>Tout sélectionner
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-outline-secondary btn-sm" 
+                                            id="deselectAllBtn"
+                                            style="border-radius: 0 var(--border-radius) var(--border-radius) 0; font-weight: 500;">
+                                        <i class="fas fa-square me-1"></i>Tout désélectionner
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select" id="governorateFilter">
-                            <option value="">Tous les gouvernorats</option>
-                            <!-- Options seront ajoutées dynamiquement -->
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <select class="form-select" id="stockFilter">
-                            <option value="">Tous</option>
-                            <option value="available">Stock disponible</option>
-                            <option value="issues">Problèmes de stock</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3 text-end">
-                        <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllBtn">
-                            <i class="fas fa-check-square me-1"></i>Tout sélectionner
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="deselectAllBtn">
-                            <i class="fas fa-square me-1"></i>Tout désélectionner
-                        </button>
                     </div>
                 </div>
 
                 <!-- Zone de chargement -->
-                <div id="ordersLoadingIndicator" class="text-center py-4 d-none">
-                    <div class="spinner-border text-primary" role="status">
+                <div id="ordersLoadingIndicator" class="text-center py-5 d-none">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
                         <span class="visually-hidden">Chargement...</span>
                     </div>
-                    <div class="mt-2 text-muted">Chargement des commandes...</div>
+                    <h6 class="text-primary fw-bold">Chargement des commandes...</h6>
+                    <p class="text-muted">Veuillez patienter</p>
                 </div>
 
                 <!-- Tableau des commandes -->
-                <div class="card" id="ordersTableContainer">
+                <div class="card" id="ordersTableContainer" style="border: 1px solid var(--card-border); border-radius: var(--border-radius); overflow: hidden;">
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height: 400px;">
                             <table class="table table-hover mb-0">
-                                <thead class="table-light sticky-top">
+                                <thead style="background: linear-gradient(135deg, var(--secondary-color) 0%, #f1f5f9 100%); position: sticky; top: 0; z-index: 10;">
                                     <tr>
-                                        <th style="width: 50px;">
+                                        <th style="width: 50px; border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">
                                             <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="selectAllCheckbox">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="selectAllCheckbox"
+                                                       style="border: 2px solid var(--primary-color); border-radius: 4px;">
                                             </div>
                                         </th>
-                                        <th style="width: 80px;">ID</th>
-                                        <th>Client</th>
-                                        <th style="width: 120px;">Téléphone</th>
-                                        <th style="width: 100px;">Montant</th>
-                                        <th style="width: 80px;">Articles</th>
-                                        <th style="width: 120px;">Gouvernorat</th>
-                                        <th style="width: 100px;">Stock</th>
-                                        <th style="width: 100px;">Créée le</th>
+                                        <th style="width: 80px; border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">ID</th>
+                                        <th style="border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">Client</th>
+                                        <th style="width: 120px; border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">Téléphone</th>
+                                        <th style="width: 100px; border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">Montant</th>
+                                        <th style="width: 80px; border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">Articles</th>
+                                        <th style="width: 120px; border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">Gouvernorat</th>
+                                        <th style="width: 100px; border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">Stock</th>
+                                        <th style="width: 100px; border: none; padding: 1rem 0.75rem; font-weight: 600; color: var(--text-color);">Créée le</th>
                                     </tr>
                                 </thead>
                                 <tbody id="ordersTableBody">
@@ -120,9 +151,9 @@
                 </div>
 
                 <!-- Pagination -->
-                <div class="d-flex justify-content-between align-items-center mt-3">
+                <div class="d-flex justify-content-between align-items-center mt-4">
                     <div class="text-muted">
-                        <small id="paginationInfo">Affichage de 0 à 0 sur 0 résultats</small>
+                        <small id="paginationInfo" class="fw-medium">Affichage de 0 à 0 sur 0 résultats</small>
                     </div>
                     <nav aria-label="Pagination des commandes">
                         <ul class="pagination pagination-sm mb-0" id="paginationContainer">
@@ -132,33 +163,249 @@
                 </div>
 
                 <!-- Messages d'erreur -->
-                <div id="selection-errors" class="alert alert-danger mt-3 d-none" role="alert">
+                <div id="selection-errors" class="alert alert-danger mt-4 d-none" role="alert" style="background: linear-gradient(135deg, #fecaca 0%, #f87171 100%); border: 1px solid var(--danger-color); border-radius: var(--border-radius); border-left: 4px solid var(--danger-color);">
                     <div class="d-flex align-items-center">
-                        <i class="fas fa-exclamation-triangle me-3"></i>
-                        <div id="selection-error-content"></div>
+                        <i class="fas fa-exclamation-triangle me-3 text-danger"></i>
+                        <div id="selection-error-content" class="text-danger fw-medium"></div>
                     </div>
                 </div>
 
                 <!-- Messages d'information -->
-                <div id="selection-info" class="alert alert-info mt-3 d-none" role="alert">
+                <div id="selection-info" class="alert alert-info mt-4 d-none" role="alert" style="background: linear-gradient(135deg, #cffafe 0%, #67e8f9 100%); border: 1px solid var(--info-color); border-radius: var(--border-radius); border-left: 4px solid var(--info-color);">
                     <div class="d-flex align-items-center">
-                        <i class="fas fa-info-circle me-3"></i>
-                        <div id="selection-info-content"></div>
+                        <i class="fas fa-info-circle me-3 text-info"></i>
+                        <div id="selection-info-content" class="text-info fw-medium"></div>
                     </div>
                 </div>
             </div>
             
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-2"></i>Annuler
-                </button>
-                <button type="button" class="btn btn-primary" id="confirmSelectionBtn" disabled>
-                    <i class="fas fa-plus me-2"></i>Créer l'enlèvement
-                </button>
+            <div class="modal-footer" style="background: rgba(248, 250, 252, 0.5); border-top: 1px solid var(--card-border); border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg); padding: 1.5rem;">
+                <div class="d-flex justify-content-between w-100">
+                    <button type="button" 
+                            class="btn btn-secondary" 
+                            data-bs-dismiss="modal"
+                            style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); border: none; border-radius: var(--border-radius); font-weight: 500;">
+                        <i class="fas fa-times me-2"></i>Annuler
+                    </button>
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            id="confirmSelectionBtn" 
+                            disabled
+                            style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); border: none; border-radius: var(--border-radius); font-weight: 500;">
+                        <i class="fas fa-plus me-2"></i>Créer l'enlèvement
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+/* Styles spécifiques pour la modal de sélection */
+#orderSelectionModal .table tbody tr {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+#orderSelectionModal .table tbody tr:hover {
+    background: rgba(30, 64, 175, 0.05) !important;
+    transform: scale(1.001);
+}
+
+#orderSelectionModal .table tbody tr.table-primary {
+    background: rgba(30, 64, 175, 0.1) !important;
+    border-left: 3px solid var(--primary-color);
+}
+
+#orderSelectionModal .table tbody tr.table-warning {
+    background: rgba(255, 193, 7, 0.1) !important;
+    cursor: not-allowed;
+}
+
+#orderSelectionModal .table tbody tr.table-warning td {
+    opacity: 0.7;
+}
+
+/* Styles pour les checkboxes */
+#orderSelectionModal .form-check-input {
+    border: 2px solid var(--primary-color);
+    border-radius: 4px;
+    width: 1.1em;
+    height: 1.1em;
+}
+
+#orderSelectionModal .form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Badges personnalisés */
+#orderSelectionModal .badge.bg-success {
+    background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%) !important;
+}
+
+#orderSelectionModal .badge.bg-danger {
+    background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%) !important;
+}
+
+#orderSelectionModal .badge.bg-secondary {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+}
+
+/* Pagination personnalisée */
+#orderSelectionModal .pagination .page-link {
+    border: 1px solid var(--card-border);
+    color: var(--primary-color);
+    font-weight: 500;
+    border-radius: var(--border-radius);
+    margin: 0 2px;
+}
+
+#orderSelectionModal .pagination .page-link:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+#orderSelectionModal .pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+/* Animation des cartes */
+#orderSelectionModal .card {
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Scrollbar personnalisée */
+#orderSelectionModal .table-responsive::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+#orderSelectionModal .table-responsive::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+#orderSelectionModal .table-responsive::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: 3px;
+}
+
+/* Effet hover pour les boutons */
+#orderSelectionModal .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+#orderSelectionModal .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Effet loading */
+#orderSelectionModal .spinner-border {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    #orderSelectionModal .modal-dialog {
+        margin: 10px;
+        max-width: calc(100vw - 20px);
+    }
+    
+    #orderSelectionModal .modal-body {
+        padding: 1.5rem 1rem;
+    }
+    
+    #orderSelectionModal .row {
+        margin-bottom: 1rem;
+    }
+    
+    #orderSelectionModal .col-md-3,
+    #orderSelectionModal .col-md-4,
+    #orderSelectionModal .col-md-8 {
+        margin-bottom: 1rem;
+    }
+    
+    #orderSelectionModal .btn-group {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    #orderSelectionModal .btn-group .btn {
+        border-radius: var(--border-radius) !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    #orderSelectionModal .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    #orderSelectionModal .pagination {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+}
+
+/* Animation pour les messages */
+#orderSelectionModal .alert {
+    animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* État de chargement pour les lignes du tableau */
+#orderSelectionModal tbody tr.loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+#orderSelectionModal tbody tr.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -238,8 +485,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (orders.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" class="text-center text-muted py-4">
-                        <i class="fas fa-inbox me-2"></i>Aucune commande disponible
+                    <td colspan="9" class="text-center text-muted py-5">
+                        <i class="fas fa-inbox fa-3x mb-3 d-block" style="opacity: 0.3;"></i>
+                        <h6 class="text-muted">Aucune commande disponible</h6>
+                        <p class="text-muted mb-0">Aucune commande ne correspond à vos critères de recherche</p>
                     </td>
                 </tr>
             `;
@@ -251,24 +500,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const hasStockIssues = !order.can_be_shipped;
             
             return `
-                <tr class="${isSelected ? 'table-primary' : ''} ${hasStockIssues ? 'table-warning' : ''}">
-                    <td>
+                <tr class="${isSelected ? 'table-primary' : ''} ${hasStockIssues ? 'table-warning' : ''}" 
+                    onclick="toggleOrderSelection(${order.id})" 
+                    style="transition: all 0.2s ease;">
+                    <td onclick="event.stopPropagation();">
                         <div class="form-check">
-                            <input class="form-check-input order-checkbox" type="checkbox" 
-                                   value="${order.id}" ${isSelected ? 'checked' : ''}
-                                   ${hasStockIssues ? 'disabled' : ''}>
+                            <input class="form-check-input order-checkbox" 
+                                   type="checkbox" 
+                                   value="${order.id}" 
+                                   ${isSelected ? 'checked' : ''}
+                                   ${hasStockIssues ? 'disabled' : ''}
+                                   onchange="handleOrderSelection(event)">
                         </div>
                     </td>
-                    <td><strong>#${order.id}</strong></td>
+                    <td><strong class="text-primary">#${order.id}</strong></td>
                     <td>
-                        <div>${order.customer_name || '-'}</div>
+                        <div class="fw-bold">${order.customer_name || '-'}</div>
                         <small class="text-muted">${order.customer_city || ''}</small>
                     </td>
                     <td>
                         <div>${order.customer_phone || '-'}</div>
                         ${order.customer_phone_2 ? `<small class="text-muted">${order.customer_phone_2}</small>` : ''}
                     </td>
-                    <td><strong>${(order.total_price || 0).toFixed(3)} TND</strong></td>
+                    <td><strong class="text-success">${(order.total_price || 0).toFixed(3)} TND</strong></td>
                     <td><span class="badge bg-secondary">${order.items_count || 0}</span></td>
                     <td>${order.region_name || '-'}</td>
                     <td>
@@ -278,22 +532,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     </td>
                     <td>
-                        <small>${new Date(order.created_at).toLocaleDateString('fr-FR')}</small>
+                        <small class="text-muted">${new Date(order.created_at).toLocaleDateString('fr-FR')}</small>
                     </td>
                 </tr>
             `;
         }).join('');
 
-        // Ajouter les event listeners pour les checkboxes
-        tbody.querySelectorAll('.order-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', handleOrderSelection);
-        });
-
         updateSelectionSummary();
     }
 
     // Gérer la sélection d'une commande
-    function handleOrderSelection(event) {
+    window.handleOrderSelection = function(event) {
         const orderId = parseInt(event.target.value);
         const isChecked = event.target.checked;
 
@@ -305,7 +554,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         updateSelectionSummary();
         updateSelectAllCheckbox();
-    }
+    };
+
+    window.toggleOrderSelection = function(orderId) {
+        const order = allOrders.find(o => o.id === orderId);
+        if (!order || !order.can_be_shipped) return;
+
+        if (selectedOrders.has(orderId)) {
+            selectedOrders.delete(orderId);
+        } else {
+            selectedOrders.add(orderId);
+        }
+
+        updateOrdersTable(allOrders);
+        updateSelectionSummary();
+        updateSelectAllCheckbox();
+    };
 
     // Mettre à jour le résumé de sélection
     function updateSelectionSummary() {
@@ -344,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Sélectionner/désélectionner tout
+    // Event listeners
     selectAllCheckbox.addEventListener('change', function() {
         const availableOrders = allOrders.filter(order => order.can_be_shipped);
         

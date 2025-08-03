@@ -1,9 +1,7 @@
 <div class="card shadow border-0 h-100 position-relative">
-    <!-- Indicateur de statut -->
     <div class="status-indicator {{ $carrier['status'] === 'connecté' ? 'connected' : ($carrier['status'] === 'configuré_inactif' ? 'inactive' : 'disconnected') }}"></div>
     
     <div class="card-body">
-        <!-- Header avec logo et nom -->
         <div class="d-flex align-items-center mb-3">
             <div class="me-3">
                 @if(isset($carrier['config']['logo']))
@@ -31,12 +29,10 @@
             </div>
         </div>
 
-        <!-- Description -->
         @if(isset($carrier['config']['description']))
             <p class="text-muted small mb-3">{{ $carrier['config']['description'] }}</p>
         @endif
 
-        <!-- Statistiques -->
         <div class="row text-center mb-3">
             <div class="col-4">
                 <div class="h6 mb-0 text-primary">{{ $carrier['stats']['configurations'] }}</div>
@@ -52,7 +48,6 @@
             </div>
         </div>
 
-        <!-- Configurations actives -->
         @if($carrier['active_configurations']->isNotEmpty())
             <div class="mb-3">
                 <small class="text-muted d-block mb-1">Configurations actives :</small>
@@ -64,7 +59,6 @@
             </div>
         @endif
 
-        <!-- Actions -->
         <div class="d-grid gap-2">
             @if($carrier['is_configured'])
                 <div class="btn-group" role="group">
@@ -76,7 +70,7 @@
                         </a>
                         <button type="button" 
                                 class="btn btn-outline-primary btn-sm"
-                                @click="testCarrierConnection('{{ $slug }}', {{ $carrier['active_configurations']->first()->id }})">
+                                onclick="testCarrierConnection('{{ $slug }}', {{ $carrier['active_configurations']->first()->id }})">
                             <i class="fas fa-wifi me-1"></i>
                             Tester
                         </button>
@@ -103,7 +97,6 @@
         </div>
     </div>
 
-    <!-- Footer avec infos supplémentaires -->
     @if(isset($carrier['config']['website']) || isset($carrier['config']['support_phone']))
         <div class="card-footer bg-transparent border-top-0 pt-0">
             <div class="d-flex justify-content-between align-items-center">

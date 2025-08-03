@@ -1,350 +1,256 @@
 @extends('layouts.admin')
 
-@section('title', 'Préparation des Enlèvements')
+@section('title', 'Préparation des Livraisons')
 
 @section('content')
-<div class="container-fluid" x-data="deliveryPreparation">
-    <!-- Header -->
+<div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-box-open text-primary me-2"></i>
-                Préparation des Enlèvements
+                <i class="fas fa-shipping-fast text-primary me-2"></i>
+                Préparation des Livraisons
             </h1>
-            <p class="text-muted mb-0">Sélectionnez les commandes à expédier</p>
+            <p class="text-muted mb-0">Créer des enlèvements groupés</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('admin.delivery.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>
                 Retour
             </a>
-            <a href="{{ route('admin.delivery.pickups') }}" class="btn btn-outline-primary">
-                <i class="fas fa-truck me-1"></i>
-                Voir les Enlèvements
+            <a href="{{ route('admin.delivery.configuration') }}" class="btn btn-outline-primary">
+                <i class="fas fa-cog me-1"></i>
+                Configurations
             </a>
         </div>
     </div>
 
-    <!-- Alertes -->
-    @if($activeConfigurations->isEmpty())
-        <div class="alert alert-warning d-flex align-items-center" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <div>
-                <strong>Aucune configuration active !</strong>
-                Vous devez d'abord configurer au moins un transporteur.
-                <a href="{{ route('admin.delivery.configuration') }}" class="alert-link">Configurer maintenant</a>
+    @if(isset($warningMessage) || $activeConfigurations->isEmpty())
+        <!-- Aucune configuration active -->
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-exclamation-triangle fa-4x text-warning"></i>
+                        </div>
+                        
+                        <h4 class="text-muted mb-3">Aucune Configuration Active</h4>
+                        
+                        <div class="alert alert-warning mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            {{ $warningMessage ?? 'Vous devez configurer et activer au moins un transporteur avant de pouvoir préparer des livraisons.' }}
+                        </div>
+
+                        <div class="row text-center mb-4">
+                            <div class="col-md-4">
+                                <div class="card border-primary h-100">
+                                    <div class="card-body">
+                                        <i class="fas fa-plus-circle fa-2x text-primary mb-2"></i>
+                                        <h6>1. Créer</h6>
+                                        <p class="small text-muted">Créez une configuration de transporteur</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-warning h-100">
+                                    <div class="card-body">
+                                        <i class="fas fa-wifi fa-2x text-warning mb-2"></i>
+                                        <h6>2. Tester</h6>
+                                        <p class="small text-muted">Testez la connexion avec l'API</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-success h-100">
+                                    <div class="card-body">
+                                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                        <h6>3. Activer</h6>
+                                        <p class="small text-muted">Activez la configuration</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-center">
+                            <a href="{{ route('admin.delivery.configuration.create') }}?carrier=jax_delivery" 
+                               class="btn btn-primary">
+                                <i class="fas fa-truck me-1"></i>
+                                Configurer JAX Delivery
+                            </a>
+                            <a href="{{ route('admin.delivery.configuration.create') }}?carrier=mes_colis" 
+                               class="btn btn-success">
+                                <i class="fas fa-shipping-fast me-1"></i>
+                                Configurer Mes Colis
+                            </a>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <p class="text-muted small">
+                            <i class="fas fa-lightbulb text-warning me-1"></i>
+                            <strong>Besoin d'aide ?</strong> Consultez la documentation ou contactez le support technique.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
-    @endif
-
-    <div class="row">
-        <!-- Panel de sélection -->
-        <div class="col-lg-8">
-            <!-- Filtres et configuration -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-filter me-1"></i>
-                        Configuration de l'Enlèvement
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <!-- Choix du transporteur -->
-                        <div class="col-md-6 mb-3">
+    @else
+        <!-- Interface normale de préparation -->
+        <div class="row">
+            <!-- Sélection de la configuration -->
+            <div class="col-lg-4">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-cog me-2"></i>
+                            Configuration Transporteur
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
                             <label for="delivery_configuration_id" class="form-label">
-                                <i class="fas fa-truck me-1"></i>
-                                Transporteur <span class="text-danger">*</span>
+                                Choisir la configuration <span class="text-danger">*</span>
                             </label>
-                            <select class="form-select" 
-                                    id="delivery_configuration_id"
-                                    x-model="selectedConfig"
-                                    @change="loadOrders()"
-                                    required>
-                                <option value="">Choisir un transporteur...</option>
+                            <select class="form-select" id="delivery_configuration_id" required>
+                                <option value="">Sélectionner une configuration...</option>
                                 @foreach($activeConfigurations as $config)
-                                    <option value="{{ $config->id }}">
-                                        {{ $config->integration_name }} 
-                                        ({{ $config->carrier_name }})
+                                    <option value="{{ $config->id }}" 
+                                            data-carrier="{{ $config->carrier_slug }}"
+                                            data-name="{{ $config->integration_name }}">
+                                        {{ $config->carrier_name }} - {{ $config->integration_name }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- Date d'enlèvement -->
-                        <div class="col-md-6 mb-3">
-                            <label for="pickup_date" class="form-label">
-                                <i class="fas fa-calendar me-1"></i>
-                                Date d'Enlèvement
-                            </label>
+                        <div class="mb-3">
+                            <label for="pickup_date" class="form-label">Date d'enlèvement</label>
                             <input type="date" 
                                    class="form-control" 
-                                   id="pickup_date"
-                                   x-model="pickupDate"
-                                   :min="new Date().toISOString().split('T')[0]">
+                                   id="pickup_date" 
+                                   value="{{ date('Y-m-d', strtotime('+1 day')) }}"
+                                   min="{{ date('Y-m-d') }}">
+                        </div>
+
+                        <div id="configInfo" class="alert alert-info d-none">
+                            <small>
+                                <strong>Configuration sélectionnée :</strong><br>
+                                <span id="configDetails"></span>
+                            </small>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Filtres de recherche -->
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="search" class="form-label">Recherche</label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="search"
-                                       x-model="search"
-                                       @input.debounce.300ms="loadOrders()"
-                                       placeholder="Nom, téléphone, ID...">
+                <!-- Résumé de sélection -->
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-success">
+                            <i class="fas fa-check-square me-2"></i>
+                            Commandes Sélectionnées
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="selectionSummary">
+                            <p class="text-muted text-center">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Aucune commande sélectionnée
+                            </p>
+                        </div>
+                        
+                        <div id="selectionActions" class="d-none">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-success" onclick="createPickup()" id="createPickupBtn">
+                                    <i class="fas fa-truck-pickup me-1"></i>
+                                    Créer l'Enlèvement
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="clearSelection()">
+                                    <i class="fas fa-times me-1"></i>
+                                    Annuler la Sélection
+                                </button>
                             </div>
-                        </div>
-
-                        <div class="col-md-4 mb-3">
-                            <label for="governorate" class="form-label">Gouvernorat</label>
-                            <select class="form-select" 
-                                    id="governorate"
-                                    x-model="governorate"
-                                    @change="loadOrders()">
-                                <option value="">Tous les gouvernorats</option>
-                                @for($i = 1; $i <= 24; $i++)
-                                    <option value="{{ $i }}">Gouvernorat {{ $i }}</option>
-                                @endfor
-                            </select>
-                        </div>
-
-                        <div class="col-md-4 mb-3">
-                            <label for="per_page" class="form-label">Affichage</label>
-                            <select class="form-select" 
-                                    id="per_page"
-                                    x-model="perPage"
-                                    @change="loadOrders()">
-                                <option value="25">25 par page</option>
-                                <option value="50">50 par page</option>
-                                <option value="100">100 par page</option>
-                            </select>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Liste des commandes -->
-            <div class="card shadow">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-list me-1"></i>
-                        Commandes Disponibles
-                        <span x-show="orders.length > 0" class="badge bg-primary ms-2" x-text="orders.length"></span>
-                    </h6>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary" 
-                                @click="selectAll()"
-                                x-show="orders.length > 0">
-                            <i class="fas fa-check-square me-1"></i>
-                            Tout Sélectionner
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" 
-                                @click="clearSelection()"
-                                x-show="selectedOrders.length > 0">
-                            <i class="fas fa-times me-1"></i>
-                            Désélectionner
-                        </button>
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-box me-2"></i>
+                            Commandes Prêtes à Expédier
+                        </h6>
                     </div>
-                </div>
-                <div class="card-body p-0">
-                    <!-- Chargement -->
-                    <div x-show="loading" class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="text-muted mt-2">Chargement des commandes...</p>
-                    </div>
-
-                    <!-- Message si aucune configuration -->
-                    <div x-show="!selectedConfig && !loading" class="text-center py-4">
-                        <i class="fas fa-truck fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">Sélectionnez un transporteur</h5>
-                        <p class="text-muted">Choisissez d'abord une configuration de transporteur pour afficher les commandes disponibles.</p>
-                    </div>
-
-                    <!-- Message si aucune commande -->
-                    <div x-show="selectedConfig && !loading && orders.length === 0" class="text-center py-4">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">Aucune commande disponible</h5>
-                        <p class="text-muted">Toutes les commandes confirmées ont déjà été expédiées ou ne répondent pas aux critères de filtrage.</p>
-                    </div>
-
-                    <!-- Table des commandes -->
-                    <div x-show="orders.length > 0" class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th width="50">
-                                        <input type="checkbox" 
-                                               class="form-check-input"
-                                               @change="toggleAll($event.target.checked)">
-                                    </th>
-                                    <th>Commande</th>
-                                    <th>Client</th>
-                                    <th>Adresse</th>
-                                    <th>Montant</th>
-                                    <th>Stock</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="order in orders" :key="order.id">
-                                    <tr :class="{ 'table-warning': !order.can_be_shipped }"
-                                        @click="toggleOrder(order.id, $event)">
-                                        <td>
-                                            <input type="checkbox" 
-                                                   class="form-check-input"
-                                                   :value="order.id"
-                                                   :checked="selectedOrders.includes(order.id)"
-                                                   :disabled="!order.can_be_shipped"
-                                                   @change="toggleOrder(order.id, $event)"
-                                                   @click.stop>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <strong x-text="`#${order.id}`"></strong>
-                                                <br>
-                                                <small class="text-muted" x-text="order.status"></small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div x-text="order.customer_name"></div>
-                                                <small class="text-muted" x-text="order.customer_phone"></small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div x-text="order.customer_city"></div>
-                                                <small class="text-muted" x-text="order.region_name"></small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <strong x-text="`${order.total_price} TND`"></strong>
-                                        </td>
-                                        <td>
-                                            <span x-show="order.can_be_shipped" class="badge bg-success">
-                                                <i class="fas fa-check me-1"></i>OK
-                                            </span>
-                                            <span x-show="!order.can_be_shipped" class="badge bg-warning">
-                                                <i class="fas fa-exclamation-triangle me-1"></i>Problème
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <small x-text="formatDate(order.created_at)"></small>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <div x-show="pagination && pagination.last_page > 1" class="d-flex justify-content-between align-items-center p-3 border-top">
-                        <div>
-                            <small class="text-muted">
-                                Affichage de <span x-text="((pagination.current_page - 1) * pagination.per_page) + 1"></span> 
-                                à <span x-text="Math.min(pagination.current_page * pagination.per_page, pagination.total)"></span> 
-                                sur <span x-text="pagination.total"></span> commandes
-                            </small>
+                    <div class="card-body">
+                        <!-- Filtres -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="searchOrders" 
+                                       placeholder="Rechercher par nom, téléphone ou ID...">
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" id="governorateFilter">
+                                    <option value="">Tous les gouvernorats</option>
+                                    <!-- Options dynamiques -->
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-primary w-100" onclick="loadOrders()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
                         </div>
-                        <nav>
-                            <ul class="pagination pagination-sm mb-0">
-                                <li class="page-item" :class="{ 'disabled': pagination.current_page <= 1 }">
-                                    <button class="page-link" @click="changePage(pagination.current_page - 1)">Précédent</button>
-                                </li>
-                                
-                                <template x-for="page in getPaginationPages()" :key="page">
-                                    <li class="page-item" :class="{ 'active': page === pagination.current_page }">
-                                        <button class="page-link" @click="changePage(page)" x-text="page"></button>
-                                    </li>
-                                </template>
-                                
-                                <li class="page-item" :class="{ 'disabled': pagination.current_page >= pagination.last_page }">
-                                    <button class="page-link" @click="changePage(pagination.current_page + 1)">Suivant</button>
-                                </li>
-                            </ul>
-                        </nav>
+
+                        <!-- Liste des commandes -->
+                        <div id="ordersContainer">
+                            <div class="text-center py-4">
+                                <p class="text-muted">
+                                    <i class="fas fa-arrow-up me-1"></i>
+                                    Sélectionnez une configuration pour voir les commandes disponibles
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div id="paginationContainer" class="d-none">
+                            <nav aria-label="Pagination des commandes">
+                                <ul class="pagination justify-content-center" id="pagination">
+                                    <!-- Pagination dynamique -->
+                                </ul>
+                            </nav>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    @endif
+</div>
 
-        <!-- Panel de résumé et création -->
-        <div class="col-lg-4">
-            <div class="card shadow sticky-top" style="top: 20px;">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-success">
-                        <i class="fas fa-shopping-cart me-1"></i>
-                        Résumé de l'Enlèvement
-                    </h6>
+<!-- Modal de confirmation -->
+<div class="modal fade" id="createPickupModal" tabindex="-1" aria-labelledby="createPickupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPickupModalLabel">
+                    <i class="fas fa-truck-pickup me-2"></i>
+                    Confirmer la Création de l'Enlèvement
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="pickupConfirmation">
+                    <!-- Contenu dynamique -->
                 </div>
-                <div class="card-body">
-                    <!-- Info transporteur sélectionné -->
-                    <div x-show="selectedConfig" class="mb-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="fas fa-truck text-primary me-2"></i>
-                            <strong>Transporteur sélectionné</strong>
-                        </div>
-                        <div class="bg-light p-2 rounded" x-show="getSelectedConfigInfo()">
-                            <small x-text="getSelectedConfigInfo()?.integration_name"></small><br>
-                            <small class="text-muted" x-text="`(${getSelectedConfigInfo()?.carrier_name})`"></small>
-                        </div>
-                    </div>
-
-                    <!-- Statistiques sélection -->
-                    <div class="row text-center mb-3">
-                        <div class="col-6">
-                            <div class="h4 mb-0 text-primary" x-text="selectedOrders.length"></div>
-                            <small class="text-muted">Commandes</small>
-                        </div>
-                        <div class="col-6">
-                            <div class="h4 mb-0 text-success" x-text="getTotalAmount()"></div>
-                            <small class="text-muted">TND Total</small>
-                        </div>
-                    </div>
-
-                    <!-- Date d'enlèvement -->
-                    <div class="mb-3" x-show="selectedOrders.length > 0">
-                        <label class="form-label small">Date d'enlèvement :</label>
-                        <div class="bg-light p-2 rounded text-center">
-                            <i class="fas fa-calendar text-primary me-1"></i>
-                            <span x-text="formatPickupDate()"></span>
-                        </div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-success"
-                                @click="createPickup()"
-                                :disabled="!canCreatePickup()"
-                                x-show="selectedOrders.length > 0">
-                            <i class="fas fa-plus me-1"></i>
-                            Créer l'Enlèvement
-                            <span class="badge bg-light text-dark ms-1" x-text="selectedOrders.length"></span>
-                        </button>
-
-                        <div x-show="selectedOrders.length === 0" class="text-center text-muted py-3">
-                            <i class="fas fa-hand-pointer fa-2x mb-2"></i>
-                            <p class="small mb-0">Sélectionnez des commandes pour créer un enlèvement</p>
-                        </div>
-                    </div>
-
-                    <!-- Messages d'aide -->
-                    <div x-show="selectedOrders.length > 0" class="mt-3">
-                        <div class="alert alert-info py-2">
-                            <small>
-                                <i class="fas fa-info-circle me-1"></i>
-                                Les commandes seront groupées dans un même enlèvement et envoyées au transporteur.
-                            </small>
-                        </div>
-                    </div>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" onclick="confirmCreatePickup()" id="confirmBtn">
+                    <i class="fas fa-check me-1"></i>
+                    Confirmer la Création
+                </button>
             </div>
         </div>
     </div>
@@ -353,255 +259,448 @@
 
 @push('scripts')
 <script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('deliveryPreparation', () => ({
-        loading: false,
-        orders: [],
-        selectedOrders: [],
-        selectedConfig: '',
-        pickupDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Demain
-        search: '',
-        governorate: '',
-        perPage: 25,
-        currentPage: 1,
-        pagination: null,
-        activeConfigurations: @json($activeConfigurations),
+let selectedOrders = [];
+let currentPage = 1;
+let ordersData = [];
 
-        init() {
-            // Auto-sélectionner la première config si une seule disponible
-            if (this.activeConfigurations.length === 1) {
-                this.selectedConfig = this.activeConfigurations[0].id;
-                this.loadOrders();
-            }
-        },
-
-        async loadOrders() {
-            if (!this.selectedConfig) {
-                this.orders = [];
-                return;
-            }
-
-            this.loading = true;
-            
-            try {
-                const params = new URLSearchParams({
-                    page: this.currentPage,
-                    per_page: this.perPage,
-                    search: this.search,
-                    governorate: this.governorate,
-                    configuration_id: this.selectedConfig
-                });
-
-                const response = await axios.get(`{{ route('admin.delivery.preparation.orders') }}?${params}`);
-                
-                if (response.data.success) {
-                    this.orders = response.data.orders;
-                    this.pagination = response.data.pagination;
-                    // Nettoyer la sélection des commandes qui ne sont plus dans la liste
-                    this.selectedOrders = this.selectedOrders.filter(id => 
-                        this.orders.some(order => order.id === id)
-                    );
-                }
-            } catch (error) {
-                console.error('Erreur chargement commandes:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erreur',
-                    text: 'Impossible de charger les commandes',
-                });
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        toggleOrder(orderId, event) {
-            // Vérifier si la commande peut être expédiée
-            const order = this.orders.find(o => o.id === orderId);
-            if (!order || !order.can_be_shipped) return;
-
-            if (event && event.target.type === 'checkbox') {
-                // Géré par le checkbox
-                if (event.target.checked) {
-                    if (!this.selectedOrders.includes(orderId)) {
-                        this.selectedOrders.push(orderId);
-                    }
-                } else {
-                    this.selectedOrders = this.selectedOrders.filter(id => id !== orderId);
-                }
-            } else {
-                // Clic sur la ligne
-                if (this.selectedOrders.includes(orderId)) {
-                    this.selectedOrders = this.selectedOrders.filter(id => id !== orderId);
-                } else {
-                    this.selectedOrders.push(orderId);
-                }
-            }
-        },
-
-        toggleAll(checked) {
-            if (checked) {
-                this.selectAll();
-            } else {
-                this.clearSelection();
-            }
-        },
-
-        selectAll() {
-            this.selectedOrders = this.orders
-                .filter(order => order.can_be_shipped)
-                .map(order => order.id);
-        },
-
-        clearSelection() {
-            this.selectedOrders = [];
-        },
-
-        changePage(page) {
-            if (page >= 1 && page <= this.pagination.last_page) {
-                this.currentPage = page;
-                this.loadOrders();
-            }
-        },
-
-        getPaginationPages() {
-            if (!this.pagination) return [];
-            
-            const current = this.pagination.current_page;
-            const last = this.pagination.last_page;
-            const pages = [];
-            
-            // Logique simple de pagination
-            for (let i = Math.max(1, current - 2); i <= Math.min(last, current + 2); i++) {
-                pages.push(i);
-            }
-            
-            return pages;
-        },
-
-        getSelectedConfigInfo() {
-            return this.activeConfigurations.find(config => config.id == this.selectedConfig);
-        },
-
-        getTotalAmount() {
-            return this.selectedOrders.reduce((total, orderId) => {
-                const order = this.orders.find(o => o.id === orderId);
-                return total + (order ? parseFloat(order.total_price) : 0);
-            }, 0).toFixed(3);
-        },
-
-        formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
-        },
-
-        formatPickupDate() {
-            return new Date(this.pickupDate).toLocaleDateString('fr-FR', {
-                weekday: 'long',
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            });
-        },
-
-        canCreatePickup() {
-            return this.selectedConfig && this.selectedOrders.length > 0;
-        },
-
-        async createPickup() {
-            if (!this.canCreatePickup()) return;
-
-            const result = await Swal.fire({
-                title: 'Créer l\'enlèvement ?',
-                html: `
-                    <p>Vous allez créer un enlèvement avec :</p>
-                    <ul class="text-start">
-                        <li><strong>${this.selectedOrders.length}</strong> commande(s)</li>
-                        <li>Total : <strong>${this.getTotalAmount()} TND</strong></li>
-                        <li>Date : <strong>${this.formatPickupDate()}</strong></li>
-                        <li>Transporteur : <strong>${this.getSelectedConfigInfo()?.integration_name}</strong></li>
-                    </ul>
-                `,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Créer l\'Enlèvement',
-                cancelButtonText: 'Annuler'
-            });
-
-            if (!result.isConfirmed) return;
-
-            this.loading = true;
-
-            try {
-                const response = await axios.post('{{ route("admin.delivery.preparation.store") }}', {
-                    delivery_configuration_id: this.selectedConfig,
-                    order_ids: this.selectedOrders,
-                    pickup_date: this.pickupDate
-                });
-
-                if (response.data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Enlèvement créé !',
-                        text: `Pickup #${response.data.pickup_id} créé avec ${response.data.orders_count} commande(s)`,
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
-
-                    // Rediriger vers la gestion des pickups
-                    setTimeout(() => {
-                        window.location.href = '{{ route("admin.delivery.pickups") }}';
-                    }, 3000);
-                } else {
-                    throw new Error(response.data.message || 'Erreur inconnue');
-                }
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erreur',
-                    text: error.response?.data?.error || error.message || 'Impossible de créer l\'enlèvement',
-                });
-            } finally {
-                this.loading = false;
-            }
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    // Écouter les changements de configuration
+    document.getElementById('delivery_configuration_id').addEventListener('change', function() {
+        const configId = this.value;
+        if (configId) {
+            showConfigInfo(this.options[this.selectedIndex]);
+            loadOrders();
+        } else {
+            hideConfigInfo();
+            clearOrders();
         }
-    }));
+    });
+
+    // Écouter les changements de recherche
+    document.getElementById('searchOrders').addEventListener('input', function() {
+        if (this.value.length >= 2 || this.value.length === 0) {
+            loadOrders();
+        }
+    });
+
+    document.getElementById('governorateFilter').addEventListener('change', function() {
+        loadOrders();
+    });
 });
+
+function showConfigInfo(option) {
+    const configInfo = document.getElementById('configInfo');
+    const configDetails = document.getElementById('configDetails');
+    
+    configDetails.innerHTML = `
+        ${option.getAttribute('data-name')}<br>
+        <small class="text-muted">Transporteur: ${option.text.split(' - ')[0]}</small>
+    `;
+    
+    configInfo.classList.remove('d-none');
+}
+
+function hideConfigInfo() {
+    document.getElementById('configInfo').classList.add('d-none');
+}
+
+function clearOrders() {
+    document.getElementById('ordersContainer').innerHTML = `
+        <div class="text-center py-4">
+            <p class="text-muted">
+                <i class="fas fa-arrow-up me-1"></i>
+                Sélectionnez une configuration pour voir les commandes disponibles
+            </p>
+        </div>
+    `;
+    selectedOrders = [];
+    updateSelectionSummary();
+}
+
+async function loadOrders() {
+    const configId = document.getElementById('delivery_configuration_id').value;
+    if (!configId) return;
+
+    const container = document.getElementById('ordersContainer');
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+            <p class="text-muted mt-2">Chargement des commandes...</p>
+        </div>
+    `;
+
+    try {
+        const params = new URLSearchParams({
+            page: currentPage,
+            per_page: 20,
+            search: document.getElementById('searchOrders').value,
+            governorate: document.getElementById('governorateFilter').value
+        });
+
+        const response = await fetch(`/admin/delivery/preparation/orders?${params}`);
+        const data = await response.json();
+
+        if (data.success) {
+            ordersData = data.orders;
+            displayOrders(data.orders);
+            updatePagination(data.pagination);
+        } else {
+            throw new Error(data.message || 'Erreur lors du chargement');
+        }
+    } catch (error) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3"></i>
+                <p class="text-danger">Erreur lors du chargement des commandes</p>
+                <button class="btn btn-outline-primary" onclick="loadOrders()">
+                    <i class="fas fa-redo me-1"></i>
+                    Réessayer
+                </button>
+            </div>
+        `;
+    }
+}
+
+function displayOrders(orders) {
+    const container = document.getElementById('ordersContainer');
+    
+    if (orders.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Aucune commande disponible</h5>
+                <p class="text-muted">Toutes les commandes ont déjà été expédiées ou sont en attente de confirmation.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="list-group">';
+    
+    orders.forEach(order => {
+        const isSelected = selectedOrders.includes(order.id);
+        const canBeShipped = order.can_be_shipped;
+        
+        html += `
+            <div class="list-group-item ${isSelected ? 'border-success bg-light' : ''}" 
+                 data-order-id="${order.id}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="form-check me-3">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="order_${order.id}"
+                               ${isSelected ? 'checked' : ''}
+                               ${!canBeShipped ? 'disabled' : ''}
+                               onchange="toggleOrderSelection(${order.id})">
+                    </div>
+                    
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1">
+                                    <span class="badge bg-primary me-2">#${order.id}</span>
+                                    ${order.customer_name}
+                                </h6>
+                                <p class="mb-1 text-muted small">
+                                    <i class="fas fa-phone me-1"></i>
+                                    ${order.customer_phone}
+                                    ${order.customer_phone_2 ? ' / ' + order.customer_phone_2 : ''}
+                                </p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success">
+                                    ${parseFloat(order.total_price).toFixed(3)} TND
+                                </span>
+                                ${!canBeShipped ? '<span class="badge bg-warning ms-1">Stock insuffisant</span>' : ''}
+                            </div>
+                        </div>
+                        
+                        <p class="mb-1 text-muted small">
+                            <i class="fas fa-map-marker-alt me-1"></i>
+                            ${order.customer_address}, ${order.customer_city}
+                        </p>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-box me-1"></i>
+                                ${order.items ? order.items.length : 0} produit(s)
+                            </small>
+                            <small class="text-muted">
+                                Créée le ${new Date(order.created_at).toLocaleDateString('fr-FR')}
+                            </small>
+                        </div>
+                        
+                        ${!canBeShipped && order.stock_issues ? `
+                            <div class="alert alert-warning alert-sm mt-2 py-1 px-2">
+                                <small>
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    ${order.stock_issues.map(issue => issue.message).join(', ')}
+                                </small>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function updatePagination(pagination) {
+    const container = document.getElementById('paginationContainer');
+    const paginationList = document.getElementById('pagination');
+    
+    if (pagination.last_page <= 1) {
+        container.classList.add('d-none');
+        return;
+    }
+    
+    container.classList.remove('d-none');
+    
+    let html = '';
+    
+    // Bouton précédent
+    html += `
+        <li class="page-item ${pagination.current_page <= 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${pagination.current_page - 1})">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        </li>
+    `;
+    
+    // Pages
+    for (let i = 1; i <= pagination.last_page; i++) {
+        if (i === pagination.current_page) {
+            html += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+        } else if (Math.abs(i - pagination.current_page) <= 2 || i === 1 || i === pagination.last_page) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${i})">${i}</a></li>`;
+        } else if (Math.abs(i - pagination.current_page) === 3) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+    
+    // Bouton suivant
+    html += `
+        <li class="page-item ${pagination.current_page >= pagination.last_page ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${pagination.current_page + 1})">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+    `;
+    
+    paginationList.innerHTML = html;
+}
+
+function changePage(page) {
+    currentPage = page;
+    loadOrders();
+}
+
+function toggleOrderSelection(orderId) {
+    const index = selectedOrders.indexOf(orderId);
+    if (index > -1) {
+        selectedOrders.splice(index, 1);
+    } else {
+        selectedOrders.push(orderId);
+    }
+    updateSelectionSummary();
+}
+
+function updateSelectionSummary() {
+    const summaryContainer = document.getElementById('selectionSummary');
+    const actionsContainer = document.getElementById('selectionActions');
+    
+    if (selectedOrders.length === 0) {
+        summaryContainer.innerHTML = `
+            <p class="text-muted text-center">
+                <i class="fas fa-info-circle me-1"></i>
+                Aucune commande sélectionnée
+            </p>
+        `;
+        actionsContainer.classList.add('d-none');
+    } else {
+        const selectedOrdersData = ordersData.filter(order => selectedOrders.includes(order.id));
+        const totalAmount = selectedOrdersData.reduce((sum, order) => sum + parseFloat(order.total_price), 0);
+        
+        summaryContainer.innerHTML = `
+            <div class="text-center">
+                <h6 class="text-success">${selectedOrders.length} commande(s)</h6>
+                <p class="mb-0">
+                    <strong>Total COD:</strong> ${totalAmount.toFixed(3)} TND
+                </p>
+            </div>
+        `;
+        actionsContainer.classList.remove('d-none');
+    }
+}
+
+function clearSelection() {
+    selectedOrders = [];
+    updateSelectionSummary();
+    
+    // Décocher toutes les cases
+    document.querySelectorAll('input[type="checkbox"][id^="order_"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    // Retirer les styles de sélection
+    document.querySelectorAll('.list-group-item').forEach(item => {
+        item.classList.remove('border-success', 'bg-light');
+    });
+}
+
+function createPickup() {
+    if (selectedOrders.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Aucune commande sélectionnée',
+            text: 'Veuillez sélectionner au moins une commande.',
+        });
+        return;
+    }
+    
+    const configId = document.getElementById('delivery_configuration_id').value;
+    if (!configId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Configuration manquante',
+            text: 'Veuillez sélectionner une configuration de transporteur.',
+        });
+        return;
+    }
+    
+    // Préparer le modal de confirmation
+    const selectedOrdersData = ordersData.filter(order => selectedOrders.includes(order.id));
+    const totalAmount = selectedOrdersData.reduce((sum, order) => sum + parseFloat(order.total_price), 0);
+    const configOption = document.getElementById('delivery_configuration_id').selectedOptions[0];
+    const pickupDate = document.getElementById('pickup_date').value;
+    
+    document.getElementById('pickupConfirmation').innerHTML = `
+        <div class="mb-3">
+            <h6>Configuration sélectionnée :</h6>
+            <p class="text-muted">${configOption.text}</p>
+        </div>
+        
+        <div class="mb-3">
+            <h6>Date d'enlèvement :</h6>
+            <p class="text-muted">${new Date(pickupDate).toLocaleDateString('fr-FR')}</p>
+        </div>
+        
+        <div class="mb-3">
+            <h6>Commandes à expédier :</h6>
+            <div class="bg-light p-2 rounded">
+                <div class="row">
+                    <div class="col-6"><strong>Nombre :</strong> ${selectedOrders.length}</div>
+                    <div class="col-6"><strong>Total COD :</strong> ${totalAmount.toFixed(3)} TND</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-1"></i>
+            <small>L'enlèvement sera créé et les commandes seront marquées comme expédiées.</small>
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('createPickupModal'));
+    modal.show();
+}
+
+async function confirmCreatePickup() {
+    const confirmBtn = document.getElementById('confirmBtn');
+    const originalText = confirmBtn.innerHTML;
+    
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Création...';
+    confirmBtn.disabled = true;
+    
+    try {
+        const response = await fetch('/admin/delivery/preparation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                delivery_configuration_id: document.getElementById('delivery_configuration_id').value,
+                order_ids: selectedOrders,
+                pickup_date: document.getElementById('pickup_date').value
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('createPickupModal')).hide();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Enlèvement créé !',
+                text: data.message,
+                showConfirmButton: false,
+                timer: 2000
+            });
+            
+            setTimeout(() => {
+                window.location.href = '/admin/delivery/pickups';
+            }, 2000);
+        } else {
+            throw new Error(data.message || 'Erreur lors de la création');
+        }
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Erreur',
+            text: error.message,
+        });
+        
+        confirmBtn.innerHTML = originalText;
+        confirmBtn.disabled = false;
+    }
+}
 </script>
 @endpush
 
 @push('styles')
 <style>
-.table tbody tr {
-    cursor: pointer;
+.alert-sm {
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
 }
 
-.table tbody tr:hover {
+.list-group-item {
+    transition: all 0.2s ease-in-out;
+}
+
+.list-group-item:hover {
     background-color: rgba(0, 123, 255, 0.05);
 }
 
-.table tbody tr.table-warning {
-    cursor: not-allowed;
+.list-group-item.border-success {
+    border-width: 2px !important;
 }
 
-.table tbody tr.table-warning:hover {
-    background-color: rgba(255, 193, 7, 0.1);
-}
-
-.sticky-top {
-    z-index: 1020;
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
 }
 
 .page-link {
-    cursor: pointer;
+    color: #0d6efd;
 }
 
-.pagination .page-item.disabled .page-link {
-    cursor: not-allowed;
+.page-link:hover {
+    color: #0a58ca;
+}
+
+.page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
 }
 </style>
 @endpush
