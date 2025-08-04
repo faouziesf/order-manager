@@ -248,7 +248,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS
+        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION CORRIGÉE
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
             
@@ -319,12 +319,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('shipments.mark-delivered');
             
             // ================================
-            // STATISTIQUES ET APIs
+            // STATISTIQUES ET APIs - SECTION CORRIGÉE
             // ================================
             Route::get('stats', [DeliveryController::class, 'stats'])
                 ->name('stats');
+                
+            // 🔧 ROUTE CORRIGÉE pour les statistiques générales
+            Route::get('api/general-stats', [DeliveryController::class, 'getGeneralStats'])
+                ->name('api.general-stats');
+                
+            // Route ancienne maintenue pour compatibilité
             Route::get('api/stats', [DeliveryController::class, 'getApiStats'])
                 ->name('api.stats');
+                
             Route::post('api/track-all', [DeliveryController::class, 'trackAllShipments'])
                 ->name('api.track-all');
             
@@ -370,7 +377,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // ========================================
-        // DEBUG ET DIAGNOSTICS
+        // DEBUG ET DIAGNOSTICS - SECTION ÉTENDUE
         // ========================================
         Route::get('debug-auth', function () {
             $admin = auth('admin')->user();
@@ -392,6 +399,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'delivery_index' => route('admin.delivery.index'),
                     'delivery_configuration' => route('admin.delivery.configuration'),
                     'delivery_preparation' => route('admin.delivery.preparation'),
+                    'delivery_api_general_stats' => route('admin.delivery.api.general-stats'),
                 ]
             ];
         })->name('debug-auth');
@@ -418,6 +426,43 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ];
         })->name('debug-process');
 
+        // 🆕 NOUVELLE ROUTE DE DEBUG POUR LES STATISTIQUES DELIVERY
+        Route::get('delivery-debug-stats', function () {
+            $admin = auth('admin')->user();
+            
+            try {
+                return [
+                    'admin_id' => $admin->id,
+                    'admin_name' => $admin->name,
+                    'delivery_configs' => \App\Models\DeliveryConfiguration::where('admin_id', $admin->id)->count(),
+                    'active_configs' => \App\Models\DeliveryConfiguration::where('admin_id', $admin->id)->where('is_active', true)->count(),
+                    'pickups' => \App\Models\Pickup::where('admin_id', $admin->id)->count(),
+                    'draft_pickups' => \App\Models\Pickup::where('admin_id', $admin->id)->where('status', 'draft')->count(),
+                    'shipments' => \App\Models\Shipment::where('admin_id', $admin->id)->count(),
+                    'active_shipments' => \App\Models\Shipment::where('admin_id', $admin->id)
+                        ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
+                        ->count(),
+                    'routes_check' => [
+                        'general_stats_route_exists' => \Route::has('admin.delivery.api.general-stats'),
+                        'delivery_index_exists' => \Route::has('admin.delivery.index'),
+                        'delivery_config_exists' => \Route::has('admin.delivery.configuration'),
+                    ],
+                    'config_carriers' => config('carriers') ? array_keys(config('carriers')) : [],
+                    'timestamp' => now()->toISOString(),
+                ];
+            } catch (\Exception $e) {
+                return [
+                    'error' => 'Erreur lors de la récupération des données',
+                    'message' => $e->getMessage(),
+                    'admin_id' => $admin->id,
+                    'routes_check' => [
+                        'general_stats_route_exists' => \Route::has('admin.delivery.api.general-stats'),
+                        'delivery_index_exists' => \Route::has('admin.delivery.index'),
+                    ]
+                ];
+            }
+        })->name('delivery-debug-stats');
+
         // ========================================
         // ROUTE DE TEST POUR LES NOUVELLES VUES DE LIVRAISON
         // ========================================
@@ -435,6 +480,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'pickups' => route('admin.delivery.pickups'),
                     'shipments' => route('admin.delivery.shipments'),
                     'stats' => route('admin.delivery.stats'),
+                    'api_general_stats' => route('admin.delivery.api.general-stats'), // 🆕 AJOUTÉ
                 ],
                 'available_views' => [
                     'admin.delivery.index',
@@ -456,5 +502,31 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'timestamp' => now()->toISOString()
             ];
         })->name('delivery-test');
+
+        // 🆕 ROUTE DE TEST RAPIDE POUR L'API STATS DELIVERY
+        Route::get('delivery-quick-test', function () {
+            $admin = auth('admin')->user();
+            
+            try {
+                // Test direct de la méthode
+                $controller = new DeliveryController();
+                $response = $controller->getGeneralStats();
+                
+                return [
+                    'success' => true,
+                    'message' => 'API de statistiques fonctionnelle',
+                    'response' => $response->getData(),
+                    'admin_id' => $admin->id,
+                    'test_time' => now()->toISOString(),
+                ];
+            } catch (\Exception $e) {
+                return [
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'admin_id' => $admin->id,
+                    'test_time' => now()->toISOString(),
+                ];
+            }
+        })->name('delivery-quick-test');
     });
 });

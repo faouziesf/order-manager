@@ -46,45 +46,119 @@ class DeliveryController extends Controller
     {
         $admin = auth('admin')->user();
         
-        // Récupérer les configurations existantes par transporteur
-        $configurations = DeliveryConfiguration::where('admin_id', $admin->id)
-            ->get()
-            ->groupBy('carrier_slug');
-        
-        // Préparer les données des transporteurs avec leurs statuts
-        $carriersData = [];
-        
-        foreach ($this->carriers as $slug => $carrierConfig) {
-            if ($slug === 'system' || $slug === 'history_actions') continue;
-            
-            $carrierConfigurations = $configurations->get($slug, collect());
-            $activeConfigs = $carrierConfigurations->where('is_active', true);
-            
-            $carriersData[$slug] = [
-                'config' => $carrierConfig,
-                'slug' => $slug,
-                'configurations' => $carrierConfigurations,
-                'active_configurations' => $activeConfigs,
-                'is_configured' => $carrierConfigurations->isNotEmpty(),
-                'is_active' => $activeConfigs->isNotEmpty(),
-                'status' => $this->getCarrierStatus($carrierConfigurations),
-                'stats' => $this->getCarrierStats($admin->id, $slug),
-            ];
+        // Vérifier si le fichier de configuration existe
+        $carriers = config('carriers', []);
+        if (empty($carriers)) {
+            return redirect()->back()->with('error', 'Configuration des transporteurs manquante');
         }
         
-        // Statistiques générales
-        $generalStats = [
-            'total_configurations' => $configurations->flatten()->count(),
-            'active_configurations' => $configurations->flatten()->where('is_active', true)->count(),
-            'total_pickups' => Pickup::where('admin_id', $admin->id)->count(),
-            'pending_pickups' => Pickup::where('admin_id', $admin->id)->where('status', 'draft')->count(),
-            'total_shipments' => Shipment::where('admin_id', $admin->id)->count(),
-            'active_shipments' => Shipment::where('admin_id', $admin->id)
-                ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
-                ->count(),
-        ];
+        try {
+            // Récupérer les configurations existantes par transporteur
+            $configurations = DeliveryConfiguration::where('admin_id', $admin->id)
+                ->get()
+                ->groupBy('carrier_slug');
+            
+            // Préparer les données des transporteurs avec leurs statuts
+            $carriersData = [];
+            
+            foreach ($this->carriers as $slug => $carrierConfig) {
+                if ($slug === 'system' || $slug === 'history_actions') continue;
+                
+                $carrierConfigurations = $configurations->get($slug, collect());
+                $activeConfigs = $carrierConfigurations->where('is_active', true);
+                
+                $carriersData[$slug] = [
+                    'config' => $carrierConfig,
+                    'slug' => $slug,
+                    'configurations' => $carrierConfigurations,
+                    'active_configurations' => $activeConfigs,
+                    'is_configured' => $carrierConfigurations->isNotEmpty(),
+                    'is_active' => $activeConfigs->isNotEmpty(),
+                    'status' => $this->getCarrierStatus($carrierConfigurations),
+                    'stats' => $this->getCarrierStats($admin->id, $slug),
+                ];
+            }
+            
+            // Statistiques générales avec gestion d'erreurs et valeurs par défaut
+            $generalStats = [
+                'total_configurations' => $configurations->flatten()->count(),
+                'active_configurations' => $configurations->flatten()->where('is_active', true)->count(),
+                'total_pickups' => Pickup::where('admin_id', $admin->id)->count(),
+                'pending_pickups' => Pickup::where('admin_id', $admin->id)->where('status', 'draft')->count(),
+                'total_shipments' => Shipment::where('admin_id', $admin->id)->count(),
+                'active_shipments' => Shipment::where('admin_id', $admin->id)
+                    ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
+                    ->count(),
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du chargement de la page delivery', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Valeurs par défaut en cas d'erreur
+            $carriersData = [];
+            $generalStats = [
+                'total_configurations' => 0,
+                'active_configurations' => 0,
+                'total_pickups' => 0,
+                'pending_pickups' => 0,
+                'total_shipments' => 0,
+                'active_shipments' => 0,
+            ];
+            
+            return view('admin.delivery.index', compact('carriersData', 'generalStats'))
+                ->with('error', 'Erreur lors du chargement des données de livraison');
+        }
 
         return view('admin.delivery.index', compact('carriersData', 'generalStats'));
+    }
+
+    /**
+     * API pour les statistiques générales (pour le rafraîchissement temps réel)
+     */
+    public function getGeneralStats()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            $generalStats = [
+                'total_configurations' => DeliveryConfiguration::where('admin_id', $admin->id)->count(),
+                'active_configurations' => DeliveryConfiguration::where('admin_id', $admin->id)
+                    ->where('is_active', true)->count(),
+                'total_pickups' => Pickup::where('admin_id', $admin->id)->count(),
+                'pending_pickups' => Pickup::where('admin_id', $admin->id)
+                    ->where('status', 'draft')->count(),
+                'total_shipments' => Shipment::where('admin_id', $admin->id)->count(),
+                'active_shipments' => Shipment::where('admin_id', $admin->id)
+                    ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
+                    ->count(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'general_stats' => $generalStats
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération statistiques delivery', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors de la récupération des statistiques',
+                'general_stats' => [
+                    'total_configurations' => 0,
+                    'active_configurations' => 0,
+                    'total_pickups' => 0,
+                    'pending_pickups' => 0,
+                    'total_shipments' => 0,
+                    'active_shipments' => 0,
+                ]
+            ]);
+        }
     }
 
     // ========================================
@@ -128,14 +202,14 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Sauvegarder une nouvelle configuration
+     * Sauvegarder une nouvelle configuration avec support des longs tokens
      */
     public function storeConfiguration(Request $request)
     {
         $admin = auth('admin')->user();
         $carrierSlug = $request->input('carrier_slug');
         
-        // Validation selon le transporteur
+        // Validation selon le transporteur avec support des longs tokens
         $rules = $this->getValidationRules($carrierSlug);
         $validator = Validator::make($request->all(), $rules);
         
@@ -153,22 +227,59 @@ class DeliveryController extends Controller
         try {
             DB::beginTransaction();
             
-            // Créer la configuration
-            $config = DeliveryConfiguration::create([
+            // Préparer les données avec validation des tokens
+            $configData = [
                 'admin_id' => $admin->id,
                 'carrier_slug' => $carrierSlug,
                 'integration_name' => $request->input('integration_name'),
-                'username' => $request->input('username'),
-                'password' => $request->input('password', ''),
                 'environment' => 'prod', // Production uniquement selon contraintes
                 'is_active' => false, // Inactive par défaut, activée après test
                 'settings' => $request->input('settings', []),
-            ]);
+            ];
+
+            // Gestion spécifique des credentials selon le transporteur
+            if ($carrierSlug === 'jax_delivery') {
+                // JAX Delivery : username = numéro de compte, password = token JWT
+                $configData['username'] = $request->input('username'); // Numéro de compte (ex: 2304)
+                $configData['password'] = $request->input('password'); // Token JWT long
+                
+                // Validation du format JWT pour JAX
+                if (!$this->isValidJwtToken($request->input('password'))) {
+                    Log::warning('Token JAX non-JWT détecté', [
+                        'admin_id' => $admin->id,
+                        'token_preview' => substr($request->input('password'), 0, 20) . '...'
+                    ]);
+                }
+                
+            } elseif ($carrierSlug === 'mes_colis') {
+                // Mes Colis : username = token API, password = null ou vide
+                $configData['username'] = $request->input('username'); // Token API (ex: OL6B3FUA526SMLMBN7U3QZ1UMW5YW91D)
+                $configData['password'] = null; // Non utilisé pour Mes Colis
+            }
+            
+            // Créer la configuration
+            $config = DeliveryConfiguration::create($configData);
             
             // Enregistrer dans l'historique
-            $this->recordConfigurationHistory($config, 'created', 'Configuration créée');
+            $this->recordConfigurationHistory($config, 'created', 'Configuration créée', [
+                'carrier_slug' => $carrierSlug,
+                'integration_name' => $config->integration_name,
+                'username_length' => strlen($config->username),
+                'password_length' => $config->password ? strlen($config->password) : 0,
+            ]);
             
             DB::commit();
+            
+            Log::info('Configuration delivery créée', [
+                'config_id' => $config->id,
+                'admin_id' => $admin->id,
+                'carrier_slug' => $carrierSlug,
+                'integration_name' => $config->integration_name,
+                'token_lengths' => [
+                    'username' => strlen($config->username),
+                    'password' => $config->password ? strlen($config->password) : 0,
+                ]
+            ]);
             
             // Si c'est une requête AJAX (pour test), retourner JSON
             if ($request->wantsJson() || $request->ajax()) {
@@ -209,7 +320,10 @@ class DeliveryController extends Controller
      */
     public function editConfiguration(DeliveryConfiguration $config)
     {
-        $this->authorize('update', $config);
+        // Vérification d'autorisation simplifiée
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         $carrier = $this->carriers[$config->carrier_slug];
         $carrierSlug = $config->carrier_slug;
@@ -218,11 +332,14 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Mettre à jour une configuration
+     * Mettre à jour une configuration avec support des longs tokens
      */
     public function updateConfiguration(Request $request, DeliveryConfiguration $config)
     {
-        $this->authorize('update', $config);
+        // Vérification d'autorisation simplifiée
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         // Validation selon le transporteur
         $rules = $this->getValidationRules($config->carrier_slug, $config->id);
@@ -246,13 +363,29 @@ class DeliveryController extends Controller
             
             $updateData = [
                 'integration_name' => $request->input('integration_name'),
-                'username' => $request->input('username'),
                 'settings' => $request->input('settings', []),
             ];
             
-            // Mettre à jour le mot de passe seulement si fourni
-            if ($request->filled('password')) {
-                $updateData['password'] = $request->input('password');
+            // Gestion spécifique des credentials selon le transporteur
+            if ($config->carrier_slug === 'jax_delivery') {
+                // JAX Delivery : username = numéro de compte, password = token JWT
+                $updateData['username'] = $request->input('username');
+                if ($request->filled('password')) {
+                    $updateData['password'] = $request->input('password');
+                    
+                    // Validation du format JWT pour JAX
+                    if (!$this->isValidJwtToken($request->input('password'))) {
+                        Log::warning('Token JAX non-JWT détecté lors de la mise à jour', [
+                            'config_id' => $config->id,
+                            'token_preview' => substr($request->input('password'), 0, 20) . '...'
+                        ]);
+                    }
+                }
+                
+            } elseif ($config->carrier_slug === 'mes_colis') {
+                // Mes Colis : username = token API
+                $updateData['username'] = $request->input('username');
+                // password reste null pour Mes Colis
             }
             
             $config->update($updateData);
@@ -270,7 +403,8 @@ class DeliveryController extends Controller
             
             // Enregistrer dans l'historique
             $this->recordConfigurationHistory($config, 'updated', 'Configuration mise à jour', [
-                'changes' => array_diff_assoc($config->fresh()->toArray(), $oldData)
+                'changes' => array_diff_assoc($config->fresh()->toArray(), $oldData),
+                'credentials_changed' => $credentialsChanged
             ]);
             
             DB::commit();
@@ -311,7 +445,10 @@ class DeliveryController extends Controller
      */
     public function deleteConfiguration(DeliveryConfiguration $config)
     {
-        $this->authorize('delete', $config);
+        // Vérification d'autorisation simplifiée
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         try {
             DB::beginTransaction();
@@ -373,17 +510,23 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Tester la connexion d'une configuration
+     * Tester la connexion d'une configuration avec support des longs tokens
      */
     public function testConnection(DeliveryConfiguration $config)
     {
-        $this->authorize('update', $config);
+        // Vérification d'autorisation simplifiée
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         try {
             Log::info("Test de connexion demandé", [
                 'config_id' => $config->id,
                 'carrier_slug' => $config->carrier_slug,
-                'integration_name' => $config->integration_name
+                'integration_name' => $config->integration_name,
+                'username_length' => strlen($config->username),
+                'password_length' => $config->password ? strlen($config->password) : 0,
+                'is_jwt_token' => $config->password ? $this->isValidJwtToken($config->password) : false,
             ]);
             
             // Créer le service approprié
@@ -460,7 +603,10 @@ class DeliveryController extends Controller
      */
     public function toggleConfiguration(DeliveryConfiguration $config)
     {
-        $this->authorize('update', $config);
+        // Vérification d'autorisation simplifiée
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         try {
             $newStatus = !$config->is_active;
@@ -727,7 +873,10 @@ class DeliveryController extends Controller
      */
     public function showPickup(Pickup $pickup)
     {
-        $this->authorize('view', $pickup);
+        // Vérification d'autorisation simplifiée
+        if ($pickup->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         $pickup->load(['shipments.order', 'deliveryConfiguration']);
         
@@ -742,7 +891,10 @@ class DeliveryController extends Controller
      */
     public function validatePickup(Pickup $pickup)
     {
-        $this->authorize('update', $pickup);
+        // Vérification d'autorisation simplifiée
+        if ($pickup->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         try {
             // Valider le pickup
@@ -793,7 +945,10 @@ class DeliveryController extends Controller
      */
     public function showShipment(Shipment $shipment)
     {
-        $this->authorize('view', $shipment);
+        // Vérification d'autorisation simplifiée
+        if ($shipment->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         $shipment->load(['order', 'pickup']);
         
@@ -808,7 +963,10 @@ class DeliveryController extends Controller
      */
     public function trackShipmentStatus(Shipment $shipment)
     {
-        $this->authorize('view', $shipment);
+        // Vérification d'autorisation simplifiée
+        if ($shipment->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         try {
             if (!$shipment->can_be_tracked) {
@@ -865,7 +1023,10 @@ class DeliveryController extends Controller
      */
     public function markShipmentAsDelivered(Shipment $shipment)
     {
-        $this->authorize('update', $shipment);
+        // Vérification d'autorisation simplifiée
+        if ($shipment->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
         
         try {
             $shipment->markAsDelivered('Marqué comme livré manuellement');
@@ -987,7 +1148,7 @@ class DeliveryController extends Controller
     // ========================================
 
     /**
-     * Obtenir les règles de validation selon le transporteur
+     * Obtenir les règles de validation selon le transporteur avec support des longs tokens
      */
     protected function getValidationRules($carrierSlug, $excludeId = null)
     {
@@ -1004,16 +1165,32 @@ class DeliveryController extends Controller
             ],
         ];
         
-        // Règles spécifiques selon le transporteur
+        // Règles spécifiques selon le transporteur avec support des longs tokens
         if ($carrierSlug === 'jax_delivery') {
-            $rules['username'] = 'required|string|max:255'; // Numéro de compte
-            $rules['password'] = 'required|string|max:65535'; // Token API (TEXT field)
+            $rules['username'] = 'required|string|max:255'; // Numéro de compte (ex: 2304)
+            $rules['password'] = 'required|string|min:10'; // Token JWT (très long, minimum 10 caractères)
         } elseif ($carrierSlug === 'mes_colis') {
-            $rules['username'] = 'required|string|max:65535'; // Token API
-            $rules['password'] = 'nullable|string|max:65535'; // Non utilisé
+            $rules['username'] = 'required|string|min:10|max:255'; // Token API (ex: OL6B3FUA526SMLMBN7U3QZ1UMW5YW91D)
+            $rules['password'] = 'nullable|string'; // Non utilisé pour Mes Colis
         }
         
         return $rules;
+    }
+
+    /**
+     * Vérifier si une chaîne est un token JWT valide
+     */
+    protected function isValidJwtToken($token)
+    {
+        if (!is_string($token) || empty($token)) {
+            return false;
+        }
+        
+        $parts = explode('.', $token);
+        return count($parts) === 3 && 
+               strlen($parts[0]) > 10 && 
+               strlen($parts[1]) > 10 && 
+               strlen($parts[2]) > 10;
     }
 
     /**
