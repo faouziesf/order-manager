@@ -1,663 +1,1082 @@
 @extends('layouts.admin')
 
-@section('title', 'Modifier la Configuration - ' . $config->integration_name)
+@section('title', 'Modifier Configuration - ' . $config->integration_name)
+
+@section('css')
+<style>
+    :root {
+        --primary: #1e40af;
+        --primary-dark: #1e3a8a;
+        --primary-light: #3b82f6;
+        --success: #059669;
+        --warning: #d97706;
+        --danger: #dc2626;
+        --info: #0891b2;
+        --light: #f8fafc;
+        --dark: #374151;
+        --border: #e5e7eb;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.15);
+        --radius: 8px;
+        --transition: all 0.2s ease;
+    }
+
+    body {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-size: 14px;
+    }
+
+    /* ===== CONTAINER PRINCIPAL ===== */
+    .config-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    /* ===== HEADER COMPACT ===== */
+    .config-header {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--primary);
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .header-info h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .header-info p {
+        color: #6b7280;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .status-active {
+        background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+        color: #166534;
+    }
+
+    .status-inactive {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        color: #92400e;
+    }
+
+    /* ===== LAYOUT PRINCIPAL ===== */
+    .config-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+    }
+
+    /* ===== FORMULAIRE PRINCIPAL ===== */
+    .config-form {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .carrier-logo {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        padding: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .form-body {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid var(--border);
+        border-radius: var(--radius);
+        font-size: 0.9rem;
+        transition: var(--transition);
+        background: white;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+    }
+
+    .form-control.is-invalid {
+        border-color: var(--danger);
+    }
+
+    .input-group {
+        display: flex;
+        align-items: stretch;
+    }
+
+    .input-group .form-control {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-right: none;
+    }
+
+    .input-group-append {
+        display: flex;
+    }
+
+    .input-group-text {
+        background: #f3f4f6;
+        border: 2px solid var(--border);
+        border-left: none;
+        border-top-right-radius: var(--radius);
+        border-bottom-right-radius: var(--radius);
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .input-group-text:hover {
+        background: #e5e7eb;
+    }
+
+    .form-text {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .invalid-feedback {
+        color: var(--danger);
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: var(--radius);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        border: none;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+        color: #166534;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        color: #991b1b;
+    }
+
+    /* ===== INFO CARD ===== */
+    .info-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        border: 1px solid var(--border);
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: var(--dark);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .info-value {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    /* ===== ACTIONS FOOTER ===== */
+    .form-actions {
+        background: #f9fafb;
+        padding: 1.5rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        text-align: center;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .btn:hover::before {
+        left: 100%;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        text-decoration: none;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        box-shadow: 0 2px 4px rgba(30, 64, 175, 0.3);
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, var(--success), #047857);
+        color: white;
+        box-shadow: 0 2px 4px rgba(5, 150, 105, 0.3);
+    }
+
+    .btn-warning {
+        background: linear-gradient(135deg, var(--warning), #b45309);
+        color: white;
+        box-shadow: 0 2px 4px rgba(217, 119, 6, 0.3);
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, var(--danger), #b91c1c);
+        color: white;
+        box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+    }
+
+    .btn-outline {
+        background: white;
+        color: var(--dark);
+        border: 2px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-outline:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .sidebar-card {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .sidebar-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .sidebar-body {
+        padding: 1.5rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .stat-item {
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .action-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .info-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .info-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--dark);
+        text-decoration: none;
+        transition: var(--transition);
+        font-size: 0.9rem;
+    }
+
+    .info-link:hover {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    .limits-info {
+        background: #f8fafc;
+        border-radius: var(--radius);
+        padding: 1rem;
+        margin-top: 1rem;
+        border-left: 3px solid var(--info);
+    }
+
+    .limits-title {
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .limits-list {
+        color: #6b7280;
+        font-size: 0.8rem;
+        line-height: 1.6;
+    }
+
+    /* ===== NOTIFICATIONS TOAST ===== */
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 300px;
+        max-width: 400px;
+        box-shadow: var(--shadow-lg);
+        border-radius: var(--radius);
+        overflow: hidden;
+        animation: slideInRight 0.3s ease;
+    }
+
+    .toast-success {
+        background: linear-gradient(135deg, var(--success), #047857);
+        color: white;
+    }
+
+    .toast-danger {
+        background: linear-gradient(135deg, var(--danger), #b91c1c);
+        color: white;
+    }
+
+    .toast-warning {
+        background: linear-gradient(135deg, var(--warning), #b45309);
+        color: white;
+    }
+
+    .toast-content {
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .config-container {
+            padding: 0.5rem;
+        }
+
+        .config-header {
+            padding: 1rem;
+        }
+
+        .header-content {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .header-actions {
+            justify-content: center;
+        }
+
+        .config-layout {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .form-body {
+            padding: 1rem;
+        }
+
+        .form-actions {
+            padding: 1rem;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .form-actions > div {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .sidebar-body {
+            padding: 1rem;
+        }
+    }
+
+    /* ===== LOADING STATES ===== */
+    .loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        margin: -10px 0 0 -10px;
+        border: 2px solid transparent;
+        border-top: 2px solid currentColor;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+@endsection
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-edit text-primary me-2"></i>
-                Modifier la Configuration
-            </h1>
-            <p class="text-muted mb-0">{{ $config->integration_name }} - {{ $carrier['name'] }}</p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('admin.delivery.configuration') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i>
-                Retour
-            </a>
-            @if($config->is_active)
-                <span class="badge bg-success px-3 py-2 d-flex align-items-center">
-                    <i class="fas fa-check-circle me-1"></i>
-                    Active
-                </span>
-            @else
-                <span class="badge bg-warning px-3 py-2 d-flex align-items-center">
-                    <i class="fas fa-pause-circle me-1"></i>
-                    Inactive
-                </span>
-            @endif
+<div class="config-container">
+    <!-- Header -->
+    <div class="config-header">
+        <div class="header-content">
+            <div class="header-info">
+                <h1>
+                    <i class="fas fa-edit text-primary"></i>
+                    Modifier la Configuration
+                </h1>
+                <p>{{ $config->integration_name }} • {{ $carrier['name'] }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('admin.delivery.configuration') }}" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour
+                </a>
+                <div class="status-badge {{ $config->is_active ? 'status-active' : 'status-inactive' }}">
+                    <i class="fas fa-{{ $config->is_active ? 'check-circle' : 'pause-circle' }}"></i>
+                    {{ $config->is_active ? 'Actif' : 'Inactif' }}
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card shadow">
-                <div class="card-header py-3 d-flex align-items-center">
-                    <div class="me-3">
-                        @if(isset($carrier['logo']))
-                            <img src="{{ asset($carrier['logo']) }}" 
-                                 alt="{{ $carrier['name'] }}" 
-                                 class="carrier-logo-sm">
-                        @else
-                            <div class="carrier-logo-sm d-flex align-items-center justify-content-center">
-                                <i class="fas fa-truck fa-lg text-muted"></i>
-                            </div>
-                        @endif
+    <div class="config-layout">
+        <!-- Formulaire Principal -->
+        <div class="config-form">
+            <div class="form-header">
+                @if(isset($carrier['logo']))
+                    <img src="{{ asset($carrier['logo']) }}" 
+                         alt="{{ $carrier['name'] }}" 
+                         class="carrier-logo"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="carrier-logo" style="display: none;">
+                        <i class="fas fa-truck"></i>
                     </div>
-                    <div>
-                        <h6 class="m-0 font-weight-bold text-primary">{{ $carrier['name'] }}</h6>
-                        <small class="text-muted">ID de Configuration : {{ $config->id }}</small>
+                @else
+                    <div class="carrier-logo">
+                        <i class="fas fa-truck"></i>
                     </div>
-                </div>
+                @endif
                 
-                <form id="editConfigForm" action="{{ route('admin.delivery.configuration.update', $config) }}" method="POST">
-                    @csrf
-                    @method('PATCH')
-                    
-                    <div class="card-body">
-                        @if(session('success'))
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="fas fa-check-circle me-2"></i>
-                                {{ session('success') }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        @endif
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ $carrier['name'] }}</h3>
+                    <small style="opacity: 0.8;">Configuration ID: {{ $config->id }}</small>
+                </div>
+            </div>
 
-                        @if(session('error'))
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                {{ session('error') }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        @endif
-
-                        <div class="mb-4">
-                            <label for="integration_name" class="form-label">
-                                <i class="fas fa-tag me-1"></i>
-                                Nom de la Liaison <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" 
-                                   class="form-control @error('integration_name') is-invalid @enderror" 
-                                   id="integration_name" 
-                                   name="integration_name" 
-                                   value="{{ old('integration_name', $config->integration_name) }}"
-                                   required>
-                            <div class="form-text">
-                                Nom unique pour identifier cette configuration.
-                            </div>
-                            @error('integration_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+            <form id="configForm" action="{{ route('admin.delivery.configuration.update', $config) }}" method="POST">
+                @csrf
+                @method('PATCH')
+                
+                <div class="form-body">
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <span>{{ session('success') }}</span>
                         </div>
+                    @endif
 
-                        @if($config->carrier_slug === 'jax_delivery')
-                            <div class="row">
-                                <div class="col-md-6 mb-4">
-                                    <label for="username" class="form-label">
-                                        <i class="fas fa-user me-1"></i>
-                                        Numéro de Compte <span class="text-danger">*</span>
-                                    </label>
-                                    <input type="text" 
-                                           class="form-control @error('username') is-invalid @enderror" 
-                                           id="username" 
-                                           name="username" 
-                                           value="{{ old('username', $config->username) }}"
-                                           required>
-                                    @error('username')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                
-                                <div class="col-md-6 mb-4">
-                                    <label for="password" class="form-label">
-                                        <i class="fas fa-key me-1"></i>
-                                        Token API
-                                    </label>
-                                    <div class="input-group">
-                                        <input type="password" 
-                                               class="form-control @error('password') is-invalid @enderror" 
-                                               id="password" 
-                                               name="password" 
-                                               value="{{ old('password') }}"
-                                               placeholder="Laisser vide pour conserver l'actuel">
-                                        <button class="btn btn-outline-secondary" 
-                                                type="button" 
-                                                onclick="togglePasswordVisibility()">
-                                            <i class="fas fa-eye" id="passwordToggleIcon"></i>
-                                        </button>
-                                    </div>
-                                    <div class="form-text">
-                                        Remplir uniquement pour changer le token.
-                                    </div>
-                                    @error('password')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        @elseif($config->carrier_slug === 'mes_colis')
-                            <div class="mb-4">
+                    @if(session('error'))
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>{{ session('error') }}</span>
+                        </div>
+                    @endif
+
+                    <div class="form-group">
+                        <label for="integration_name" class="form-label">
+                            <i class="fas fa-tag text-primary"></i>
+                            Nom de la Configuration <span style="color: var(--danger);">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control @error('integration_name') is-invalid @enderror" 
+                               id="integration_name" 
+                               name="integration_name" 
+                               value="{{ old('integration_name', $config->integration_name) }}"
+                               required>
+                        <div class="form-text">Nom unique pour identifier cette configuration</div>
+                        @error('integration_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    @if($config->carrier_slug === 'jax_delivery')
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
                                 <label for="username" class="form-label">
-                                    <i class="fas fa-key me-1"></i>
-                                    Token API <span class="text-danger">*</span>
+                                    <i class="fas fa-user text-primary"></i>
+                                    Numéro de Compte <span style="color: var(--danger);">*</span>
                                 </label>
-                                <div class="input-group">
-                                    <input type="text" 
-                                           class="form-control @error('username') is-invalid @enderror" 
-                                           id="username" 
-                                           name="username" 
-                                           value="{{ old('username', $config->username) }}"
-                                           required>
-                                    <button class="btn btn-outline-secondary" 
-                                            type="button" 
-                                            onclick="togglePasswordVisibility()">
-                                        <i class="fas fa-eye" id="passwordToggleIcon"></i>
-                                    </button>
-                                </div>
+                                <input type="text" 
+                                       class="form-control @error('username') is-invalid @enderror" 
+                                       id="username" 
+                                       name="username" 
+                                       value="{{ old('username', $config->username) }}"
+                                       required>
                                 @error('username')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        @endif
-
-                        <div class="card bg-light border-0 mb-4">
-                            <div class="card-header bg-transparent border-0 py-2">
-                                <h6 class="mb-0 text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Informations sur la Configuration
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <strong>Statut actuel :</strong>
-                                            @if($config->is_active)
-                                                <span class="badge bg-success ms-2">
-                                                    <i class="fas fa-check me-1"></i>
-                                                    Actif
-                                                </span>
-                                            @else
-                                                <span class="badge bg-warning ms-2">
-                                                    <i class="fas fa-pause me-1"></i>
-                                                    Inactif
-                                                </span>
-                                            @endif
-                                        </div>
-                                        <div class="mb-3">
-                                            <strong>Environnement :</strong>
-                                            <span class="badge bg-{{ $config->environment === 'prod' ? 'primary' : 'secondary' }} ms-2">
-                                                {{ ucfirst($config->environment) }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <strong>Créée le :</strong>
-                                            <span class="ms-2">{{ $config->created_at->format('d/m/Y à H:i') }}</span>
-                                        </div>
-                                        <div class="mb-3">
-                                            <strong>Dernière modification :</strong>
-                                            <span class="ms-2">{{ $config->updated_at->format('d/m/Y à H:i') }}</span>
+                            
+                            <div class="form-group">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-key text-primary"></i>
+                                    Token API JWT
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" 
+                                           class="form-control @error('password') is-invalid @enderror" 
+                                           id="password" 
+                                           name="password" 
+                                           placeholder="Laisser vide pour conserver">
+                                    <div class="input-group-append">
+                                        <div class="input-group-text" onclick="togglePassword()">
+                                            <i class="fas fa-eye" id="toggleIcon"></i>
                                         </div>
                                     </div>
                                 </div>
-
-                                @if($config->settings && isset($config->settings['last_test_at']))
-                                    <div class="row">
-                                        <div class="col-12">
-                                            <div class="alert {{ ($config->settings['last_test_success'] ?? false) ? 'alert-success' : 'alert-warning' }} py-2 mb-0">
-                                                <small>
-                                                    <i class="fas fa-{{ ($config->settings['last_test_success'] ?? false) ? 'check-circle' : 'exclamation-triangle' }} me-1"></i>
-                                                    <strong>Dernier test :</strong> 
-                                                    {{ \Carbon\Carbon::parse($config->settings['last_test_at'])->format('d/m/Y à H:i') }}
-                                                    - <strong>{{ ($config->settings['last_test_success'] ?? false) ? 'Réussi' : 'Échoué' }}</strong>
-                                                    @if(isset($config->settings['last_test_error']))
-                                                        <br><span class="text-danger">{{ $config->settings['last_test_error'] }}</span>
-                                                    @endif
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
+                                <div class="form-text">Remplir seulement pour changer le token</div>
+                                @error('password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
-                    </div>
+                    @elseif($config->carrier_slug === 'mes_colis')
+                        <div class="form-group">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-key text-primary"></i>
+                                Token API <span style="color: var(--danger);">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control @error('username') is-invalid @enderror" 
+                                       id="username" 
+                                       name="username" 
+                                       value="{{ old('username', $config->username) }}"
+                                       required>
+                                <div class="input-group-append">
+                                    <div class="input-group-text" onclick="togglePassword()">
+                                        <i class="fas fa-eye" id="toggleIcon"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            @error('username')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    @endif
 
-                    <div class="card-footer d-flex justify-content-between align-items-center">
-                        <div>
-                            <button type="button" 
-                                    class="btn btn-outline-danger"
-                                    onclick="deleteConfiguration()"
-                                    id="deleteButton">
-                                <i class="fas fa-trash me-1"></i>
-                                Supprimer
-                            </button>
+                    <!-- Informations Configuration -->
+                    <div class="info-card">
+                        <h6 style="margin-bottom: 1rem; color: var(--dark); font-weight: 700;">
+                            <i class="fas fa-info-circle text-primary"></i>
+                            Informations de la Configuration
+                        </h6>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Statut</div>
+                                <div class="info-value">
+                                    <span class="status-badge {{ $config->is_active ? 'status-active' : 'status-inactive' }}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                        <i class="fas fa-{{ $config->is_active ? 'check' : 'pause' }}"></i>
+                                        {{ $config->is_active ? 'Actif' : 'Inactif' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Environnement</div>
+                                <div class="info-value">{{ ucfirst($config->environment) }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Créée le</div>
+                                <div class="info-value">{{ $config->created_at->format('d/m/Y à H:i') }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Modifiée le</div>
+                                <div class="info-value">{{ $config->updated_at->format('d/m/Y à H:i') }}</div>
+                            </div>
                         </div>
-                        
-                        <div class="d-flex gap-2">
-                            <button type="button" 
-                                    class="btn btn-outline-primary"
-                                    onclick="testConnection()"
-                                    id="testButton">
-                                <i class="fas fa-wifi me-1"></i>
-                                Tester la Connexion
-                            </button>
-                            
-                            <button type="button" 
-                                    class="btn btn-{{ $config->is_active ? 'warning' : 'success' }}"
-                                    onclick="toggleStatus()"
-                                    id="toggleButton">
-                                <i class="fas fa-{{ $config->is_active ? 'pause' : 'play' }} me-1"></i>
-                                {{ $config->is_active ? 'Désactiver' : 'Activer' }}
-                            </button>
-                            
-                            <button type="submit" 
-                                    class="btn btn-primary"
-                                    id="submitButton">
-                                <i class="fas fa-save me-1"></i>
-                                Sauvegarder
-                            </button>
-                        </div>
+
+
                     </div>
-                </form>
-            </div>
+                </div>
+
+                <div class="form-actions">
+                    <div>
+                        <button type="button" 
+                                class="btn btn-danger"
+                                onclick="deleteConfig()"
+                                id="deleteBtn">
+                            <i class="fas fa-trash"></i>
+                            Supprimer
+                        </button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <button type="button" 
+                                class="btn btn-{{ $config->is_active ? 'warning' : 'success' }}"
+                                onclick="toggleStatus()"
+                                id="toggleBtn">
+                            <i class="fas fa-{{ $config->is_active ? 'pause' : 'play' }}"></i>
+                            {{ $config->is_active ? 'Désactiver' : 'Activer' }}
+                        </button>
+                        
+                        <button type="submit" 
+                                class="btn btn-primary"
+                                id="saveBtn">
+                            <i class="fas fa-save"></i>
+                            Sauvegarder
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
 
-        <div class="col-lg-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-chart-bar me-1"></i>
-                        Statistiques d'Utilisation
-                    </h6>
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Statistiques -->
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-chart-bar text-primary"></i>
+                        Statistiques
+                    </h3>
                 </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-6">
-                            <div class="h4 mb-0 text-primary">{{ $config->pickups()->count() }}</div>
-                            <small class="text-muted">Enlèvements</small>
+                <div class="sidebar-body">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number">{{ $config->pickups()->count() }}</div>
+                            <div class="stat-label">Enlèvements</div>
                         </div>
-                        <div class="col-6">
-                            <div class="h4 mb-0 text-success">{{ $config->shipments()->count() }}</div>
-                            <small class="text-muted">Expéditions</small>
+                        <div class="stat-item">
+                            <div class="stat-number">{{ $config->shipments()->count() }}</div>
+                            <div class="stat-label">Expéditions</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-success">
-                        <i class="fas fa-rocket me-1"></i>
+            <!-- Actions Rapides -->
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-rocket text-success"></i>
                         Actions Rapides
-                    </h6>
+                    </h3>
                 </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
+                <div class="sidebar-body">
+                    <div class="action-list">
                         @if($config->is_active)
                             <a href="{{ route('admin.delivery.preparation') }}?config_id={{ $config->id }}" 
                                class="btn btn-success">
-                                <i class="fas fa-plus me-1"></i>
-                                Créer un Enlèvement
+                                <i class="fas fa-plus"></i>
+                                Nouvel Enlèvement
                             </a>
                         @endif
                         
                         <a href="{{ route('admin.delivery.pickups') }}?config_id={{ $config->id }}" 
-                           class="btn btn-outline-primary">
-                            <i class="fas fa-truck-pickup me-1"></i>
-                            Voir les Enlèvements
+                           class="btn btn-outline">
+                            <i class="fas fa-boxes"></i>
+                            Voir Enlèvements
                         </a>
                         
                         <a href="{{ route('admin.delivery.shipments') }}?config_id={{ $config->id }}" 
-                           class="btn btn-outline-info">
-                            <i class="fas fa-shipping-fast me-1"></i>
-                            Voir les Expéditions
+                           class="btn btn-outline">
+                            <i class="fas fa-shipping-fast"></i>
+                            Voir Expéditions
                         </a>
                     </div>
                 </div>
             </div>
 
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-dark">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Informations du Transporteur
-                    </h6>
+            <!-- Informations Transporteur -->
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-info-circle text-info"></i>
+                        Transporteur
+                    </h3>
                 </div>
-                <div class="card-body">
-                    @if(isset($carrier['website']))
-                        <p class="mb-2">
-                            <i class="fas fa-globe text-primary fa-fw me-2"></i>
-                            <a href="{{ $carrier['website'] }}" target="_blank">Site Web</a>
-                        </p>
-                    @endif
-                    
-                    @if(isset($carrier['support_phone']))
-                        <p class="mb-2">
-                            <i class="fas fa-phone text-success fa-fw me-2"></i>
-                            <a href="tel:{{ $carrier['support_phone'] }}">{{ $carrier['support_phone'] }}</a>
-                        </p>
-                    @endif
-                    
-                    @if(isset($carrier['support_email']))
-                        <p class="mb-0">
-                            <i class="fas fa-envelope text-info fa-fw me-2"></i>
-                            <a href="mailto:{{ $carrier['support_email'] }}">{{ $carrier['support_email'] }}</a>
-                        </p>
-                    @endif
+                <div class="sidebar-body">
+                    <div class="info-list">
+                        @if(isset($carrier['website']))
+                            <a href="{{ $carrier['website'] }}" target="_blank" class="info-link">
+                                <i class="fas fa-globe text-primary"></i>
+                                Site Web
+                            </a>
+                        @endif
+                        
+                        @if(isset($carrier['support_phone']))
+                            <a href="tel:{{ $carrier['support_phone'] }}" class="info-link">
+                                <i class="fas fa-phone text-success"></i>
+                                {{ $carrier['support_phone'] }}
+                            </a>
+                        @endif
+                        
+                        @if(isset($carrier['support_email']))
+                            <a href="mailto:{{ $carrier['support_email'] }}" class="info-link">
+                                <i class="fas fa-envelope text-info"></i>
+                                Support
+                            </a>
+                        @endif
+                    </div>
 
-                    <hr>
-                    <small class="text-muted">
-                        <strong>Limites :</strong><br>
-                        • Poids max : {{ $carrier['limits']['max_weight'] ?? 'N/A' }} kg<br>
-                        • COD max : {{ number_format($carrier['limits']['max_cod_amount'] ?? 0, 3, '.', ' ') }} TND
-                    </small>
+                    <div class="limits-info">
+                        <div class="limits-title">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            Limites
+                        </div>
+                        <div class="limits-list">
+                            • Poids max: {{ $carrier['limits']['max_weight'] ?? 'N/A' }} kg<br>
+                            • COD max: {{ number_format($carrier['limits']['max_cod_amount'] ?? 0, 0, '.', ' ') }} TND
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Test de Connexion -->
-<div class="modal fade" id="testConnectionModal" tabindex="-1" aria-labelledby="testConnectionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="testConnectionModalLabel">
-                    <i class="fas fa-wifi me-2"></i>
-                    Test de Connexion
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="testResult"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
             </div>
         </div>
     </div>
 </div>
 @endsection
 
-@push('scripts')
+@section('scripts')
 <script>
-const configId = {{ $config->id }};
-const isCurrentlyActive = {{ $config->is_active ? 'true' : 'false' }};
+// ===== CONFIGURATION =====
+const CONFIG = {
+    id: {{ $config->id }},
+    isActive: {{ $config->is_active ? 'true' : 'false' }},
+    csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+};
 
-function togglePasswordVisibility() {
-    const passwordInput = document.getElementById('password') || document.getElementById('username');
-    const toggleIcon = document.getElementById('passwordToggleIcon');
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Config Edit Initialized');
+    setupFormHandler();
+});
+
+// ===== TOGGLE PASSWORD VISIBILITY =====
+function togglePassword() {
+    const input = document.getElementById('password') || document.getElementById('username');
+    const icon = document.getElementById('toggleIcon');
     
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggleIcon.className = 'fas fa-eye-slash';
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
     } else {
-        passwordInput.type = 'password';
-        toggleIcon.className = 'fas fa-eye';
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
     }
 }
 
-async function testConnection() {
-    const modal = new bootstrap.Modal(document.getElementById('testConnectionModal'));
-    const resultDiv = document.getElementById('testResult');
-    const testButton = document.getElementById('testButton');
-    
-    testButton.disabled = true;
-    testButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Test en cours...';
-    
-    resultDiv.innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary mb-3" role="status">
-                <span class="visually-hidden">Test en cours...</span>
-            </div>
-            <h5 class="text-primary">Test en cours...</h5>
-            <p class="text-muted">Connexion au transporteur</p>
-        </div>
-    `;
-    
-    modal.show();
-    
-    try {
-        const response = await fetch(`/admin/delivery/configuration/${configId}/test`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            resultDiv.innerHTML = `
-                <div class="alert alert-success">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-check-circle fa-2x me-3"></i>
-                        <div>
-                            <h6 class="alert-heading mb-1">Test réussi !</h6>
-                            <p class="mb-0">${data.message}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            setTimeout(() => {
-                modal.hide();
-                window.location.reload();
-            }, 2000);
-        } else {
-            resultDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
-                        <div>
-                            <h6 class="alert-heading mb-1">Test échoué</h6>
-                            <p class="mb-0">${data.error || 'Impossible de se connecter au transporteur.'}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-    } catch (error) {
-        resultDiv.innerHTML = `
-            <div class="alert alert-danger">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
-                    <div>
-                        <h6 class="alert-heading mb-1">Erreur de test</h6>
-                        <p class="mb-0">Une erreur inattendue est survenue: ${error.message}</p>
-                    </div>
-                </div>
-            </div>
-        `;
-    } finally {
-        testButton.disabled = false;
-        testButton.innerHTML = '<i class="fas fa-wifi me-1"></i>Tester la Connexion';
-    }
+// ===== GESTION FORMULAIRE =====
+function setupFormHandler() {
+    const form = document.getElementById('configForm');
+    form.addEventListener('submit', handleFormSubmit);
 }
 
-async function toggleStatus() {
-    const action = isCurrentlyActive ? "désactiver" : "activer";
-    const toggleButton = document.getElementById('toggleButton');
-    
-    const result = await Swal.fire({
-        title: `${action.charAt(0).toUpperCase() + action.slice(1)} la configuration ?`,
-        text: `Êtes-vous sûr(e) de vouloir ${action} cette liaison ?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Confirmer',
-        cancelButtonText: 'Annuler'
-    });
-
-    if (!result.isConfirmed) return;
-    
-    toggleButton.disabled = true;
-    toggleButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Mise à jour...';
-
-    try {
-        const response = await fetch(`/admin/delivery/configuration/${configId}/toggle`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Statut mis à jour !',
-                text: data.message,
-                showConfirmButton: false,
-                timer: 1500
-            });
-            
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-        } else {
-            throw new Error(data.message || 'Impossible de changer le statut.');
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Erreur',
-            text: error.message,
-        });
-        
-        toggleButton.disabled = false;
-        const originalText = isCurrentlyActive 
-            ? '<i class="fas fa-pause me-1"></i>Désactiver'
-            : '<i class="fas fa-play me-1"></i>Activer';
-        toggleButton.innerHTML = originalText;
-    }
-}
-
-async function deleteConfiguration() {
-    const deleteButton = document.getElementById('deleteButton');
-    
-    const result = await Swal.fire({
-        title: 'Supprimer la configuration ?',
-        text: 'Cette action est irréversible et supprimera la liaison définitivement.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Oui, supprimer',
-        cancelButtonText: 'Annuler'
-    });
-
-    if (!result.isConfirmed) return;
-    
-    deleteButton.disabled = true;
-    deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Suppression...';
-
-    try {
-        const response = await fetch(`/admin/delivery/configuration/${configId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            await Swal.fire({
-                icon: 'success',
-                title: 'Supprimée !',
-                text: 'La configuration a été supprimée avec succès.',
-                showConfirmButton: false,
-                timer: 2000
-            });
-            
-            window.location.href = '{{ route("admin.delivery.configuration") }}';
-        } else {
-            throw new Error(data.error || 'Impossible de supprimer cette configuration.');
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Erreur',
-            text: error.message,
-        });
-        
-        deleteButton.disabled = false;
-        deleteButton.innerHTML = '<i class="fas fa-trash me-1"></i>Supprimer';
-    }
-}
-
-// Soumission du formulaire
-document.getElementById('editConfigForm').addEventListener('submit', async function(e) {
+async function handleFormSubmit(e) {
     e.preventDefault();
     
-    const submitButton = document.getElementById('submitButton');
-    submitButton.disabled = true;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde...';
+    const btn = document.getElementById('saveBtn');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sauvegarde...';
     
     try {
-        const formData = new FormData(this);
+        const formData = new FormData(e.target);
         
-        const response = await fetch(this.action, {
+        const response = await fetch(e.target.action, {
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': CONFIG.csrfToken
             }
         });
         
         const data = await response.json();
         
         if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Configuration mise à jour !',
-                text: data.message || 'Les modifications ont été sauvegardées.',
-                showConfirmButton: false,
-                timer: 2000
-            });
-            
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+            showToast('success', data.message || 'Configuration mise à jour !');
+            setTimeout(() => window.location.reload(), 2000);
         } else {
-            throw new Error(data.message || 'Erreur lors de la sauvegarde');
+            throw new Error(data.message || 'Erreur de sauvegarde');
         }
     } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Erreur de sauvegarde',
-            text: error.message,
+        showToast('danger', error.message);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// ===== TOGGLE STATUS =====
+async function toggleStatus() {
+    const btn = document.getElementById('toggleBtn');
+    const originalText = btn.innerHTML;
+    const action = CONFIG.isActive ? 'désactiver' : 'activer';
+    
+    if (!confirm(`Voulez-vous vraiment ${action} cette configuration ?`)) {
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise à jour...';
+    
+    try {
+        const response = await fetch(`/admin/delivery/configuration/${CONFIG.id}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CONFIG.csrfToken
+            }
         });
         
-        submitButton.disabled = false;
-        submitButton.innerHTML = '<i class="fas fa-save me-1"></i>Sauvegarder';
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', data.message);
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            throw new Error(data.message || 'Impossible de changer le statut');
+        }
+    } catch (error) {
+        showToast('danger', error.message);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
-});
+}
+
+// ===== DELETE CONFIG =====
+async function deleteConfig() {
+    const btn = document.getElementById('deleteBtn');
+    const originalText = btn.innerHTML;
+    
+    if (!confirm('⚠️ Voulez-vous vraiment supprimer cette configuration ?\n\nCette action est irréversible !')) {
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Suppression...';
+    
+    try {
+        const response = await fetch(`/admin/delivery/configuration/${CONFIG.id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CONFIG.csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', 'Configuration supprimée !');
+            setTimeout(() => {
+                window.location.href = '{{ route("admin.delivery.configuration") }}';
+            }, 2000);
+        } else {
+            throw new Error(data.error || 'Impossible de supprimer');
+        }
+    } catch (error) {
+        showToast('danger', error.message);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// ===== NOTIFICATIONS TOAST =====
+function showToast(type, message) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+console.log('✅ Config Edit Scripts Loaded');
 </script>
-@endpush
-
-@push('styles')
-<style>
-.carrier-logo-sm {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 6px;
-    border: 1px solid #dee2e6;
-}
-
-.btn:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
-}
-</style>
-@endpush
+@endsection

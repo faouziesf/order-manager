@@ -2,718 +2,1081 @@
 
 @section('title', 'Nouvelle Configuration - ' . $carrier['name'])
 
+@section('css')
+<style>
+    :root {
+        --royal-blue: #1e3a8a;
+        --royal-blue-light: #3b82f6;
+        --royal-blue-lighter: #60a5fa;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #06b6d4;
+        --light: #f8fafc;
+        --dark: #1f2937;
+        --border: #e5e7eb;
+        --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.1);
+        --radius: 8px;
+        --transition: all 0.2s ease;
+    }
+
+    body {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* ===== CONTAINER PRINCIPAL ===== */
+    .config-container {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        margin: 1rem;
+        min-height: calc(100vh - 100px);
+        overflow: hidden;
+    }
+
+    /* ===== HEADER ===== */
+    .config-header {
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-light) 100%);
+        padding: 1.5rem;
+        color: white;
+        position: relative;
+    }
+
+    .config-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 150px;
+        height: 150px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .header-info h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .header-info p {
+        opacity: 0.9;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .btn-back {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-back:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
+    /* ===== FORMULAIRE ===== */
+    .form-section {
+        padding: 2rem;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 2rem;
+    }
+
+    .form-main {
+        background: white;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .carrier-logo {
+        width: 48px;
+        height: 48px;
+        background: #f3f4f6;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        object-fit: contain;
+        padding: 8px;
+    }
+
+    .carrier-info h3 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 0.25rem;
+    }
+
+    .carrier-info p {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin: 0;
+    }
+
+    .form-body {
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-label .required {
+        color: var(--danger);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.875rem;
+        transition: var(--transition);
+        background: white;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--royal-blue);
+        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    }
+
+    .form-control.error {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
+    .form-help {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-error {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--danger);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .input-group {
+        display: flex;
+    }
+
+    .input-group .form-control {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-right: none;
+    }
+
+    .input-addon {
+        background: #f3f4f6;
+        border: 1px solid var(--border);
+        border-left: none;
+        border-top-right-radius: 6px;
+        border-bottom-right-radius: 6px;
+        padding: 0.75rem;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .input-addon:hover {
+        background: #e5e7eb;
+    }
+
+    .form-actions {
+        padding: 1.5rem 2rem;
+        background: #f9fafb;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        text-align: center;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+        left: 100%;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--royal-blue), var(--royal-blue-light));
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn:disabled::before {
+        display: none;
+    }
+
+    .btn.loading {
+        pointer-events: none;
+    }
+
+    .btn.loading i {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    /* ===== SIDEBAR AIDE ===== */
+    .help-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .help-card {
+        background: white;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+
+    .help-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        color: var(--dark);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .help-body {
+        padding: 1rem;
+    }
+
+    .help-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .help-list li {
+        padding: 0.5rem 0;
+        font-size: 0.8rem;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .help-list li:last-child {
+        border-bottom: none;
+    }
+
+    .spec-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .spec-item {
+        background: #f9fafb;
+        padding: 0.75rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        text-align: center;
+    }
+
+    .spec-value {
+        font-weight: 700;
+        color: var(--royal-blue);
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .spec-label {
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.7rem;
+    }
+
+    /* ===== NOTIFICATIONS ===== */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 300px;
+        max-width: 400px;
+        padding: 1rem;
+        border-radius: 6px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+        box-shadow: var(--shadow-lg);
+        animation: slideInRight 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .notification.success { background: var(--success); }
+    .notification.error { background: var(--danger); }
+    .notification.warning { background: var(--warning); }
+
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .config-container {
+            margin: 0.5rem;
+        }
+
+        .config-header {
+            padding: 1rem;
+        }
+
+        .header-content {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .form-section {
+            padding: 1rem;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .form-body {
+            padding: 1.5rem;
+        }
+
+        .form-actions {
+            padding: 1rem;
+            flex-direction: column;
+        }
+
+        .form-actions .btn {
+            width: 100%;
+        }
+
+        .spec-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .config-header {
+            padding: 0.75rem;
+        }
+
+        .header-info h1 {
+            font-size: 1.25rem;
+        }
+
+        .form-body {
+            padding: 1rem;
+        }
+
+        .carrier-logo {
+            width: 40px;
+            height: 40px;
+        }
+    }
+
+    /* ===== ANIMATIONS ===== */
+    .fade-in {
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+@endsection
+
 @section('content')
-<div class="container-fluid" x-data="configurationCreate">
-    <!-- Header avec breadcrumb -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-gradient">
-                <i class="fas fa-plus text-primary me-2"></i>
-                Nouvelle Configuration
-            </h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('admin.delivery.index') }}">Livraisons</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('admin.delivery.configuration') }}">Configuration</a></li>
-                    <li class="breadcrumb-item active">Nouvelle</li>
-                </ol>
-            </nav>
-            <p class="text-muted mb-0">Configurer {{ $carrier['name'] }}</p>
+<div class="config-container fade-in">
+    <!-- Header -->
+    <div class="config-header">
+        <div class="header-content">
+            <div class="header-info">
+                <h1>
+                    <i class="fas fa-plus"></i>
+                    Nouvelle Configuration
+                </h1>
+                <p>Configuration de {{ $carrier['name'] }} pour vos expéditions</p>
+            </div>
+            <a href="{{ route('admin.delivery.configuration') }}" class="btn-back">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </a>
         </div>
-        <a href="{{ route('admin.delivery.configuration') }}" class="btn btn-outline-secondary animate-slide-up">
-            <i class="fas fa-arrow-left me-1"></i>
-            Retour
-        </a>
     </div>
 
-    <div class="row">
-        <!-- Formulaire principal -->
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm animate-slide-up">
-                <div class="card-header d-flex align-items-center">
-                    <div class="me-3">
-                        @if(isset($carrier['logo']))
-                            <img src="{{ asset($carrier['logo']) }}" 
-                                 alt="{{ $carrier['name'] }}" 
-                                 class="carrier-logo-sm">
-                        @else
-                            <div class="carrier-logo-sm d-flex align-items-center justify-content-center">
-                                <i class="fas fa-truck fa-lg text-muted"></i>
-                            </div>
-                        @endif
-                    </div>
-                    <div>
-                        <h6 class="m-0 font-weight-bold text-primary">{{ $carrier['name'] }}</h6>
-                        <small class="text-muted">{{ $carrier['description'] ?? 'Configuration des paramètres de connexion' }}</small>
+    <!-- Formulaire -->
+    <div class="form-section">
+        <div class="form-grid">
+            <!-- Formulaire principal -->
+            <div class="form-main">
+                <div class="form-header">
+                    @if(isset($carrier['logo']))
+                        <img src="{{ asset($carrier['logo']) }}" 
+                             alt="{{ $carrier['name'] }}" 
+                             class="carrier-logo">
+                    @else
+                        <div class="carrier-logo">
+                            <i class="fas fa-truck" style="color: #6b7280; font-size: 1.25rem;"></i>
+                        </div>
+                    @endif
+                    <div class="carrier-info">
+                        <h3>{{ $carrier['name'] }}</h3>
+                        <p>{{ $carrier['description'] ?? 'Configuration des paramètres de connexion' }}</p>
                     </div>
                 </div>
-                
-                <form action="{{ route('admin.delivery.configuration.store') }}" 
-                      method="POST" 
-                      @submit.prevent="submitForm()"
-                      class="needs-validation"
-                      novalidate>
+
+                <form id="configForm" action="{{ route('admin.delivery.configuration.store') }}" method="POST">
                     @csrf
                     <input type="hidden" name="carrier_slug" value="{{ $carrierSlug }}">
                     
-                    <div class="card-body">
+                    <div class="form-body">
                         <!-- Nom de la liaison -->
-                        <div class="mb-4">
+                        <div class="form-group">
                             <label for="integration_name" class="form-label">
-                                <i class="fas fa-tag me-1 text-primary"></i>
-                                Nom de la Liaison <span class="text-danger">*</span>
+                                <i class="fas fa-tag"></i>
+                                Nom de la Liaison <span class="required">*</span>
                             </label>
                             <input type="text" 
-                                   class="form-control @error('integration_name') is-invalid @enderror" 
+                                   class="form-control" 
                                    id="integration_name" 
                                    name="integration_name" 
                                    value="{{ old('integration_name') }}"
-                                   x-model="form.integration_name"
                                    placeholder="Ex: Boutique Principale, Entrepôt Tunis..."
                                    required>
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Donnez un nom unique à cette configuration pour la différencier des autres
+                            <div class="form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Nom unique pour identifier cette configuration
                             </div>
                             @error('integration_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="form-error">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    {{ $message }}
+                                </div>
                             @enderror
                         </div>
 
                         @if($carrierSlug === 'jax_delivery')
                             <!-- Configuration JAX Delivery -->
-                            <div class="card bg-light bg-opacity-50 border-0 mb-4">
-                                <div class="card-header bg-transparent border-0">
-                                    <h6 class="mb-0 text-primary">
-                                        <i class="fas fa-truck me-1"></i>
-                                        Configuration JAX Delivery
-                                    </h6>
+                            <div class="form-group">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-user"></i>
+                                    Numéro de Compte <span class="required">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="username" 
+                                       name="username" 
+                                       value="{{ old('username') }}"
+                                       placeholder="Votre numéro de compte JAX"
+                                       required>
+                                <div class="form-help">
+                                    <i class="fas fa-info-circle"></i>
+                                    Numéro fourni lors de votre inscription JAX Delivery
                                 </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="username" class="form-label">
-                                                <i class="fas fa-user me-1 text-primary"></i>
-                                                Numéro de Compte <span class="text-danger">*</span>
-                                            </label>
-                                            <input type="text" 
-                                                   class="form-control @error('username') is-invalid @enderror" 
-                                                   id="username" 
-                                                   name="username" 
-                                                   value="{{ old('username') }}"
-                                                   x-model="form.username"
-                                                   placeholder="Votre numéro de compte JAX"
-                                                   required>
-                                            <div class="form-text">
-                                                <i class="fas fa-info-circle me-1"></i>
-                                                Numéro fourni lors de l'inscription JAX
-                                            </div>
-                                            @error('username')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                        
-                                        <div class="col-md-6 mb-3">
-                                            <label for="password" class="form-label">
-                                                <i class="fas fa-key me-1 text-primary"></i>
-                                                Token API <span class="text-danger">*</span>
-                                            </label>
-                                            <div class="input-group">
-                                                <input :type="showPassword ? 'text' : 'password'" 
-                                                       class="form-control @error('password') is-invalid @enderror" 
-                                                       id="password" 
-                                                       name="password" 
-                                                       value="{{ old('password') }}"
-                                                       x-model="form.password"
-                                                       placeholder="Votre token API JAX"
-                                                       required>
-                                                <button class="btn btn-outline-secondary" 
-                                                        type="button" 
-                                                        @click="showPassword = !showPassword">
-                                                    <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                                                </button>
-                                            </div>
-                                            <div class="form-text">
-                                                <i class="fas fa-info-circle me-1"></i>
-                                                Token généré dans votre espace client JAX
-                                            </div>
-                                            @error('password')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
+                                @error('username')
+                                    <div class="form-error">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ $message }}
                                     </div>
-
-                                    <!-- Informations spécifiques JAX -->
-                                    <div class="alert alert-info border-0">
-                                        <div class="d-flex align-items-start">
-                                            <i class="fas fa-info-circle fa-lg me-3 mt-1"></i>
-                                            <div>
-                                                <h6 class="alert-heading">Spécifications JAX Delivery</h6>
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <ul class="list-unstyled mb-0">
-                                                            <li><i class="fas fa-check text-success me-2"></i>24 gouvernorats tunisiens</li>
-                                                            <li><i class="fas fa-check text-success me-2"></i>Codes numériques (1-24)</li>
-                                                            <li><i class="fas fa-check text-success me-2"></i>Bearer Token Auth</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <ul class="list-unstyled mb-0">
-                                                            <li><i class="fas fa-check text-success me-2"></i>Poids max: 30 kg</li>
-                                                            <li><i class="fas fa-check text-success me-2"></i>COD max: 5000 TND</li>
-                                                            <li><i class="fas fa-check text-success me-2"></i>Suivi temps réel</li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                @enderror
                             </div>
+
+                            <div class="form-group">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-key"></i>
+                                    Token API <span class="required">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="password" 
+                                           name="password" 
+                                           value="{{ old('password') }}"
+                                           placeholder="Votre token API JAX"
+                                           required>
+                                    <div class="input-addon" onclick="togglePassword()">
+                                        <i class="fas fa-eye" id="passwordToggle"></i>
+                                    </div>
+                                </div>
+                                <div class="form-help">
+                                    <i class="fas fa-info-circle"></i>
+                                    Token JWT généré dans votre espace client JAX
+                                </div>
+                                @error('password')
+                                    <div class="form-error">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
                         @elseif($carrierSlug === 'mes_colis')
                             <!-- Configuration Mes Colis Express -->
-                            <div class="card bg-light bg-opacity-50 border-0 mb-4">
-                                <div class="card-header bg-transparent border-0">
-                                    <h6 class="mb-0 text-success">
-                                        <i class="fas fa-shipping-fast me-1"></i>
-                                        Configuration Mes Colis Express
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="mb-3">
-                                        <label for="username" class="form-label">
-                                            <i class="fas fa-key me-1 text-success"></i>
-                                            Token d'Accès <span class="text-danger">*</span>
-                                        </label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light">
-                                                <i class="fas fa-shield-alt text-success"></i>
-                                            </span>
-                                            <input :type="showPassword ? 'text' : 'password'" 
-                                                   class="form-control @error('username') is-invalid @enderror" 
-                                                   id="username" 
-                                                   name="username" 
-                                                   value="{{ old('username') }}"
-                                                   x-model="form.username"
-                                                   placeholder="Votre token d'accès Mes Colis"
-                                                   required>
-                                            <button class="btn btn-outline-secondary" 
-                                                    type="button" 
-                                                    @click="showPassword = !showPassword">
-                                                <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                                            </button>
-                                        </div>
-                                        <div class="form-text">
-                                            <i class="fas fa-info-circle me-1"></i>
-                                            Token unique fourni par Mes Colis Express
-                                        </div>
-                                        @error('username')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
-                                    <!-- Informations spécifiques Mes Colis -->
-                                    <div class="alert alert-success border-0">
-                                        <div class="d-flex align-items-start">
-                                            <i class="fas fa-info-circle fa-lg me-3 mt-1"></i>
-                                            <div>
-                                                <h6 class="alert-heading">Spécifications Mes Colis Express</h6>
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <ul class="list-unstyled mb-0">
-                                                            <li><i class="fas fa-check text-success me-2"></i>24 gouvernorats tunisiens</li>
-                                                            <li><i class="fas fa-check text-success me-2"></i>Noms complets</li>
-                                                            <li><i class="fas fa-check text-success me-2"></i>Header Token Auth</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <ul class="list-unstyled mb-0">
-                                                            <li><i class="fas fa-check text-success me-2"></i>Poids max: 25 kg</li>
-                                                            <li><i class="fas fa-check text-success me-2"></i>COD max: 3000 TND</li>
-                                                            <li><i class="fas fa-check text-success me-2"></i>Suivi temps réel</li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                            <div class="form-group">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-key"></i>
+                                    Token d'Accès <span class="required">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="username" 
+                                           name="username" 
+                                           value="{{ old('username') }}"
+                                           placeholder="Votre token d'accès Mes Colis"
+                                           required>
+                                    <div class="input-addon" onclick="togglePassword()">
+                                        <i class="fas fa-eye" id="passwordToggle"></i>
                                     </div>
                                 </div>
+                                <div class="form-help">
+                                    <i class="fas fa-info-circle"></i>
+                                    Token unique fourni par Mes Colis Express (x-access-token)
+                                </div>
+                                @error('username')
+                                    <div class="form-error">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
                         @endif
-
-                        <!-- Options avancées -->
-                        <div class="card bg-light bg-opacity-50 border-0 mb-4">
-                            <div class="card-header bg-transparent border-0">
-                                <h6 class="mb-0 text-muted">
-                                    <i class="fas fa-cogs me-1"></i>
-                                    Options Avancées
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" 
-                                                   type="checkbox" 
-                                                   id="test_after_create"
-                                                   x-model="testAfterCreate">
-                                            <label class="form-check-label" for="test_after_create">
-                                                <strong>Tester après création</strong>
-                                                <br><small class="text-muted">Teste automatiquement la connexion</small>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" 
-                                                   type="checkbox" 
-                                                   id="activate_after_test"
-                                                   x-model="activateAfterTest">
-                                            <label class="form-check-label" for="activate_after_test">
-                                                <strong>Activer si test réussi</strong>
-                                                <br><small class="text-muted">Active automatiquement la config</small>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
-                    <div class="card-footer bg-transparent border-0 d-flex justify-content-between">
+                    <div class="form-actions">
                         <a href="{{ route('admin.delivery.configuration') }}" class="btn btn-secondary">
-                            <i class="fas fa-times me-1"></i>
+                            <i class="fas fa-times"></i>
                             Annuler
                         </a>
-                        <div class="d-flex gap-2">
-                            <button type="button" 
-                                    class="btn btn-outline-primary"
-                                    @click="testConnection()"
-                                    :disabled="!canTest() || loading"
-                                    x-show="!loading">
-                                <i class="fas fa-wifi me-1"></i>
-                                Tester la Connexion
-                            </button>
-                            <button type="submit" 
-                                    class="btn btn-success"
-                                    :disabled="loading">
-                                <span x-show="loading">
-                                    <i class="fas fa-spinner fa-spin me-1"></i>
-                                    Création...
-                                </span>
-                                <span x-show="!loading">
-                                    <i class="fas fa-save me-1"></i>
-                                    Créer la Configuration
-                                </span>
-                            </button>
-                        </div>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-save"></i>
+                            Créer la Configuration
+                        </button>
                     </div>
                 </form>
             </div>
-        </div>
 
-        <!-- Aide et informations -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm mb-4 animate-slide-up" style="animation-delay: 0.2s;">
-                <div class="card-header">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Aide Configuration
-                    </h6>
-                </div>
-                <div class="card-body">
-                    @if($carrierSlug === 'jax_delivery')
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-circle bg-primary bg-opacity-10 me-3">
-                                <i class="fas fa-truck text-primary"></i>
+            <!-- Sidebar d'aide -->
+            <div class="help-sidebar">
+                <div class="help-card">
+                    <div class="help-header">
+                        <i class="fas fa-info-circle"></i>
+                        Informations {{ $carrier['name'] }}
+                    </div>
+                    <div class="help-body">
+                        @if($carrierSlug === 'jax_delivery')
+                            <ul class="help-list">
+                                <li>
+                                    <i class="fas fa-check text-success"></i>
+                                    Couverture nationale (24 gouvernorats)
+                                </li>
+                                <li>
+                                    <i class="fas fa-check text-success"></i>
+                                    Authentification Bearer Token
+                                </li>
+                                <li>
+                                    <i class="fas fa-check text-success"></i>
+                                    Suivi temps réel disponible
+                                </li>
+                                <li>
+                                    <i class="fas fa-check text-success"></i>
+                                    Support des pickups groupés
+                                </li>
+                            </ul>
+                            
+                            <div class="spec-grid">
+                                <div class="spec-item">
+                                    <span class="spec-value">30 kg</span>
+                                    <div class="spec-label">Poids Max</div>
+                                </div>
+                                <div class="spec-item">
+                                    <span class="spec-value">5000 TND</span>
+                                    <div class="spec-label">COD Max</div>
+                                </div>
                             </div>
-                            <div>
-                                <h6 class="mb-0">JAX Delivery</h6>
-                                <small class="text-muted">Transporteur national</small>
+                        @elseif($carrierSlug === 'mes_colis')
+                            <ul class="help-list">
+                                <li>
+                                    <i class="fas fa-check text-success"></i>
+                                    Livraisons express en Tunisie
+                                </li>
+                                <li>
+                                    <i class="fas fa-check text-success"></i>
+                                    Token d'authentification simple
+                                </li>
+                                <li>
+                                    <i class="fas fa-check text-success"></i>
+                                    Interface API moderne
+                                </li>
+                                <li>
+                                    <i class="fas fa-check text-success"></i>
+                                    Support gouvernorats complets
+                                </li>
+                            </ul>
+                            
+                            <div class="spec-grid">
+                                <div class="spec-item">
+                                    <span class="spec-value">25 kg</span>
+                                    <div class="spec-label">Poids Max</div>
+                                </div>
+                                <div class="spec-item">
+                                    <span class="spec-value">3000 TND</span>
+                                    <div class="spec-label">COD Max</div>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <ul class="list-unstyled small">
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i>
-                                Numéro de compte fourni lors de l'inscription
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i>
-                                Token API généré dans votre espace JAX
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i>
-                                Support codes gouvernorats 1-24
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i>
-                                COD maximum: {{ $carrier['limits']['max_cod_amount'] ?? '5000' }} TND
-                            </li>
-                        </ul>
-                        
-                        @if(isset($carrier['website']))
-                            <a href="{{ $carrier['website'] }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
-                                <i class="fas fa-external-link-alt me-1"></i>
-                                Espace Client JAX
-                            </a>
                         @endif
-                    @elseif($carrierSlug === 'mes_colis')
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-circle bg-success bg-opacity-10 me-3">
-                                <i class="fas fa-shipping-fast text-success"></i>
-                            </div>
-                            <div>
-                                <h6 class="mb-0">Mes Colis Express</h6>
-                                <small class="text-muted">Livraisons express</small>
-                            </div>
-                        </div>
-                        
-                        <ul class="list-unstyled small">
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i>
-                                Token unique d'authentification
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i>
-                                Support noms gouvernorats complets
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i>
-                                COD maximum: {{ $carrier['limits']['max_cod_amount'] ?? '3000' }} TND
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i>
-                                Configuration simplifiée
-                            </li>
-                        </ul>
-                        
-                        @if(isset($carrier['website']))
-                            <a href="{{ $carrier['website'] }}" target="_blank" class="btn btn-sm btn-outline-success w-100">
-                                <i class="fas fa-external-link-alt me-1"></i>
-                                Espace Client Mes Colis
-                            </a>
-                        @endif
-                    @endif
+                    </div>
                 </div>
-            </div>
 
-            <!-- Contact support -->
-            <div class="card border-0 shadow-sm animate-slide-up" style="animation-delay: 0.3s;">
-                <div class="card-header">
-                    <h6 class="m-0 font-weight-bold text-warning">
-                        <i class="fas fa-headset me-1"></i>
-                        Besoin d'Aide ?
-                    </h6>
-                </div>
-                <div class="card-body">
-                    @if(isset($carrier['support_phone']) || isset($carrier['support_email']))
-                        <p class="small text-muted mb-3">Contactez le support {{ $carrier['name'] }} :</p>
-                        
+                @if(isset($carrier['support_phone']) || isset($carrier['support_email']))
+                <div class="help-card">
+                    <div class="help-header">
+                        <i class="fas fa-headset"></i>
+                        Support & Contact
+                    </div>
+                    <div class="help-body">
                         @if(isset($carrier['support_phone']))
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-phone text-primary me-2"></i>
-                                <a href="tel:{{ $carrier['support_phone'] }}" class="text-decoration-none">
+                            <div style="margin-bottom: 0.75rem;">
+                                <i class="fas fa-phone" style="color: var(--royal-blue); margin-right: 0.5rem;"></i>
+                                <a href="tel:{{ $carrier['support_phone'] }}" style="color: var(--dark); text-decoration: none;">
                                     {{ $carrier['support_phone'] }}
                                 </a>
                             </div>
                         @endif
                         
                         @if(isset($carrier['support_email']))
-                            <div class="d-flex align-items-center mb-3">
-                                <i class="fas fa-envelope text-primary me-2"></i>
-                                <a href="mailto:{{ $carrier['support_email'] }}" class="text-decoration-none">
+                            <div style="margin-bottom: 0.75rem;">
+                                <i class="fas fa-envelope" style="color: var(--royal-blue); margin-right: 0.5rem;"></i>
+                                <a href="mailto:{{ $carrier['support_email'] }}" style="color: var(--dark); text-decoration: none;">
                                     {{ $carrier['support_email'] }}
                                 </a>
                             </div>
                         @endif
-                    @endif
-                    
-                    <div class="alert alert-warning border-0 bg-warning bg-opacity-10">
-                        <i class="fas fa-lightbulb text-warning me-2"></i>
-                        <strong>Astuce :</strong> Testez toujours votre configuration avant de l'utiliser en production.
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de test -->
-    <div class="modal fade" id="testModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-primary text-white border-0">
-                    <h5 class="modal-title">
-                        <i class="fas fa-wifi me-2"></i>
-                        Test de Connexion
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="text-center py-4" x-show="testInProgress">
-                        <div class="spinner-border text-primary mb-3" role="status">
-                            <span class="visually-hidden">Test en cours...</span>
-                        </div>
-                        <h5 class="text-primary">Test en cours...</h5>
-                        <p class="text-muted">Connexion à {{ $carrier['name'] }}</p>
-                    </div>
-                    
-                    <div x-show="testResult && !testInProgress">
-                        <div x-show="testResult?.success" class="alert alert-success border-0">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-check-circle fa-2x me-3"></i>
-                                <div>
-                                    <h6 class="alert-heading mb-1">Test Réussi !</h6>
-                                    <p class="mb-0" x-text="testResult?.message"></p>
-                                </div>
-                            </div>
-                        </div>
                         
-                        <div x-show="!testResult?.success" class="alert alert-danger border-0">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
-                                <div>
-                                    <h6 class="alert-heading mb-1">Test Échoué</h6>
-                                    <p class="mb-0" x-text="testResult?.error"></p>
-                                </div>
+                        @if(isset($carrier['website']))
+                            <div>
+                                <i class="fas fa-globe" style="color: var(--royal-blue); margin-right: 0.5rem;"></i>
+                                <a href="{{ $carrier['website'] }}" target="_blank" style="color: var(--dark); text-decoration: none;">
+                                    Site web officiel
+                                </a>
                             </div>
-                        </div>
+                        @endif
                     </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        Fermer
-                    </button>
-                </div>
+                @endif
             </div>
         </div>
     </div>
 </div>
 @endsection
 
-@push('styles')
-<style>
-    .carrier-logo-sm {
-        width: 40px;
-        height: 40px;
-        object-fit: contain;
-        background: var(--light-color);
-        border-radius: var(--border-radius);
-        padding: 6px;
-        border: 1px solid var(--card-border);
-    }
-
-    .form-check-label strong {
-        color: var(--text-color);
-    }
-
-    .form-switch .form-check-input:checked {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-
-    .icon-circle {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .breadcrumb-item + .breadcrumb-item::before {
-        content: "›";
-        color: var(--text-muted);
-    }
-
-    .breadcrumb-item a {
-        color: var(--text-muted);
-        text-decoration: none;
-        transition: var(--transition);
-    }
-
-    .breadcrumb-item a:hover {
-        color: var(--primary-color);
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 0.2rem rgba(30, 64, 175, 0.25);
-    }
-
-    .input-group .form-control:focus {
-        z-index: 3;
-    }
-
-    .modal-content {
-        border-radius: var(--border-radius-lg);
-        overflow: hidden;
-    }
-
-    .spinner-border {
-        width: 3rem;
-        height: 3rem;
-    }
-
-    .alert {
-        border-radius: var(--border-radius);
-    }
-
-    .card-header {
-        background: rgba(30, 64, 175, 0.03);
-    }
-</style>
-@endpush
-
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
+@section('scripts')
 <script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('configurationCreate', () => ({
-        loading: false,
-        showPassword: false,
-        testInProgress: false,
-        testResult: null,
-        testAfterCreate: true,
-        activateAfterTest: true,
-        form: {
-            integration_name: '',
-            username: '',
-            password: ''
-        },
-        
-        canTest() {
-            const carrierSlug = '{{ $carrierSlug }}';
-            
-            if (carrierSlug === 'jax_delivery') {
-                return this.form.username && this.form.password;
-            } else if (carrierSlug === 'mes_colis') {
-                return this.form.username;
-            }
-            
-            return false;
-        },
+// ===== CONFIGURATION =====
+const CONFIG = {
+    submitUrl: '{{ route("admin.delivery.configuration.store") }}',
+    redirectUrl: '{{ route("admin.delivery.configuration") }}',
+    csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+};
 
-        async testConnection() {
-            if (!this.canTest()) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Champs manquants',
-                    text: 'Veuillez remplir tous les champs requis pour tester la connexion'
-                });
-                return;
-            }
+// ===== VARIABLES GLOBALES =====
+let isSubmitting = false;
 
-            this.testInProgress = true;
-            this.testResult = null;
-            
-            // Ouvrir la modal
-            const modal = new bootstrap.Modal(document.getElementById('testModal'));
-            modal.show();
-            
-            try {
-                // Créer un FormData temporaire pour le test
-                const testData = new FormData();
-                testData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-                testData.append('carrier_slug', '{{ $carrierSlug }}');
-                testData.append('integration_name', this.form.integration_name || 'Test');
-                testData.append('username', this.form.username);
-                testData.append('password', this.form.password);
-                testData.append('test_only', 'true');
-
-                const response = await axios.post('{{ route("admin.delivery.configuration.store") }}', testData);
-                
-                this.testResult = {
-                    success: true,
-                    message: response.data.message || 'Connexion réussie'
-                };
-                
-            } catch (error) {
-                const errorMessage = error.response?.data?.error || 
-                                   error.response?.data?.message || 
-                                   'Impossible de se connecter au transporteur';
-                
-                this.testResult = {
-                    success: false,
-                    error: errorMessage
-                };
-            } finally {
-                this.testInProgress = false;
-            }
-        },
-
-        async submitForm() {
-            if (!this.form.integration_name || !this.form.username) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Champs manquants',
-                    text: 'Veuillez remplir tous les champs obligatoires'
-                });
-                return;
-            }
-            
-            const carrierSlug = '{{ $carrierSlug }}';
-            if (carrierSlug === 'jax_delivery' && !this.form.password) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Token API manquant',
-                    text: 'Le token API est requis pour JAX Delivery'
-                });
-                return;
-            }
-
-            this.loading = true;
-            
-            try {
-                const formData = new FormData();
-                formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-                formData.append('carrier_slug', carrierSlug);
-                formData.append('integration_name', this.form.integration_name);
-                formData.append('username', this.form.username);
-                formData.append('password', this.form.password);
-
-                const response = await axios.post('{{ route("admin.delivery.configuration.store") }}', formData);
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Configuration créée !',
-                    text: 'La configuration a été créée avec succès',
-                    showConfirmButton: false,
-                    timer: 2000
-                });
-                
-                // Rediriger vers la liste des configurations
-                setTimeout(() => {
-                    window.location.href = '{{ route("admin.delivery.configuration") }}';
-                }, 2000);
-                
-            } catch (error) {
-                let errorMessage = 'Erreur lors de la création';
-                
-                if (error.response?.status === 422) {
-                    // Erreurs de validation
-                    const errors = error.response.data.errors;
-                    errorMessage = Object.values(errors).flat().join('\n');
-                } else if (error.response?.data?.message) {
-                    errorMessage = error.response.data.message;
-                }
-                
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erreur de création',
-                    text: errorMessage
-                });
-            } finally {
-                this.loading = false;
-            }
-        }
-    }));
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Configuration creation page initialized');
+    
+    if (!CONFIG.csrfToken) {
+        console.error('❌ CSRF token not found');
+        showNotification('error', 'Erreur de sécurité. Veuillez recharger la page.');
+        return;
+    }
+    
+    setupForm();
+    setupValidation();
 });
+
+// ===== GESTION DU FORMULAIRE =====
+function setupForm() {
+    const form = document.getElementById('configForm');
+    if (!form) return;
+    
+    form.addEventListener('submit', handleSubmit);
+    
+    // Validation temps réel
+    const inputs = form.querySelectorAll('input[required]');
+    inputs.forEach(input => {
+        input.addEventListener('blur', validateField);
+        input.addEventListener('input', clearFieldError);
+    });
+}
+
+function setupValidation() {
+    // Validation du nom de liaison
+    const integrationName = document.getElementById('integration_name');
+    if (integrationName) {
+        integrationName.addEventListener('input', function() {
+            if (this.value.length < 3) {
+                setFieldError(this, 'Le nom doit contenir au moins 3 caractères');
+            } else {
+                clearFieldError(this);
+            }
+        });
+    }
+    
+    // Validation spécifique selon le transporteur
+    const carrierSlug = '{{ $carrierSlug }}';
+    if (carrierSlug === 'jax_delivery') {
+        setupJaxValidation();
+    } else if (carrierSlug === 'mes_colis') {
+        setupMesColisValidation();
+    }
+}
+
+function setupJaxValidation() {
+    const username = document.getElementById('username');
+    const password = document.getElementById('password');
+    
+    if (username) {
+        username.addEventListener('input', function() {
+            if (this.value.length < 2) {
+                setFieldError(this, 'Numéro de compte requis');
+            } else {
+                clearFieldError(this);
+            }
+        });
+    }
+    
+    if (password) {
+        password.addEventListener('input', function() {
+            if (this.value.length < 10) {
+                setFieldError(this, 'Token API trop court');
+            } else if (!isValidJwtFormat(this.value)) {
+                setFieldError(this, 'Format de token invalide');
+            } else {
+                clearFieldError(this);
+            }
+        });
+    }
+}
+
+function setupMesColisValidation() {
+    const username = document.getElementById('username');
+    
+    if (username) {
+        username.addEventListener('input', function() {
+            if (this.value.length < 10) {
+                setFieldError(this, 'Token d\'accès trop court');
+            } else {
+                clearFieldError(this);
+            }
+        });
+    }
+}
+
+function isValidJwtFormat(token) {
+    const parts = token.split('.');
+    return parts.length === 3 && parts.every(part => part.length > 10);
+}
+
+// ===== GESTION DES ERREURS DE CHAMPS =====
+function validateField(event) {
+    const field = event.target;
+    
+    if (!field.value.trim() && field.hasAttribute('required')) {
+        setFieldError(field, 'Ce champ est requis');
+        return false;
+    }
+    
+    clearFieldError(field);
+    return true;
+}
+
+function setFieldError(field, message) {
+    field.classList.add('error');
+    
+    // Supprimer l'ancien message d'erreur
+    const existingError = field.parentNode.querySelector('.form-error');
+    if (existingError) {
+        existingError.remove();
+    }
+    
+    // Ajouter le nouveau message d'erreur
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'form-error';
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+    field.parentNode.appendChild(errorDiv);
+}
+
+function clearFieldError(field) {
+    if (typeof field === 'object' && field.target) {
+        field = field.target;
+    }
+    
+    field.classList.remove('error');
+    const errorDiv = field.parentNode.querySelector('.form-error');
+    if (errorDiv) {
+        errorDiv.remove();
+    }
+}
+
+// ===== SOUMISSION DU FORMULAIRE =====
+async function handleSubmit(event) {
+    event.preventDefault();
+    
+    if (isSubmitting) return;
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Validation finale
+    if (!validateForm(form)) {
+        showNotification('error', 'Veuillez corriger les erreurs dans le formulaire');
+        return;
+    }
+    
+    isSubmitting = true;
+    updateSubmitButton(true);
+    
+    try {
+        const response = await fetch(CONFIG.submitUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': CONFIG.csrfToken,
+                'Accept': 'application/json'
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showNotification('success', data.message || 'Configuration créée avec succès !');
+            
+            // Redirection après 2 secondes
+            setTimeout(() => {
+                window.location.href = CONFIG.redirectUrl;
+            }, 2000);
+        } else {
+            handleFormErrors(data);
+        }
+        
+    } catch (error) {
+        console.error('❌ Submit error:', error);
+        showNotification('error', 'Erreur de connexion. Veuillez réessayer.');
+    } finally {
+        isSubmitting = false;
+        updateSubmitButton(false);
+    }
+}
+
+function validateForm(form) {
+    const requiredFields = form.querySelectorAll('input[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (!validateField({ target: field })) {
+            isValid = false;
+        }
+    });
+    
+    return isValid;
+}
+
+function handleFormErrors(data) {
+    if (data.errors) {
+        // Erreurs de validation Laravel
+        Object.keys(data.errors).forEach(fieldName => {
+            const field = document.querySelector(`[name="${fieldName}"]`);
+            if (field) {
+                setFieldError(field, data.errors[fieldName][0]);
+            }
+        });
+        showNotification('error', 'Veuillez corriger les erreurs dans le formulaire');
+    } else {
+        const message = data.error || data.message || 'Erreur lors de la création de la configuration';
+        showNotification('error', message);
+    }
+}
+
+function updateSubmitButton(loading) {
+    const btn = document.getElementById('submitBtn');
+    if (!btn) return;
+    
+    if (loading) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création en cours...';
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.innerHTML = '<i class="fas fa-save"></i> Créer la Configuration';
+    }
+}
+
+// ===== GESTION DU MOT DE PASSE =====
+function togglePassword() {
+    const passwordInput = document.querySelector('input[type="password"], input[type="text"][id="password"], input[type="text"][id="username"]');
+    const toggleIcon = document.getElementById('passwordToggle');
+    
+    if (!passwordInput || !toggleIcon) return;
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.className = 'fas fa-eye-slash';
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.className = 'fas fa-eye';
+    }
+}
+
+// ===== NOTIFICATIONS =====
+function showNotification(type, message) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    
+    const icon = type === 'success' ? 'check-circle' : 
+                 type === 'error' ? 'exclamation-circle' : 'info-circle';
+    
+    notification.innerHTML = `
+        <i class="fas fa-${icon}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
+
+console.log('✅ Configuration creation scripts loaded');
 </script>
-@endpush
+@endsection

@@ -1,58 +1,60 @@
 @extends('layouts.admin')
 
-@section('title', 'Gestion des Livraisons')
+@section('title', 'Centre de Livraison')
 
 @section('css')
 <style>
     :root {
-        --primary: #1e40af;
-        --primary-dark: #1e3a8a;
+        --royal-blue: #1e3a8a;
+        --royal-blue-light: #3b82f6;
+        --royal-blue-lighter: #60a5fa;
         --success: #10b981;
         --warning: #f59e0b;
         --danger: #ef4444;
         --info: #06b6d4;
         --light: #f8fafc;
-        --dark: #374151;
+        --dark: #1f2937;
         --border: #e5e7eb;
-        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        --radius: 12px;
-        --transition: all 0.3s ease;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --radius: 8px;
+        --transition: all 0.2s ease;
     }
 
     body {
         background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', system-ui, sans-serif;
     }
 
     /* ===== CONTAINER PRINCIPAL ===== */
-    .delivery-container {
+    .delivery-dashboard {
         background: white;
         border-radius: var(--radius);
         box-shadow: var(--shadow);
-        margin: 1rem;
-        min-height: calc(100vh - 120px);
+        margin: 0.5rem;
+        min-height: calc(100vh - 70px);
         overflow: hidden;
     }
 
-    /* ===== HEADER SIMPLIFIÉ ===== */
-    .delivery-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-        padding: 2rem;
+    /* ===== HEADER MODERNE ===== */
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-light) 100%);
+        padding: 1.25rem;
         color: white;
         position: relative;
+        overflow: hidden;
     }
 
-    .delivery-header::before {
+    .dashboard-header::before {
         content: '';
         position: absolute;
-        top: 0;
-        right: 0;
+        top: -50%;
+        right: -20%;
         width: 200px;
         height: 200px;
         background: rgba(255, 255, 255, 0.1);
         border-radius: 50%;
-        transform: translate(50%, -50%);
+        transform: scale(1.5);
     }
 
     .header-content {
@@ -61,23 +63,23 @@
     }
 
     .header-title {
-        font-size: 2rem;
+        font-size: 1.5rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 0.75rem;
     }
 
     .header-subtitle {
         opacity: 0.9;
-        font-size: 1rem;
-        margin-bottom: 1.5rem;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
     }
 
     .header-actions {
         display: flex;
-        gap: 1rem;
+        gap: 0.5rem;
         flex-wrap: wrap;
     }
 
@@ -85,97 +87,124 @@
         background: rgba(255, 255, 255, 0.2);
         color: white;
         border: 1px solid rgba(255, 255, 255, 0.3);
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
+        padding: 0.5rem 0.875rem;
+        border-radius: 6px;
         text-decoration: none;
         font-weight: 600;
+        font-size: 0.8rem;
         transition: var(--transition);
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
+        backdrop-filter: blur(10px);
     }
 
     .btn-header:hover {
         background: rgba(255, 255, 255, 0.3);
-        transform: translateY(-2px);
+        transform: translateY(-1px);
         color: white;
+        text-decoration: none;
     }
 
     .btn-header.btn-primary {
         background: white;
-        color: var(--primary);
+        color: var(--royal-blue);
     }
 
     .btn-header.btn-primary:hover {
         background: #f8fafc;
-        color: var(--primary-dark);
+        color: var(--royal-blue);
     }
 
-    /* ===== STATISTIQUES SIMPLIFIÉES ===== */
+    /* ===== STATISTIQUES ULTRA-COMPACTES ===== */
     .stats-section {
-        padding: 2rem;
-        background: #f8fafc;
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
         border-bottom: 1px solid var(--border);
     }
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.75rem;
     }
 
     .stat-card {
         background: white;
-        padding: 1.5rem;
+        padding: 0.875rem;
         border-radius: var(--radius);
         box-shadow: var(--shadow);
         text-align: center;
         transition: var(--transition);
-        border-left: 4px solid transparent;
+        border-left: 3px solid transparent;
+        min-height: 70px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--royal-blue-lighter), transparent);
+        opacity: 0;
+        transition: var(--transition);
     }
 
     .stat-card:hover {
         transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
+        box-shadow: var(--shadow-md);
     }
 
-    .stat-card.stat-primary { border-left-color: var(--primary); }
+    .stat-card:hover::before {
+        opacity: 1;
+    }
+
+    .stat-card.stat-primary { border-left-color: var(--royal-blue); }
     .stat-card.stat-success { border-left-color: var(--success); }
     .stat-card.stat-warning { border-left-color: var(--warning); }
     .stat-card.stat-info { border-left-color: var(--info); }
 
     .stat-number {
-        font-size: 2.5rem;
+        font-size: 1.75rem;
         font-weight: 800;
         color: var(--dark);
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.25rem;
         display: block;
+        line-height: 1;
     }
 
     .stat-label {
         color: #6b7280;
         font-weight: 600;
         text-transform: uppercase;
-        font-size: 0.875rem;
+        font-size: 0.7rem;
         letter-spacing: 0.05em;
+        line-height: 1.1;
     }
 
-    /* ===== SECTION TRANSPORTEURS SIMPLIFIÉE ===== */
+    /* ===== SECTION TRANSPORTEURS MODERNE ===== */
     .carriers-section {
-        padding: 2rem;
+        padding: 1.25rem;
     }
 
     .section-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1.25rem;
         flex-wrap: wrap;
         gap: 1rem;
     }
 
     .section-title {
-        font-size: 1.5rem;
+        font-size: 1.125rem;
         font-weight: 700;
         color: var(--dark);
         display: flex;
@@ -185,11 +214,11 @@
 
     .carriers-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1rem;
     }
 
-    /* ===== CARTE TRANSPORTEUR SIMPLIFIÉE ===== */
+    /* ===== CARTE TRANSPORTEUR ULTRA-MODERNE ===== */
     .carrier-card {
         background: white;
         border-radius: var(--radius);
@@ -197,116 +226,117 @@
         overflow: hidden;
         transition: var(--transition);
         border: 1px solid var(--border);
+        position: relative;
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
     }
 
     .carrier-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(30, 58, 138, 0.15);
+    }
+
+    .status-indicator {
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        border-bottom-left-radius: var(--radius);
+        z-index: 10;
+    }
+
+    .status-indicator.connected {
+        background: var(--success);
+        color: white;
+    }
+
+    .status-indicator.inactive {
+        background: var(--warning);
+        color: white;
+    }
+
+    .status-indicator.disconnected {
+        background: var(--danger);
+        color: white;
     }
 
     .carrier-header {
-        padding: 1.5rem;
+        padding: 1rem;
         display: flex;
         align-items: center;
-        gap: 1rem;
-        position: relative;
+        gap: 0.75rem;
+        border-bottom: 1px solid #f3f4f6;
     }
-
-    .status-dot {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        border: 2px solid white;
-    }
-
-    .status-dot.connected { background: var(--success); }
-    .status-dot.inactive { background: var(--warning); }
-    .status-dot.disconnected { background: var(--danger); }
 
     .carrier-logo {
-        width: 50px;
-        height: 50px;
-        border-radius: 8px;
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
         object-fit: contain;
         background: #f3f4f6;
-        padding: 8px;
+        padding: 6px;
         flex-shrink: 0;
     }
 
     .carrier-info h3 {
-        font-size: 1.2rem;
+        font-size: 0.95rem;
         font-weight: 700;
         color: var(--dark);
         margin-bottom: 0.25rem;
+        line-height: 1.2;
     }
 
-    .carrier-status {
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
+    .carrier-info p {
         font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .status-connected {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-inactive {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .status-disconnected {
-        background: #fee2e2;
-        color: #991b1b;
+        color: #6b7280;
+        margin: 0;
     }
 
     .carrier-stats {
-        padding: 0 1.5rem 1rem;
+        padding: 0.75rem 1rem;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
+        gap: 0.5rem;
         text-align: center;
+        background: #f9fafb;
     }
 
     .carrier-stat {
         display: flex;
         flex-direction: column;
+        padding: 0.25rem;
     }
 
     .carrier-stat-number {
-        font-size: 1.5rem;
+        font-size: 1.125rem;
         font-weight: 700;
-        color: var(--primary);
-        margin-bottom: 0.25rem;
+        color: var(--royal-blue);
+        margin-bottom: 0.125rem;
+        line-height: 1;
     }
 
     .carrier-stat-label {
-        font-size: 0.75rem;
+        font-size: 0.65rem;
         color: #6b7280;
         font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .carrier-actions {
-        padding: 1.5rem;
-        background: #f9fafb;
-        border-top: 1px solid var(--border);
+        padding: 0.875rem;
         display: flex;
-        gap: 0.75rem;
+        gap: 0.5rem;
         flex-wrap: wrap;
     }
 
     .btn {
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
         font-weight: 600;
-        font-size: 0.875rem;
+        font-size: 0.75rem;
         text-decoration: none;
         text-align: center;
         transition: var(--transition);
@@ -315,334 +345,289 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
+        gap: 0.375rem;
         flex: 1;
+        min-width: 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+        left: 100%;
     }
 
     .btn:hover {
         transform: translateY(-1px);
-        box-shadow: var(--shadow);
+        text-decoration: none;
     }
 
     .btn-success {
-        background: var(--success);
+        background: linear-gradient(135deg, var(--success), #059669);
         color: white;
     }
 
     .btn-warning {
-        background: var(--warning);
+        background: linear-gradient(135deg, var(--warning), #d97706);
         color: white;
     }
 
     .btn-primary {
-        background: var(--primary);
+        background: linear-gradient(135deg, var(--royal-blue), var(--royal-blue-light));
         color: white;
     }
 
     .btn-outline {
         background: transparent;
         color: var(--dark);
-        border: 2px solid var(--border);
+        border: 1px solid var(--border);
     }
 
     .btn-outline:hover {
-        background: var(--primary);
+        background: var(--royal-blue);
         color: white;
-        border-color: var(--primary);
+        border-color: var(--royal-blue);
     }
 
-    /* ===== MODAL SIMPLIFIÉ ===== */
-    .modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 9999;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .modal.show {
-        display: flex;
-    }
-
-    .modal-dialog {
-        background: white;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow-lg);
-        width: 100%;
-        max-width: 500px;
-        max-height: 90vh;
-        overflow: hidden;
-    }
-
-    .modal-header {
-        background: var(--primary);
-        color: white;
-        padding: 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .modal-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.5rem;
-        cursor: pointer;
-        padding: 0.25rem;
-        border-radius: 4px;
-        transition: var(--transition);
-    }
-
-    .modal-close:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
-
-    .modal-body {
-        padding: 2rem;
+    /* ===== ÉTAT VIDE STYLÉ ===== */
+    .empty-state {
         text-align: center;
+        padding: 2rem;
+        color: #6b7280;
+        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        border-radius: var(--radius);
+        border: 2px dashed #d1d5db;
     }
 
-    .test-loading {
-        display: none;
-    }
-
-    .test-loading.show {
-        display: block;
-    }
-
-    .test-result {
-        display: none;
-    }
-
-    .test-result.show {
-        display: block;
-    }
-
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid #f3f4f6;
-        border-top: 3px solid var(--primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    .alert {
-        padding: 1rem;
-        border-radius: 8px;
+    .empty-state i {
+        font-size: 2.5rem;
         margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
+        opacity: 0.5;
+        color: var(--royal-blue);
     }
 
-    .alert-success {
-        background: #dcfce7;
-        color: #166534;
-        border: 1px solid #bbf7d0;
+    .empty-state h3 {
+        margin-bottom: 0.5rem;
+        color: var(--dark);
+        font-size: 1rem;
     }
 
-    .alert-danger {
-        background: #fee2e2;
-        color: #991b1b;
-        border: 1px solid #fecaca;
+    .empty-state p {
+        margin-bottom: 1.5rem;
+        font-size: 0.875rem;
     }
 
-    .modal-footer {
-        padding: 1.5rem;
-        background: #f9fafb;
-        border-top: 1px solid var(--border);
-        display: flex;
-        justify-content: flex-end;
-        gap: 1rem;
-    }
-
-    /* ===== RESPONSIVE MOBILE ===== */
+    /* ===== RESPONSIVE ULTRA-OPTIMISÉ ===== */
     @media (max-width: 768px) {
-        .delivery-header {
-            padding: 1.5rem;
+        .delivery-dashboard {
+            margin: 0.25rem;
+            border-radius: 0;
+        }
+
+        .dashboard-header {
+            padding: 1rem;
         }
 
         .header-title {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
         }
 
         .header-actions {
-            justify-content: center;
+            justify-content: stretch;
         }
 
         .btn-header {
             flex: 1;
             justify-content: center;
+            font-size: 0.75rem;
+            padding: 0.5rem;
         }
 
         .stats-section {
-            padding: 1.5rem;
+            padding: 0.75rem;
         }
 
         .stats-grid {
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            gap: 0.5rem;
         }
 
         .stat-card {
-            padding: 1rem;
+            padding: 0.75rem;
+            min-height: 60px;
         }
 
         .stat-number {
-            font-size: 2rem;
+            font-size: 1.5rem;
         }
 
         .carriers-section {
-            padding: 1.5rem;
+            padding: 0.75rem;
         }
 
         .carriers-grid {
             grid-template-columns: 1fr;
-            gap: 1rem;
+            gap: 0.75rem;
         }
 
         .carrier-header {
-            padding: 1rem;
+            padding: 0.75rem;
+        }
+
+        .carrier-logo {
+            width: 32px;
+            height: 32px;
         }
 
         .carrier-actions {
-            padding: 1rem;
+            padding: 0.75rem;
             flex-direction: column;
         }
 
         .btn {
             flex: none;
         }
-
-        .section-header {
-            flex-direction: column;
-            text-align: center;
-        }
-
-        .modal-dialog {
-            margin: 1rem;
-            max-width: none;
-        }
-
-        .modal-header,
-        .modal-body,
-        .modal-footer {
-            padding: 1rem;
-        }
     }
 
     @media (max-width: 480px) {
-        .delivery-container {
-            margin: 0.5rem;
-        }
-
         .stats-grid {
             grid-template-columns: 1fr;
         }
 
         .carrier-stats {
             grid-template-columns: 1fr;
-            gap: 0.5rem;
+            gap: 0.25rem;
+            text-align: left;
         }
 
-        .modal {
-            padding: 0.5rem;
+        .carrier-stat {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.375rem;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .btn-header {
+            font-size: 0.7rem;
+            padding: 0.4rem;
+        }
+
+        .empty-state {
+            padding: 1.5rem;
+        }
+
+        .empty-state i {
+            font-size: 2rem;
         }
     }
 
-    /* ===== ANIMATIONS ===== */
+    /* ===== ANIMATIONS FLUIDES ===== */
     .fade-in {
-        animation: fadeIn 0.5s ease-out;
+        animation: fadeIn 0.4s ease-out;
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
+        from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ===== LOADING STATE ===== */
-    .loading {
-        opacity: 0.7;
-        pointer-events: none;
+    .stat-updated {
+        animation: pulse 0.6s ease;
     }
 
-    .btn.loading {
-        position: relative;
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(30, 58, 138, 0.3); }
     }
 
-    .btn.loading::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 16px;
-        height: 16px;
-        margin: -8px 0 0 -8px;
-        border: 2px solid transparent;
-        border-top: 2px solid currentColor;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
+    /* ===== NOTIFICATIONS TOAST ===== */
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 280px;
+        max-width: 400px;
+        padding: 0.75rem;
+        border-radius: 6px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+        box-shadow: var(--shadow-md);
+        animation: slideInRight 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .toast.success { background: var(--success); }
+    .toast.warning { background: var(--warning); }
+    .toast.danger { background: var(--danger); }
+    .toast.info { background: var(--info); }
+
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
     }
 </style>
 @endsection
 
 @section('content')
-<div class="delivery-container fade-in">
-    <!-- Header Simplifié -->
-    <div class="delivery-header">
+<div class="delivery-dashboard fade-in">
+    <!-- Header Moderne -->
+    <div class="dashboard-header">
         <div class="header-content">
             <h1 class="header-title">
-                <i class="fas fa-truck"></i>
-                Gestion des Livraisons
+                <i class="fas fa-shipping-fast"></i>
+                Centre de Livraison
             </h1>
             <p class="header-subtitle">
-                Interface multi-transporteurs • Temps réel • Optimisé mobile
+                Tableau de bord multi-transporteurs • Interface moderne et responsive
             </p>
             <div class="header-actions">
                 <a href="{{ route('admin.delivery.preparation') }}" class="btn-header btn-primary">
                     <i class="fas fa-plus"></i>
-                    Nouvel Enlèvement
+                    Nouvelle Expédition
                 </a>
                 <a href="{{ route('admin.delivery.configuration') }}" class="btn-header">
                     <i class="fas fa-cog"></i>
-                    Configurations
+                    Configuration
                 </a>
                 <a href="{{ route('admin.delivery.pickups') }}" class="btn-header">
                     <i class="fas fa-warehouse"></i>
                     Enlèvements
                 </a>
+                <a href="{{ route('admin.delivery.shipments') }}" class="btn-header">
+                    <i class="fas fa-box"></i>
+                    Expéditions
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- Statistiques Simplifiées -->
+    <!-- Statistiques Ultra-Compactes -->
     <div class="stats-section">
         <div class="stats-grid">
             <div class="stat-card stat-primary">
                 <span class="stat-number" id="stat-configs">{{ $generalStats['active_configurations'] ?? 0 }}</span>
-                <div class="stat-label">Configurations Actives</div>
+                <div class="stat-label">Actives</div>
             </div>
             <div class="stat-card stat-warning">
                 <span class="stat-number" id="stat-pending">{{ $generalStats['pending_pickups'] ?? 0 }}</span>
@@ -654,12 +639,12 @@
             </div>
             <div class="stat-card stat-success">
                 <span class="stat-number" id="stat-total">{{ $generalStats['total_shipments'] ?? 0 }}</span>
-                <div class="stat-label">Total Expéditions</div>
+                <div class="stat-label">Total</div>
             </div>
         </div>
     </div>
 
-    <!-- Section Transporteurs Simplifiée -->
+    <!-- Section Transporteurs -->
     <div class="carriers-section">
         <div class="section-header">
             <h2 class="section-title">
@@ -672,12 +657,17 @@
             @forelse($carriersData ?? [] as $slug => $carrierData)
                 <div class="carrier-card">
                     <!-- Indicateur de statut -->
-                    <div class="status-dot {{ 
+                    <div class="status-indicator {{ 
                         $carrierData['status'] === 'connecté' ? 'connected' : 
                         ($carrierData['status'] === 'configuré_inactif' ? 'inactive' : 'disconnected') 
-                    }}"></div>
+                    }}">
+                        {{ 
+                            $carrierData['status'] === 'connecté' ? 'Actif' : 
+                            ($carrierData['status'] === 'configuré_inactif' ? 'Inactif' : 'Non configuré') 
+                        }}
+                    </div>
                     
-                    <!-- Header avec logo et nom -->
+                    <!-- Header -->
                     <div class="carrier-header">
                         @if(isset($carrierData['config']['logo']))
                             <img src="{{ asset($carrierData['config']['logo']) }}" 
@@ -685,21 +675,13 @@
                                  class="carrier-logo">
                         @else
                             <div class="carrier-logo">
-                                <i class="fas fa-truck" style="color: #6b7280; font-size: 1.5rem;"></i>
+                                <i class="fas fa-truck" style="color: #6b7280; font-size: 1rem;"></i>
                             </div>
                         @endif
                         
                         <div class="carrier-info">
                             <h3>{{ $carrierData['config']['name'] }}</h3>
-                            <span class="carrier-status {{ 
-                                $carrierData['status'] === 'connecté' ? 'status-connected' : 
-                                ($carrierData['status'] === 'configuré_inactif' ? 'status-inactive' : 'status-disconnected') 
-                            }}">
-                                {{ 
-                                    $carrierData['status'] === 'connecté' ? 'Connecté' : 
-                                    ($carrierData['status'] === 'configuré_inactif' ? 'Inactif' : 'Non configuré') 
-                                }}
-                            </span>
+                            <p>{{ $carrierData['config']['description'] ?? 'Service de livraison' }}</p>
                         </div>
                     </div>
 
@@ -719,107 +701,48 @@
                         </div>
                     </div>
 
-                    <!-- Actions -->
+                    <!-- Actions Simplifiées -->
                     <div class="carrier-actions">
                         @if($carrierData['is_configured'])
                             @if($carrierData['active_configurations']->isNotEmpty())
                                 <a href="{{ route('admin.delivery.preparation') }}?carrier={{ $slug }}" 
                                    class="btn btn-success">
                                     <i class="fas fa-plus"></i>
-                                    Nouvel Envoi
+                                    Expédier
                                 </a>
-                                <button type="button" 
-                                        class="btn btn-primary"
-                                        onclick="testCarrierConnection('{{ $carrierData['active_configurations']->first()->id }}', '{{ $carrierData['config']['name'] }}')">
-                                    <i class="fas fa-wifi"></i>
-                                    Test Connexion
-                                </button>
+                                <a href="{{ route('admin.delivery.configuration') }}?filter={{ $slug }}" 
+                                   class="btn btn-outline">
+                                    <i class="fas fa-cog"></i>
+                                    Gérer
+                                </a>
                             @else
-                                <a href="{{ route('admin.delivery.configuration.create') }}?carrier={{ $slug }}" 
+                                <a href="{{ route('admin.delivery.configuration') }}?filter={{ $slug }}" 
                                    class="btn btn-warning">
                                     <i class="fas fa-power-off"></i>
                                     Activer
                                 </a>
                             @endif
-                            <a href="{{ route('admin.delivery.configuration') }}?filter={{ $slug }}" 
-                               class="btn btn-outline">
-                                <i class="fas fa-cog"></i>
-                                Gérer
-                            </a>
                         @else
                             <a href="{{ route('admin.delivery.configuration.create') }}?carrier={{ $slug }}" 
                                class="btn btn-primary" style="flex: 1;">
                                 <i class="fas fa-plus"></i>
-                                Configurer Maintenant
+                                Configurer
                             </a>
                         @endif
                     </div>
                 </div>
             @empty
-                <div class="carrier-card">
-                    <div class="carrier-header">
-                        <div class="carrier-logo">
-                            <i class="fas fa-exclamation-triangle" style="color: #f59e0b; font-size: 1.5rem;"></i>
-                        </div>
-                        <div class="carrier-info">
-                            <h3>Aucun transporteur configuré</h3>
-                            <span class="carrier-status status-disconnected">Configuration requise</span>
-                        </div>
-                    </div>
-                    <div class="carrier-actions">
-                        <a href="{{ route('admin.delivery.configuration.create') }}" 
-                           class="btn btn-primary" style="flex: 1;">
-                            <i class="fas fa-plus"></i>
-                            Configurer un transporteur
-                        </a>
-                    </div>
+                <div class="empty-state">
+                    <i class="fas fa-truck"></i>
+                    <h3>Aucun transporteur configuré</h3>
+                    <p>Configurez votre premier transporteur pour commencer les expéditions</p>
+                    <a href="{{ route('admin.delivery.configuration.create') }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Configurer maintenant
+                    </a>
                 </div>
             @endforelse
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Test Simplifié -->
-<div class="modal" id="testModal">
-    <div class="modal-dialog">
-        <div class="modal-header">
-            <h5 class="modal-title">
-                <i class="fas fa-wifi"></i>
-                Test de Connexion
-            </h5>
-            <button type="button" class="modal-close" onclick="closeTestModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="modal-body">
-            <!-- État de chargement -->
-            <div class="test-loading" id="testLoading">
-                <div class="spinner"></div>
-                <h4>Test en cours...</h4>
-                <p>Vérification de la connexion avec <span id="carrierName">le transporteur</span></p>
-            </div>
-
-            <!-- Résultat du test -->
-            <div class="test-result" id="testResult">
-                <div class="alert" id="testAlert">
-                    <i class="fas fa-check-circle" id="testIcon"></i>
-                    <div>
-                        <strong id="testTitle">Test terminé</strong>
-                        <p id="testMessage">Résultat du test</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="modal-footer">
-            <button type="button" class="btn btn-outline" onclick="closeTestModal()">
-                Fermer
-            </button>
-            <button type="button" class="btn btn-primary" id="retestBtn" onclick="retestConnection()" style="display: none;">
-                <i class="fas fa-redo"></i>
-                Retester
-            </button>
         </div>
     </div>
 </div>
@@ -828,44 +751,57 @@
 
 @section('scripts')
 <script>
+// ===== CONFIGURATION GLOBALE =====
+const DELIVERY_CONFIG = {
+    apiRoutes: {
+        generalStats: '{{ route("admin.delivery.api.general-stats") }}'
+    },
+    refreshInterval: 30000,
+    csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+};
+
 // ===== VARIABLES GLOBALES =====
-let currentConfigId = null;
 let statsRefreshInterval = null;
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Page delivery initialisée');
+    console.log('🚀 Delivery Dashboard Initialized');
     
-    // Démarrer le rafraîchissement des stats
-    startStatsRefresh();
+    if (!DELIVERY_CONFIG.csrfToken) {
+        console.error('❌ CSRF token not found');
+        showToast('danger', 'Erreur de sécurité. Veuillez recharger la page.');
+        return;
+    }
     
-    // Animation des compteurs au chargement
-    animateCounters();
-    
-    // Gestion des clics sur les cartes
-    setupCardAnimations();
-    
-    console.log('✅ Initialisation terminée');
+    initializeApp();
 });
+
+function initializeApp() {
+    try {
+        startStatsRefresh();
+        animateCounters();
+        setupEventListeners();
+        console.log('✅ Application initialized successfully');
+    } catch (error) {
+        console.error('❌ Initialization error:', error);
+        showToast('danger', 'Erreur d\'initialisation');
+    }
+}
 
 // ===== GESTION DES STATISTIQUES =====
 function startStatsRefresh() {
-    // Rafraîchir immédiatement
     refreshStats();
-    
-    // Puis toutes les 30 secondes
-    statsRefreshInterval = setInterval(refreshStats, 30000);
-    
-    console.log('📊 Rafraîchissement des stats démarré');
+    statsRefreshInterval = setInterval(refreshStats, DELIVERY_CONFIG.refreshInterval);
+    console.log('📊 Stats refresh started');
 }
 
 async function refreshStats() {
     try {
-        const response = await fetch('{{ route("admin.delivery.api.general-stats") }}', {
+        const response = await fetch(DELIVERY_CONFIG.apiRoutes.generalStats, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                'X-CSRF-TOKEN': DELIVERY_CONFIG.csrfToken
             }
         });
         
@@ -877,18 +813,13 @@ async function refreshStats() {
         
         if (data.success && data.general_stats) {
             updateStatsDisplay(data.general_stats);
-            console.log('📈 Stats mises à jour:', data.general_stats);
-        } else {
-            console.warn('⚠️ Réponse stats invalide:', data);
         }
     } catch (error) {
-        console.error('❌ Erreur rafraîchissement stats:', error);
-        // Continuer silencieusement sans alerter l'utilisateur
+        console.warn('⚠️ Stats refresh failed:', error);
     }
 }
 
 function updateStatsDisplay(stats) {
-    // Mettre à jour chaque statistique avec animation
     updateStatWithAnimation('stat-configs', stats.active_configurations || 0);
     updateStatWithAnimation('stat-pending', stats.pending_pickups || 0);
     updateStatWithAnimation('stat-transit', stats.active_shipments || 0);
@@ -902,218 +833,81 @@ function updateStatWithAnimation(elementId, newValue) {
     const currentValue = parseInt(element.textContent) || 0;
     
     if (currentValue !== newValue) {
-        // Animation simple de compteur
-        const duration = 1000;
-        const steps = 20;
-        const stepValue = (newValue - currentValue) / steps;
-        const stepDuration = duration / steps;
-        
-        let currentStep = 0;
-        const interval = setInterval(() => {
-            currentStep++;
-            const value = Math.round(currentValue + (stepValue * currentStep));
-            element.textContent = currentStep === steps ? newValue : value;
-            
-            if (currentStep >= steps) {
-                clearInterval(interval);
-            }
-        }, stepDuration);
-        
-        // Effet visuel de mise à jour
+        animateNumber(element, currentValue, newValue);
         element.parentElement.classList.add('stat-updated');
         setTimeout(() => {
             element.parentElement.classList.remove('stat-updated');
-        }, 2000);
+        }, 600);
     }
+}
+
+function animateNumber(element, from, to) {
+    const duration = 600;
+    const steps = 20;
+    const stepValue = (to - from) / steps;
+    const stepDuration = duration / steps;
+    
+    let currentStep = 0;
+    const interval = setInterval(() => {
+        currentStep++;
+        const value = currentStep === steps ? to : Math.round(from + (stepValue * currentStep));
+        element.textContent = value;
+        
+        if (currentStep >= steps) {
+            clearInterval(interval);
+        }
+    }, stepDuration);
 }
 
 // ===== ANIMATION DES COMPTEURS AU CHARGEMENT =====
 function animateCounters() {
     document.querySelectorAll('.stat-number').forEach(counter => {
         const target = parseInt(counter.textContent) || 0;
-        if (target === 0) return;
-        
-        let current = 0;
-        const increment = target / 30;
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                current = target;
-                clearInterval(timer);
-            }
-            counter.textContent = Math.floor(current);
-        }, 50);
+        if (target > 0) {
+            animateNumber(counter, 0, target);
+        }
     });
 }
 
-// ===== ANIMATIONS DES CARTES =====
-function setupCardAnimations() {
-    const cards = document.querySelectorAll('.carrier-card, .stat-card');
+// ===== GESTION DES ÉVÉNEMENTS =====
+function setupEventListeners() {
+    // Gestion des erreurs globales
+    window.addEventListener('error', function(e) {
+        console.error('🚨 JavaScript error:', e.error);
+    });
     
+    // Nettoyage avant fermeture
+    window.addEventListener('beforeunload', function() {
+        if (statsRefreshInterval) {
+            clearInterval(statsRefreshInterval);
+        }
+    });
+
+    // Animation des cartes au scroll
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                entry.target.style.opacity = '0';
-                entry.target.style.transform = 'translateY(20px)';
-                entry.target.style.transition = 'all 0.6s ease';
-                
-                setTimeout(() => {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, 100);
-                
-                observer.unobserve(entry.target);
+                entry.target.style.animation = 'fadeIn 0.6s ease-out';
             }
         });
     }, { threshold: 0.1 });
-    
-    cards.forEach(card => observer.observe(card));
+
+    document.querySelectorAll('.carrier-card, .stat-card').forEach(card => {
+        observer.observe(card);
+    });
 }
 
-// ===== GESTION DU MODAL DE TEST =====
-function testCarrierConnection(configId, carrierName) {
-    currentConfigId = configId;
-    
-    // Réinitialiser le modal
-    resetTestModal();
-    
-    // Mettre à jour le nom du transporteur
-    document.getElementById('carrierName').textContent = carrierName;
-    
-    // Afficher le modal
-    showTestModal();
-    
-    // Démarrer le test
-    startConnectionTest(configId);
-}
-
-function showTestModal() {
-    const modal = document.getElementById('testModal');
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeTestModal() {
-    const modal = document.getElementById('testModal');
-    modal.classList.remove('show');
-    document.body.style.overflow = '';
-    
-    // Réinitialiser le modal après fermeture
-    setTimeout(resetTestModal, 300);
-}
-
-function resetTestModal() {
-    // Masquer tous les états
-    document.getElementById('testLoading').classList.remove('show');
-    document.getElementById('testResult').classList.remove('show');
-    document.getElementById('retestBtn').style.display = 'none';
-    
-    // Afficher l'état de chargement
-    document.getElementById('testLoading').classList.add('show');
-}
-
-async function startConnectionTest(configId) {
-    try {
-        console.log('🔄 Démarrage test connexion config:', configId);
-        
-        const response = await fetch(`/admin/delivery/configuration/${configId}/test`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
-        });
-        
-        const data = await response.json();
-        
-        console.log('📝 Résultat test:', data);
-        
-        // Afficher le résultat
-        showTestResult(data.success, data.message || data.error || 'Test terminé', data.details);
-        
-    } catch (error) {
-        console.error('❌ Erreur test connexion:', error);
-        showTestResult(false, 'Erreur de connexion: ' + error.message);
-    }
-}
-
-function showTestResult(success, message, details = null) {
-    // Masquer le chargement
-    document.getElementById('testLoading').classList.remove('show');
-    
-    // Configurer le résultat
-    const alert = document.getElementById('testAlert');
-    const icon = document.getElementById('testIcon');
-    const title = document.getElementById('testTitle');
-    const messageEl = document.getElementById('testMessage');
-    const retestBtn = document.getElementById('retestBtn');
-    
-    if (success) {
-        alert.className = 'alert alert-success';
-        icon.className = 'fas fa-check-circle';
-        title.textContent = 'Connexion réussie !';
-        messageEl.textContent = message;
-        
-        // Rafraîchir la page après 3 secondes pour voir les changements
-        setTimeout(() => {
-            window.location.reload();
-        }, 3000);
-    } else {
-        alert.className = 'alert alert-danger';
-        icon.className = 'fas fa-exclamation-triangle';
-        title.textContent = 'Échec de connexion';
-        messageEl.textContent = message;
-        
-        // Afficher le bouton de retest
-        retestBtn.style.display = 'inline-flex';
-    }
-    
-    // Afficher le résultat
-    document.getElementById('testResult').classList.add('show');
-}
-
-function retestConnection() {
-    if (currentConfigId) {
-        resetTestModal();
-        startConnectionTest(currentConfigId);
-    }
-}
-
-// ===== GESTION DES ERREURS GLOBALES =====
-window.addEventListener('error', function(e) {
-    console.error('🚨 Erreur JavaScript:', e.error);
-});
-
-// ===== FERMETURE MODAL PAR ESCAPE =====
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeTestModal();
-    }
-});
-
-// ===== FERMETURE MODAL PAR CLIC EXTÉRIEUR =====
-document.getElementById('testModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeTestModal();
-    }
-});
-
-// ===== NOTIFICATIONS TOAST =====
+// ===== NOTIFICATIONS TOAST AMÉLIORÉES =====
 function showToast(type, message) {
     const toast = document.createElement('div');
-    toast.className = `alert alert-${type}`;
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 10000;
-        min-width: 300px;
-        box-shadow: var(--shadow-lg);
-        animation: slideInRight 0.3s ease;
-    `;
+    toast.className = `toast ${type}`;
+    
+    const icon = type === 'success' ? 'check-circle' : 
+                 type === 'warning' ? 'exclamation-triangle' : 
+                 type === 'danger' ? 'exclamation-circle' : 'info-circle';
     
     toast.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+        <i class="fas fa-${icon}"></i>
         <span>${message}</span>
     `;
     
@@ -1122,39 +916,26 @@ function showToast(type, message) {
     setTimeout(() => {
         toast.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    }, 4000);
 }
 
-// ===== NETTOYAGE À LA FERMETURE =====
-window.addEventListener('beforeunload', function() {
-    if (statsRefreshInterval) {
-        clearInterval(statsRefreshInterval);
-    }
-});
+// ===== FONCTIONS UTILITAIRES =====
+function formatNumber(num) {
+    return new Intl.NumberFormat('fr-FR').format(num);
+}
 
-console.log('✅ Scripts delivery chargés et opérationnels');
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+console.log('✅ Delivery Dashboard Scripts Loaded');
 </script>
-
-<style>
-/* Animations pour les notifications */
-@keyframes slideInRight {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes slideOutRight {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-}
-
-/* Effet de mise à jour des stats */
-.stat-updated {
-    animation: pulse 0.6s ease;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-</style>
 @endsection
