@@ -248,9 +248,232 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION CORRIGÉE
+        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION CORRIGÉE ET ÉTENDUE
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
+            
+            // ================================
+            // 🆕 ROUTES DE TEST ET DIAGNOSTIC - AJOUT PRIORITAIRE
+            // ================================
+            
+            // Route de diagnostic système complet
+            Route::get('test-system', function() {
+                $admin = auth('admin')->user();
+                
+                try {
+                    $diagnostics = [
+                        'admin_info' => [
+                            'id' => $admin->id,
+                            'name' => $admin->name,
+                            'email' => $admin->email,
+                            'is_active' => $admin->is_active,
+                        ],
+                        
+                        'database_counts' => [
+                            'total_orders' => $admin->orders()->count(),
+                            'confirmed_orders' => $admin->orders()->where('status', 'confirmée')->count(),
+                            'available_orders' => $admin->orders()
+                                ->where('status', 'confirmée')
+                                ->where(function($q) {
+                                    $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                                })
+                                ->whereDoesntHave('shipments')
+                                ->count(),
+                            'delivery_configurations' => $admin->deliveryConfigurations()->count(),
+                            'active_configurations' => $admin->deliveryConfigurations()->where('is_active', true)->count(),
+                            'pickups' => \App\Models\Pickup::where('admin_id', $admin->id)->count(),
+                            'shipments' => \App\Models\Shipment::where('admin_id', $admin->id)->count(),
+                        ],
+                        
+                        'configurations_detail' => $admin->deliveryConfigurations()->get()->map(function($config) {
+                            return [
+                                'id' => $config->id,
+                                'carrier_slug' => $config->carrier_slug,
+                                'integration_name' => $config->integration_name,
+                                'is_active' => $config->is_active,
+                                'created_at' => $config->created_at,
+                            ];
+                        }),
+                        
+                        'sample_orders' => $admin->orders()
+                            ->where('status', 'confirmée')
+                            ->where(function($q) {
+                                $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                            })
+                            ->whereDoesntHave('shipments')
+                            ->take(5)
+                            ->get(['id', 'customer_name', 'customer_phone', 'total_price', 'created_at']),
+                        
+                        'routes_check' => [
+                            'preparation_route' => route('admin.delivery.preparation'),
+                            'preparation_orders' => route('admin.delivery.preparation.orders'),
+                            'preparation_store' => route('admin.delivery.preparation.store'),
+                            'pickups_index' => route('admin.delivery.pickups'),
+                        ],
+                        
+                        'config_check' => [
+                            'carriers_config_exists' => config('carriers') !== null,
+                            'carriers_available' => config('carriers') ? array_keys(config('carriers')) : [],
+                            'jax_delivery_config' => config('carriers.jax_delivery') !== null,
+                            'mes_colis_config' => config('carriers.mes_colis') !== null,
+                        ],
+                        
+                        'system_status' => [
+                            'php_version' => PHP_VERSION,
+                            'laravel_version' => app()->version(),
+                            'environment' => app()->environment(),
+                            'debug_mode' => config('app.debug'),
+                            'timezone' => config('app.timezone'),
+                        ],
+                        
+                        'timestamp' => now()->toISOString(),
+                    ];
+                    
+                    return response()->json($diagnostics, 200, [], JSON_PRETTY_PRINT);
+                    
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                        'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+                        'admin_id' => $admin->id,
+                    ], 500);
+                }
+            })->name('test-system');
+            
+            // Route de test pour créer un pickup simple
+            Route::post('test-create-pickup', function(\Illuminate\Http\Request $request) {
+                $admin = auth('admin')->user();
+                
+                try {
+                    \Log::info('Test création pickup', [
+                        'admin_id' => $admin->id,
+                        'request_data' => $request->all()
+                    ]);
+                    
+                    // Test de base
+                    $config = $admin->deliveryConfigurations()->where('is_active', true)->first();
+                    if (!$config) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Aucune configuration active trouvée',
+                            'available_configs' => $admin->deliveryConfigurations()->get(['id', 'carrier_slug', 'integration_name', 'is_active'])
+                        ]);
+                    }
+                    
+                    $orders = $admin->orders()
+                        ->where('status', 'confirmée')
+                        ->where(function($q) {
+                            $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                        })
+                        ->whereDoesntHave('shipments')
+                        ->take(2)
+                        ->get();
+                        
+                    if ($orders->isEmpty()) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Aucune commande disponible pour test',
+                            'total_orders' => $admin->orders()->count(),
+                            'confirmed_orders' => $admin->orders()->where('status', 'confirmée')->count(),
+                        ]);
+                    }
+                    
+                    // Créer un pickup de test
+                    $pickup = \App\Models\Pickup::create([
+                        'admin_id' => $admin->id,
+                        'carrier_slug' => $config->carrier_slug,
+                        'delivery_configuration_id' => $config->id,
+                        'status' => 'draft',
+                        'pickup_date' => now()->addDay()->format('Y-m-d'),
+                    ]);
+                    
+                    // Créer les shipments
+                    $shipmentsCreated = 0;
+                    foreach ($orders as $order) {
+                        $shipment = \App\Models\Shipment::create([
+                            'admin_id' => $admin->id,
+                            'order_id' => $order->id,
+                            'pickup_id' => $pickup->id,
+                            'carrier_slug' => $config->carrier_slug,
+                            'status' => 'created',
+                            'weight' => 1.0,
+                            'value' => $order->total_price,
+                            'cod_amount' => $order->total_price,
+                            'nb_pieces' => 1,
+                            'pickup_date' => $pickup->pickup_date,
+                            'content_description' => "Test commande #{$order->id}",
+                            'recipient_info' => [
+                                'name' => $order->customer_name,
+                                'phone' => $order->customer_phone,
+                                'address' => $order->customer_address,
+                            ],
+                        ]);
+                        
+                        $order->update(['status' => 'expédiée']);
+                        $shipmentsCreated++;
+                    }
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => "Test pickup #{$pickup->id} créé avec {$shipmentsCreated} expéditions",
+                        'data' => [
+                            'pickup_id' => $pickup->id,
+                            'shipments_created' => $shipmentsCreated,
+                            'orders_processed' => $orders->pluck('id'),
+                            'config_used' => [
+                                'id' => $config->id,
+                                'carrier_slug' => $config->carrier_slug,
+                                'integration_name' => $config->integration_name,
+                            ]
+                        ]
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    \Log::error('Erreur test pickup', [
+                        'admin_id' => $admin->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                        'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+                    ], 500);
+                }
+            })->name('test-create-pickup');
+            
+            // Route de validation des données
+            Route::get('validate-data', function() {
+                $admin = auth('admin')->user();
+                
+                $validation = [
+                    'database_tables' => [
+                        'delivery_configurations' => \Schema::hasTable('delivery_configurations'),
+                        'pickups' => \Schema::hasTable('pickups'),
+                        'shipments' => \Schema::hasTable('shipments'),
+                        'orders' => \Schema::hasTable('orders'),
+                    ],
+                    'models_exist' => [
+                        'DeliveryConfiguration' => class_exists('\App\Models\DeliveryConfiguration'),
+                        'Pickup' => class_exists('\App\Models\Pickup'),
+                        'Shipment' => class_exists('\App\Models\Shipment'),
+                        'Order' => class_exists('\App\Models\Order'),
+                    ],
+                    'config_files' => [
+                        'carriers_config' => file_exists(config_path('carriers.php')),
+                        'carriers_loaded' => config('carriers') !== null,
+                    ],
+                    'sample_data' => [
+                        'admin_has_orders' => $admin->orders()->exists(),
+                        'admin_has_configs' => $admin->deliveryConfigurations()->exists(),
+                        'confirmed_orders_count' => $admin->orders()->where('status', 'confirmée')->count(),
+                    ]
+                ];
+                
+                return response()->json($validation, 200, [], JSON_PRETTY_PRINT);
+            })->name('validate-data');
             
             // ================================
             // PAGE PRINCIPALE MULTI-TRANSPORTEURS
@@ -279,7 +502,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('configuration.toggle');
             
             // ================================
-            // PRÉPARATION D'ENLÈVEMENT
+            // PRÉPARATION D'ENLÈVEMENT - SECTION CORRIGÉE
             // ================================
             Route::get('preparation', [DeliveryController::class, 'preparation'])
                 ->name('preparation');
@@ -377,7 +600,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // ========================================
-        // DEBUG ET DIAGNOSTICS - SECTION ÉTENDUE
+        // DEBUG ET DIAGNOSTICS - SECTION ÉTENDUE ET AMÉLIORÉE
         // ========================================
         Route::get('debug-auth', function () {
             $admin = auth('admin')->user();
@@ -400,6 +623,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'delivery_configuration' => route('admin.delivery.configuration'),
                     'delivery_preparation' => route('admin.delivery.preparation'),
                     'delivery_api_general_stats' => route('admin.delivery.api.general-stats'),
+                    'delivery_test_system' => route('admin.delivery.test-system'),
                 ]
             ];
         })->name('debug-auth');
@@ -446,6 +670,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'general_stats_route_exists' => \Route::has('admin.delivery.api.general-stats'),
                         'delivery_index_exists' => \Route::has('admin.delivery.index'),
                         'delivery_config_exists' => \Route::has('admin.delivery.configuration'),
+                        'test_system_exists' => \Route::has('admin.delivery.test-system'),
                     ],
                     'config_carriers' => config('carriers') ? array_keys(config('carriers')) : [],
                     'timestamp' => now()->toISOString(),
@@ -458,13 +683,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'routes_check' => [
                         'general_stats_route_exists' => \Route::has('admin.delivery.api.general-stats'),
                         'delivery_index_exists' => \Route::has('admin.delivery.index'),
+                        'test_system_exists' => \Route::has('admin.delivery.test-system'),
                     ]
                 ];
             }
         })->name('delivery-debug-stats');
 
         // ========================================
-        // ROUTE DE TEST POUR LES NOUVELLES VUES DE LIVRAISON
+        // ROUTES DE TEST POUR LES NOUVELLES VUES DE LIVRAISON - SECTION ÉTENDUE
         // ========================================
         Route::get('delivery-test', function () {
             $admin = auth('admin')->user();
@@ -480,7 +706,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'pickups' => route('admin.delivery.pickups'),
                     'shipments' => route('admin.delivery.shipments'),
                     'stats' => route('admin.delivery.stats'),
-                    'api_general_stats' => route('admin.delivery.api.general-stats'), // 🆕 AJOUTÉ
+                    'api_general_stats' => route('admin.delivery.api.general-stats'),
+                    'test_system' => route('admin.delivery.test-system'), // 🆕
+                    'test_create_pickup' => route('admin.delivery.test-create-pickup'), // 🆕
+                    'validate_data' => route('admin.delivery.validate-data'), // 🆕
                 ],
                 'available_views' => [
                     'admin.delivery.index',
@@ -508,25 +737,111 @@ Route::prefix('admin')->name('admin.')->group(function () {
             $admin = auth('admin')->user();
             
             try {
-                // Test direct de la méthode
-                $controller = new DeliveryController();
-                $response = $controller->getGeneralStats();
-                
-                return [
-                    'success' => true,
-                    'message' => 'API de statistiques fonctionnelle',
-                    'response' => $response->getData(),
-                    'admin_id' => $admin->id,
-                    'test_time' => now()->toISOString(),
-                ];
+                // Test direct de la méthode si elle existe
+                if (method_exists(DeliveryController::class, 'getGeneralStats')) {
+                    $controller = new DeliveryController(app(\App\Services\Delivery\ShippingServiceFactory::class));
+                    $response = $controller->getGeneralStats();
+                    
+                    return [
+                        'success' => true,
+                        'message' => 'API de statistiques fonctionnelle',
+                        'response' => $response->getData(),
+                        'admin_id' => $admin->id,
+                        'test_time' => now()->toISOString(),
+                    ];
+                } else {
+                    return [
+                        'success' => false,
+                        'error' => 'Méthode getGeneralStats non trouvée dans DeliveryController',
+                        'admin_id' => $admin->id,
+                        'controller_methods' => get_class_methods(DeliveryController::class),
+                        'test_time' => now()->toISOString(),
+                    ];
+                }
             } catch (\Exception $e) {
                 return [
                     'success' => false,
                     'error' => $e->getMessage(),
                     'admin_id' => $admin->id,
                     'test_time' => now()->toISOString(),
+                    'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 ];
             }
         })->name('delivery-quick-test');
+
+        // 🆕 NOUVELLE ROUTE DE TEST COMPLET DU SYSTÈME
+        Route::get('full-system-test', function () {
+            $admin = auth('admin')->user();
+            $results = [];
+            
+            // Test 1: Authentification
+            $results['auth_test'] = [
+                'success' => auth('admin')->check(),
+                'admin_id' => $admin->id,
+                'admin_name' => $admin->name,
+            ];
+            
+            // Test 2: Base de données
+            try {
+                $results['database_test'] = [
+                    'success' => true,
+                    'orders_count' => $admin->orders()->count(),
+                    'configs_count' => $admin->deliveryConfigurations()->count(),
+                    'pickups_count' => \App\Models\Pickup::where('admin_id', $admin->id)->count(),
+                ];
+            } catch (\Exception $e) {
+                $results['database_test'] = [
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                ];
+            }
+            
+            // Test 3: Configuration
+            $results['config_test'] = [
+                'success' => config('carriers') !== null,
+                'carriers_available' => config('carriers') ? array_keys(config('carriers')) : [],
+                'app_debug' => config('app.debug'),
+                'app_env' => config('app.env'),
+            ];
+            
+            // Test 4: Routes
+            $routeTests = [
+                'delivery.index',
+                'delivery.preparation',
+                'delivery.preparation.orders',
+                'delivery.preparation.store',
+                'delivery.test-system',
+            ];
+            
+            $results['routes_test'] = [];
+            foreach ($routeTests as $routeName) {
+                $results['routes_test'][$routeName] = \Route::has('admin.' . $routeName);
+            }
+            
+            // Test 5: Modèles
+            $modelTests = [
+                'DeliveryConfiguration' => '\App\Models\DeliveryConfiguration',
+                'Pickup' => '\App\Models\Pickup',
+                'Shipment' => '\App\Models\Shipment',
+                'Order' => '\App\Models\Order',
+            ];
+            
+            $results['models_test'] = [];
+            foreach ($modelTests as $name => $class) {
+                $results['models_test'][$name] = class_exists($class);
+            }
+            
+            // Résumé global
+            $results['overall_status'] = [
+                'all_tests_passed' => collect($results)->every(function($test) {
+                    return is_array($test) ? ($test['success'] ?? true) : true;
+                }),
+                'timestamp' => now()->toISOString(),
+                'php_version' => PHP_VERSION,
+                'laravel_version' => app()->version(),
+            ];
+            
+            return response()->json($results, 200, [], JSON_PRETTY_PRINT);
+        })->name('full-system-test');
     });
 });

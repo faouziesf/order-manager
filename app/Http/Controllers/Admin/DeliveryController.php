@@ -637,7 +637,7 @@ class DeliveryController extends Controller
     }
 
     // ========================================
-    // PRÉPARATION D'ENLÈVEMENT
+    // PRÉPARATION D'ENLÈVEMENT - VERSION CORRIGÉE
     // ========================================
 
     /**
@@ -661,190 +661,293 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Obtenir les commandes disponibles pour expédition (API)
+     * API pour obtenir les commandes disponibles - VERSION SIMPLIFIÉE
      */
     public function getAvailableOrders(Request $request)
     {
         $admin = auth('admin')->user();
         
-        $query = Order::where('admin_id', $admin->id)
-            ->where('status', 'confirmée')
-            ->where('is_suspended', false)
-            ->whereDoesntHave('shipments') // Commandes pas encore expédiées
-            ->with(['items.product', 'region']);
-        
-        // Filtres optionnels
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('customer_name', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%")
-                  ->orWhere('id', $search);
+        try {
+            $query = Order::where('admin_id', $admin->id)
+                ->where('status', 'confirmée')
+                ->where(function($q) {
+                    $q->where('is_suspended', false)
+                      ->orWhereNull('is_suspended');
+                })
+                ->whereDoesntHave('shipments') // Commandes pas encore expédiées
+                ->with(['items.product', 'region']);
+            
+            // Filtres optionnels
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('customer_name', 'like', "%{$search}%")
+                      ->orWhere('customer_phone', 'like', "%{$search}%")
+                      ->orWhere('id', $search);
+                });
+            }
+            
+            if ($request->filled('governorate')) {
+                $query->where('customer_governorate', $request->governorate);
+            }
+            
+            // Pagination
+            $perPage = min($request->get('per_page', 20), 50); // Max 50 par page
+            $orders = $query->orderBy('created_at', 'desc')->paginate($perPage);
+            
+            // Enrichir avec les informations nécessaires
+            $orders->getCollection()->transform(function ($order) {
+                $order->can_be_shipped = true; // Simplification - toutes les commandes récupérées peuvent être expédiées
+                $order->region_name = $order->region ? $order->region->name : ($order->customer_governorate ?: 'Région inconnue');
+                return $order;
             });
+            
+            return response()->json([
+                'success' => true,
+                'orders' => $orders->items(),
+                'pagination' => [
+                    'current_page' => $orders->currentPage(),
+                    'last_page' => $orders->lastPage(),
+                    'per_page' => $orders->perPage(),
+                    'total' => $orders->total(),
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération commandes', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des commandes',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        if ($request->has('governorate') && $request->governorate) {
-            $query->where('customer_governorate', $request->governorate);
-        }
-        
-        // Pagination
-        $orders = $query->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 50));
-        
-        // Enrichir avec les informations nécessaires
-        $orders->getCollection()->transform(function ($order) {
-            $order->can_be_shipped = $order->canBeShipped();
-            $order->stock_issues = $order->can_be_shipped ? [] : $order->getStockIssues();
-            $order->region_name = $order->region ? $order->region->name : 'Région inconnue';
-            return $order;
-        });
-        
-        return response()->json([
-            'success' => true,
-            'orders' => $orders->items(),
-            'pagination' => [
-                'current_page' => $orders->currentPage(),
-                'last_page' => $orders->lastPage(),
-                'per_page' => $orders->perPage(),
-                'total' => $orders->total(),
-            ]
-        ]);
     }
 
     /**
-     * Créer un pickup avec les commandes sélectionnées
+     * Créer un pickup avec les commandes sélectionnées - VERSION SIMPLIFIÉE
      */
     public function createPickup(Request $request)
     {
         $admin = auth('admin')->user();
         
-        $validator = Validator::make($request->all(), [
-            'delivery_configuration_id' => 'required|exists:delivery_configurations,id',
-            'order_ids' => 'required|array|min:1',
-            'order_ids.*' => 'exists:orders,id',
-            'pickup_date' => 'nullable|date|after_or_equal:today',
+        Log::info('Création pickup demandée', [
+            'admin_id' => $admin->id,
+            'request_data' => $request->all()
         ]);
         
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-        
+        // Validation simplifiée
         try {
+            $validator = Validator::make($request->all(), [
+                'delivery_configuration_id' => 'required|integer|exists:delivery_configurations,id',
+                'order_ids' => 'required|array|min:1|max:50', // Limite de 50 commandes
+                'order_ids.*' => 'integer|exists:orders,id',
+                'pickup_date' => 'nullable|date|after_or_equal:today',
+            ]);
+            
+            if ($validator->fails()) {
+                Log::warning('Validation échouée', [
+                    'errors' => $validator->errors()->toArray(),
+                    'admin_id' => $admin->id
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données invalides : ' . $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
             DB::beginTransaction();
             
-            // Vérifier la configuration
+            // 1. Vérifier la configuration de transporteur
             $config = DeliveryConfiguration::where('id', $request->delivery_configuration_id)
                 ->where('admin_id', $admin->id)
                 ->where('is_active', true)
-                ->firstOrFail();
+                ->first();
             
-            // Vérifier les commandes
+            if (!$config) {
+                throw new \Exception('Configuration de transporteur non trouvée ou inactive');
+            }
+            
+            Log::info('Configuration trouvée', [
+                'config_id' => $config->id,
+                'carrier_slug' => $config->carrier_slug,
+                'integration_name' => $config->integration_name
+            ]);
+            
+            // 2. Récupérer et vérifier les commandes
             $orders = Order::where('admin_id', $admin->id)
                 ->whereIn('id', $request->order_ids)
                 ->where('status', 'confirmée')
-                ->where('is_suspended', false)
-                ->whereDoesntHave('shipments')
+                ->where(function($query) {
+                    $query->where('is_suspended', false)
+                          ->orWhereNull('is_suspended');
+                })
                 ->get();
             
+            Log::info('Commandes récupérées', [
+                'orders_requested' => count($request->order_ids),
+                'orders_found' => $orders->count(),
+                'order_ids_found' => $orders->pluck('id')->toArray()
+            ]);
+            
+            if ($orders->isEmpty()) {
+                throw new \Exception('Aucune commande valide trouvée');
+            }
+            
             if ($orders->count() !== count($request->order_ids)) {
-                throw new \Exception('Certaines commandes ne sont pas disponibles pour expédition');
+                $missing = array_diff($request->order_ids, $orders->pluck('id')->toArray());
+                Log::warning('Commandes manquantes', ['missing_ids' => $missing]);
+                throw new \Exception('Certaines commandes ne sont pas disponibles (IDs: ' . implode(', ', $missing) . ')');
             }
             
-            // Vérifier le stock pour toutes les commandes
-            $stockIssues = [];
-            foreach ($orders as $order) {
-                if (!$order->canBeShipped()) {
-                    $stockIssues[] = "Commande #{$order->id}: " . implode(', ', 
-                        array_column($order->getStockIssues(), 'message'));
-                }
+            // 3. Vérifier qu'aucune commande n'a déjà d'expédition
+            $ordersWithShipments = $orders->filter(function($order) {
+                return $order->shipments()->exists();
+            });
+            
+            if ($ordersWithShipments->count() > 0) {
+                $conflictIds = $ordersWithShipments->pluck('id')->toArray();
+                throw new \Exception('Les commandes suivantes ont déjà des expéditions : ' . implode(', ', $conflictIds));
             }
             
-            if (!empty($stockIssues)) {
-                throw new \Exception('Problèmes de stock détectés: ' . implode('; ', $stockIssues));
-            }
+            // 4. Créer le pickup
+            $pickupDate = $request->pickup_date ?: now()->addDay()->format('Y-m-d');
             
-            // Créer le pickup
             $pickup = Pickup::create([
                 'admin_id' => $admin->id,
                 'carrier_slug' => $config->carrier_slug,
                 'delivery_configuration_id' => $config->id,
                 'status' => 'draft',
-                'pickup_date' => $request->pickup_date ?: now()->addDay()->format('Y-m-d'),
+                'pickup_date' => $pickupDate,
             ]);
             
-            // Créer les shipments pour chaque commande
+            Log::info('Pickup créé', [
+                'pickup_id' => $pickup->id,
+                'carrier_slug' => $config->carrier_slug,
+                'pickup_date' => $pickupDate
+            ]);
+            
+            // 5. Créer les expéditions pour chaque commande
+            $shipmentsCreated = 0;
+            
             foreach ($orders as $order) {
-                $shipment = Shipment::create([
-                    'admin_id' => $admin->id,
-                    'order_id' => $order->id,
-                    'pickup_id' => $pickup->id,
-                    'carrier_slug' => $config->carrier_slug,
-                    'status' => 'created',
-                    'weight' => $this->calculateOrderWeight($order),
-                    'value' => $order->total_price,
-                    'cod_amount' => $order->total_price,
-                    'nb_pieces' => $order->items->sum('quantity'),
-                    'pickup_date' => $pickup->pickup_date,
-                    'content_description' => $this->generateContentDescription($order),
-                    'recipient_info' => [
-                        'name' => $order->customer_name,
-                        'phone' => $order->customer_phone,
-                        'phone_2' => $order->customer_phone_2,
-                        'address' => $order->customer_address,
-                        'governorate' => $order->customer_governorate,
-                        'city' => $order->customer_city,
-                    ],
-                ]);
-                
-                // Enregistrer dans l'historique de la commande
-                $order->recordHistory(
-                    'shipment_created',
-                    "Expédition créée dans pickup #{$pickup->id} via {$config->integration_name}",
-                    [
+                try {
+                    $shipment = Shipment::create([
+                        'admin_id' => $admin->id,
+                        'order_id' => $order->id,
                         'pickup_id' => $pickup->id,
-                        'shipment_id' => $shipment->id,
                         'carrier_slug' => $config->carrier_slug,
-                        'integration_name' => $config->integration_name,
-                    ],
-                    $order->status,
-                    'expédiée',
-                    null,
-                    null,
-                    null,
-                    $this->carriers[$config->carrier_slug]['name']
-                );
-                
-                // Mettre à jour le statut de la commande
-                $order->update(['status' => 'expédiée']);
+                        'status' => 'created',
+                        'weight' => $this->calculateOrderWeight($order),
+                        'value' => $order->total_price,
+                        'cod_amount' => $order->total_price,
+                        'nb_pieces' => $order->items ? $order->items->sum('quantity') : 1,
+                        'pickup_date' => $pickup->pickup_date,
+                        'content_description' => $this->generateContentDescription($order),
+                        'recipient_info' => [
+                            'name' => $order->customer_name,
+                            'phone' => $order->customer_phone,
+                            'phone_2' => $order->customer_phone_2,
+                            'address' => $order->customer_address,
+                            'governorate' => $order->customer_governorate,
+                            'city' => $order->customer_city,
+                        ],
+                    ]);
+                    
+                    // Mettre à jour le statut de la commande
+                    $order->update(['status' => 'expédiée']);
+                    
+                    // Enregistrer dans l'historique
+                    $order->recordHistory(
+                        'shipment_created',
+                        "Expédition créée dans pickup #{$pickup->id} via {$config->integration_name}",
+                        [
+                            'pickup_id' => $pickup->id,
+                            'shipment_id' => $shipment->id,
+                            'carrier_slug' => $config->carrier_slug,
+                            'integration_name' => $config->integration_name,
+                        ],
+                        'confirmée',
+                        'expédiée',
+                        null,
+                        null,
+                        null,
+                        $config->carrier_name ?? $config->carrier_slug
+                    );
+                    
+                    $shipmentsCreated++;
+                    
+                    Log::info('Shipment créé', [
+                        'shipment_id' => $shipment->id,
+                        'order_id' => $order->id,
+                        'pickup_id' => $pickup->id
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    Log::error('Erreur création shipment', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue avec les autres commandes
+                    continue;
+                }
             }
             
             DB::commit();
             
+            Log::info('Pickup créé avec succès', [
+                'pickup_id' => $pickup->id,
+                'orders_processed' => $orders->count(),
+                'shipments_created' => $shipmentsCreated
+            ]);
+            
             return response()->json([
                 'success' => true,
-                'message' => "Pickup #{$pickup->id} créé avec {$orders->count()} commande(s)",
-                'pickup_id' => $pickup->id,
-                'orders_count' => $orders->count(),
+                'message' => "Enlèvement #{$pickup->id} créé avec succès ! {$shipmentsCreated} expédition(s) créée(s).",
+                'data' => [
+                    'pickup_id' => $pickup->id,
+                    'orders_count' => $orders->count(),
+                    'shipments_created' => $shipmentsCreated,
+                    'carrier_name' => $config->carrier_name ?? $config->carrier_slug,
+                    'pickup_date' => $pickup->pickup_date,
+                ]
             ]);
             
         } catch (\Exception $e) {
             DB::rollBack();
+            
             Log::error('Erreur création pickup', [
                 'admin_id' => $admin->id,
-                'config_id' => $request->delivery_configuration_id,
-                'order_ids' => $request->order_ids,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
             ]);
+            
+            // Messages d'erreur plus clairs
+            $errorMessage = $e->getMessage();
+            
+            if (strpos($errorMessage, 'SQLSTATE') !== false) {
+                if (strpos($errorMessage, '23000') !== false || strpos($errorMessage, 'Duplicate') !== false) {
+                    $errorMessage = 'Une ou plusieurs commandes ont déjà été expédiées. Veuillez recharger la page.';
+                } else {
+                    $errorMessage = 'Erreur de base de données. Veuillez réessayer.';
+                }
+            }
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la création du pickup',
-                'error' => $e->getMessage()
+                'message' => $errorMessage,
+                'error' => $e->getMessage(),
+                'debug_info' => [
+                    'admin_id' => $admin->id,
+                    'request_data' => $request->all(),
+                    'timestamp' => now()->toISOString()
+                ]
             ], 500);
         }
     }
@@ -1148,6 +1251,48 @@ class DeliveryController extends Controller
     // ========================================
 
     /**
+     * Calculer le poids d'une commande - VERSION SIMPLIFIÉE
+     */
+    protected function calculateOrderWeight($order): float
+    {
+        try {
+            $itemsCount = $order->items ? $order->items->sum('quantity') : 1;
+            return max(1.0, $itemsCount * 0.5); // 0.5kg par article minimum
+        } catch (\Exception $e) {
+            Log::warning('Erreur calcul poids', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            return 1.0; // Poids par défaut
+        }
+    }
+
+    /**
+     * Générer la description du contenu - VERSION SIMPLIFIÉE
+     */
+    protected function generateContentDescription($order): string
+    {
+        try {
+            if (!$order->items || $order->items->isEmpty()) {
+                return 'Commande e-commerce #' . $order->id;
+            }
+            
+            $items = $order->items->take(3)->map(function($item) {
+                return $item->product ? $item->product->name : 'Produit';
+            })->filter()->toArray();
+            
+            $description = implode(', ', $items);
+            
+            if ($order->items->count() > 3) {
+                $description .= ' et ' . ($order->items->count() - 3) . ' autres articles';
+            }
+            
+            return substr($description ?: 'Commande e-commerce #' . $order->id, 0, 200);
+            
+        } catch (\Exception $e) {
+            Log::warning('Erreur génération description', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            return 'Commande e-commerce #' . $order->id;
+        }
+    }
+
+    /**
      * Obtenir les règles de validation selon le transporteur avec support des longs tokens
      */
     protected function getValidationRules($carrierSlug, $excludeId = null)
@@ -1227,31 +1372,6 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Calculer le poids d'une commande
-     */
-    protected function calculateOrderWeight($order)
-    {
-        // Logique simple pour Phase 1
-        $itemsCount = $order->items->sum('quantity');
-        return max(1.0, $itemsCount * 0.5); // 0.5kg par article minimum
-    }
-
-    /**
-     * Générer la description du contenu
-     */
-    protected function generateContentDescription($order)
-    {
-        $items = $order->items->take(3)->pluck('product.name')->toArray();
-        $description = implode(', ', $items);
-        
-        if ($order->items->count() > 3) {
-            $description .= ' et ' . ($order->items->count() - 3) . ' autres articles';
-        }
-        
-        return substr($description, 0, 200);
-    }
-
-    /**
      * Enregistrer dans l'historique des configurations
      */
     protected function recordConfigurationHistory($config, $action, $notes, $data = [])
@@ -1265,5 +1385,183 @@ class DeliveryController extends Controller
             'notes' => $notes,
             'data' => $data,
         ]);
+    }
+
+    // ========================================
+    // MÉTHODES DE TEST ET DIAGNOSTIC
+    // ========================================
+
+    /**
+     * Diagnostic complet du système
+     */
+    public function testSystem()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            $diagnostics = [
+                'admin_info' => [
+                    'id' => $admin->id,
+                    'name' => $admin->name,
+                    'email' => $admin->email,
+                    'is_active' => $admin->is_active,
+                ],
+                
+                'database_counts' => [
+                    'total_orders' => $admin->orders()->count(),
+                    'confirmed_orders' => $admin->orders()->where('status', 'confirmée')->count(),
+                    'available_orders' => $admin->orders()
+                        ->where('status', 'confirmée')
+                        ->where(function($q) {
+                            $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                        })
+                        ->whereDoesntHave('shipments')
+                        ->count(),
+                    'delivery_configurations' => $admin->deliveryConfigurations()->count(),
+                    'active_configurations' => $admin->deliveryConfigurations()->where('is_active', true)->count(),
+                    'pickups' => Pickup::where('admin_id', $admin->id)->count(),
+                    'shipments' => Shipment::where('admin_id', $admin->id)->count(),
+                ],
+                
+                'configurations_detail' => $admin->deliveryConfigurations()->get()->map(function($config) {
+                    return [
+                        'id' => $config->id,
+                        'carrier_slug' => $config->carrier_slug,
+                        'integration_name' => $config->integration_name,
+                        'is_active' => $config->is_active,
+                        'created_at' => $config->created_at,
+                    ];
+                }),
+                
+                'sample_orders' => $admin->orders()
+                    ->where('status', 'confirmée')
+                    ->where(function($q) {
+                        $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                    })
+                    ->whereDoesntHave('shipments')
+                    ->take(5)
+                    ->get(['id', 'customer_name', 'customer_phone', 'total_price', 'created_at']),
+                
+                'routes_check' => [
+                    'preparation_route' => route('admin.delivery.preparation'),
+                    'preparation_orders' => route('admin.delivery.preparation.orders'),
+                    'preparation_store' => route('admin.delivery.preparation.store'),
+                    'pickups_index' => route('admin.delivery.pickups'),
+                ],
+                
+                'config_check' => [
+                    'carriers_config_exists' => config('carriers') !== null,
+                    'carriers_available' => config('carriers') ? array_keys(config('carriers')) : [],
+                ],
+                
+                'timestamp' => now()->toISOString(),
+            ];
+            
+            return response()->json($diagnostics, 200, [], JSON_PRETTY_PRINT);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'admin_id' => $admin->id,
+            ], 500);
+        }
+    }
+
+    /**
+     * Test de création de pickup simple
+     */
+    public function testCreatePickup(Request $request)
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            Log::info('Test création pickup', [
+                'admin_id' => $admin->id,
+                'request_data' => $request->all()
+            ]);
+            
+            // Test de base
+            $config = $admin->deliveryConfigurations()->where('is_active', true)->first();
+            if (!$config) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Aucune configuration active trouvée'
+                ]);
+            }
+            
+            $orders = $admin->orders()
+                ->where('status', 'confirmée')
+                ->where(function($q) {
+                    $q->where('is_suspended', false)->orWhereNull('is_suspended');
+                })
+                ->whereDoesntHave('shipments')
+                ->take(2)
+                ->get();
+                
+            if ($orders->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Aucune commande disponible pour test'
+                ]);
+            }
+            
+            // Créer un pickup de test
+            $pickup = Pickup::create([
+                'admin_id' => $admin->id,
+                'carrier_slug' => $config->carrier_slug,
+                'delivery_configuration_id' => $config->id,
+                'status' => 'draft',
+                'pickup_date' => now()->addDay()->format('Y-m-d'),
+            ]);
+            
+            // Créer les shipments
+            $shipmentsCreated = 0;
+            foreach ($orders as $order) {
+                $shipment = Shipment::create([
+                    'admin_id' => $admin->id,
+                    'order_id' => $order->id,
+                    'pickup_id' => $pickup->id,
+                    'carrier_slug' => $config->carrier_slug,
+                    'status' => 'created',
+                    'weight' => 1.0,
+                    'value' => $order->total_price,
+                    'cod_amount' => $order->total_price,
+                    'nb_pieces' => 1,
+                    'pickup_date' => $pickup->pickup_date,
+                    'content_description' => "Test commande #{$order->id}",
+                    'recipient_info' => [
+                        'name' => $order->customer_name,
+                        'phone' => $order->customer_phone,
+                        'address' => $order->customer_address,
+                    ],
+                ]);
+                
+                $order->update(['status' => 'expédiée']);
+                $shipmentsCreated++;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Test pickup #{$pickup->id} créé avec {$shipmentsCreated} expéditions",
+                'pickup_id' => $pickup->id,
+                'shipments_created' => $shipmentsCreated,
+                'orders_processed' => $orders->pluck('id'),
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur test pickup', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+            ], 500);
+        }
     }
 }

@@ -172,6 +172,16 @@
         text-decoration: none;
     }
 
+    .btn-modern:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    .btn-modern:disabled:hover {
+        transform: none !important;
+    }
+
     .btn-primary-modern {
         background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-light) 100%);
         color: white;
@@ -207,6 +217,7 @@
         margin-bottom: 0.75rem;
         transition: var(--transition);
         position: relative;
+        will-change: transform;
     }
 
     .order-item:hover {
@@ -214,10 +225,36 @@
         transform: translateY(-1px);
     }
 
+    .order-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 4px;
+        height: 100%;
+        background: transparent;
+        transition: all 0.2s ease;
+        border-radius: 2px 0 0 2px;
+    }
+
     .order-item.selected {
         border-color: var(--success);
         background: rgba(16, 185, 129, 0.05);
         border-width: 2px;
+    }
+
+    .order-item.selected::before {
+        background: var(--success);
+    }
+
+    .order-item:hover::before {
+        background: var(--royal-blue);
+        opacity: 0.5;
+    }
+
+    .order-item.selected:hover::before {
+        background: var(--success);
+        opacity: 1;
     }
 
     .order-header {
@@ -391,9 +428,104 @@
         margin: 0 auto;
     }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    .loading-text {
+        animation: pulse 1.5s ease-in-out infinite;
+        margin-top: 0.5rem;
+    }
+
+    /* ===== SÉLECTION ET RÉSUMÉ ===== */
+    .config-info {
+        background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+        border: 1px solid #93c5fd;
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin-top: 0.75rem;
+    }
+
+    .selection-summary {
+        background: linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%);
+        border: 1px solid #bbf7d0;
+        border-radius: 6px;
+        padding: 1rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .selection-summary h6 {
+        color: var(--success);
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .checkbox-modern {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--success);
+    }
+
+    .checkbox-modern:focus {
+        outline: 2px solid var(--royal-blue);
+        outline-offset: 2px;
+    }
+
+    /* ===== BADGES MODERNES ===== */
+    .badge-modern {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .badge-primary {
+        background: var(--royal-blue);
+        color: white;
+    }
+
+    .badge-success {
+        background: var(--success);
+        color: white;
+    }
+
+    .badge-warning {
+        background: var(--warning);
+        color: white;
+    }
+
+    .badge-danger {
+        background: var(--danger);
+        color: white;
+    }
+
+    /* ===== TOAST NOTIFICATIONS ===== */
+    .toast-notification {
+        border-left: 4px solid currentColor;
+        padding: 12px 16px;
+        font-weight: 500;
+        backdrop-filter: blur(10px);
+        transition: transform 0.2s ease;
+        cursor: pointer;
+    }
+
+    .toast-notification:hover {
+        transform: translateX(-5px);
+    }
+
+    /* ===== TABLES RESPONSIVES ===== */
+    .table-responsive-modal {
+        font-size: 0.875rem;
+    }
+
+    .table-responsive-modal td {
+        padding: 8px 12px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .table-responsive-modal td:first-child {
+        font-weight: 600;
+        color: var(--dark);
+        width: 40%;
     }
 
     /* ===== RESPONSIVE MOBILE ===== */
@@ -446,6 +578,23 @@
         .card-body-compact {
             padding: 0.75rem;
         }
+
+        .toast-notification {
+            left: 10px;
+            right: 10px;
+            min-width: auto;
+            max-width: none;
+        }
+        
+        .order-item {
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .selection-summary {
+            padding: 12px;
+            font-size: 0.8rem;
+        }
     }
 
     @media (max-width: 480px) {
@@ -483,64 +632,24 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ===== AMÉLIORATIONS UX ===== */
-    .config-info {
-        background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
-        border: 1px solid #93c5fd;
-        border-radius: 6px;
-        padding: 0.75rem;
-        margin-top: 0.75rem;
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
 
-    .selection-summary {
-        background: linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%);
-        border: 1px solid #bbf7d0;
-        border-radius: 6px;
-        padding: 1rem;
-        text-align: center;
-        margin-bottom: 1rem;
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 
-    .selection-summary h6 {
-        color: var(--success);
-        font-weight: 700;
-        margin-bottom: 0.5rem;
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
     }
 
-    .checkbox-modern {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--success);
-    }
-
-    /* ===== BADGES MODERNES ===== */
-    .badge-modern {
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-    }
-
-    .badge-primary {
-        background: var(--royal-blue);
-        color: white;
-    }
-
-    .badge-success {
-        background: var(--success);
-        color: white;
-    }
-
-    .badge-warning {
-        background: var(--warning);
-        color: white;
-    }
-
-    .badge-danger {
-        background: var(--danger);
-        color: white;
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
     }
 </style>
 
@@ -551,7 +660,7 @@
             <i class="fas fa-shipping-fast"></i>
             Préparation des Livraisons
         </h1>
-        <p class="page-subtitle">Créer des enlèvements groupés pour vos commandes</p>
+        <p class="page-subtitle">Créer des enlèvements groupés pour vos commandes confirmées</p>
         <div class="header-actions">
             <a href="{{ route('admin.delivery.index') }}" class="btn-header">
                 <i class="fas fa-arrow-left"></i>
@@ -565,15 +674,19 @@
                 <i class="fas fa-warehouse"></i>
                 Enlèvements
             </a>
+            <a href="{{ route('admin.delivery.test-system') }}" class="btn-header" target="_blank">
+                <i class="fas fa-bug"></i>
+                Diagnostic
+            </a>
         </div>
     </div>
 
-    @if(isset($warningMessage) || $activeConfigurations->isEmpty())
+    @if($activeConfigurations->isEmpty())
         <!-- État : Aucune configuration -->
         <div class="empty-state fade-in">
             <i class="fas fa-exclamation-triangle text-warning"></i>
             <h4>Aucune Configuration Active</h4>
-            <p>{{ $warningMessage ?? 'Vous devez configurer et activer au moins un transporteur avant de pouvoir préparer des livraisons.' }}</p>
+            <p>Vous devez configurer et activer au moins un transporteur avant de pouvoir préparer des livraisons.</p>
             
             <div class="alert-warning-compact">
                 <i class="fas fa-info-circle"></i>
@@ -613,7 +726,7 @@
                 <a href="{{ route('admin.delivery.configuration.create') }}?carrier=mes_colis" 
                    class="btn-modern btn-success-modern">
                     <i class="fas fa-shipping-fast"></i>
-                    Mes Colis
+                    Mes Colis Express
                 </a>
             </div>
         </div>
@@ -634,7 +747,7 @@
                                 Transporteur <span class="text-danger">*</span>
                             </label>
                             <select class="form-select-compact" id="delivery_configuration_id" required>
-                                <option value="">Sélectionner...</option>
+                                <option value="">Sélectionner un transporteur...</option>
                                 @foreach($activeConfigurations as $config)
                                     <option value="{{ $config->id }}" 
                                             data-carrier="{{ $config->carrier_slug }}"
@@ -656,7 +769,7 @@
 
                         <div id="configInfo" class="config-info d-none">
                             <small>
-                                <strong>Configuration :</strong><br>
+                                <strong>Configuration sélectionnée :</strong><br>
                                 <span id="configDetails"></span>
                             </small>
                         </div>
@@ -685,7 +798,7 @@
                                 </button>
                                 <button class="btn-modern btn-outline-modern" onclick="clearSelection()">
                                     <i class="fas fa-times"></i>
-                                    Annuler
+                                    Annuler la sélection
                                 </button>
                             </div>
                         </div>
@@ -701,19 +814,22 @@
                         Commandes Disponibles
                     </div>
                     <div class="card-body-compact">
-                        <!-- Filtres et sélection multiple -->
+                        <!-- Filtres et recherche -->
                         <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; margin-bottom: 1rem;">
                             <input type="text" 
                                    class="form-control-compact" 
                                    id="searchOrders" 
-                                   placeholder="Rechercher...">
+                                   placeholder="Rechercher par nom, téléphone ou ID...">
                             <select class="form-select-compact" id="governorateFilter" style="min-width: 150px;">
                                 <option value="">Tous gouvernorats</option>
+                                @for($i = 1; $i <= 24; $i++)
+                                    <option value="{{ $i }}">{{ ['Tunis', 'Ariana', 'Ben Arous', 'Manouba', 'Nabeul', 'Zaghouan', 'Bizerte', 'Béja', 'Jendouba', 'Le Kef', 'Siliana', 'Kairouan', 'Kasserine', 'Sidi Bouzid', 'Sousse', 'Monastir', 'Mahdia', 'Sfax', 'Gafsa', 'Tozeur', 'Kebili', 'Gabès', 'Medenine', 'Tataouine'][$i-1] ?? "Gouvernorat $i" }}</option>
+                                @endfor
                             </select>
                         </div>
 
                         <!-- Actions de sélection multiple -->
-                        <div id="bulkActions" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                        <div id="bulkActions" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <input type="checkbox" class="checkbox-modern" id="selectAll" onchange="toggleSelectAll()">
                                 <label for="selectAll" class="small" style="margin: 0;">Tout sélectionner</label>
@@ -732,7 +848,7 @@
                         <div id="ordersContainer">
                             <div class="empty-state">
                                 <i class="fas fa-arrow-up"></i>
-                                <p class="small">Sélectionnez une configuration</p>
+                                <p class="small">Sélectionnez une configuration pour voir les commandes</p>
                             </div>
                         </div>
 
@@ -754,18 +870,23 @@
             <div class="modal-header-modern">
                 <h5 class="modal-title">
                     <i class="fas fa-truck-pickup me-2"></i>
-                    Confirmer l'Enlèvement
+                    Confirmer la Création d'Enlèvement
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body-modern">
-                <div id="pickupConfirmation"></div>
+                <div id="pickupConfirmation">
+                    <!-- Le contenu sera généré dynamiquement -->
+                </div>
             </div>
             <div class="modal-footer-modern">
-                <button type="button" class="btn-modern btn-outline-modern" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn-modern btn-outline-modern" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                    Annuler
+                </button>
                 <button type="button" class="btn-modern btn-success-modern" onclick="confirmCreatePickup()" id="confirmBtn">
                     <i class="fas fa-check"></i>
-                    Confirmer
+                    Confirmer la Création
                 </button>
             </div>
         </div>
@@ -777,37 +898,65 @@
 let selectedOrders = [];
 let currentPage = 1;
 let ordersData = [];
+let isCreatingPickup = false; // Protection contre double soumission
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Preparation page initialized');
     initializeEventListeners();
+    checkInitialState();
+    
+    // Vérifier la présence du token CSRF
+    if (!document.querySelector('meta[name="csrf-token"]')) {
+        console.error('❌ Token CSRF manquant !');
+        showToast('danger', 'Token de sécurité manquant. Veuillez recharger la page.', 10000);
+    }
 });
 
 function initializeEventListeners() {
     // Configuration change
-    document.getElementById('delivery_configuration_id')?.addEventListener('change', function() {
-        const configId = this.value;
-        if (configId) {
-            showConfigInfo(this.options[this.selectedIndex]);
-            loadOrders();
-        } else {
-            hideConfigInfo();
-            clearOrders();
-        }
-    });
+    const configSelect = document.getElementById('delivery_configuration_id');
+    if (configSelect) {
+        configSelect.addEventListener('change', function() {
+            const configId = this.value;
+            if (configId) {
+                showConfigInfo(this.options[this.selectedIndex]);
+                loadOrders();
+            } else {
+                hideConfigInfo();
+                clearOrders();
+            }
+        });
+    }
 
-    // Search input
-    document.getElementById('searchOrders')?.addEventListener('input', debounce(function() {
-        if (this.value.length >= 2 || this.value.length === 0) {
-            loadOrders();
-        }
-    }, 300));
+    // Search input avec debounce
+    const searchInput = document.getElementById('searchOrders');
+    if (searchInput) {
+        searchInput.addEventListener('input', debounce(function() {
+            if (this.value.length >= 2 || this.value.length === 0) {
+                currentPage = 1; // Reset page on search
+                loadOrders();
+            }
+        }, 500));
+    }
 
     // Governorate filter
-    document.getElementById('governorateFilter')?.addEventListener('change', function() {
+    const govFilter = document.getElementById('governorateFilter');
+    if (govFilter) {
+        govFilter.addEventListener('change', function() {
+            currentPage = 1; // Reset page on filter
+            loadOrders();
+        });
+    }
+}
+
+function checkInitialState() {
+    // Vérifier si une configuration est déjà sélectionnée
+    const configSelect = document.getElementById('delivery_configuration_id');
+    if (configSelect && configSelect.value) {
+        showConfigInfo(configSelect.options[configSelect.selectedIndex]);
         loadOrders();
-    });
+    }
 }
 
 // ===== UTILITAIRES =====
@@ -816,35 +965,50 @@ function debounce(func, wait) {
     return function executedFunction(...args) {
         const later = () => {
             clearTimeout(timeout);
-            func(...args);
+            func.apply(this, args);
         };
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
 }
 
-function showToast(type, message) {
+function showToast(type, message, duration = 5000) {
+    // Supprimer les toasts existants
+    document.querySelectorAll('.toast-notification').forEach(toast => toast.remove());
+    
     const toast = document.createElement('div');
-    toast.className = `alert-${type}-compact`;
+    toast.className = `alert-${type}-compact toast-notification`;
     toast.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
         z-index: 10000;
         min-width: 300px;
+        max-width: 500px;
         animation: slideInRight 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     `;
+    
+    const icon = type === 'success' ? 'check-circle' : 
+                 type === 'danger' ? 'exclamation-triangle' : 
+                 type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+    
     toast.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
-        ${message}
+        <i class="fas fa-${icon}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" style="float: right; background: none; border: none; color: inherit; font-size: 18px; cursor: pointer; margin-left: 10px;">&times;</button>
     `;
     
     document.body.appendChild(toast);
     
-    setTimeout(() => {
-        toast.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    if (duration > 0) {
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, duration);
+    }
 }
 
 // ===== GESTION CONFIG =====
@@ -852,9 +1016,9 @@ function showConfigInfo(option) {
     const configInfo = document.getElementById('configInfo');
     const configDetails = document.getElementById('configDetails');
     
-    if (configInfo && configDetails) {
+    if (configInfo && configDetails && option) {
         configDetails.innerHTML = `
-            ${option.getAttribute('data-name')}<br>
+            <strong>${option.getAttribute('data-name') || option.text}</strong><br>
             <small class="text-muted">Transporteur: ${option.text.split(' - ')[0]}</small>
         `;
         configInfo.classList.remove('d-none');
@@ -875,7 +1039,7 @@ function clearOrders() {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-arrow-up"></i>
-                <p class="small">Sélectionnez une configuration</p>
+                <p class="small">Sélectionnez une configuration pour voir les commandes</p>
             </div>
         `;
     }
@@ -891,10 +1055,11 @@ async function loadOrders() {
     const container = document.getElementById('ordersContainer');
     if (!container) return;
 
+    // Loading state
     container.innerHTML = `
         <div class="empty-state">
             <div class="loading-spinner"></div>
-            <p class="small mt-2">Chargement...</p>
+            <p class="small mt-2 loading-text">Chargement des commandes...</p>
         </div>
     `;
 
@@ -906,34 +1071,60 @@ async function loadOrders() {
             governorate: document.getElementById('governorateFilter')?.value || ''
         });
 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            throw new Error('Token CSRF manquant. Veuillez recharger la page.');
+        }
+
+        console.log('📡 Chargement commandes...', {
+            configId,
+            page: currentPage,
+            search: document.getElementById('searchOrders')?.value,
+            governorate: document.getElementById('governorateFilter')?.value
+        });
+
         const response = await fetch(`{{ route('admin.delivery.preparation.orders') }}?${params}`, {
+            method: 'GET',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             }
         });
 
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Erreur HTTP:', response.status, errorText);
+            throw new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
+        console.log('📝 Données reçues:', data);
 
         if (data.success) {
-            ordersData = data.orders;
-            displayOrders(data.orders);
+            ordersData = data.orders || [];
+            displayOrders(ordersData);
             updatePagination(data.pagination);
+            
+            console.log(`✅ ${ordersData.length} commandes chargées`);
         } else {
-            throw new Error(data.message || 'Erreur de chargement');
+            throw new Error(data.message || 'Erreur de chargement des commandes');
         }
+        
     } catch (error) {
-        console.error('❌ Loading orders error:', error);
+        console.error('❌ Erreur chargement commandes:', error);
         container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-exclamation-triangle text-danger"></i>
-                <h4>Erreur</h4>
-                <p class="small">${error.message}</p>
+            <div class="empty-state error-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h4>Erreur de Chargement</h4>
+                <p>${error.message}</p>
                 <button class="btn-modern btn-primary-modern" onclick="loadOrders()">
                     <i class="fas fa-redo"></i>
                     Réessayer
                 </button>
             </div>
         `;
+        showToast('danger', 'Erreur lors du chargement des commandes: ' + error.message);
     }
 }
 
@@ -941,12 +1132,16 @@ function displayOrders(orders) {
     const container = document.getElementById('ordersContainer');
     if (!container) return;
     
-    if (orders.length === 0) {
+    if (!orders || orders.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-inbox"></i>
-                <h4>Aucune commande</h4>
-                <p class="small">Toutes les commandes ont déjà été expédiées</p>
+                <h4>Aucune commande disponible</h4>
+                <p class="small">Toutes les commandes confirmées ont déjà été expédiées ou sont suspendues.</p>
+                <div class="alert-info-compact">
+                    <i class="fas fa-info-circle"></i>
+                    Les commandes doivent avoir le statut "confirmée" pour être expédiables.
+                </div>
             </div>
         `;
         return;
@@ -956,6 +1151,8 @@ function displayOrders(orders) {
     
     orders.forEach(order => {
         const isSelected = selectedOrders.includes(order.id);
+        const totalPrice = parseFloat(order.total_price || 0);
+        const itemsCount = order.items ? order.items.length : 0;
         
         html += `
             <div class="order-item ${isSelected ? 'selected' : ''}" data-order-id="${order.id}">
@@ -968,30 +1165,30 @@ function displayOrders(orders) {
                                onchange="toggleOrderSelection(${order.id})">
                         <div>
                             <span class="order-id">#${order.id}</span>
-                            <strong style="margin-left: 0.5rem;">${order.customer_name}</strong>
+                            <strong style="margin-left: 0.5rem;">${order.customer_name || 'Client'}</strong>
                         </div>
                     </div>
                     <div>
-                        <span class="order-amount">${parseFloat(order.total_price).toFixed(2)} TND</span>
+                        <span class="order-amount">${totalPrice.toFixed(2)} TND</span>
                     </div>
                 </div>
                 
                 <div class="order-info">
                     <i class="fas fa-phone" style="width: 14px;"></i>
-                    ${order.customer_phone}${order.customer_phone_2 ? ' / ' + order.customer_phone_2 : ''}
+                    ${order.customer_phone || 'N/A'}${order.customer_phone_2 ? ' / ' + order.customer_phone_2 : ''}
                 </div>
                 
                 <div class="order-info">
                     <i class="fas fa-map-marker-alt" style="width: 14px;"></i>
-                    ${order.customer_address}, ${order.customer_city}
+                    ${order.customer_address || 'Adresse non spécifiée'}, ${order.customer_city || order.region_name || 'Ville inconnue'}
                 </div>
                 
                 <div class="order-details">
                     <span>
                         <i class="fas fa-box"></i>
-                        ${order.items ? order.items.length : 0} produit(s)
+                        ${itemsCount} produit(s)
                     </span>
-                    <span>${new Date(order.created_at).toLocaleDateString('fr-FR')}</span>
+                    <span><i class="fas fa-calendar"></i> ${new Date(order.created_at).toLocaleDateString('fr-FR')}</span>
                 </div>
             </div>
         `;
@@ -1001,60 +1198,7 @@ function displayOrders(orders) {
     updateSelectAllCheckbox();
 }
 
-// ===== PAGINATION =====
-function updatePagination(pagination) {
-    const container = document.getElementById('paginationContainer');
-    const paginationList = document.getElementById('pagination');
-    
-    if (!container || !paginationList) return;
-    
-    if (pagination.last_page <= 1) {
-        container.classList.add('d-none');
-        return;
-    }
-    
-    container.classList.remove('d-none');
-    
-    let html = '';
-    
-    // Bouton précédent
-    html += `
-        <button class="page-btn" 
-                onclick="changePage(${pagination.current_page - 1})" 
-                ${pagination.current_page <= 1 ? 'disabled' : ''}>
-            <i class="fas fa-chevron-left"></i>
-        </button>
-    `;
-    
-    // Pages
-    for (let i = 1; i <= pagination.last_page; i++) {
-        if (i === pagination.current_page) {
-            html += `<button class="page-btn active">${i}</button>`;
-        } else if (Math.abs(i - pagination.current_page) <= 2 || i === 1 || i === pagination.last_page) {
-            html += `<button class="page-btn" onclick="changePage(${i})">${i}</button>`;
-        } else if (Math.abs(i - pagination.current_page) === 3) {
-            html += `<button class="page-btn" disabled>...</button>`;
-        }
-    }
-    
-    // Bouton suivant
-    html += `
-        <button class="page-btn" 
-                onclick="changePage(${pagination.current_page + 1})" 
-                ${pagination.current_page >= pagination.last_page ? 'disabled' : ''}>
-            <i class="fas fa-chevron-right"></i>
-        </button>
-    `;
-    
-    paginationList.innerHTML = html;
-}
-
-function changePage(page) {
-    currentPage = page;
-    loadOrders();
-}
-
-// ===== SÉLECTION COMMANDES AVEC SÉLECTION MULTIPLE =====
+// ===== SÉLECTION COMMANDES =====
 function toggleOrderSelection(orderId) {
     const index = selectedOrders.indexOf(orderId);
     const orderItem = document.querySelector(`[data-order-id="${orderId}"]`);
@@ -1066,8 +1210,11 @@ function toggleOrderSelection(orderId) {
         selectedOrders.push(orderId);
         orderItem?.classList.add('selected');
     }
+    
     updateSelectionSummary();
     updateSelectAllCheckbox();
+    
+    console.log(`📦 Commande ${orderId} ${index > -1 ? 'désélectionnée' : 'sélectionnée'}. Total: ${selectedOrders.length}`);
 }
 
 function toggleSelectAll() {
@@ -1096,7 +1243,9 @@ function toggleSelectAll() {
             }
         });
     }
+    
     updateSelectionSummary();
+    console.log(`📦 Sélection multiple: ${selectedOrders.length} commandes`);
 }
 
 function selectAllVisible() {
@@ -1111,6 +1260,7 @@ function selectAllVisible() {
     });
     updateSelectionSummary();
     updateSelectAllCheckbox();
+    console.log(`📦 Toutes visibles sélectionnées: ${selectedOrders.length} commandes`);
 }
 
 function updateSelectAllCheckbox() {
@@ -1149,11 +1299,11 @@ function updateSelectionSummary() {
         actionsContainer.classList.add('d-none');
     } else {
         const selectedOrdersData = ordersData.filter(order => selectedOrders.includes(order.id));
-        const totalAmount = selectedOrdersData.reduce((sum, order) => sum + parseFloat(order.total_price), 0);
+        const totalAmount = selectedOrdersData.reduce((sum, order) => sum + parseFloat(order.total_price || 0), 0);
         
         summaryContainer.innerHTML = `
             <div class="selection-summary fade-in">
-                <h6>${selectedOrders.length} commande(s)</h6>
+                <h6><i class="fas fa-check-circle"></i> ${selectedOrders.length} commande(s) sélectionnée(s)</h6>
                 <p class="mb-0 small">
                     <strong>Total COD:</strong> ${totalAmount.toFixed(2)} TND
                 </p>
@@ -1168,7 +1318,7 @@ function clearSelection() {
     updateSelectionSummary();
     
     // Décocher toutes les cases
-    document.querySelectorAll('input[type="checkbox"][id^="order_"]').forEach(checkbox => {
+    document.querySelectorAll('.order-checkbox').forEach(checkbox => {
         checkbox.checked = false;
     });
     
@@ -1183,53 +1333,74 @@ function clearSelection() {
     document.querySelectorAll('.order-item').forEach(item => {
         item.classList.remove('selected');
     });
+    
+    console.log('🗑️ Sélection effacée');
+    showToast('info', 'Sélection effacée', 2000);
 }
 
-// ===== CRÉATION PICKUP =====
+// ===== CRÉATION PICKUP SIMPLIFIÉE =====
 function createPickup() {
+    if (isCreatingPickup) {
+        showToast('warning', 'Création en cours, veuillez patienter...');
+        return;
+    }
+    
     if (selectedOrders.length === 0) {
-        showToast('warning', 'Aucune commande sélectionnée');
+        showToast('warning', 'Veuillez sélectionner au moins une commande');
+        return;
+    }
+    
+    if (selectedOrders.length > 50) {
+        showToast('warning', 'Trop de commandes sélectionnées (maximum 50)');
         return;
     }
     
     const configId = document.getElementById('delivery_configuration_id')?.value;
     if (!configId) {
-        showToast('warning', 'Configuration manquante');
+        showToast('warning', 'Veuillez sélectionner une configuration de transporteur');
         return;
     }
     
-    // Préparer le modal
+    // Préparer le modal de confirmation
     const selectedOrdersData = ordersData.filter(order => selectedOrders.includes(order.id));
-    const totalAmount = selectedOrdersData.reduce((sum, order) => sum + parseFloat(order.total_price), 0);
+    const totalAmount = selectedOrdersData.reduce((sum, order) => sum + parseFloat(order.total_price || 0), 0);
     const configOption = document.getElementById('delivery_configuration_id')?.selectedOptions[0];
     const pickupDate = document.getElementById('pickup_date')?.value;
     
     const confirmationContainer = document.getElementById('pickupConfirmation');
     if (confirmationContainer) {
         confirmationContainer.innerHTML = `
-            <div style="margin-bottom: 1rem;">
-                <h6 style="color: var(--royal-blue); margin-bottom: 0.5rem;">Configuration :</h6>
-                <p class="small text-muted">${configOption?.text}</p>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <h6 style="color: var(--royal-blue); margin-bottom: 0.5rem;">Date d'enlèvement :</h6>
-                <p class="small text-muted">${new Date(pickupDate).toLocaleDateString('fr-FR')}</p>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <h6 style="color: var(--royal-blue); margin-bottom: 0.5rem;">Résumé :</h6>
-                <div class="selection-summary">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div><strong>Commandes :</strong> ${selectedOrders.length}</div>
-                        <div><strong>Total COD :</strong> ${totalAmount.toFixed(2)} TND</div>
-                    </div>
-                </div>
-            </div>
-            
             <div class="alert-info-compact">
                 <i class="fas fa-info-circle"></i>
-                L'enlèvement sera créé et les commandes marquées comme expédiées.
+                <strong>Résumé de l'enlèvement à créer :</strong>
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                <table class="table table-sm table-responsive-modal">
+                    <tbody>
+                        <tr>
+                            <td><strong>Transporteur :</strong></td>
+                            <td>${configOption?.text || 'Non spécifié'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Date d'enlèvement :</strong></td>
+                            <td>${new Date(pickupDate).toLocaleDateString('fr-FR')}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Commandes :</strong></td>
+                            <td><strong>${selectedOrders.length}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total COD :</strong></td>
+                            <td><strong style="color: var(--success);">${totalAmount.toFixed(2)} TND</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="alert-warning-compact">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Attention :</strong> Les commandes seront marquées comme <strong>expédiées</strong> et ne pourront plus être modifiées.
             </div>
         `;
     }
@@ -1239,19 +1410,27 @@ function createPickup() {
 }
 
 async function confirmCreatePickup() {
+    if (isCreatingPickup) {
+        console.log('⚠️ Création déjà en cours, abandon');
+        return;
+    }
+    
+    isCreatingPickup = true;
+    
     const confirmBtn = document.getElementById('confirmBtn');
-    if (!confirmBtn) return;
+    const originalText = confirmBtn?.innerHTML;
     
-    const originalText = confirmBtn.innerHTML;
-    
-    confirmBtn.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; margin-right: 0.5rem;"></div>Création...';
-    confirmBtn.disabled = true;
+    if (confirmBtn) {
+        confirmBtn.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; margin-right: 0.5rem;"></div>Création en cours...';
+        confirmBtn.disabled = true;
+    }
     
     try {
         const configId = document.getElementById('delivery_configuration_id')?.value;
         const pickupDate = document.getElementById('pickup_date')?.value;
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
+        // Validation côté client
         if (!configId) {
             throw new Error('Configuration de transporteur manquante');
         }
@@ -1264,25 +1443,19 @@ async function confirmCreatePickup() {
             throw new Error('Aucune commande sélectionnée');
         }
         
-        console.log('🚀 Creating pickup with data:', {
-            delivery_configuration_id: configId,
-            order_ids: selectedOrders,
-            pickup_date: pickupDate
-        });
-        
-        // Vérification avant envoi - recharger les commandes pour éviter les conflits
-        const freshOrdersCheck = await checkOrdersAvailability(selectedOrders);
-        if (!freshOrdersCheck.success) {
-            throw new Error(freshOrdersCheck.message);
+        if (selectedOrders.length > 50) {
+            throw new Error('Trop de commandes sélectionnées (maximum 50)');
         }
         
         const requestData = {
             delivery_configuration_id: parseInt(configId),
-            order_ids: selectedOrders,
-            pickup_date: pickupDate
+            order_ids: [...selectedOrders], // Copie du tableau
+            pickup_date: pickupDate || null
         };
         
-        const response = await fetch('/admin/delivery/preparation', {
+        console.log('🚀 Envoi de la requête de création:', requestData);
+        
+        const response = await fetch('{{ route('admin.delivery.preparation.store') }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1292,150 +1465,210 @@ async function confirmCreatePickup() {
             body: JSON.stringify(requestData)
         });
         
-        console.log('📡 Response status:', response.status);
-        
-        let data;
-        try {
-            data = await response.json();
-            console.log('📝 Response data:', data);
-        } catch (parseError) {
-            console.error('❌ JSON parse error:', parseError);
-            const textResponse = await response.text();
-            console.error('📄 Raw response:', textResponse);
-            throw new Error(`Erreur de format de réponse du serveur (${response.status})`);
-        }
+        console.log('📡 Statut de la réponse:', response.status);
         
         if (!response.ok) {
-            // Gestion spécifique des erreurs de base de données
-            if (response.status === 500 && data.error) {
-                if (data.error.includes('Integrity constraint violation') || 
-                    data.error.includes('SQLSTATE[23000]') ||
-                    data.error.includes('Duplicate entry')) {
-                    
-                    throw new Error('Une ou plusieurs commandes ont déjà été expédiées. Veuillez recharger la page pour voir les commandes disponibles.');
-                } else if (data.error.includes('foreign key constraint')) {
-                    throw new Error('Erreur de référence dans la base de données. Vérifiez que la configuration est toujours active.');
-                } else {
-                    throw new Error(`Erreur de base de données: ${data.message || 'Erreur interne'}`);
+            const errorText = await response.text();
+            console.error('❌ Réponse d\'erreur:', errorText);
+            
+            let errorMessage = `Erreur HTTP ${response.status}`;
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorData.error || errorMessage;
+                
+                // Gestion des erreurs spécifiques
+                if (errorData.errors) {
+                    const validationErrors = Object.values(errorData.errors).flat().join(', ');
+                    errorMessage += ': ' + validationErrors;
                 }
-            } else if (response.status === 404) {
-                throw new Error('Service de création d\'enlèvement non disponible.');
-            } else if (response.status === 422) {
-                const errorMessages = data.errors ? Object.values(data.errors).flat().join(', ') : data.message;
-                throw new Error(`Données invalides: ${errorMessages}`);
-            } else {
-                throw new Error(data.message || data.error || `Erreur HTTP ${response.status}`);
+            } catch (e) {
+                // Si ce n'est pas du JSON, utiliser le texte brut
+                if (errorText.includes('Session expired') || errorText.includes('CSRF') || errorText.includes('419')) {
+                    errorMessage = 'Session expirée. Veuillez recharger la page.';
+                } else if (errorText.includes('500') || errorText.includes('Internal Server Error')) {
+                    errorMessage = 'Erreur serveur. Veuillez réessayer ou contacter le support.';
+                }
             }
+            
+            throw new Error(errorMessage);
         }
         
+        const data = await response.json();
+        console.log('📝 Données de réponse:', data);
+        
         if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('createPickupModal'))?.hide();
+            // Fermer le modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('createPickupModal'));
+            modal?.hide();
             
-            showToast('success', data.message || 'Enlèvement créé avec succès !');
+            // Afficher le succès avec détails
+            const successMessage = data.message || 'Enlèvement créé avec succès !';
+            const details = data.data ? ` (${data.data.shipments_created} expéditions créées)` : '';
+            showToast('success', successMessage + details, 6000);
             
             // Nettoyer la sélection
             selectedOrders = [];
             updateSelectionSummary();
             
-            // Recharger les commandes pour refléter les changements
+            // Recharger les commandes après un délai
             setTimeout(() => {
+                console.log('🔄 Rechargement des commandes...');
                 loadOrders();
-            }, 1000);
+            }, 1500);
             
-            // Redirection après un délai plus long
+            // Redirection vers la page des enlèvements
             setTimeout(() => {
-                window.location.href = '/admin/delivery/pickups';
-            }, 3000);
+                console.log('🔄 Redirection vers les enlèvements...');
+                window.location.href = '{{ route('admin.delivery.pickups') }}';
+            }, 4000);
+            
         } else {
             throw new Error(data.message || data.error || 'Échec de la création de l\'enlèvement');
         }
         
     } catch (error) {
-        console.error('❌ Create pickup error:', error);
+        console.error('❌ Erreur création pickup:', error);
         
         let errorMessage = error.message;
-        let showReloadOption = false;
+        let shouldReload = false;
         
-        // Messages d'erreur personnalisés pour des cas courants
-        if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
-            errorMessage = 'Erreur de connexion. Vérifiez votre connexion internet.';
-        } else if (error.message.includes('CSRF') || error.message.includes('Token')) {
-            errorMessage = 'Session expirée. Veuillez recharger la page.';
-            showReloadOption = true;
-        } else if (error.message.includes('déjà été expédiées') || error.message.includes('Integrity constraint')) {
-            errorMessage = 'Certaines commandes ont déjà été expédiées par un autre utilisateur.';
-            showReloadOption = true;
+        // Messages d'erreur personnalisés
+        if (errorMessage.includes('NetworkError') || errorMessage.includes('fetch')) {
+            errorMessage = 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.';
+        } else if (errorMessage.includes('CSRF') || errorMessage.includes('Session') || errorMessage.includes('419')) {
+            errorMessage = 'Session expirée. La page va se recharger automatiquement.';
+            shouldReload = true;
+        } else if (errorMessage.includes('déjà été expédiées') || errorMessage.includes('Integrity constraint') || errorMessage.includes('23000')) {
+            errorMessage = 'Certaines commandes ont déjà été expédiées par un autre utilisateur. La page va se recharger.';
+            shouldReload = true;
+        } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+            errorMessage = 'Erreur serveur. Veuillez réessayer dans quelques instants ou contacter le support technique.';
         }
         
-        showToast('danger', errorMessage);
+        showToast('danger', errorMessage, shouldReload ? 8000 : 6000);
         
-        // Si c'est une erreur de conflit, proposer de recharger
-        if (showReloadOption) {
-            setTimeout(() => {
-                if (confirm('Voulez-vous recharger la page pour voir les commandes disponibles ?')) {
-                    window.location.reload();
-                }
-            }, 2000);
+        // Recharger si nécessaire
+        if (shouldReload) {
+            setTimeout(() => window.location.reload(), 3000);
         }
         
-        confirmBtn.innerHTML = originalText;
-        confirmBtn.disabled = false;
+    } finally {
+        isCreatingPickup = false;
+        
+        if (confirmBtn) {
+            confirmBtn.innerHTML = originalText || '<i class="fas fa-check"></i> Confirmer la Création';
+            confirmBtn.disabled = false;
+        }
     }
 }
 
-// Fonction pour vérifier la disponibilité des commandes avant création
-async function checkOrdersAvailability(orderIds) {
-    try {
-        const response = await fetch('/admin/delivery/preparation/orders', {
-            method: 'GET',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
-                'Accept': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            return { success: false, message: 'Impossible de vérifier les commandes' };
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-            return { success: false, message: 'Erreur lors de la vérification' };
-        }
-        
-        const availableOrderIds = data.orders.map(order => order.id);
-        const unavailableOrders = orderIds.filter(id => !availableOrderIds.includes(id));
-        
-        if (unavailableOrders.length > 0) {
-            return { 
-                success: false, 
-                message: `Les commandes ${unavailableOrders.join(', ')} ne sont plus disponibles. Elles ont peut-être été expédiées par un autre utilisateur.` 
-            };
-        }
-        
-        return { success: true };
-        
-    } catch (error) {
-        console.warn('⚠️ Could not check orders availability:', error);
-        // On continue même si la vérification échoue
-        return { success: true };
+// ===== PAGINATION =====
+function updatePagination(pagination) {
+    const container = document.getElementById('paginationContainer');
+    const paginationList = document.getElementById('pagination');
+    
+    if (!container || !paginationList || !pagination) return;
+    
+    if (pagination.last_page <= 1) {
+        container.classList.add('d-none');
+        return;
     }
+    
+    container.classList.remove('d-none');
+    
+    let html = '';
+    
+    // Bouton précédent
+    html += `
+        <button class="page-btn" 
+                onclick="changePage(${pagination.current_page - 1})" 
+                ${pagination.current_page <= 1 ? 'disabled' : ''}
+                title="Page précédente">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+    `;
+    
+    // Pages
+    const startPage = Math.max(1, pagination.current_page - 2);
+    const endPage = Math.min(pagination.last_page, pagination.current_page + 2);
+    
+    if (startPage > 1) {
+        html += `<button class="page-btn" onclick="changePage(1)" title="Première page">1</button>`;
+        if (startPage > 2) {
+            html += `<button class="page-btn" disabled>...</button>`;
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="page-btn ${i === pagination.current_page ? 'active' : ''}" 
+                         onclick="changePage(${i})" title="Page ${i}">${i}</button>`;
+    }
+    
+    if (endPage < pagination.last_page) {
+        if (endPage < pagination.last_page - 1) {
+            html += `<button class="page-btn" disabled>...</button>`;
+        }
+        html += `<button class="page-btn" onclick="changePage(${pagination.last_page})" title="Dernière page">${pagination.last_page}</button>`;
+    }
+    
+    // Bouton suivant
+    html += `
+        <button class="page-btn" 
+                onclick="changePage(${pagination.current_page + 1})" 
+                ${pagination.current_page >= pagination.last_page ? 'disabled' : ''}
+                title="Page suivante">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    `;
+    
+    paginationList.innerHTML = html;
 }
 
-// ===== ANIMATIONS CSS =====
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOutRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
+function changePage(page) {
+    if (page < 1) return;
+    currentPage = page;
+    console.log(`📄 Changement vers page ${page}`);
+    loadOrders();
+}
 
-console.log('✅ Preparation scripts loaded');
+// ===== DEBUG ET DIAGNOSTICS =====
+window.deliveryDebug = {
+    selectedOrders,
+    ordersData,
+    currentPage,
+    isCreatingPickup,
+    
+    // Fonction pour tester la connexion
+    testConnection: async function() {
+        try {
+            const response = await fetch('{{ route('admin.delivery.test-system') }}');
+            const data = await response.json();
+            console.log('🔍 Diagnostic système:', data);
+            return data;
+        } catch (error) {
+            console.error('❌ Erreur diagnostic:', error);
+            return { error: error.message };
+        }
+    },
+    
+    // Fonction pour forcer le rechargement
+    forceReload: function() {
+        loadOrders();
+    },
+    
+    // Fonction pour nettoyer l'état
+    reset: function() {
+        selectedOrders = [];
+        currentPage = 1;
+        ordersData = [];
+        isCreatingPickup = false;
+        updateSelectionSummary();
+        clearOrders();
+        console.log('🔄 État remis à zéro');
+    }
+};
+
+console.log('✅ Scripts de préparation chargés et simplifiés');
+console.log('🔧 Mode debug disponible via window.deliveryDebug');
 </script>
 @endsection
