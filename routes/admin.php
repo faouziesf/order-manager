@@ -15,10 +15,8 @@ use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\SuspendedController;
 use App\Http\Controllers\Admin\WooCommerceController;
 use App\Http\Controllers\Admin\DeliveryController;
-use App\Http\Controllers\Admin\PickupController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\PickupAddressController;  
-use App\Http\Controllers\Admin\BLTemplateController;
+use Illuminate\Support\Facades\Schema;
 
 // ========================================
 // ROUTES ADMIN
@@ -248,22 +246,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION COMPLÈTE ET ÉTENDUE
+        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION COMPLÈTE ET CORRIGÉE
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
             
             // ================================
-            // 🆕 ROUTES DE TEST ET DIAGNOSTIC - PRIORITÉ 1
+            // 🆕 ROUTES DE TEST ET DIAGNOSTIC - PRIORITÉ 1 (DOIVENT ÊTRE EN PREMIER)
             // ================================
             
-            // Route de diagnostic système complet
+            // Routes de diagnostic système complet
             Route::get('test-system', [DeliveryController::class, 'testSystem'])->name('test-system');
-            
-            // Route de test pour créer un pickup simple
             Route::post('test-create-pickup', [DeliveryController::class, 'testCreatePickup'])->name('test-create-pickup');
-            
-            // Route de validation des données
-            Route::get('validate-data', [DeliveryController::class, 'validateData'])->name('validate-data');
             
             // ================================
             // PAGE PRINCIPALE MULTI-TRANSPORTEURS
@@ -281,8 +274,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('configuration/{config}', [DeliveryController::class, 'deleteConfiguration'])->name('configuration.delete');
             Route::post('configuration/{config}/test', [DeliveryController::class, 'testConnection'])->name('configuration.test');
             Route::post('configuration/{config}/toggle', [DeliveryController::class, 'toggleConfiguration'])->name('configuration.toggle');
-            Route::post('configuration/{config}/duplicate', [DeliveryController::class, 'duplicateConfiguration'])->name('configuration.duplicate');
-            Route::post('configuration/{config}/test-with-order', [DeliveryController::class, 'testConfigurationWithOrder'])->name('configuration.test-with-order');
             
             // ================================
             // PRÉPARATION D'ENLÈVEMENT
@@ -292,19 +283,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('preparation', [DeliveryController::class, 'createPickup'])->name('preparation.store');
             
             // ================================
-            // GESTION DES ENLÈVEMENTS (PICKUPS) - SECTION COMPLÈTE
+            // 🚨 GESTION DES ENLÈVEMENTS (PICKUPS) - ORDRE CRITIQUE DES ROUTES
             // ================================
             
-            // Page principale des pickups
+            // ⚠️ ROUTES API - DOIVENT ABSOLUMENT ÊTRE AVANT LES ROUTES AVEC PARAMÈTRES ⚠️
+            Route::get('pickups/list', [DeliveryController::class, 'getPickupsList'])->name('pickups.list');
+            Route::get('pickups/export', [DeliveryController::class, 'exportPickups'])->name('pickups.export');
+            Route::post('pickups/bulk-validate', [DeliveryController::class, 'bulkValidatePickups'])->name('pickups.bulk-validate');
+            
+            // Page principale des pickups (AVANT les routes avec paramètres)
             Route::get('pickups', [DeliveryController::class, 'pickups'])->name('pickups');
             
-            // API pour la liste des pickups avec filtres et pagination
-            Route::get('pickups/list', [DeliveryController::class, 'getPickupsList'])->name('pickups.list');
-            
-            // Détails d'un pickup spécifique
+            // ROUTES AVEC PARAMÈTRES (DOIVENT ÊTRE APRÈS TOUTES LES ROUTES API)
             Route::get('pickups/{pickup}/details', [DeliveryController::class, 'showPickup'])->name('pickups.show');
-            
-            // Actions sur les pickups individuels
             Route::post('pickups/{pickup}/validate', [DeliveryController::class, 'validatePickup'])->name('pickups.validate');
             Route::post('pickups/{pickup}/mark-picked-up', [DeliveryController::class, 'markPickupAsPickedUp'])->name('pickups.mark-picked-up');
             Route::post('pickups/{pickup}/refresh', [DeliveryController::class, 'refreshPickupStatus'])->name('pickups.refresh');
@@ -314,11 +305,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('pickups/{pickup}/add-orders', [DeliveryController::class, 'addOrdersToPickup'])->name('pickups.add-orders');
             Route::delete('pickups/{pickup}/orders/{order}', [DeliveryController::class, 'removeOrderFromPickup'])->name('pickups.remove-order');
             
-            // Actions en masse sur les pickups
-            Route::post('pickups/bulk-validate', [DeliveryController::class, 'bulkValidatePickups'])->name('pickups.bulk-validate');
-            
-            // Export et impression
-            Route::get('pickups/export', [DeliveryController::class, 'exportPickups'])->name('pickups.export');
+            // Manifeste et impression
             Route::get('pickups/{pickup}/manifest', [DeliveryController::class, 'generatePickupManifest'])->name('pickups.manifest');
             
             // ================================
@@ -355,14 +342,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('api/track-all', [DeliveryController::class, 'trackAllShipments'])->name('api.track-all');
             
             // ================================
-            // RAPPORTS ET ANALYSES
-            // ================================
-            Route::get('reports/performance', [DeliveryController::class, 'performanceReport'])->name('reports.performance');
-            Route::get('reports/delivery-times', [DeliveryController::class, 'deliveryTimesReport'])->name('reports.delivery-times');
-            Route::get('reports/delivery-issues', [DeliveryController::class, 'deliveryIssuesReport'])->name('reports.delivery-issues');
-            Route::get('reports/{type}/pdf', [DeliveryController::class, 'generateReportPdf'])->name('reports.pdf');
-            
-            // ================================
             // WEBHOOKS POUR LES TRANSPORTEURS
             // ================================
             Route::post('webhook/jax-delivery', [DeliveryController::class, 'webhookJaxDelivery'])->name('webhook.jax-delivery');
@@ -378,46 +357,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('delivery-zones/{carrier}', [DeliveryController::class, 'getDeliveryZones'])->name('delivery-zones.get');
             Route::post('delivery-zones/{carrier}', [DeliveryController::class, 'updateDeliveryZones'])->name('delivery-zones.update');
             Route::post('check-coverage', [DeliveryController::class, 'checkDeliveryCoverage'])->name('check-coverage');
-            
-            // ================================
-            // PRÉFÉRENCES ET NOTIFICATIONS
-            // ================================
-            Route::post('preferences/save', [DeliveryController::class, 'saveUserPreferences'])->name('preferences.save');
-            Route::get('preferences', [DeliveryController::class, 'getUserPreferences'])->name('preferences.get');
-            Route::post('notifications/mark-read', [DeliveryController::class, 'markNotificationsAsRead'])->name('notifications.mark-read');
-            Route::get('notifications/unread', [DeliveryController::class, 'getUnreadNotifications'])->name('notifications.unread');
-            
-            // ================================
-            // MAINTENANCE ET DEBUG
-            // ================================
-            Route::post('maintenance/cleanup', [DeliveryController::class, 'cleanupOrphanedData'])->name('maintenance.cleanup');
-            Route::post('maintenance/sync-statuses', [DeliveryController::class, 'syncAllStatusesWithCarriers'])->name('maintenance.sync-statuses');
-            Route::get('debug/config/{config}', [DeliveryController::class, 'debugConfiguration'])->name('debug.config');
-            Route::get('debug/test-all-carriers', [DeliveryController::class, 'testAllCarrierConnections'])->name('debug.test-all-carriers');
-            
-            // ================================
-            // INTÉGRATIONS E-COMMERCE
-            // ================================
-            Route::post('sync/shopify', [DeliveryController::class, 'syncWithShopify'])->name('sync.shopify');
-            Route::post('sync/woocommerce', [DeliveryController::class, 'syncWithWoocommerce'])->name('sync.woocommerce');
-            Route::get('automation/rules', [DeliveryController::class, 'getAutomationRules'])->name('automation.rules');
-            Route::post('automation/rules', [DeliveryController::class, 'saveAutomationRules'])->name('automation.rules.save');
-            
-            // ================================
-            // ALERTES ET MONITORING
-            // ================================
-            Route::get('alerts/config', [DeliveryController::class, 'getAlertsConfig'])->name('alerts.config');
-            Route::post('alerts/config', [DeliveryController::class, 'saveAlertsConfig'])->name('alerts.config.save');
-            Route::get('alerts/history', [DeliveryController::class, 'getAlertsHistory'])->name('alerts.history');
-            Route::post('alerts/test', [DeliveryController::class, 'testAlerts'])->name('alerts.test');
-            
-            // ================================
-            // SAUVEGARDE ET RESTAURATION
-            // ================================
-            Route::get('backup/configs', [DeliveryController::class, 'backupConfigurations'])->name('backup.configs');
-            Route::post('restore/configs', [DeliveryController::class, 'restoreConfigurations'])->name('restore.configs');
-            Route::get('export/complete', [DeliveryController::class, 'exportCompleteData'])->name('export.complete');
-            Route::post('import/data', [DeliveryController::class, 'importData'])->name('import.data');
         });
 
         // ========================================
@@ -429,10 +368,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'is_authenticated' => auth('admin')->check(),
                 'admin_id' => $admin ? $admin->id : null,
                 'admin_name' => $admin ? $admin->name : null,
+                'admin_email' => $admin ? $admin->email : null,
                 'admin_class' => $admin ? get_class($admin) : null,
                 'admin_instance_check' => $admin instanceof \App\Models\Admin,
                 'csrf_token' => csrf_token(),
+                'session_id' => session()->getId(),
                 'current_time' => now()->toISOString(),
+                'guard' => 'admin',
                 'routes' => [
                     'process_interface' => route('admin.process.interface'),
                     'process_api_standard' => route('admin.process.api.queue', 'standard'),
@@ -443,6 +385,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'delivery_index' => route('admin.delivery.index'),
                     'delivery_configuration' => route('admin.delivery.configuration'),
                     'delivery_preparation' => route('admin.delivery.preparation'),
+                    'delivery_pickups' => route('admin.delivery.pickups'),
+                    'delivery_pickups_list' => route('admin.delivery.pickups.list'),
                     'delivery_api_general_stats' => route('admin.delivery.api.general-stats'),
                     'delivery_test_system' => route('admin.delivery.test-system'),
                 ]
@@ -466,8 +410,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'active_products' => $admin->products()->where('is_active', true)->count(),
                 'delivery_configs' => $admin->deliveryConfigurations()->count(),
                 'active_delivery_configs' => $admin->deliveryConfigurations()->where('is_active', true)->count(),
-                'total_pickups' => $admin->pickups()->count(),
-                'draft_pickups' => $admin->pickups()->where('status', 'draft')->count(),
+                'total_pickups' => \App\Models\Pickup::where('admin_id', $admin->id)->count(),
+                'draft_pickups' => \App\Models\Pickup::where('admin_id', $admin->id)->where('status', 'draft')->count(),
             ];
         })->name('debug-process');
 
@@ -492,6 +436,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'delivery_index_exists' => \Route::has('admin.delivery.index'),
                         'delivery_config_exists' => \Route::has('admin.delivery.configuration'),
                         'test_system_exists' => \Route::has('admin.delivery.test-system'),
+                        'pickups_list_exists' => \Route::has('admin.delivery.pickups.list'),
                     ],
                     'config_carriers' => config('carriers') ? array_keys(config('carriers')) : [],
                     'timestamp' => now()->toISOString(),
@@ -505,6 +450,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'general_stats_route_exists' => \Route::has('admin.delivery.api.general-stats'),
                         'delivery_index_exists' => \Route::has('admin.delivery.index'),
                         'test_system_exists' => \Route::has('admin.delivery.test-system'),
+                        'pickups_list_exists' => \Route::has('admin.delivery.pickups.list'),
                     ]
                 ];
             }
@@ -531,7 +477,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'api_general_stats' => route('admin.delivery.api.general-stats'),
                     'test_system' => route('admin.delivery.test-system'),
                     'test_create_pickup' => route('admin.delivery.test-create-pickup'),
-                    'validate_data' => route('admin.delivery.validate-data'),
                 ],
                 'available_views' => [
                     'admin.delivery.index',
@@ -541,14 +486,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'admin.delivery.preparation',
                     'admin.delivery.pickups',
                     'admin.delivery.shipments',
-                    'admin.delivery.components.carrier-card',
-                    'admin.delivery.components.pickup-status-badge',
-                    'admin.delivery.components.shipment-status-badge',
-                    'admin.delivery.components.tracking-history',
-                    'admin.delivery.modals.test-connection',
-                    'admin.delivery.modals.pickup-details',
-                    'admin.delivery.modals.shipment-details',
-                    'admin.delivery.partials.recent-activity',
                 ],
                 'timestamp' => now()->toISOString()
             ];
@@ -591,7 +528,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             }
         })->name('delivery-quick-test');
 
-        // 🆕 NOUVELLE ROUTE DE TEST COMPLET DU SYSTÈME
+        // 🆕 ROUTE DE TEST COMPLET DU SYSTÈME
         Route::get('full-system-test', function () {
             $admin = auth('admin')->user();
             $results = [];
@@ -666,5 +603,117 @@ Route::prefix('admin')->name('admin.')->group(function () {
             
             return response()->json($results, 200, [], JSON_PRETTY_PRINT);
         })->name('full-system-test');
+
+        // ========================================
+        // ROUTES DE TEST ET CRÉATION DE DONNÉES
+        // ========================================
+
+        // Route de test rapide pour les pickups avec diagnostic complet
+        Route::get('test-pickups-quick', function () {
+            $admin = auth('admin')->user();
+            
+            if (!$admin) {
+                return response()->json(['error' => 'Non authentifié'], 401);
+            }
+            
+            try {
+                // Test basique de la base de données
+                $pickupsCount = \DB::table('pickups')->where('admin_id', $admin->id)->count();
+                $configsCount = \DB::table('delivery_configurations')->where('admin_id', $admin->id)->count();
+                $ordersCount = \DB::table('orders')->where('admin_id', $admin->id)->count();
+                
+                // Test des routes
+                $routes = [
+                    'pickups' => route('admin.delivery.pickups'),
+                    'pickups_list' => route('admin.delivery.pickups.list'),
+                    'preparation' => route('admin.delivery.preparation'),
+                ];
+                
+                return response()->json([
+                    'success' => true,
+                    'admin' => [
+                        'id' => $admin->id,
+                        'name' => $admin->name,
+                    ],
+                    'database' => [
+                        'pickups' => $pickupsCount,
+                        'configs' => $configsCount,
+                        'orders' => $ordersCount,
+                    ],
+                    'routes' => $routes,
+                    'tables_exist' => [
+                        'pickups' => Schema::hasTable('pickups'),
+                        'delivery_configurations' => Schema::hasTable('delivery_configurations'),
+                        'shipments' => Schema::hasTable('shipments'),
+                        'orders' => Schema::hasTable('orders'),
+                    ],
+                    'timestamp' => now()->toISOString(),
+                ]);
+                
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'admin_id' => $admin->id,
+                ], 500);
+            }
+        })->name('test-pickups-quick');
+
+        // Route pour créer des données de test
+        Route::post('create-test-pickup-data', function () {
+            $admin = auth('admin')->user();
+            
+            if (!$admin) {
+                return response()->json(['error' => 'Non authentifié'], 401);
+            }
+            
+            try {
+                \DB::beginTransaction();
+                
+                // Créer une configuration de test si elle n'existe pas
+                $config = \App\Models\DeliveryConfiguration::firstOrCreate([
+                    'admin_id' => $admin->id,
+                    'carrier_slug' => 'jax_delivery',
+                    'integration_name' => 'Configuration Test Automatique'
+                ], [
+                    'username' => 'test_user_' . time(),
+                    'password' => 'test_token_' . time(),
+                    'environment' => 'test',
+                    'is_active' => true,
+                ]);
+                
+                // Créer quelques pickups de test
+                $pickups = [];
+                for ($i = 1; $i <= 3; $i++) {
+                    $pickup = \App\Models\Pickup::create([
+                        'admin_id' => $admin->id,
+                        'carrier_slug' => 'jax_delivery',
+                        'delivery_configuration_id' => $config->id,
+                        'status' => ['draft', 'validated', 'picked_up'][($i - 1) % 3],
+                        'pickup_date' => now()->addDays($i),
+                    ]);
+                    
+                    $pickups[] = $pickup->id;
+                }
+                
+                \DB::commit();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Données de test créées',
+                    'config_id' => $config->id,
+                    'pickup_ids' => $pickups,
+                ]);
+                
+            } catch (\Exception $e) {
+                \DB::rollBack();
+                
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+            
+        })->name('create-test-pickup-data');
     });
 });

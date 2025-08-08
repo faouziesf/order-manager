@@ -13,6 +13,7 @@ use App\Services\Delivery\Contracts\CarrierServiceException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
@@ -20,18 +21,20 @@ class DeliveryController extends Controller
 {
     /**
      * Configuration des transporteurs depuis le fichier config
+     * @var array
      */
     protected $carriers;
     
     /**
      * Factory pour les services de transporteurs
+     * @var ShippingServiceFactory
      */
     protected $shippingFactory;
     
     public function __construct(ShippingServiceFactory $shippingFactory)
     {
         $this->middleware('auth:admin');
-        $this->carriers = config('carriers');
+        $this->carriers = config('carriers', []);
         $this->shippingFactory = $shippingFactory;
     }
 
@@ -40,29 +43,39 @@ class DeliveryController extends Controller
     // ========================================
 
     /**
-     * Interface principale de sélection des transporteurs
+     * Interface principale de sélection des transporteurs - VERSION CORRIGÉE ET ROBUSTIFIÉE
+     *
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function index()
     {
         $admin = auth('admin')->user();
         
-        // Vérifier si le fichier de configuration existe
-        $carriers = config('carriers', []);
-        if (empty($carriers)) {
-            return redirect()->back()->with('error', 'Configuration des transporteurs manquante');
+        Log::info('🏠 [DELIVERY INDEX] Accès page principale', [
+            'admin_id' => $admin->id,
+            'admin_name' => $admin->name
+        ]);
+        
+        // Vérifier si le fichier de configuration des transporteurs existe et n'est pas vide
+        if (empty($this->carriers)) {
+            Log::error('❌ [DELIVERY INDEX] Fichier de configuration des transporteurs (config/carriers.php) manquant ou vide.');
+            return redirect()->back()->with('error', 'Fichier de configuration des transporteurs manquant ou vide.');
         }
         
         try {
-            // Récupérer les configurations existantes par transporteur
+            // Récupérer toutes les configurations de l'admin en une seule fois
             $configurations = DeliveryConfiguration::where('admin_id', $admin->id)
                 ->get()
                 ->groupBy('carrier_slug');
             
-            // Préparer les données des transporteurs avec leurs statuts
             $carriersData = [];
             
+            // Itérer sur la configuration pour garantir que tous les transporteurs sont affichés
             foreach ($this->carriers as $slug => $carrierConfig) {
-                if ($slug === 'system' || $slug === 'history_actions') continue;
+                // Ignorer les clés de configuration système
+                if ($slug === 'system' || $slug === 'history_actions') {
+                    continue;
+                }
                 
                 $carrierConfigurations = $configurations->get($slug, collect());
                 $activeConfigs = $carrierConfigurations->where('is_active', true);
@@ -75,11 +88,11 @@ class DeliveryController extends Controller
                     'is_configured' => $carrierConfigurations->isNotEmpty(),
                     'is_active' => $activeConfigs->isNotEmpty(),
                     'status' => $this->getCarrierStatus($carrierConfigurations),
-                    'stats' => $this->getCarrierStats($admin->id, $slug),
+                    'stats' => $this->getCarrierStats($admin->id, $slug), // Méthode corrigée avec try/catch
                 ];
             }
             
-            // Statistiques générales avec gestion d'erreurs et valeurs par défaut
+            // Statistiques générales
             $generalStats = [
                 'total_configurations' => $configurations->flatten()->count(),
                 'active_configurations' => $configurations->flatten()->where('is_active', true)->count(),
@@ -91,14 +104,40 @@ class DeliveryController extends Controller
                     ->count(),
             ];
 
-        } catch (\Exception $e) {
-            Log::error('Erreur lors du chargement de la page delivery', [
+            Log::info('✅ [DELIVERY INDEX] Données chargées avec succès', [
                 'admin_id' => $admin->id,
-                'error' => $e->getMessage()
+                'carriers_count' => count($carriersData),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('❌ [DELIVERY INDEX] Erreur critique lors du chargement de la page', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            // Valeurs par défaut en cas d'erreur
+            // En cas d'erreur (ex: connexion DB), on prépare des données par défaut
+            // pour éviter que la vue ne plante. C'est la correction la plus importante.
             $carriersData = [];
+            foreach ($this->carriers as $slug => $carrierConfig) {
+                if ($slug === 'system' || $slug === 'history_actions') continue;
+                
+                $carriersData[$slug] = [
+                    'config' => $carrierConfig,
+                    'slug' => $slug,
+                    'configurations' => collect(),
+                    'active_configurations' => collect(),
+                    'is_configured' => false,
+                    'is_active' => false,
+                    'status' => 'non_configuré',
+                    'stats' => [ // Assurer que la structure 'stats' est toujours présente
+                        'configurations' => 0,
+                        'pickups' => 0,
+                        'shipments' => 0,
+                    ],
+                ];
+            }
+            
             $generalStats = [
                 'total_configurations' => 0,
                 'active_configurations' => 0,
@@ -108,8 +147,9 @@ class DeliveryController extends Controller
                 'active_shipments' => 0,
             ];
             
+            // On retourne la vue avec les données par défaut et un message d'erreur
             return view('admin.delivery.index', compact('carriersData', 'generalStats'))
-                ->with('error', 'Erreur lors du chargement des données de livraison');
+                ->with('error', 'Une erreur est survenue lors du chargement des données de livraison.');
         }
 
         return view('admin.delivery.index', compact('carriersData', 'generalStats'));
@@ -141,7 +181,7 @@ class DeliveryController extends Controller
                 'general_stats' => $generalStats
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération statistiques delivery', [
+            Log::error('❌ [DELIVERY STATS] Erreur récupération statistiques', [
                 'admin_id' => $admin->id,
                 'error' => $e->getMessage()
             ]);
@@ -157,7 +197,7 @@ class DeliveryController extends Controller
                     'total_shipments' => 0,
                     'active_shipments' => 0,
                 ]
-            ]);
+            ], 500);
         }
     }
 
@@ -171,6 +211,8 @@ class DeliveryController extends Controller
     public function configuration()
     {
         $admin = auth('admin')->user();
+        
+        Log::info('⚙️ [DELIVERY CONFIG] Accès page configuration', ['admin_id' => $admin->id]);
         
         $configurations = DeliveryConfiguration::where('admin_id', $admin->id)
             ->orderBy('carrier_slug')
@@ -190,8 +232,13 @@ class DeliveryController extends Controller
     {
         $carrierSlug = $request->get('carrier', 'jax_delivery');
         
+        Log::info('📝 [DELIVERY CONFIG] Formulaire création', [
+            'carrier_slug' => $carrierSlug
+        ]);
+        
         // Vérifier que le transporteur existe
         if (!isset($this->carriers[$carrierSlug])) {
+            Log::warning('⚠️ [DELIVERY CONFIG] Transporteur non supporté', ['carrier' => $carrierSlug]);
             return redirect()->route('admin.delivery.configuration')
                 ->with('error', 'Transporteur non supporté');
         }
@@ -209,11 +256,21 @@ class DeliveryController extends Controller
         $admin = auth('admin')->user();
         $carrierSlug = $request->input('carrier_slug');
         
+        Log::info('💾 [DELIVERY CONFIG] Sauvegarde configuration', [
+            'admin_id' => $admin->id,
+            'carrier_slug' => $carrierSlug,
+            'integration_name' => $request->input('integration_name')
+        ]);
+        
         // Validation selon le transporteur avec support des longs tokens
         $rules = $this->getValidationRules($carrierSlug);
         $validator = Validator::make($request->all(), $rules);
         
         if ($validator->fails()) {
+            Log::warning('⚠️ [DELIVERY CONFIG] Validation échouée', [
+                'errors' => $validator->errors()->toArray()
+            ]);
+            
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -245,7 +302,7 @@ class DeliveryController extends Controller
                 
                 // Validation du format JWT pour JAX
                 if (!$this->isValidJwtToken($request->input('password'))) {
-                    Log::warning('Token JAX non-JWT détecté', [
+                    Log::warning('⚠️ [DELIVERY CONFIG] Token JAX non-JWT détecté', [
                         'admin_id' => $admin->id,
                         'token_preview' => substr($request->input('password'), 0, 20) . '...'
                     ]);
@@ -270,7 +327,7 @@ class DeliveryController extends Controller
             
             DB::commit();
             
-            Log::info('Configuration delivery créée', [
+            Log::info('✅ [DELIVERY CONFIG] Configuration créée avec succès', [
                 'config_id' => $config->id,
                 'admin_id' => $admin->id,
                 'carrier_slug' => $carrierSlug,
@@ -296,7 +353,7 @@ class DeliveryController extends Controller
                 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur création configuration delivery', [
+            Log::error('❌ [DELIVERY CONFIG] Erreur création configuration', [
                 'admin_id' => $admin->id,
                 'carrier_slug' => $carrierSlug,
                 'error' => $e->getMessage(),
@@ -315,329 +372,8 @@ class DeliveryController extends Controller
         }
     }
 
-    /**
-     * Formulaire d'édition de configuration
-     */
-    public function editConfiguration(DeliveryConfiguration $config)
-    {
-        // Vérification d'autorisation simplifiée
-        if ($config->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        $carrier = $this->carriers[$config->carrier_slug];
-        $carrierSlug = $config->carrier_slug;
-        
-        return view('admin.delivery.configuration-edit', compact('config', 'carrier', 'carrierSlug'));
-    }
-
-    /**
-     * Mettre à jour une configuration avec support des longs tokens
-     */
-    public function updateConfiguration(Request $request, DeliveryConfiguration $config)
-    {
-        // Vérification d'autorisation simplifiée
-        if ($config->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        // Validation selon le transporteur
-        $rules = $this->getValidationRules($config->carrier_slug, $config->id);
-        $validator = Validator::make($request->all(), $rules);
-        
-        if ($validator->fails()) {
-            if ($request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors(),
-                    'message' => 'Données de validation invalides'
-                ], 422);
-            }
-            return back()->withErrors($validator)->withInput();
-        }
-        
-        try {
-            DB::beginTransaction();
-            
-            $oldData = $config->toArray();
-            
-            $updateData = [
-                'integration_name' => $request->input('integration_name'),
-                'settings' => $request->input('settings', []),
-            ];
-            
-            // Gestion spécifique des credentials selon le transporteur
-            if ($config->carrier_slug === 'jax_delivery') {
-                // JAX Delivery : username = numéro de compte, password = token JWT
-                $updateData['username'] = $request->input('username');
-                if ($request->filled('password')) {
-                    $updateData['password'] = $request->input('password');
-                    
-                    // Validation du format JWT pour JAX
-                    if (!$this->isValidJwtToken($request->input('password'))) {
-                        Log::warning('Token JAX non-JWT détecté lors de la mise à jour', [
-                            'config_id' => $config->id,
-                            'token_preview' => substr($request->input('password'), 0, 20) . '...'
-                        ]);
-                    }
-                }
-                
-            } elseif ($config->carrier_slug === 'mes_colis') {
-                // Mes Colis : username = token API
-                $updateData['username'] = $request->input('username');
-                // password reste null pour Mes Colis
-            }
-            
-            $config->update($updateData);
-            
-            // Si les credentials ont changé, désactiver la config
-            $credentialsChanged = ($oldData['username'] !== $config->username) || 
-                                  ($request->filled('password') && $request->input('password') !== $oldData['password']);
-            
-            if ($credentialsChanged) {
-                $config->update(['is_active' => false]);
-                $message = 'Configuration mise à jour. Testez la connexion pour la réactiver.';
-            } else {
-                $message = 'Configuration mise à jour avec succès.';
-            }
-            
-            // Enregistrer dans l'historique
-            $this->recordConfigurationHistory($config, 'updated', 'Configuration mise à jour', [
-                'changes' => array_diff_assoc($config->fresh()->toArray(), $oldData),
-                'credentials_changed' => $credentialsChanged
-            ]);
-            
-            DB::commit();
-            
-            if ($request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => $message,
-                    'config' => $config->fresh()
-                ]);
-            }
-            
-            return redirect()->route('admin.delivery.configuration')
-                ->with('success', $message);
-                
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur mise à jour configuration delivery', [
-                'config_id' => $config->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            if ($request->wantsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Erreur lors de la mise à jour: ' . $e->getMessage(),
-                ], 500);
-            }
-            
-            return back()->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage())
-                ->withInput();
-        }
-    }
-
-    /**
-     * Supprimer une configuration
-     */
-    public function deleteConfiguration(DeliveryConfiguration $config)
-    {
-        // Vérification d'autorisation simplifiée
-        if ($config->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            DB::beginTransaction();
-            
-            // Vérifier qu'aucun pickup/shipment n'utilise cette config
-            $pickupsCount = Pickup::where('delivery_configuration_id', $config->id)->count();
-            $shipmentsCount = Shipment::where('admin_id', $config->admin_id)
-                ->where('carrier_slug', $config->carrier_slug)
-                ->count();
-            
-            if ($pickupsCount > 0 || $shipmentsCount > 0) {
-                $message = "Impossible de supprimer : {$pickupsCount} pickup(s) et {$shipmentsCount} expédition(s) utilisent cette configuration";
-                
-                if (request()->wantsJson() || request()->ajax()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => $message
-                    ], 400);
-                }
-                
-                return back()->with('error', $message);
-            }
-            
-            // Enregistrer dans l'historique avant suppression
-            $this->recordConfigurationHistory($config, 'deleted', 'Configuration supprimée');
-            
-            $integrationName = $config->integration_name;
-            $config->delete();
-            
-            DB::commit();
-            
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => "Configuration {$integrationName} supprimée avec succès"
-                ]);
-            }
-            
-            return redirect()->route('admin.delivery.configuration')
-                ->with('success', "Configuration {$integrationName} supprimée avec succès");
-                
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur suppression configuration delivery', [
-                'config_id' => $config->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Erreur lors de la suppression: ' . $e->getMessage()
-                ], 500);
-            }
-            
-            return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Tester la connexion d'une configuration avec support des longs tokens
-     */
-    public function testConnection(DeliveryConfiguration $config)
-    {
-        // Vérification d'autorisation simplifiée
-        if ($config->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            Log::info("Test de connexion demandé", [
-                'config_id' => $config->id,
-                'carrier_slug' => $config->carrier_slug,
-                'integration_name' => $config->integration_name,
-                'username_length' => strlen($config->username),
-                'password_length' => $config->password ? strlen($config->password) : 0,
-                'is_jwt_token' => $config->password ? $this->isValidJwtToken($config->password) : false,
-            ]);
-            
-            // Créer le service approprié
-            $service = $this->shippingFactory->createFromConfig($config);
-            
-            // Effectuer le test
-            $result = $service->testConnection($config);
-            
-            Log::info("Résultat test de connexion", [
-                'config_id' => $config->id,
-                'success' => $result['success'],
-                'message' => $result['message'] ?? $result['error'] ?? 'No message'
-            ]);
-            
-            if ($result['success']) {
-                // Activer la configuration si le test réussit
-                $config->markAsTestedSuccessfully();
-                
-                $this->recordConfigurationHistory($config, 'connection_test_success', 
-                    'Test de connexion réussi - Configuration activée', $result);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => $result['message'] ?? 'Connexion réussie ! Configuration activée.',
-                    'details' => $result['details'] ?? null
-                ]);
-            } else {
-                // Désactiver la configuration si le test échoue
-                $config->markAsTestFailed($result['error'] ?? 'Test échoué');
-                
-                $this->recordConfigurationHistory($config, 'connection_test_failed', 
-                    'Test de connexion échoué - Configuration désactivée', $result);
-                
-                return response()->json([
-                    'success' => false,
-                    'error' => $result['error'] ?? 'Test de connexion échoué',
-                    'details' => $result['details'] ?? null
-                ], 400);
-            }
-            
-        } catch (CarrierServiceException $e) {
-            Log::error("Erreur service transporteur lors du test", [
-                'config_id' => $config->id,
-                'error' => $e->getMessage(),
-                'carrier_response' => $e->getCarrierResponse()
-            ]);
-            
-            $config->markAsTestFailed($e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-                'carrier_response' => $e->getCarrierResponse()
-            ], 400);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur test connexion delivery', [
-                'config_id' => $config->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            $config->markAsTestFailed($e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du test de connexion: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Activer/désactiver une configuration
-     */
-    public function toggleConfiguration(DeliveryConfiguration $config)
-    {
-        // Vérification d'autorisation simplifiée
-        if ($config->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            $newStatus = !$config->is_active;
-            $config->update(['is_active' => $newStatus]);
-            
-            $action = $newStatus ? 'activated' : 'deactivated';
-            $message = $newStatus ? 'Configuration activée' : 'Configuration désactivée';
-            
-            $this->recordConfigurationHistory($config, $action, $message);
-            
-            return response()->json([
-                'success' => true,
-                'message' => $message,
-                'is_active' => $newStatus
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur toggle configuration delivery', [
-                'config_id' => $config->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du changement de statut: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
     // ========================================
-    // PRÉPARATION D'ENLÈVEMENT - VERSION CORRIGÉE
+    // PRÉPARATION D'ENLÈVEMENT
     // ========================================
 
     /**
@@ -647,12 +383,15 @@ class DeliveryController extends Controller
     {
         $admin = auth('admin')->user();
         
+        Log::info('📦 [DELIVERY PREP] Accès page préparation', ['admin_id' => $admin->id]);
+        
         // Récupérer les configurations actives
         $activeConfigurations = DeliveryConfiguration::where('admin_id', $admin->id)
             ->where('is_active', true)
             ->get();
         
         if ($activeConfigurations->isEmpty()) {
+            Log::warning('⚠️ [DELIVERY PREP] Aucune configuration active', ['admin_id' => $admin->id]);
             return redirect()->route('admin.delivery.configuration')
                 ->with('warning', 'Aucune configuration de transporteur active. Configurez un transporteur d\'abord.');
         }
@@ -666,6 +405,11 @@ class DeliveryController extends Controller
     public function getAvailableOrders(Request $request)
     {
         $admin = auth('admin')->user();
+        
+        Log::info('📋 [DELIVERY ORDERS] Récupération commandes disponibles', [
+            'admin_id' => $admin->id,
+            'filters' => $request->only(['search', 'governorate'])
+        ]);
         
         try {
             $query = Order::where('admin_id', $admin->id)
@@ -702,6 +446,11 @@ class DeliveryController extends Controller
                 return $order;
             });
             
+            Log::info('✅ [DELIVERY ORDERS] Commandes récupérées', [
+                'count' => $orders->count(),
+                'total' => $orders->total()
+            ]);
+            
             return response()->json([
                 'success' => true,
                 'orders' => $orders->items(),
@@ -714,7 +463,7 @@ class DeliveryController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Erreur récupération commandes', [
+            Log::error('❌ [DELIVERY ORDERS] Erreur récupération commandes', [
                 'admin_id' => $admin->id,
                 'error' => $e->getMessage()
             ]);
@@ -734,9 +483,9 @@ class DeliveryController extends Controller
     {
         $admin = auth('admin')->user();
         
-        Log::info('Création pickup demandée', [
+        Log::info('🆕 [PICKUP CREATE] Début création pickup', [
             'admin_id' => $admin->id,
-            'request_data' => $request->all()
+            'request_data' => $request->only(['delivery_configuration_id', 'order_ids', 'pickup_date'])
         ]);
         
         // Validation simplifiée
@@ -749,7 +498,7 @@ class DeliveryController extends Controller
             ]);
             
             if ($validator->fails()) {
-                Log::warning('Validation échouée', [
+                Log::warning('⚠️ [PICKUP CREATE] Validation échouée', [
                     'errors' => $validator->errors()->toArray(),
                     'admin_id' => $admin->id
                 ]);
@@ -773,7 +522,7 @@ class DeliveryController extends Controller
                 throw new \Exception('Configuration de transporteur non trouvée ou inactive');
             }
             
-            Log::info('Configuration trouvée', [
+            Log::info('✅ [PICKUP CREATE] Configuration trouvée', [
                 'config_id' => $config->id,
                 'carrier_slug' => $config->carrier_slug,
                 'integration_name' => $config->integration_name
@@ -789,7 +538,7 @@ class DeliveryController extends Controller
                 })
                 ->get();
             
-            Log::info('Commandes récupérées', [
+            Log::info('📋 [PICKUP CREATE] Commandes récupérées', [
                 'orders_requested' => count($request->order_ids),
                 'orders_found' => $orders->count(),
                 'order_ids_found' => $orders->pluck('id')->toArray()
@@ -801,7 +550,7 @@ class DeliveryController extends Controller
             
             if ($orders->count() !== count($request->order_ids)) {
                 $missing = array_diff($request->order_ids, $orders->pluck('id')->toArray());
-                Log::warning('Commandes manquantes', ['missing_ids' => $missing]);
+                Log::warning('⚠️ [PICKUP CREATE] Commandes manquantes', ['missing_ids' => $missing]);
                 throw new \Exception('Certaines commandes ne sont pas disponibles (IDs: ' . implode(', ', $missing) . ')');
             }
             
@@ -826,7 +575,7 @@ class DeliveryController extends Controller
                 'pickup_date' => $pickupDate,
             ]);
             
-            Log::info('Pickup créé', [
+            Log::info('📦 [PICKUP CREATE] Pickup créé', [
                 'pickup_id' => $pickup->id,
                 'carrier_slug' => $config->carrier_slug,
                 'pickup_date' => $pickupDate
@@ -882,14 +631,14 @@ class DeliveryController extends Controller
                     
                     $shipmentsCreated++;
                     
-                    Log::info('Shipment créé', [
+                    Log::info('📨 [PICKUP CREATE] Shipment créé', [
                         'shipment_id' => $shipment->id,
                         'order_id' => $order->id,
                         'pickup_id' => $pickup->id
                     ]);
                     
                 } catch (\Exception $e) {
-                    Log::error('Erreur création shipment', [
+                    Log::error('❌ [PICKUP CREATE] Erreur création shipment', [
                         'order_id' => $order->id,
                         'error' => $e->getMessage()
                     ]);
@@ -900,7 +649,7 @@ class DeliveryController extends Controller
             
             DB::commit();
             
-            Log::info('Pickup créé avec succès', [
+            Log::info('🎉 [PICKUP CREATE] Pickup créé avec succès', [
                 'pickup_id' => $pickup->id,
                 'orders_processed' => $orders->count(),
                 'shipments_created' => $shipmentsCreated
@@ -921,7 +670,7 @@ class DeliveryController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('Erreur création pickup', [
+            Log::error('❌ [PICKUP CREATE] Erreur création pickup', [
                 'admin_id' => $admin->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -953,7 +702,7 @@ class DeliveryController extends Controller
     }
 
     // ========================================
-    // GESTION DES PICKUPS ET SHIPMENTS
+    // GESTION DES PICKUPS - SECTION PRINCIPALE
     // ========================================
 
     /**
@@ -963,12 +712,269 @@ class DeliveryController extends Controller
     {
         $admin = auth('admin')->user();
         
-        $pickups = Pickup::where('admin_id', $admin->id)
-            ->with(['deliveryConfiguration', 'shipments.order'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        Log::info('📦 [PICKUPS PAGE] Accès page pickups', ['admin_id' => $admin->id]);
         
-        return view('admin.delivery.pickups', compact('pickups'));
+        return view('admin.delivery.pickups');
+    }
+
+    /**
+     * API CRITIQUE - Liste des pickups avec pagination et filtres
+     */
+    public function getPickupsList(Request $request)
+    {
+        $admin = auth('admin')->user();
+        
+        // Logs détaillés pour debug
+        Log::info('🚀 [PICKUPS API] Début de getPickupsList', [
+            'admin_id' => $admin->id,
+            'admin_name' => $admin->name,
+            'request_params' => $request->all(),
+            'timestamp' => now()->toISOString()
+        ]);
+        
+        try {
+            // Vérification que l'admin est bien authentifié
+            if (!$admin) {
+                Log::error('❌ [PICKUPS API] Admin non authentifié');
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Utilisateur non authentifié'
+                ], 401);
+            }
+            
+            // Vérification de l'existence de la table pickups
+            if (!Schema::hasTable('pickups')) {
+                Log::error('❌ [PICKUPS API] Table pickups inexistante');
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Table pickups non trouvée dans la base de données'
+                ], 500);
+            }
+            
+            // Query de base avec relations
+            $query = Pickup::where('admin_id', $admin->id);
+            
+            // Tentative de chargement des relations avec gestion d'erreur
+            try {
+                $query->with(['deliveryConfiguration', 'shipments.order']);
+                Log::info('✅ [PICKUPS API] Relations ajoutées à la requête');
+            } catch (\Exception $relationError) {
+                Log::warning('⚠️ [PICKUPS API] Erreur chargement relations', [
+                    'error' => $relationError->getMessage()
+                ]);
+                // Continuer sans les relations si problème
+            }
+            
+            // Application des filtres
+            if ($request->filled('search')) {
+                $search = $request->search;
+                Log::info('🔍 [PICKUPS API] Filtre recherche appliqué', ['search' => $search]);
+                
+                $query->where(function($q) use ($search) {
+                    $q->where('id', 'like', "%{$search}%");
+                    
+                    // Recherche dans la configuration seulement si la relation existe
+                    try {
+                        $q->orWhereHas('deliveryConfiguration', function($subQ) use ($search) {
+                            $subQ->where('integration_name', 'like', "%{$search}%");
+                        });
+                    } catch (\Exception $e) {
+                        Log::warning('⚠️ [PICKUPS API] Recherche dans deliveryConfiguration ignorée', ['error' => $e->getMessage()]);
+                    }
+                });
+            }
+            
+            if ($request->filled('status')) {
+                $status = $request->status;
+                Log::info('📊 [PICKUPS API] Filtre statut appliqué', ['status' => $status]);
+                $query->where('status', $status);
+            }
+            
+            if ($request->filled('carrier')) {
+                $carrier = $request->carrier;
+                Log::info('🚛 [PICKUPS API] Filtre transporteur appliqué', ['carrier' => $carrier]);
+                $query->where('carrier_slug', $carrier);
+            }
+            
+            // Test si c'est une requête de test
+            if ($request->filled('test')) {
+                Log::info('🧪 [PICKUPS API] Mode test détecté');
+                $count = $query->count();
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Test API réussi',
+                    'count' => $count,
+                    'admin_id' => $admin->id,
+                    'timestamp' => now()->toISOString()
+                ]);
+            }
+            
+            // Récupération avec limite de sécurité
+            $perPage = min($request->get('per_page', 20), 100); // Max 100 pour éviter les surcharges
+            
+            Log::info('📄 [PICKUPS API] Récupération avec pagination', [
+                'per_page' => $perPage,
+                'order_by' => 'created_at DESC'
+            ]);
+            
+            $pickups = $query->orderBy('created_at', 'desc')
+                            ->paginate($perPage);
+            
+            Log::info('📊 [PICKUPS API] Pickups récupérés', [
+                'total_pickups' => $pickups->total(),
+                'current_page_count' => $pickups->count(),
+                'current_page' => $pickups->currentPage(),
+                'last_page' => $pickups->lastPage()
+            ]);
+            
+            // Transformation des données avec gestion d'erreur pour chaque pickup
+            $pickupsData = $pickups->getCollection()->map(function ($pickup) {
+                try {
+                    // Données de base du pickup (toujours disponibles)
+                    $pickupData = [
+                        'id' => $pickup->id,
+                        'status' => $pickup->status,
+                        'carrier_slug' => $pickup->carrier_slug,
+                        'pickup_date' => $pickup->pickup_date,
+                        'created_at' => $pickup->created_at->toISOString(),
+                        'can_be_validated' => $pickup->can_be_validated ?? false,
+                        'can_be_edited' => $pickup->can_be_edited ?? false,
+                        'can_be_deleted' => $pickup->can_be_deleted ?? false,
+                    ];
+                    
+                    // Configuration (avec fallback si relation échoue)
+                    try {
+                        $pickupData['configuration_name'] = $pickup->deliveryConfiguration->integration_name ?? 'Configuration inconnue';
+                    } catch (\Exception $e) {
+                        $pickupData['configuration_name'] = 'Configuration non disponible';
+                        Log::warning('⚠️ [PICKUPS API] Relation deliveryConfiguration échouée pour pickup ' . $pickup->id);
+                    }
+                    
+                    // Shipments et totaux (avec fallback si relation échoue)
+                    try {
+                        $shipments = $pickup->shipments ?? collect();
+                        $pickupData['orders_count'] = $shipments->count();
+                        $pickupData['total_weight'] = round($shipments->sum('weight') ?: 0, 2);
+                        $pickupData['total_pieces'] = $shipments->sum('nb_pieces') ?: 0;
+                        $pickupData['total_cod_amount'] = round($shipments->sum('cod_amount') ?: 0, 3);
+                        
+                        // Orders (avec gestion d'erreur pour chaque order)
+                        $pickupData['orders'] = $shipments->map(function($shipment) {
+                            try {
+                                $order = $shipment->order ?? null;
+                                return $order ? [
+                                    'id' => $order->id,
+                                    'customer_name' => $order->customer_name ?? 'Client inconnu',
+                                    'customer_phone' => $order->customer_phone ?? '',
+                                    'customer_address' => $order->customer_address ?? '',
+                                    'customer_city' => $order->customer_city ?? '',
+                                    'total_price' => $order->total_price ?? 0,
+                                    'status' => $order->status ?? 'inconnu',
+                                    'region_name' => $order->region->name ?? $order->customer_governorate ?? 'Région inconnue'
+                                ] : null;
+                            } catch (\Exception $e) {
+                                Log::warning('⚠️ [PICKUPS API] Erreur traitement order dans shipment', ['error' => $e->getMessage()]);
+                                return null;
+                            }
+                        })->filter()->values();
+                        
+                    } catch (\Exception $e) {
+                        Log::warning('⚠️ [PICKUPS API] Relation shipments échouée pour pickup ' . $pickup->id, ['error' => $e->getMessage()]);
+                        // Valeurs par défaut si les relations échouent
+                        $pickupData['orders_count'] = 0;
+                        $pickupData['total_weight'] = 0;
+                        $pickupData['total_pieces'] = 0;
+                        $pickupData['total_cod_amount'] = 0;
+                        $pickupData['orders'] = [];
+                    }
+                    
+                    return $pickupData;
+                    
+                } catch (\Exception $e) {
+                    Log::error('❌ [PICKUPS API] Erreur transformation pickup ' . $pickup->id, [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    
+                    // Retourner les données minimales en cas d'erreur
+                    return [
+                        'id' => $pickup->id,
+                        'status' => $pickup->status ?? 'unknown',
+                        'carrier_slug' => $pickup->carrier_slug ?? 'unknown',
+                        'configuration_name' => 'Erreur chargement',
+                        'pickup_date' => $pickup->pickup_date,
+                        'created_at' => $pickup->created_at->toISOString(),
+                        'orders_count' => 0,
+                        'total_weight' => 0,
+                        'total_pieces' => 0,
+                        'total_cod_amount' => 0,
+                        'orders' => [],
+                        'can_be_validated' => false,
+                        'can_be_edited' => false,
+                        'can_be_deleted' => false,
+                        'error' => 'Erreur lors du chargement des données'
+                    ];
+                }
+            });
+            
+            // Construction de la réponse
+            $response = [
+                'success' => true,
+                'pickups' => $pickupsData,
+                'pagination' => [
+                    'current_page' => $pickups->currentPage(),
+                    'last_page' => $pickups->lastPage(),
+                    'per_page' => $pickups->perPage(),
+                    'total' => $pickups->total(),
+                    'from' => $pickups->firstItem(),
+                    'to' => $pickups->lastItem(),
+                ],
+                'debug_info' => [
+                    'admin_id' => $admin->id,
+                    'query_time' => now()->toISOString(),
+                    'filters_applied' => [
+                        'search' => $request->search ?? null,
+                        'status' => $request->status ?? null,
+                        'carrier' => $request->carrier ?? null,
+                    ],
+                    'relations_loaded' => ['deliveryConfiguration', 'shipments.order'],
+                ]
+            ];
+            
+            Log::info('✅ [PICKUPS API] Réponse construite avec succès', [
+                'pickups_returned' => $pickupsData->count(),
+                'response_size_kb' => round(strlen(json_encode($response)) / 1024, 2)
+            ]);
+            
+            return response()->json($response);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [PICKUPS API] Erreur fatale dans getPickupsList', [
+                'admin_id' => $admin->id,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'error_trace' => $e->getTraceAsString(),
+                'request_params' => $request->all()
+            ]);
+            
+            // Réponse d'erreur détaillée pour le debug
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors de la récupération des pickups',
+                'message' => $e->getMessage(),
+                'debug_info' => [
+                    'admin_id' => $admin->id,
+                    'timestamp' => now()->toISOString(),
+                    'request_params' => $request->all(),
+                    'error_details' => config('app.debug') ? [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ] : 'Debug mode désactivé'
+                ]
+            ], 500);
+        }
     }
 
     /**
@@ -978,8 +984,15 @@ class DeliveryController extends Controller
     {
         // Vérification d'autorisation simplifiée
         if ($pickup->admin_id !== auth('admin')->id()) {
+            Log::warning('⚠️ [PICKUP SHOW] Accès non autorisé', [
+                'pickup_id' => $pickup->id,
+                'admin_id' => auth('admin')->id(),
+                'pickup_admin_id' => $pickup->admin_id
+            ]);
             abort(403, 'Accès non autorisé');
         }
+        
+        Log::info('👁️ [PICKUP SHOW] Affichage détails pickup', ['pickup_id' => $pickup->id]);
         
         $pickup->load(['shipments.order', 'deliveryConfiguration']);
         
@@ -999,16 +1012,20 @@ class DeliveryController extends Controller
             abort(403, 'Accès non autorisé');
         }
         
+        Log::info('✅ [PICKUP VALIDATE] Validation pickup', ['pickup_id' => $pickup->id]);
+        
         try {
             // Valider le pickup
             $result = $pickup->validate();
             
             if ($result) {
+                Log::info('🎉 [PICKUP VALIDATE] Pickup validé avec succès', ['pickup_id' => $pickup->id]);
                 return response()->json([
                     'success' => true,
                     'message' => "Pickup #{$pickup->id} validé avec succès"
                 ]);
             } else {
+                Log::error('❌ [PICKUP VALIDATE] Impossible de valider', ['pickup_id' => $pickup->id]);
                 return response()->json([
                     'success' => false,
                     'error' => 'Impossible de valider le pickup'
@@ -1016,7 +1033,7 @@ class DeliveryController extends Controller
             }
             
         } catch (\Exception $e) {
-            Log::error('Erreur validation pickup', [
+            Log::error('❌ [PICKUP VALIDATE] Erreur validation pickup', [
                 'pickup_id' => $pickup->id,
                 'error' => $e->getMessage()
             ]);
@@ -1029,228 +1046,6 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Page de gestion des expéditions
-     */
-    public function shipments()
-    {
-        $admin = auth('admin')->user();
-        
-        $shipments = Shipment::where('admin_id', $admin->id)
-            ->with(['order', 'pickup'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
-        
-        return view('admin.delivery.shipments', compact('shipments'));
-    }
-
-    /**
-     * Afficher les détails d'une expédition
-     */
-    public function showShipment(Shipment $shipment)
-    {
-        // Vérification d'autorisation simplifiée
-        if ($shipment->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        $shipment->load(['order', 'pickup']);
-        
-        return response()->json([
-            'success' => true,
-            'shipment' => $shipment,
-        ]);
-    }
-
-    /**
-     * Suivre le statut d'une expédition
-     */
-    public function trackShipmentStatus(Shipment $shipment)
-    {
-        // Vérification d'autorisation simplifiée
-        if ($shipment->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            if (!$shipment->can_be_tracked) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Cette expédition ne peut pas être suivie'
-                ], 400);
-            }
-            
-            // Créer le service et suivre l'expédition
-            $config = $shipment->pickup->deliveryConfiguration;
-            $service = $this->shippingFactory->createFromConfig($config);
-            
-            $result = $service->trackShipment($shipment->tracking_number, $config);
-            
-            if ($result['success']) {
-                // Mettre à jour le statut si nécessaire
-                if (isset($result['internal_status']) && $result['internal_status'] !== $shipment->status) {
-                    $shipment->updateStatus(
-                        $result['internal_status'],
-                        $result['carrier_status'] ?? null,
-                        $result['carrier_status_label'] ?? null,
-                        'Mise à jour automatique du suivi'
-                    );
-                }
-                
-                return response()->json([
-                    'success' => true,
-                    'tracking_data' => $result,
-                    'shipment' => $shipment->fresh()
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'error' => $result['error'] ?? 'Erreur de suivi'
-                ], 400);
-            }
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur suivi expédition', [
-                'shipment_id' => $shipment->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du suivi: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Marquer une expédition comme livrée
-     */
-    public function markShipmentAsDelivered(Shipment $shipment)
-    {
-        // Vérification d'autorisation simplifiée
-        if ($shipment->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            $shipment->markAsDelivered('Marqué comme livré manuellement');
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Expédition marquée comme livrée',
-                'shipment' => $shipment->fresh()
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur marquage livraison', [
-                'shipment_id' => $shipment->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du marquage: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Page des statistiques
-     */
-    public function stats()
-    {
-        $admin = auth('admin')->user();
-        
-        $stats = [
-            'configurations' => DeliveryConfiguration::getStatusCountsForAdmin($admin->id),
-            'pickups' => Pickup::getStatsForAdmin($admin->id),
-            'shipments' => Shipment::getStatsForAdmin($admin->id),
-            'delivery_stats' => $admin->getDeliveryStats(30),
-        ];
-        
-        return view('admin.delivery.stats', compact('stats'));
-    }
-
-    /**
-     * API des statistiques
-     */
-    public function getApiStats()
-    {
-        $admin = auth('admin')->user();
-        
-        return response()->json([
-            'success' => true,
-            'stats' => [
-                'configurations' => DeliveryConfiguration::getStatusCountsForAdmin($admin->id),
-                'pickups' => Pickup::getStatsForAdmin($admin->id),
-                'shipments' => Shipment::getStatsForAdmin($admin->id),
-                'delivery_stats' => $admin->getDeliveryStats(30),
-            ]
-        ]);
-    }
-
-    /**
-     * Suivre toutes les expéditions actives
-     */
-    public function trackAllShipments()
-    {
-        $admin = auth('admin')->user();
-        
-        try {
-            $shipments = Shipment::getTrackableShipments($admin->id);
-            $results = [];
-            
-            foreach ($shipments as $shipment) {
-                try {
-                    $config = $shipment->pickup->deliveryConfiguration;
-                    $service = $this->shippingFactory->createFromConfig($config);
-                    
-                    $result = $service->trackShipment($shipment->tracking_number, $config);
-                    
-                    if ($result['success'] && isset($result['internal_status'])) {
-                        if ($result['internal_status'] !== $shipment->status) {
-                            $shipment->updateStatus(
-                                $result['internal_status'],
-                                $result['carrier_status'] ?? null,
-                                $result['carrier_status_label'] ?? null,
-                                'Mise à jour automatique'
-                            );
-                            $results[$shipment->id] = 'updated';
-                        } else {
-                            $results[$shipment->id] = 'no_change';
-                        }
-                    } else {
-                        $results[$shipment->id] = 'error';
-                    }
-                    
-                } catch (\Exception $e) {
-                    $results[$shipment->id] = 'error: ' . $e->getMessage();
-                }
-            }
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Suivi de ' . count($shipments) . ' expéditions terminé',
-                'results' => $results
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur suivi global', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du suivi global: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    // ========================================
-    // NOUVELLES MÉTHODES AJOUTÉES
-    // ========================================
-
-    /**
      * Marquer un pickup comme récupéré par le transporteur
      */
     public function markPickupAsPickedUp(Pickup $pickup)
@@ -1259,8 +1054,12 @@ class DeliveryController extends Controller
             abort(403, 'Accès non autorisé');
         }
         
+        Log::info('🚛 [PICKUP PICKED UP] Marquage récupération', ['pickup_id' => $pickup->id]);
+        
         try {
             $pickup->markAsPickedUp();
+            
+            Log::info('🎉 [PICKUP PICKED UP] Pickup marqué récupéré', ['pickup_id' => $pickup->id]);
             
             return response()->json([
                 'success' => true,
@@ -1269,7 +1068,7 @@ class DeliveryController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Erreur marquage pickup récupéré', [
+            Log::error('❌ [PICKUP PICKED UP] Erreur marquage pickup récupéré', [
                 'pickup_id' => $pickup->id,
                 'error' => $e->getMessage()
             ]);
@@ -1290,7 +1089,14 @@ class DeliveryController extends Controller
             abort(403, 'Accès non autorisé');
         }
         
+        Log::info('🗑️ [PICKUP DELETE] Suppression pickup', ['pickup_id' => $pickup->id]);
+        
         if (!$pickup->can_be_deleted) {
+            Log::warning('⚠️ [PICKUP DELETE] Pickup ne peut pas être supprimé', [
+                'pickup_id' => $pickup->id,
+                'status' => $pickup->status
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'error' => 'Ce pickup ne peut pas être supprimé'
@@ -1315,203 +1121,23 @@ class DeliveryController extends Controller
                 $shipment->delete();
             }
             
+            $pickupId = $pickup->id;
             $pickup->delete();
             
             DB::commit();
             
+            Log::info('🎉 [PICKUP DELETE] Pickup supprimé avec succès', ['pickup_id' => $pickupId]);
+            
             return response()->json([
                 'success' => true,
-                'message' => "Pickup #{$pickup->id} supprimé avec succès"
+                'message' => "Pickup #{$pickupId} supprimé avec succès"
             ]);
             
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('Erreur suppression pickup', [
+            Log::error('❌ [PICKUP DELETE] Erreur suppression pickup', [
                 'pickup_id' => $pickup->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la suppression: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Ajouter des commandes à un pickup existant
-     */
-    public function addOrdersToPickup(Request $request, Pickup $pickup)
-    {
-        if ($pickup->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        if (!$pickup->can_be_edited) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Ce pickup ne peut plus être modifié'
-            ], 400);
-        }
-        
-        $validator = Validator::make($request->all(), [
-            'order_ids' => 'required|array|min:1|max:20',
-            'order_ids.*' => 'integer|exists:orders,id',
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-        
-        try {
-            DB::beginTransaction();
-            
-            $admin = auth('admin')->user();
-            
-            // Récupérer les commandes disponibles
-            $orders = Order::where('admin_id', $admin->id)
-                ->whereIn('id', $request->order_ids)
-                ->where('status', 'confirmée')
-                ->where(function($q) {
-                    $q->where('is_suspended', false)->orWhereNull('is_suspended');
-                })
-                ->whereDoesntHave('shipments')
-                ->get();
-            
-            if ($orders->isEmpty()) {
-                throw new \Exception('Aucune commande valide trouvée');
-            }
-            
-            $shipmentsCreated = 0;
-            
-            foreach ($orders as $order) {
-                // Créer l'expédition
-                $shipment = Shipment::create([
-                    'admin_id' => $admin->id,
-                    'order_id' => $order->id,
-                    'pickup_id' => $pickup->id,
-                    'carrier_slug' => $pickup->carrier_slug,
-                    'status' => 'created',
-                    'weight' => $this->calculateOrderWeight($order),
-                    'value' => $order->total_price,
-                    'cod_amount' => $order->total_price,
-                    'nb_pieces' => $order->items ? $order->items->sum('quantity') : 1,
-                    'pickup_date' => $pickup->pickup_date,
-                    'content_description' => $this->generateContentDescription($order),
-                    'recipient_info' => [
-                        'name' => $order->customer_name,
-                        'phone' => $order->customer_phone,
-                        'phone_2' => $order->customer_phone_2,
-                        'address' => $order->customer_address,
-                        'governorate' => $order->customer_governorate,
-                        'city' => $order->customer_city,
-                    ],
-                ]);
-                
-                // Mettre à jour le statut de la commande
-                $order->update(['status' => 'expédiée']);
-                
-                // Enregistrer dans l'historique
-                $order->recordHistory(
-                    'shipment_created',
-                    "Expédition ajoutée au pickup #{$pickup->id}",
-                    [
-                        'pickup_id' => $pickup->id,
-                        'shipment_id' => $shipment->id,
-                    ],
-                    'confirmée',
-                    'expédiée'
-                );
-                
-                $shipmentsCreated++;
-            }
-            
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => "{$shipmentsCreated} commande(s) ajoutée(s) au pickup",
-                'data' => [
-                    'shipments_created' => $shipmentsCreated,
-                    'pickup_id' => $pickup->id
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Erreur ajout commandes pickup', [
-                'pickup_id' => $pickup->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de l\'ajout: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Retirer une commande d'un pickup
-     */
-    public function removeOrderFromPickup(Pickup $pickup, Order $order)
-    {
-        if ($pickup->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        if (!$pickup->can_be_edited) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Ce pickup ne peut plus être modifié'
-            ], 400);
-        }
-        
-        try {
-            DB::beginTransaction();
-            
-            // Trouver et supprimer l'expédition
-            $shipment = Shipment::where('pickup_id', $pickup->id)
-                ->where('order_id', $order->id)
-                ->first();
-            
-            if (!$shipment) {
-                throw new \Exception('Expédition non trouvée dans ce pickup');
-            }
-            
-            // Remettre la commande en statut confirmée
-            $order->update(['status' => 'confirmée']);
-            
-            // Enregistrer dans l'historique
-            $order->recordHistory(
-                'shipment_cancelled',
-                "Commande retirée du pickup #{$pickup->id}",
-                ['pickup_id' => $pickup->id],
-                'expédiée',
-                'confirmée'
-            );
-            
-            // Supprimer l'expédition
-            $shipment->delete();
-            
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Commande retirée du pickup'
-            ]);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Erreur suppression commande pickup', [
-                'pickup_id' => $pickup->id,
-                'order_id' => $order->id,
                 'error' => $e->getMessage()
             ]);
             
@@ -1528,6 +1154,11 @@ class DeliveryController extends Controller
     public function bulkValidatePickups(Request $request)
     {
         $admin = auth('admin')->user();
+        
+        Log::info('✅ [PICKUP BULK VALIDATE] Validation en masse', [
+            'admin_id' => $admin->id,
+            'pickup_ids' => $request->pickup_ids
+        ]);
         
         $validator = Validator::make($request->all(), [
             'pickup_ids' => 'required|array|min:1|max:10',
@@ -1561,6 +1192,11 @@ class DeliveryController extends Controller
                 }
             }
             
+            Log::info('🎉 [PICKUP BULK VALIDATE] Validation terminée', [
+                'validated' => $validated,
+                'errors_count' => count($errors)
+            ]);
+            
             return response()->json([
                 'success' => true,
                 'message' => "{$validated} pickup(s) validé(s)",
@@ -1571,7 +1207,7 @@ class DeliveryController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Erreur validation en masse', [
+            Log::error('❌ [PICKUP BULK VALIDATE] Erreur validation en masse', [
                 'admin_id' => $admin->id,
                 'error' => $e->getMessage()
             ]);
@@ -1584,167 +1220,13 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Obtenir la liste des pickups avec pagination et filtres
-     */
-    public function getPickupsList(Request $request)
-    {
-        $admin = auth('admin')->user();
-        
-        try {
-            $query = Pickup::where('admin_id', $admin->id)
-                ->with(['deliveryConfiguration', 'shipments.order']);
-            
-            // Filtres
-            if ($request->filled('status')) {
-                $query->where('status', $request->status);
-            }
-            
-            if ($request->filled('carrier')) {
-                $query->where('carrier_slug', $request->carrier);
-            }
-            
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
-                    $q->where('id', $search)
-                      ->orWhereHas('deliveryConfiguration', function($subQ) use ($search) {
-                          $subQ->where('integration_name', 'like', "%{$search}%");
-                      });
-                });
-            }
-            
-            // Pagination
-            $perPage = min($request->get('per_page', 20), 50);
-            $pickups = $query->orderBy('created_at', 'desc')->paginate($perPage);
-            
-            // Enrichir les données
-            $pickups->getCollection()->transform(function ($pickup) {
-                return [
-                    'id' => $pickup->id,
-                    'status' => $pickup->status,
-                    'carrier_slug' => $pickup->carrier_slug,
-                    'configuration_name' => $pickup->deliveryConfiguration->integration_name ?? 'Configuration supprimée',
-                    'pickup_date' => $pickup->pickup_date,
-                    'created_at' => $pickup->created_at,
-                    'orders_count' => $pickup->shipments->count(),
-                    'total_weight' => $pickup->shipments->sum('weight'),
-                    'total_pieces' => $pickup->shipments->sum('nb_pieces'),
-                    'total_cod_amount' => $pickup->shipments->sum('cod_amount'),
-                    'can_be_validated' => $pickup->can_be_validated,
-                    'can_be_edited' => $pickup->can_be_edited,
-                    'can_be_deleted' => $pickup->can_be_deleted,
-                    'orders' => $pickup->shipments->map(function($shipment) {
-                        $order = $shipment->order;
-                        return $order ? [
-                            'id' => $order->id,
-                            'customer_name' => $order->customer_name,
-                            'customer_phone' => $order->customer_phone,
-                            'customer_address' => $order->customer_address,
-                            'customer_city' => $order->customer_city,
-                            'total_price' => $order->total_price,
-                            'status' => $order->status,
-                            'region_name' => $order->region ? $order->region->name : $order->customer_governorate
-                        ] : null;
-                    })->filter()
-                ];
-            });
-            
-            return response()->json([
-                'success' => true,
-                'pickups' => $pickups->items(),
-                'pagination' => [
-                    'current_page' => $pickups->currentPage(),
-                    'last_page' => $pickups->lastPage(),
-                    'per_page' => $pickups->perPage(),
-                    'total' => $pickups->total(),
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur récupération pickups', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la récupération des pickups'
-            ], 500);
-        }
-    }
-
-    /**
-     * API pour obtenir les commandes disponibles avec filtres avancés
-     */
-    public function getAvailableOrdersApi(Request $request)
-    {
-        $admin = auth('admin')->user();
-        
-        try {
-            $query = Order::where('admin_id', $admin->id)
-                ->where('status', 'confirmée')
-                ->where(function($q) {
-                    $q->where('is_suspended', false)->orWhereNull('is_suspended');
-                })
-                ->whereDoesntHave('shipments')
-                ->with(['items.product', 'region']);
-            
-            // Filtres
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
-                    $q->where('customer_name', 'like', "%{$search}%")
-                      ->orWhere('customer_phone', 'like', "%{$search}%")
-                      ->orWhere('id', $search);
-                });
-            }
-            
-            if ($request->filled('governorate')) {
-                $query->where('customer_governorate', $request->governorate);
-            }
-            
-            if ($request->filled('min_amount')) {
-                $query->where('total_price', '>=', $request->min_amount);
-            }
-            
-            if ($request->filled('max_amount')) {
-                $query->where('total_price', '<=', $request->max_amount);
-            }
-            
-            // Pagination
-            $perPage = min($request->get('per_page', 20), 50);
-            $orders = $query->orderBy('created_at', 'desc')->paginate($perPage);
-            
-            return response()->json([
-                'success' => true,
-                'orders' => $orders->items(),
-                'pagination' => [
-                    'current_page' => $orders->currentPage(),
-                    'last_page' => $orders->lastPage(),
-                    'per_page' => $orders->perPage(),
-                    'total' => $orders->total(),
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur API commandes disponibles', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la récupération des commandes'
-            ], 500);
-        }
-    }
-
-    /**
-     * Exporter les pickups en CSV
+     * Export des pickups en CSV
      */
     public function exportPickups(Request $request)
     {
         $admin = auth('admin')->user();
+        
+        Log::info('📤 [PICKUP EXPORT] Export des pickups', ['admin_id' => $admin->id]);
         
         try {
             $query = Pickup::where('admin_id', $admin->id)
@@ -1798,10 +1280,12 @@ class DeliveryController extends Controller
                 fclose($file);
             };
             
+            Log::info('✅ [PICKUP EXPORT] Export généré', ['filename' => $filename]);
+            
             return response()->stream($callback, 200, $headers);
             
         } catch (\Exception $e) {
-            Log::error('Erreur export pickups', [
+            Log::error('❌ [PICKUP EXPORT] Erreur export pickups', [
                 'admin_id' => $admin->id,
                 'error' => $e->getMessage()
             ]);
@@ -1809,559 +1293,6 @@ class DeliveryController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur lors de l\'export'
-            ], 500);
-        }
-    }
-
-    /**
-     * Exporter les expéditions en CSV
-     */
-    public function exportShipments(Request $request)
-    {
-        $admin = auth('admin')->user();
-        
-        try {
-            $query = Shipment::where('admin_id', $admin->id)->with(['order', 'pickup']);
-            
-            // Filtres
-            if ($request->filled('status')) {
-                $query->where('status', $request->status);
-            }
-            
-            if ($request->filled('carrier')) {
-                $query->where('carrier_slug', $request->carrier);
-            }
-            
-            $shipments = $query->orderBy('created_at', 'desc')->get();
-            
-            $filename = 'shipments_' . now()->format('Y-m-d_H-i-s') . '.csv';
-            
-            $headers = [
-                'Content-Type' => 'text/csv',
-                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            ];
-            
-            $callback = function() use ($shipments) {
-                $file = fopen('php://output', 'w');
-                
-                // Headers CSV
-                fputcsv($file, [
-                    'ID Expédition',
-                    'ID Commande',
-                    'Client',
-                    'Téléphone',
-                    'Ville',
-                    'Transporteur',
-                    'Statut',
-                    'Tracking',
-                    'Poids (kg)',
-                    'COD (TND)',
-                    'Date création',
-                    'Date livraison'
-                ]);
-                
-                // Données
-                foreach ($shipments as $shipment) {
-                    $order = $shipment->order;
-                    fputcsv($file, [
-                        $shipment->id,
-                        $order ? $order->id : '',
-                        $order ? $order->customer_name : '',
-                        $order ? $order->customer_phone : '',
-                        $order ? $order->customer_city : '',
-                        $shipment->carrier_name,
-                        $shipment->status_label,
-                        $shipment->tracking_number ?: '',
-                        $shipment->weight,
-                        $shipment->cod_amount,
-                        $shipment->created_at->format('d/m/Y H:i'),
-                        $shipment->delivered_at ? $shipment->delivered_at->format('d/m/Y H:i') : ''
-                    ]);
-                }
-                
-                fclose($file);
-            };
-            
-            return response()->stream($callback, 200, $headers);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur export expéditions', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de l\'export'
-            ], 500);
-        }
-    }
-
-    /**
-     * Suivi en masse des expéditions
-     */
-    public function bulkTrackShipments(Request $request)
-    {
-        $admin = auth('admin')->user();
-        
-        $validator = Validator::make($request->all(), [
-            'shipment_ids' => 'required|array|min:1|max:20',
-            'shipment_ids.*' => 'integer|exists:shipments,id',
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-        
-        try {
-            $shipments = Shipment::where('admin_id', $admin->id)
-                ->whereIn('id', $request->shipment_ids)
-                ->with('pickup.deliveryConfiguration')
-                ->get();
-            
-            $results = [];
-            $updated = 0;
-            
-            foreach ($shipments as $shipment) {
-                try {
-                    if ($shipment->can_be_tracked && $shipment->pickup && $shipment->pickup->deliveryConfiguration) {
-                        $config = $shipment->pickup->deliveryConfiguration;
-                        $service = $this->shippingFactory->createFromConfig($config);
-                        
-                        $result = $service->trackShipment($shipment->tracking_number, $config);
-                        
-                        if ($result['success'] && isset($result['internal_status'])) {
-                            if ($result['internal_status'] !== $shipment->status) {
-                                $shipment->updateStatus(
-                                    $result['internal_status'],
-                                    $result['carrier_status'] ?? null,
-                                    $result['carrier_status_label'] ?? null,
-                                    'Mise à jour automatique en masse'
-                                );
-                                $updated++;
-                            }
-                        }
-                        
-                        $results[$shipment->id] = [
-                            'success' => $result['success'],
-                            'status' => $result['internal_status'] ?? $shipment->status,
-                            'message' => $result['carrier_status_label'] ?? 'Mis à jour'
-                        ];
-                    } else {
-                        $results[$shipment->id] = [
-                            'success' => false,
-                            'message' => 'Suivi non disponible pour cette expédition'
-                        ];
-                    }
-                } catch (\Exception $e) {
-                    $results[$shipment->id] = [
-                        'success' => false,
-                        'message' => 'Erreur: ' . $e->getMessage()
-                    ];
-                }
-            }
-            
-            return response()->json([
-                'success' => true,
-                'message' => "{$updated} expédition(s) mise(s) à jour",
-                'data' => [
-                    'updated_count' => $updated,
-                    'total_processed' => count($shipments),
-                    'results' => $results
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur suivi en masse', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du suivi en masse: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Obtenir l'activité récente des pickups et shipments
-     */
-    public function getRecentActivity()
-    {
-        $admin = auth('admin')->user();
-        
-        try {
-            // Activité récente des pickups
-            $recentPickups = Pickup::where('admin_id', $admin->id)
-                ->with('deliveryConfiguration')
-                ->orderBy('updated_at', 'desc')
-                ->take(10)
-                ->get()
-                ->map(function($pickup) {
-                    return [
-                        'type' => 'pickup',
-                        'id' => $pickup->id,
-                        'status' => $pickup->status,
-                        'carrier_name' => $pickup->carrier_name,
-                        'updated_at' => $pickup->updated_at,
-                        'description' => "Pickup #{$pickup->id} - " . $pickup->status_label
-                    ];
-                });
-            
-            // Activité récente des shipments
-            $recentShipments = Shipment::where('admin_id', $admin->id)
-                ->with('order')
-                ->orderBy('updated_at', 'desc')
-                ->take(10)
-                ->get()
-                ->map(function($shipment) {
-                    return [
-                        'type' => 'shipment',
-                        'id' => $shipment->id,
-                        'status' => $shipment->status,
-                        'carrier_name' => $shipment->carrier_name,
-                        'updated_at' => $shipment->updated_at,
-                        'description' => "Expédition #{$shipment->id} - " . $shipment->status_label,
-                        'order_id' => $shipment->order_id
-                    ];
-                });
-            
-            // Fusionner et trier par date
-            $activity = $recentPickups->concat($recentShipments)
-                ->sortByDesc('updated_at')
-                ->take(20)
-                ->values();
-            
-            return response()->json([
-                'success' => true,
-                'activity' => $activity
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur activité récente', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la récupération de l\'activité'
-            ], 500);
-        }
-    }
-
-    /**
-     * Dupliquer une configuration de transporteur
-     */
-    public function duplicateConfiguration(DeliveryConfiguration $config)
-    {
-        if ($config->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            $duplicatedConfig = $config->replicate();
-            $duplicatedConfig->integration_name = $config->integration_name . ' (Copie)';
-            $duplicatedConfig->is_active = false; // Désactiver la copie par défaut
-            $duplicatedConfig->save();
-            
-            $this->recordConfigurationHistory($duplicatedConfig, 'duplicated', 
-                "Configuration dupliquée depuis #{$config->id}");
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Configuration dupliquée avec succès',
-                'config' => $duplicatedConfig
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur duplication configuration', [
-                'config_id' => $config->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la duplication: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Générer un manifeste pour un pickup
-     */
-    public function generatePickupManifest(Pickup $pickup)
-    {
-        if ($pickup->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            $pickup->load(['shipments.order', 'deliveryConfiguration']);
-            
-            $html = view('admin.delivery.manifests.pickup', compact('pickup'))->render();
-            
-            return response($html)->header('Content-Type', 'text/html');
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur génération manifeste', [
-                'pickup_id' => $pickup->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la génération du manifeste'
-            ], 500);
-        }
-    }
-
-    /**
-     * Sauvegarder les préférences utilisateur
-     */
-    public function saveUserPreferences(Request $request)
-    {
-        $admin = auth('admin')->user();
-        
-        $validator = Validator::make($request->all(), [
-            'preferences' => 'required|array',
-            'preferences.default_carrier' => 'nullable|string',
-            'preferences.items_per_page' => 'nullable|integer|min:10|max:100',
-            'preferences.auto_refresh' => 'nullable|boolean',
-            'preferences.notifications' => 'nullable|array',
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-        
-        try {
-            // Sauvegarder dans les settings ou une table dédiée
-            $currentSettings = $admin->settings ?? [];
-            $currentSettings['delivery_preferences'] = $request->preferences;
-            
-            $admin->update(['settings' => $currentSettings]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Préférences sauvegardées'
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur sauvegarde préférences', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la sauvegarde'
-            ], 500);
-        }
-    }
-
-    /**
-     * Récupérer les préférences utilisateur
-     */
-    public function getUserPreferences()
-    {
-        $admin = auth('admin')->user();
-        
-        $defaultPreferences = [
-            'default_carrier' => 'jax_delivery',
-            'items_per_page' => 20,
-            'auto_refresh' => true,
-            'notifications' => [
-                'pickup_validated' => true,
-                'shipment_delivered' => true,
-                'delivery_failed' => true,
-            ]
-        ];
-        
-        $preferences = $admin->settings['delivery_preferences'] ?? $defaultPreferences;
-        
-        return response()->json([
-            'success' => true,
-            'preferences' => $preferences
-        ]);
-    }
-
-    // ========================================
-    // MÉTHODES UTILITAIRES
-    // ========================================
-
-    /**
-     * Calculer le poids d'une commande - VERSION SIMPLIFIÉE
-     */
-    protected function calculateOrderWeight($order): float
-    {
-        try {
-            $itemsCount = $order->items ? $order->items->sum('quantity') : 1;
-            return max(1.0, $itemsCount * 0.5); // 0.5kg par article minimum
-        } catch (\Exception $e) {
-            Log::warning('Erreur calcul poids', ['order_id' => $order->id, 'error' => $e->getMessage()]);
-            return 1.0; // Poids par défaut
-        }
-    }
-
-    /**
-     * Générer la description du contenu - VERSION SIMPLIFIÉE
-     */
-    protected function generateContentDescription($order): string
-    {
-        try {
-            if (!$order->items || $order->items->isEmpty()) {
-                return 'Commande e-commerce #' . $order->id;
-            }
-            
-            $items = $order->items->take(3)->map(function($item) {
-                return $item->product ? $item->product->name : 'Produit';
-            })->filter()->toArray();
-            
-            $description = implode(', ', $items);
-            
-            if ($order->items->count() > 3) {
-                $description .= ' et ' . ($order->items->count() - 3) . ' autres articles';
-            }
-            
-            return substr($description ?: 'Commande e-commerce #' . $order->id, 0, 200);
-            
-        } catch (\Exception $e) {
-            Log::warning('Erreur génération description', ['order_id' => $order->id, 'error' => $e->getMessage()]);
-            return 'Commande e-commerce #' . $order->id;
-        }
-    }
-
-    /**
-     * Obtenir les règles de validation selon le transporteur avec support des longs tokens
-     */
-    protected function getValidationRules($carrierSlug, $excludeId = null)
-    {
-        $carrier = $this->carriers[$carrierSlug];
-        $adminId = auth('admin')->id();
-        
-        $rules = [
-            'carrier_slug' => 'required|in:' . implode(',', array_keys($this->carriers)),
-            'integration_name' => [
-                'required',
-                'string',
-                'max:255',
-                "unique:delivery_configurations,integration_name,{$excludeId},id,admin_id,{$adminId},carrier_slug,{$carrierSlug}"
-            ],
-        ];
-        
-        // Règles spécifiques selon le transporteur avec support des longs tokens
-        if ($carrierSlug === 'jax_delivery') {
-            $rules['username'] = 'required|string|max:255'; // Numéro de compte (ex: 2304)
-            $rules['password'] = 'required|string|min:10'; // Token JWT (très long, minimum 10 caractères)
-        } elseif ($carrierSlug === 'mes_colis') {
-            $rules['username'] = 'required|string|min:10|max:255'; // Token API (ex: OL6B3FUA526SMLMBN7U3QZ1UMW5YW91D)
-            $rules['password'] = 'nullable|string'; // Non utilisé pour Mes Colis
-        }
-        
-        return $rules;
-    }
-
-    /**
-     * Vérifier si une chaîne est un token JWT valide
-     */
-    protected function isValidJwtToken($token)
-    {
-        if (!is_string($token) || empty($token)) {
-            return false;
-        }
-        
-        $parts = explode('.', $token);
-        return count($parts) === 3 && 
-               strlen($parts[0]) > 10 && 
-               strlen($parts[1]) > 10 && 
-               strlen($parts[2]) > 10;
-    }
-
-    /**
-     * Obtenir le statut d'un transporteur
-     */
-    protected function getCarrierStatus($configurations)
-    {
-        if ($configurations->isEmpty()) {
-            return 'non_configuré';
-        }
-        
-        if ($configurations->where('is_active', true)->isNotEmpty()) {
-            return 'connecté';
-        }
-        
-        return 'configuré_inactif';
-    }
-
-    
-
-    /**
-     * Enregistrer dans l'historique des configurations
-     */
-    protected function recordConfigurationHistory($config, $action, $notes, $data = [])
-    {
-        Log::info("Configuration {$action}", [
-            'config_id' => $config->id,
-            'admin_id' => $config->admin_id,
-            'carrier_slug' => $config->carrier_slug,
-            'integration_name' => $config->integration_name,
-            'action' => $action,
-            'notes' => $notes,
-            'data' => $data,
-        ]);
-    }
-
-    /**
-     * Obtenir le nom d'un transporteur
-     */
-    protected function getCarrierName($carrierSlug)
-    {
-        $carriers = config('carriers');
-        return $carriers[$carrierSlug]['name'] ?? ucfirst(str_replace('_', ' ', $carrierSlug));
-    }
-
-    /**
-     * Rafraîchir le statut d'un pickup
-     */
-    public function refreshPickupStatus(Pickup $pickup)
-    {
-        if ($pickup->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            // Si le pickup est validé, on peut essayer de récupérer le statut depuis l'API
-            if ($pickup->status === 'validated') {
-                // TODO: Implémenter la récupération du statut depuis l'API transporteur
-                // Pour l'instant, on retourne juste les données actuelles
-            }
-            
-            return response()->json([
-                'success' => true,
-                'pickup' => [
-                    'id' => $pickup->id,
-                    'status' => $pickup->status,
-                    'last_updated' => now()->toISOString()
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur rafraîchissement pickup', [
-                'pickup_id' => $pickup->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du rafraîchissement: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -2376,6 +1307,8 @@ class DeliveryController extends Controller
     public function testSystem()
     {
         $admin = auth('admin')->user();
+        
+        Log::info('🔧 [TEST SYSTEM] Début diagnostic système', ['admin_id' => $admin->id]);
         
         try {
             $diagnostics = [
@@ -2426,19 +1359,36 @@ class DeliveryController extends Controller
                     'preparation_orders' => route('admin.delivery.preparation.orders'),
                     'preparation_store' => route('admin.delivery.preparation.store'),
                     'pickups_index' => route('admin.delivery.pickups'),
+                    'pickups_list' => route('admin.delivery.pickups.list'),
                 ],
                 
                 'config_check' => [
                     'carriers_config_exists' => config('carriers') !== null,
                     'carriers_available' => config('carriers') ? array_keys(config('carriers')) : [],
+                    'app_debug' => config('app.debug'),
+                    'app_env' => config('app.env'),
+                ],
+                
+                'tables_check' => [
+                    'pickups' => Schema::hasTable('pickups'),
+                    'delivery_configurations' => Schema::hasTable('delivery_configurations'),
+                    'shipments' => Schema::hasTable('shipments'),
+                    'orders' => Schema::hasTable('orders'),
                 ],
                 
                 'timestamp' => now()->toISOString(),
             ];
             
+            Log::info('✅ [TEST SYSTEM] Diagnostic terminé avec succès');
+            
             return response()->json($diagnostics, 200, [], JSON_PRETTY_PRINT);
             
         } catch (\Exception $e) {
+            Log::error('❌ [TEST SYSTEM] Erreur diagnostic', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -2455,12 +1405,9 @@ class DeliveryController extends Controller
     {
         $admin = auth('admin')->user();
         
+        Log::info('🧪 [TEST CREATE PICKUP] Test création pickup', ['admin_id' => $admin->id]);
+        
         try {
-            Log::info('Test création pickup', [
-                'admin_id' => $admin->id,
-                'request_data' => $request->all()
-            ]);
-            
             // Test de base
             $config = $admin->deliveryConfigurations()->where('is_active', true)->first();
             if (!$config) {
@@ -2521,6 +1468,11 @@ class DeliveryController extends Controller
                 $shipmentsCreated++;
             }
             
+            Log::info('✅ [TEST CREATE PICKUP] Pickup test créé', [
+                'pickup_id' => $pickup->id,
+                'shipments_created' => $shipmentsCreated
+            ]);
+            
             return response()->json([
                 'success' => true,
                 'message' => "Test pickup #{$pickup->id} créé avec {$shipmentsCreated} expéditions",
@@ -2530,7 +1482,7 @@ class DeliveryController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Erreur test pickup', [
+            Log::error('❌ [TEST CREATE PICKUP] Erreur test pickup', [
                 'admin_id' => $admin->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -2544,642 +1496,177 @@ class DeliveryController extends Controller
         }
     }
 
+    // ========================================
+    // MÉTHODES UTILITAIRES
+    // ========================================
+
     /**
-     * Générer une preuve de livraison
+     * Calculer le poids d'une commande - VERSION SIMPLIFIÉE
      */
-    public function generateDeliveryProof(Shipment $shipment)
+    protected function calculateOrderWeight($order): float
     {
-        if ($shipment->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        if ($shipment->status !== 'delivered') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Cette expédition n\'est pas encore livrée'
-            ], 400);
-        }
-        
         try {
-            $shipment->load(['order', 'pickup.deliveryConfiguration']);
-            
-            $proofData = [
-                'shipment' => $shipment,
-                'order' => $shipment->order,
-                'carrier_name' => $shipment->carrier_name,
-                'delivered_at' => $shipment->delivered_at,
-                'tracking_number' => $shipment->tracking_number,
-                'generated_at' => now(),
-            ];
-            
-            // Générer le HTML de la preuve
-            $html = view('admin.delivery.proofs.delivery', $proofData)->render();
-            
-            return response($html)->header('Content-Type', 'text/html');
-            
+            $itemsCount = $order->items ? $order->items->sum('quantity') : 1;
+            return max(1.0, $itemsCount * 0.5); // 0.5kg par article minimum
         } catch (\Exception $e) {
-            Log::error('Erreur génération preuve livraison', [
-                'shipment_id' => $shipment->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la génération de la preuve'
-            ], 500);
+            Log::warning('⚠️ [WEIGHT CALC] Erreur calcul poids', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            return 1.0; // Poids par défaut
         }
     }
 
     /**
-     * Obtenir les statistiques d'un transporteur spécifique
+     * Générer la description du contenu - VERSION SIMPLIFIÉE
      */
-    public function getCarrierStats($carrierSlug)
+    protected function generateContentDescription($order): string
     {
-        $admin = auth('admin')->user();
-        
         try {
-            // Configurations
-            $configs = DeliveryConfiguration::where('admin_id', $admin->id)
-                ->where('carrier_slug', $carrierSlug)
-                ->get();
-            
-            // Pickups
-            $pickups = Pickup::where('admin_id', $admin->id)
-                ->where('carrier_slug', $carrierSlug);
-            
-            // Expéditions
-            $shipments = Shipment::where('admin_id', $admin->id)
-                ->where('carrier_slug', $carrierSlug);
-            
-            // Statistiques par période
-            $last30Days = now()->subDays(30);
-            $last7Days = now()->subDays(7);
-            
-            $stats = [
-                'carrier_info' => [
-                    'slug' => $carrierSlug,
-                    'name' => $this->getCarrierName($carrierSlug),
-                ],
-                'configurations' => [
-                    'total' => $configs->count(),
-                    'active' => $configs->where('is_active', true)->count(),
-                    'inactive' => $configs->where('is_active', false)->count(),
-                ],
-                'pickups' => [
-                    'total' => $pickups->count(),
-                    'draft' => $pickups->where('status', 'draft')->count(),
-                    'validated' => $pickups->where('status', 'validated')->count(),
-                    'picked_up' => $pickups->where('status', 'picked_up')->count(),
-                    'last_30_days' => $pickups->where('created_at', '>=', $last30Days)->count(),
-                    'last_7_days' => $pickups->where('created_at', '>=', $last7Days)->count(),
-                ],
-                'shipments' => [
-                    'total' => $shipments->count(),
-                    'active' => $shipments->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])->count(),
-                    'delivered' => $shipments->where('status', 'delivered')->count(),
-                    'with_problems' => $shipments->whereIn('status', ['in_return', 'anomaly'])->count(),
-                    'last_30_days' => $shipments->where('created_at', '>=', $last30Days)->count(),
-                    'last_7_days' => $shipments->where('created_at', '>=', $last7Days)->count(),
-                ],
-                'financial' => [
-                    'total_cod_amount' => $shipments->sum('cod_amount'),
-                    'total_weight' => $shipments->sum('weight'),
-                    'average_cod' => $shipments->avg('cod_amount'),
-                    'average_weight' => $shipments->avg('weight'),
-                ],
-                'performance' => [
-                    'delivery_rate' => $this->calculateDeliveryRate($carrierSlug, $admin->id),
-                    'average_delivery_time' => $this->calculateAverageDeliveryTime($carrierSlug, $admin->id),
-                    'problem_rate' => $this->calculateProblemRate($carrierSlug, $admin->id),
-                ]
-            ];
-            
-            return response()->json([
-                'success' => true,
-                'stats' => $stats
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur statistiques transporteur', [
-                'carrier_slug' => $carrierSlug,
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la récupération des statistiques'
-            ], 500);
-        }
-    }
-
-    /**
-     * Calculer le taux de livraison pour un transporteur
-     */
-    protected function calculateDeliveryRate($carrierSlug, $adminId)
-    {
-        $totalShipments = Shipment::where('admin_id', $adminId)
-            ->where('carrier_slug', $carrierSlug)
-            ->whereIn('status', ['delivered', 'in_return', 'anomaly'])
-            ->count();
-        
-        if ($totalShipments === 0) return 0;
-        
-        $deliveredShipments = Shipment::where('admin_id', $adminId)
-            ->where('carrier_slug', $carrierSlug)
-            ->where('status', 'delivered')
-            ->count();
-        
-        return round(($deliveredShipments / $totalShipments) * 100, 2);
-    }
-
-    /**
-     * Calculer le temps moyen de livraison
-     */
-    protected function calculateAverageDeliveryTime($carrierSlug, $adminId)
-    {
-        $deliveredShipments = Shipment::where('admin_id', $adminId)
-            ->where('carrier_slug', $carrierSlug)
-            ->where('status', 'delivered')
-            ->whereNotNull('delivered_at')
-            ->get();
-        
-        if ($deliveredShipments->isEmpty()) return null;
-        
-        $totalHours = 0;
-        $count = 0;
-        
-        foreach ($deliveredShipments as $shipment) {
-            if ($shipment->delivered_at && $shipment->created_at) {
-                $hours = $shipment->created_at->diffInHours($shipment->delivered_at);
-                $totalHours += $hours;
-                $count++;
-            }
-        }
-        
-        return $count > 0 ? round($totalHours / $count, 1) : null;
-    }
-
-    /**
-     * Calculer le taux de problèmes pour un transporteur
-     */
-    protected function calculateProblemRate($carrierSlug, $adminId)
-    {
-        $totalShipments = Shipment::where('admin_id', $adminId)
-            ->where('carrier_slug', $carrierSlug)
-            ->count();
-        
-        if ($totalShipments === 0) return 0;
-        
-        $problemShipments = Shipment::where('admin_id', $adminId)
-            ->where('carrier_slug', $carrierSlug)
-            ->whereIn('status', ['in_return', 'anomaly'])
-            ->count();
-        
-        return round(($problemShipments / $totalShipments) * 100, 2);
-    }
-
-    /**
-     * Générer des étiquettes d'expédition (si supporté)
-     */
-    public function generateShippingLabel(Shipment $shipment)
-    {
-        if ($shipment->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            $config = $shipment->pickup->deliveryConfiguration;
-            $service = $this->shippingFactory->createFromConfig($config);
-            
-            if (!$service->supportsFeature('label_generation')) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'La génération d\'étiquettes n\'est pas supportée par ce transporteur'
-                ], 400);
+            if (!$order->items || $order->items->isEmpty()) {
+                return 'Commande e-commerce #' . $order->id;
             }
             
-            $result = $service->generateShipmentLabel($shipment->tracking_number, $config);
+            $items = $order->items->take(3)->map(function($item) {
+                return $item->product ? $item->product->name : 'Produit';
+            })->filter()->toArray();
             
-            return response()->json($result);
+            $description = implode(', ', $items);
+            
+            if ($order->items->count() > 3) {
+                $description .= ' et ' . ($order->items->count() - 3) . ' autres articles';
+            }
+            
+            return substr($description ?: 'Commande e-commerce #' . $order->id, 0, 200);
             
         } catch (\Exception $e) {
-            Log::error('Erreur génération étiquette', [
-                'shipment_id' => $shipment->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la génération de l\'étiquette'
-            ], 500);
+            Log::warning('⚠️ [CONTENT DESC] Erreur génération description', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            return 'Commande e-commerce #' . $order->id;
         }
     }
 
     /**
-     * Générer des étiquettes en masse
+     * Obtenir les règles de validation selon le transporteur avec support des longs tokens
      */
-    public function generateBulkLabels(Request $request)
+    protected function getValidationRules($carrierSlug, $excludeId = null)
     {
-        $admin = auth('admin')->user();
+        $carrier = $this->carriers[$carrierSlug];
+        $adminId = auth('admin')->id();
         
-        $validator = Validator::make($request->all(), [
-            'shipment_ids' => 'required|array|min:1|max:20',
-            'shipment_ids.*' => 'integer|exists:shipments,id',
-        ]);
+        $rules = [
+            'carrier_slug' => 'required|in:' . implode(',', array_keys($this->carriers)),
+            'integration_name' => [
+                'required',
+                'string',
+                'max:255',
+                "unique:delivery_configurations,integration_name,{$excludeId},id,admin_id,{$adminId},carrier_slug,{$carrierSlug}"
+            ],
+        ];
         
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+        // Règles spécifiques selon le transporteur avec support des longs tokens
+        if ($carrierSlug === 'jax_delivery') {
+            $rules['username'] = 'required|string|max:255'; // Numéro de compte (ex: 2304)
+            $rules['password'] = 'required|string|min:10'; // Token JWT (très long, minimum 10 caractères)
+        } elseif ($carrierSlug === 'mes_colis') {
+            $rules['username'] = 'required|string|min:10|max:255'; // Token API (ex: OL6B3FUA526SMLMBN7U3QZ1UMW5YW91D)
+            $rules['password'] = 'nullable|string'; // Non utilisé pour Mes Colis
         }
         
-        try {
-            $shipments = Shipment::where('admin_id', $admin->id)
-                ->whereIn('id', $request->shipment_ids)
-                ->with('pickup.deliveryConfiguration')
-                ->get();
-            
-            $labels = [];
-            $errors = [];
-            
-            foreach ($shipments as $shipment) {
-                try {
-                    $config = $shipment->pickup->deliveryConfiguration;
-                    $service = $this->shippingFactory->createFromConfig($config);
-                    
-                    if ($service->supportsFeature('label_generation')) {
-                        $result = $service->generateShipmentLabel($shipment->tracking_number, $config);
-                        if ($result['success']) {
-                            $labels[$shipment->id] = $result;
-                        } else {
-                            $errors[$shipment->id] = $result['error'];
-                        }
-                    } else {
-                        $errors[$shipment->id] = 'Génération d\'étiquettes non supportée';
-                    }
-                } catch (\Exception $e) {
-                    $errors[$shipment->id] = $e->getMessage();
-                }
-            }
-            
-            return response()->json([
-                'success' => true,
-                'labels' => $labels,
-                'errors' => $errors,
-                'generated_count' => count($labels)
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur génération étiquettes en masse', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la génération des étiquettes'
-            ], 500);
-        }
+        return $rules;
     }
 
     /**
-     * Calculer les frais de livraison
+     * Vérifier si une chaîne est un token JWT valide
      */
-    public function calculateShippingCost(Request $request)
+    protected function isValidJwtToken($token)
     {
-        $admin = auth('admin')->user();
-        
-        $validator = Validator::make($request->all(), [
-            'carrier_slug' => 'required|string',
-            'weight' => 'required|numeric|min:0.1',
-            'governorate' => 'required|string',
-            'cod_amount' => 'required|numeric|min:0',
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+        if (!is_string($token) || empty($token)) {
+            return false;
         }
         
-        try {
-            $config = DeliveryConfiguration::where('admin_id', $admin->id)
-                ->where('carrier_slug', $request->carrier_slug)
-                ->where('is_active', true)
-                ->first();
-            
-            if (!$config) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Configuration de transporteur non trouvée'
-                ], 404);
-            }
-            
-            $service = $this->shippingFactory->createFromConfig($config);
-            
-            if (!$service->supportsFeature('cost_calculation')) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Le calcul des frais n\'est pas supporté par ce transporteur'
-                ], 400);
-            }
-            
-            // Créer un ordre fictif pour le calcul
-            $mockOrder = new Order([
-                'customer_governorate' => $request->governorate,
-                'total_price' => $request->cod_amount,
-            ]);
-            
-            $result = $service->calculateShippingCost($mockOrder, $config);
-            
-            return response()->json($result);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur calcul frais livraison', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du calcul des frais'
-            ], 500);
-        }
+        $parts = explode('.', $token);
+        return count($parts) === 3 && 
+               strlen($parts[0]) > 10 && 
+               strlen($parts[1]) > 10 && 
+               strlen($parts[2]) > 10;
     }
 
     /**
-     * Comparer les coûts entre transporteurs
+     * Obtenir le statut d'une configuration de transporteur.
+     *
+     * @param \Illuminate\Support\Collection $configurations
+     * @return string
      */
-    public function compareCarrierCosts(Request $request)
+    protected function getCarrierStatus($configurations)
     {
-        $admin = auth('admin')->user();
-        
-        $validator = Validator::make($request->all(), [
-            'carriers' => 'required|array|min:2',
-            'carriers.*' => 'string',
-            'weight' => 'required|numeric|min:0.1',
-            'governorate' => 'required|string',
-            'cod_amount' => 'required|numeric|min:0',
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+        if ($configurations->isEmpty()) {
+            return 'non_configuré';
         }
         
+        if ($configurations->where('is_active', true)->isNotEmpty()) {
+            return 'connecté';
+        }
+        
+        return 'configuré_inactif';
+    }
+
+    /**
+     * Obtenir les statistiques d'un transporteur - VERSION CORRIGÉE
+     *
+     * @param int $adminId
+     * @param string $carrierSlug
+     * @return array
+     */
+    protected function getCarrierStats($adminId, $carrierSlug)
+    {
         try {
-            $comparisons = [];
-            
-            foreach ($request->carriers as $carrierSlug) {
-                $config = DeliveryConfiguration::where('admin_id', $admin->id)
+            // On inclut les 3 types de statistiques pour être cohérent.
+            return [
+                'configurations' => DeliveryConfiguration::where('admin_id', $adminId)
                     ->where('carrier_slug', $carrierSlug)
-                    ->where('is_active', true)
-                    ->first();
-                
-                if ($config) {
-                    try {
-                        $service = $this->shippingFactory->createFromConfig($config);
-                        
-                        if ($service->supportsFeature('cost_calculation')) {
-                            $mockOrder = new Order([
-                                'customer_governorate' => $request->governorate,
-                                'total_price' => $request->cod_amount,
-                            ]);
-                            
-                            $result = $service->calculateShippingCost($mockOrder, $config);
-                            $comparisons[$carrierSlug] = $result;
-                        } else {
-                            $comparisons[$carrierSlug] = [
-                                'success' => false,
-                                'error' => 'Calcul non supporté'
-                            ];
-                        }
-                    } catch (\Exception $e) {
-                        $comparisons[$carrierSlug] = [
-                            'success' => false,
-                            'error' => $e->getMessage()
-                        ];
-                    }
-                } else {
-                    $comparisons[$carrierSlug] = [
-                        'success' => false,
-                        'error' => 'Configuration non trouvée'
-                    ];
-                }
-            }
-            
-            return response()->json([
-                'success' => true,
-                'comparisons' => $comparisons
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur comparaison transporteurs', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la comparaison'
-            ], 500);
-        }
-    }
-
-    /**
-     * Nettoyer les données orphelines
-     */
-    public function cleanupOrphanedData()
-    {
-        $admin = auth('admin')->user();
-        
-        try {
-            DB::beginTransaction();
-            
-            $cleaned = [
-                'shipments' => 0,
-                'pickups' => 0,
-                'orders_restored' => 0
+                    ->count(),
+                'pickups' => Pickup::where('admin_id', $adminId)
+                    ->where('carrier_slug', $carrierSlug)
+                    ->count(),
+                'shipments' => Shipment::where('admin_id', $adminId)
+                    ->where('carrier_slug', $carrierSlug)
+                    ->count(),
             ];
-            
-            // Nettoyer les shipments sans pickup
-            $orphanedShipments = Shipment::where('admin_id', $admin->id)
-                ->whereNotNull('pickup_id')
-                ->whereDoesntHave('pickup')
-                ->get();
-            
-            foreach ($orphanedShipments as $shipment) {
-                if ($shipment->order) {
-                    $shipment->order->update(['status' => 'confirmée']);
-                    $cleaned['orders_restored']++;
-                }
-                $shipment->delete();
-                $cleaned['shipments']++;
-            }
-            
-            // Nettoyer les pickups sans configuration
-            $orphanedPickups = Pickup::where('admin_id', $admin->id)
-                ->whereDoesntHave('deliveryConfiguration')
-                ->get();
-            
-            foreach ($orphanedPickups as $pickup) {
-                foreach ($pickup->shipments as $shipment) {
-                    if ($shipment->order) {
-                        $shipment->order->update(['status' => 'confirmée']);
-                        $cleaned['orders_restored']++;
-                    }
-                    $shipment->delete();
-                    $cleaned['shipments']++;
-                }
-                $pickup->delete();
-                $cleaned['pickups']++;
-            }
-            
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Nettoyage terminé',
-                'cleaned' => $cleaned
-            ]);
-            
         } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Erreur nettoyage données', [
-                'admin_id' => $admin->id,
+            Log::warning('⚠️ [CARRIER STATS] Erreur lors de la récupération des stats pour le transporteur', [
+                'carrier' => $carrierSlug,
+                'admin_id' => $adminId,
                 'error' => $e->getMessage()
             ]);
             
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors du nettoyage'
-            ], 500);
+            // Retourner des valeurs par défaut avec toutes les clés nécessaires pour la vue
+            return [
+                'configurations' => 0,
+                'pickups' => 0,
+                'shipments' => 0,
+            ];
         }
     }
 
     /**
-     * Synchronisation des statuts avec les transporteurs
+     * Enregistrer dans l'historique des configurations
      */
-    public function syncAllStatusesWithCarriers()
+    protected function recordConfigurationHistory($config, $action, $notes, $data = [])
     {
-        $admin = auth('admin')->user();
-        
-        try {
-            $activeShipments = Shipment::where('admin_id', $admin->id)
-                ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
-                ->with('pickup.deliveryConfiguration')
-                ->get();
-            
-            $synced = 0;
-            $errors = 0;
-            
-            foreach ($activeShipments as $shipment) {
-                try {
-                    if ($shipment->can_be_tracked && $shipment->pickup && $shipment->pickup->deliveryConfiguration) {
-                        $config = $shipment->pickup->deliveryConfiguration;
-                        $service = $this->shippingFactory->createFromConfig($config);
-                        
-                        $result = $service->trackShipment($shipment->tracking_number, $config);
-                        
-                        if ($result['success'] && isset($result['internal_status'])) {
-                            if ($result['internal_status'] !== $shipment->status) {
-                                $shipment->updateStatus(
-                                    $result['internal_status'],
-                                    $result['carrier_status'] ?? null,
-                                    $result['carrier_status_label'] ?? null,
-                                    'Synchronisation automatique'
-                                );
-                                $synced++;
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    $errors++;
-                    Log::error('Erreur sync shipment', [
-                        'shipment_id' => $shipment->id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-            
-            return response()->json([
-                'success' => true,
-                'message' => "Synchronisation terminée: {$synced} mis à jour, {$errors} erreurs",
-                'data' => [
-                    'total_processed' => $activeShipments->count(),
-                    'synced' => $synced,
-                    'errors' => $errors
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur synchronisation globale', [
-                'admin_id' => $admin->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la synchronisation'
-            ], 500);
-        }
+        Log::info("🔄 [CONFIG HISTORY] {$action}", [
+            'config_id' => $config->id,
+            'admin_id' => $config->admin_id,
+            'carrier_slug' => $config->carrier_slug,
+            'integration_name' => $config->integration_name,
+            'action' => $action,
+            'notes' => $notes,
+            'data' => $data,
+        ]);
     }
 
     /**
-     * Webhooks pour JAX Delivery
+     * Obtenir le nom d'un transporteur
      */
-    public function webhookJaxDelivery(Request $request)
+    protected function getCarrierName($carrierSlug)
     {
-        try {
-            // Valider les données du webhook
-            $data = $request->all();
-            
-            Log::info('Webhook JAX Delivery reçu', ['data' => $data]);
-            
-            // TODO: Implémenter le traitement du webhook JAX
-            // Pour l'instant, juste logger et retourner OK
-            
-            return response()->json(['status' => 'ok']);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur webhook JAX Delivery', [
-                'error' => $e->getMessage(),
-                'data' => $request->all()
-            ]);
-            
-            return response()->json(['error' => 'Webhook processing failed'], 500);
-        }
-    }
-
-    /**
-     * Webhooks pour Mes Colis Express
-     */
-    public function webhookMesColis(Request $request)
-    {
-        try {
-            // Valider les données du webhook
-            $data = $request->all();
-            
-            Log::info('Webhook Mes Colis reçu', ['data' => $data]);
-            
-            // TODO: Implémenter le traitement du webhook Mes Colis
-            // Pour l'instant, juste logger et retourner OK
-            
-            return response()->json(['status' => 'ok']);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur webhook Mes Colis', [
-                'error' => $e->getMessage(),
-                'data' => $request->all()
-            ]);
-            
-            return response()->json(['error' => 'Webhook processing failed'], 500);
-        }
+        $carriers = config('carriers');
+        return $carriers[$carrierSlug]['name'] ?? ucfirst(str_replace('_', ' ', $carrierSlug));
     }
 }
