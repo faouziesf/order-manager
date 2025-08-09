@@ -246,7 +246,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION COMPLÈTE ET CORRIGÉE
+        // 🚀 GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION COMPLÈTE ET CORRIGÉE
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
             
@@ -309,29 +309,30 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('pickups/{pickup}/manifest', [DeliveryController::class, 'generatePickupManifest'])->name('pickups.manifest');
             
             // ================================
-            // GESTION DES EXPÉDITIONS (SHIPMENTS) - SECTION ÉTENDUE
+            // 🆕 GESTION DES EXPÉDITIONS (SHIPMENTS) - SECTION ÉTENDUE ET COMPLÈTE
             // ================================
             
-            // Page principale des expéditions
-            Route::get('shipments', [DeliveryController::class, 'shipments'])->name('shipments');
-            Route::get('shipments/list', [DeliveryController::class, 'shipments'])->name('shipments.index');
+            // ⚠️ ROUTES API CRITIQUES - DOIVENT ÊTRE EN PREMIER (AVANT LES PARAMÈTRES) ⚠️
+            Route::get('shipments/list', [DeliveryController::class, 'getShipmentsList'])->name('shipments.list');
+            Route::get('shipments/stats', [DeliveryController::class, 'getShipmentsStats'])->name('shipments.stats');
+            Route::get('shipments/export', [DeliveryController::class, 'exportShipments'])->name('shipments.export');
+            Route::post('shipments/bulk-track', [DeliveryController::class, 'bulkTrackShipments'])->name('shipments.bulk-track');
+            Route::post('shipments/bulk-labels', [DeliveryController::class, 'generateBulkLabels'])->name('shipments.bulk-labels');
             
-            // Détails et actions sur les expéditions
+            // Page principale des expéditions (AVANT les routes avec paramètres)
+            Route::get('shipments', [DeliveryController::class, 'shipments'])->name('shipments');
+            
+            // ROUTES AVEC PARAMÈTRES (DOIVENT ÊTRE APRÈS TOUTES LES ROUTES API)
             Route::get('shipments/{shipment}', [DeliveryController::class, 'showShipment'])->name('shipments.show');
             Route::post('shipments/{shipment}/track', [DeliveryController::class, 'trackShipmentStatus'])->name('shipments.track');
             Route::post('shipments/{shipment}/mark-delivered', [DeliveryController::class, 'markShipmentAsDelivered'])->name('shipments.mark-delivered');
             
-            // Actions en masse sur les expéditions
-            Route::post('shipments/bulk-track', [DeliveryController::class, 'bulkTrackShipments'])->name('shipments.bulk-track');
-            Route::post('shipments/bulk-labels', [DeliveryController::class, 'generateBulkLabels'])->name('shipments.bulk-labels');
-            
-            // Export et documents des expéditions
-            Route::get('shipments/export', [DeliveryController::class, 'exportShipments'])->name('shipments.export');
+            // Génération de documents pour les expéditions
             Route::get('shipments/{shipment}/label', [DeliveryController::class, 'generateShippingLabel'])->name('shipments.label');
             Route::get('shipments/{shipment}/delivery-proof', [DeliveryController::class, 'generateDeliveryProof'])->name('shipments.delivery-proof');
             
             // ================================
-            // STATISTIQUES ET APIs
+            // STATISTIQUES ET APIs GLOBALES
             // ================================
             Route::get('stats', [DeliveryController::class, 'stats'])->name('stats');
             Route::get('api/general-stats', [DeliveryController::class, 'getGeneralStats'])->name('api.general-stats');
@@ -387,6 +388,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'delivery_preparation' => route('admin.delivery.preparation'),
                     'delivery_pickups' => route('admin.delivery.pickups'),
                     'delivery_pickups_list' => route('admin.delivery.pickups.list'),
+                    'delivery_shipments' => route('admin.delivery.shipments'),
+                    'delivery_shipments_list' => route('admin.delivery.shipments.list'),
                     'delivery_api_general_stats' => route('admin.delivery.api.general-stats'),
                     'delivery_test_system' => route('admin.delivery.test-system'),
                 ]
@@ -412,6 +415,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'active_delivery_configs' => $admin->deliveryConfigurations()->where('is_active', true)->count(),
                 'total_pickups' => \App\Models\Pickup::where('admin_id', $admin->id)->count(),
                 'draft_pickups' => \App\Models\Pickup::where('admin_id', $admin->id)->where('status', 'draft')->count(),
+                'total_shipments' => \App\Models\Shipment::where('admin_id', $admin->id)->count(),
+                'active_shipments' => \App\Models\Shipment::where('admin_id', $admin->id)
+                    ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
+                    ->count(),
             ];
         })->name('debug-process');
 
@@ -431,12 +438,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'active_shipments' => \App\Models\Shipment::where('admin_id', $admin->id)
                         ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
                         ->count(),
+                    'shipment_stats' => [
+                        'in_transit' => \App\Models\Shipment::where('admin_id', $admin->id)->where('status', 'in_transit')->count(),
+                        'delivered' => \App\Models\Shipment::where('admin_id', $admin->id)->where('status', 'delivered')->count(),
+                        'in_return' => \App\Models\Shipment::where('admin_id', $admin->id)->where('status', 'in_return')->count(),
+                        'anomaly' => \App\Models\Shipment::where('admin_id', $admin->id)->where('status', 'anomaly')->count(),
+                    ],
                     'routes_check' => [
                         'general_stats_route_exists' => \Route::has('admin.delivery.api.general-stats'),
                         'delivery_index_exists' => \Route::has('admin.delivery.index'),
                         'delivery_config_exists' => \Route::has('admin.delivery.configuration'),
                         'test_system_exists' => \Route::has('admin.delivery.test-system'),
                         'pickups_list_exists' => \Route::has('admin.delivery.pickups.list'),
+                        'shipments_exists' => \Route::has('admin.delivery.shipments'),
+                        'shipments_list_exists' => \Route::has('admin.delivery.shipments.list'),
                     ],
                     'config_carriers' => config('carriers') ? array_keys(config('carriers')) : [],
                     'timestamp' => now()->toISOString(),
@@ -451,6 +466,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'delivery_index_exists' => \Route::has('admin.delivery.index'),
                         'test_system_exists' => \Route::has('admin.delivery.test-system'),
                         'pickups_list_exists' => \Route::has('admin.delivery.pickups.list'),
+                        'shipments_exists' => \Route::has('admin.delivery.shipments'),
+                        'shipments_list_exists' => \Route::has('admin.delivery.shipments.list'),
                     ]
                 ];
             }
@@ -473,8 +490,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'pickups' => route('admin.delivery.pickups'),
                     'pickups_list' => route('admin.delivery.pickups.list'),
                     'shipments' => route('admin.delivery.shipments'),
+                    'shipments_list' => route('admin.delivery.shipments.list'),
                     'stats' => route('admin.delivery.stats'),
                     'api_general_stats' => route('admin.delivery.api.general-stats'),
+                    'api_stats' => route('admin.delivery.api.stats'),
                     'test_system' => route('admin.delivery.test-system'),
                     'test_create_pickup' => route('admin.delivery.test-create-pickup'),
                 ],
@@ -486,6 +505,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'admin.delivery.preparation',
                     'admin.delivery.pickups',
                     'admin.delivery.shipments',
+                    'admin.delivery.stats',
                 ],
                 'timestamp' => now()->toISOString()
             ];
@@ -547,6 +567,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'orders_count' => $admin->orders()->count(),
                     'configs_count' => $admin->deliveryConfigurations()->count(),
                     'pickups_count' => \App\Models\Pickup::where('admin_id', $admin->id)->count(),
+                    'shipments_count' => \App\Models\Shipment::where('admin_id', $admin->id)->count(),
                 ];
             } catch (\Exception $e) {
                 $results['database_test'] = [
@@ -570,7 +591,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'delivery.preparation.orders',
                 'delivery.preparation.store',
                 'delivery.pickups.list',
+                'delivery.shipments',
+                'delivery.shipments.list',
                 'delivery.test-system',
+                'delivery.api.general-stats',
             ];
             
             $results['routes_test'] = [];
@@ -621,11 +645,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 $pickupsCount = \DB::table('pickups')->where('admin_id', $admin->id)->count();
                 $configsCount = \DB::table('delivery_configurations')->where('admin_id', $admin->id)->count();
                 $ordersCount = \DB::table('orders')->where('admin_id', $admin->id)->count();
+                $shipmentsCount = \DB::table('shipments')->where('admin_id', $admin->id)->count();
                 
                 // Test des routes
                 $routes = [
                     'pickups' => route('admin.delivery.pickups'),
                     'pickups_list' => route('admin.delivery.pickups.list'),
+                    'shipments' => route('admin.delivery.shipments'),
+                    'shipments_list' => route('admin.delivery.shipments.list'),
                     'preparation' => route('admin.delivery.preparation'),
                 ];
                 
@@ -639,6 +666,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'pickups' => $pickupsCount,
                         'configs' => $configsCount,
                         'orders' => $ordersCount,
+                        'shipments' => $shipmentsCount,
                     ],
                     'routes' => $routes,
                     'tables_exist' => [
@@ -696,6 +724,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     $pickups[] = $pickup->id;
                 }
                 
+                // Créer quelques shipments de test
+                $shipments = [];
+                for ($i = 1; $i <= 5; $i++) {
+                    $shipment = \App\Models\Shipment::create([
+                        'admin_id' => $admin->id,
+                        'order_id' => null, // Pas de commande associée pour le test
+                        'pickup_id' => $pickups[($i - 1) % count($pickups)],
+                        'carrier_slug' => 'jax_delivery',
+                        'status' => ['created', 'validated', 'in_transit', 'delivered'][($i - 1) % 4],
+                        'weight' => rand(5, 50) / 10,
+                        'cod_amount' => rand(20, 200),
+                        'nb_pieces' => rand(1, 5),
+                        'recipient_info' => [
+                            'name' => "Client Test {$i}",
+                            'phone' => '12345678' . $i,
+                            'city' => 'Tunis',
+                        ],
+                    ]);
+                    
+                    $shipments[] = $shipment->id;
+                }
+                
                 \DB::commit();
                 
                 return response()->json([
@@ -703,6 +753,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'message' => 'Données de test créées',
                     'config_id' => $config->id,
                     'pickup_ids' => $pickups,
+                    'shipment_ids' => $shipments,
                 ]);
                 
             } catch (\Exception $e) {
@@ -715,5 +766,52 @@ Route::prefix('admin')->name('admin.')->group(function () {
             }
             
         })->name('create-test-pickup-data');
+
+        // 🆕 ROUTE DE TEST POUR LES EXPÉDITIONS
+        Route::get('test-shipments-quick', function () {
+            $admin = auth('admin')->user();
+            
+            if (!$admin) {
+                return response()->json(['error' => 'Non authentifié'], 401);
+            }
+            
+            try {
+                // Test de l'API des expéditions
+                $shipmentsCount = \App\Models\Shipment::where('admin_id', $admin->id)->count();
+                $activeShipmentsCount = \App\Models\Shipment::where('admin_id', $admin->id)
+                    ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
+                    ->count();
+                
+                // Test des routes spécifiques aux expéditions
+                $shipmentRoutes = [
+                    'shipments' => route('admin.delivery.shipments'),
+                    'shipments_list' => route('admin.delivery.shipments.list'),
+                    'shipments_stats' => route('admin.delivery.shipments.stats'),
+                    'api_track_all' => route('admin.delivery.api.track-all'),
+                ];
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Test des expéditions réussi',
+                    'admin' => [
+                        'id' => $admin->id,
+                        'name' => $admin->name,
+                    ],
+                    'shipments_data' => [
+                        'total' => $shipmentsCount,
+                        'active' => $activeShipmentsCount,
+                    ],
+                    'shipment_routes' => $shipmentRoutes,
+                    'timestamp' => now()->toISOString(),
+                ]);
+                
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'admin_id' => $admin->id,
+                ], 500);
+            }
+        })->name('test-shipments-quick');
     });
 });

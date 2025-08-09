@@ -3,788 +3,1017 @@
 @section('title', 'Statistiques de Livraison')
 
 @section('content')
-<div class="container-fluid" x-data="deliveryStats">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-chart-line text-primary me-2"></i>
-                Statistiques de Livraison
-            </h1>
-            <p class="text-muted mb-0">Analyse détaillée de vos performances de livraison</p>
-        </div>
-        <div class="d-flex gap-2">
-            <div class="dropdown">
-                <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-calendar me-1"></i>
-                    <span x-text="periodLabels[selectedPeriod]"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" @click="changePeriod('7days')">7 derniers jours</a></li>
-                    <li><a class="dropdown-item" href="#" @click="changePeriod('30days')">30 derniers jours</a></li>
-                    <li><a class="dropdown-item" href="#" @click="changePeriod('3months')">3 derniers mois</a></li>
-                    <li><a class="dropdown-item" href="#" @click="changePeriod('year')">Cette année</a></li>
-                </ul>
-            </div>
-            <button class="btn btn-outline-secondary" @click="exportStats()">
-                <i class="fas fa-download me-1"></i>
-                Exporter
+<style>
+:root {
+    --primary: #2563eb;
+    --primary-light: #3b82f6;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #06b6d4;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-600: #4b5563;
+    --gray-800: #1f2937;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius: 0.75rem;
+    --radius-sm: 0.375rem;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* Layout moderne */
+.stats-container {
+    padding: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    min-height: calc(100vh - 80px);
+}
+
+/* Header compact */
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.stats-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stats-title i {
+    color: var(--primary);
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-modern {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-200);
+    background: white;
+    color: var(--gray-600);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    text-decoration: none;
+}
+
+.btn-modern:hover {
+    background: var(--gray-50);
+    color: var(--gray-800);
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.btn-primary:hover {
+    background: var(--primary-light);
+    color: white;
+}
+
+/* Grille de métriques compacte */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.metric-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--primary);
+    transition: transform 0.2s;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.metric-card.success { border-left-color: var(--success); }
+.metric-card.warning { border-left-color: var(--warning); }
+.metric-card.info { border-left-color: var(--info); }
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.metric-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-600);
+    margin: 0;
+}
+
+.metric-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    color: var(--primary);
+    font-size: 1rem;
+}
+
+.metric-icon.success { background: #dcfce7; color: var(--success); }
+.metric-icon.warning { background: #fef3c7; color: var(--warning); }
+.metric-icon.info { background: #cffafe; color: var(--info); }
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--gray-800);
+    margin: 0 0 0.5rem 0;
+    line-height: 1;
+}
+
+.metric-trend {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.trend-positive { color: var(--success); }
+.trend-negative { color: var(--danger); }
+.trend-neutral { color: var(--gray-600); }
+
+/* Grille de contenu principal */
+.content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Cartes de contenu */
+.content-card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--gray-50);
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.card-body.no-padding {
+    padding: 0;
+}
+
+/* Graphiques */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Tables compactes */
+.compact-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.compact-table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray-600);
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--gray-50);
+}
+
+.compact-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--gray-200);
+    color: var(--gray-800);
+}
+
+.compact-table tr:hover {
+    background: var(--gray-50);
+}
+
+/* Progress bars */
+.progress-bar {
+    width: 100%;
+    height: 0.375rem;
+    background: var(--gray-200);
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.3s ease;
+}
+
+.progress-success { background: var(--success); }
+.progress-warning { background: var(--warning); }
+.progress-danger { background: var(--danger); }
+
+/* Badges */
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.badge-success { background: #dcfce7; color: var(--success); }
+.badge-warning { background: #fef3c7; color: var(--warning); }
+.badge-danger { background: #fee2e2; color: var(--danger); }
+.badge-info { background: #cffafe; color: var(--info); }
+
+/* Loading states */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    color: var(--gray-600);
+}
+
+.spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid var(--gray-200);
+    border-top: 2px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Export section */
+.export-section {
+    background: white;
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+}
+
+.export-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .stats-container {
+        padding: 0.75rem;
+    }
+    
+    .stats-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+        padding: 1rem;
+    }
+    
+    .header-actions {
+        justify-content: center;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .metric-card {
+        padding: 1rem;
+    }
+    
+    .metric-value {
+        font-size: 1.75rem;
+    }
+    
+    .content-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+    
+    .btn-modern {
+        flex: 1;
+        justify-content: center;
+        padding: 0.75rem;
+    }
+    
+    .stats-title {
+        font-size: 1.25rem;
+        text-align: center;
+    }
+    
+    .compact-table {
+        font-size: 0.8rem;
+    }
+    
+    .compact-table th,
+    .compact-table td {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-container {
+        padding: 0.5rem;
+    }
+    
+    .metric-card {
+        padding: 0.75rem;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* Utilities */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.d-flex { display: flex; }
+.align-items-center { align-items: center; }
+.justify-content-between { justify-content: space-between; }
+.gap-2 { gap: 0.5rem; }
+.flex-wrap { flex-wrap: wrap; }
+</style>
+
+<div class="stats-container">
+    <!-- Header compact -->
+    <div class="stats-header fade-in">
+        <h1 class="stats-title">
+            <i class="fas fa-chart-line"></i>
+            Statistiques de Livraison
+        </h1>
+        <div class="header-actions">
+            <select id="periodSelect" class="btn-modern">
+                <option value="7">7 jours</option>
+                <option value="30" selected>30 jours</option>
+                <option value="90">3 mois</option>
+            </select>
+            <button class="btn-modern" onclick="refreshStats()">
+                <i class="fas fa-sync" id="refreshIcon"></i>
+                Actualiser
             </button>
-            <a href="{{ route('admin.delivery.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i>
+            <button class="btn-modern" onclick="exportStats()">
+                <i class="fas fa-download"></i>
+                Export
+            </button>
+            <a href="{{ route('admin.delivery.index') }}" class="btn-modern">
+                <i class="fas fa-arrow-left"></i>
                 Retour
             </a>
         </div>
     </div>
 
     <!-- Métriques principales -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Expéditions
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" x-text="stats.total_shipments"></div>
-                            <div class="small">
-                                <span :class="stats.shipments_trend >= 0 ? 'text-success' : 'text-danger'">
-                                    <i :class="stats.shipments_trend >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
-                                    <span x-text="Math.abs(stats.shipments_trend)"></span>%
-                                </span>
-                                <span class="text-muted">vs période précédente</span>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-shipping-fast fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+    <div class="metrics-grid fade-in" id="metricsGrid">
+        <div class="metric-card">
+            <div class="metric-header">
+                <h3 class="metric-title">Total Expéditions</h3>
+                <div class="metric-icon">
+                    <i class="fas fa-shipping-fast"></i>
                 </div>
+            </div>
+            <p class="metric-value" id="totalShipments">-</p>
+            <div class="metric-trend" id="shipmentsTrend">
+                <i class="fas fa-minus"></i>
+                <span>Chargement...</span>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Taux de Livraison
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" x-text="`${stats.delivery_rate}%`"></div>
-                            <div class="small">
-                                <span class="text-muted">
-                                    <span x-text="stats.delivered_shipments"></span> sur <span x-text="stats.total_shipments"></span> livrées
-                                </span>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="metric-card success">
+            <div class="metric-header">
+                <h3 class="metric-title">Livrées</h3>
+                <div class="metric-icon success">
+                    <i class="fas fa-check-circle"></i>
                 </div>
+            </div>
+            <p class="metric-value" id="deliveredShipments">-</p>
+            <div class="metric-trend" id="deliveredTrend">
+                <i class="fas fa-minus"></i>
+                <span>Chargement...</span>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Délai Moyen
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" x-text="`${stats.avg_delivery_time} jours`"></div>
-                            <div class="small">
-                                <span :class="stats.delivery_time_trend <= 0 ? 'text-success' : 'text-danger'">
-                                    <i :class="stats.delivery_time_trend <= 0 ? 'fas fa-arrow-down' : 'fas fa-arrow-up'"></i>
-                                    <span x-text="Math.abs(stats.delivery_time_trend)"></span>%
-                                </span>
-                                <span class="text-muted">vs période précédente</span>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clock fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="metric-card warning">
+            <div class="metric-header">
+                <h3 class="metric-title">En Transit</h3>
+                <div class="metric-icon warning">
+                    <i class="fas fa-truck"></i>
                 </div>
+            </div>
+            <p class="metric-value" id="inTransitShipments">-</p>
+            <div class="metric-trend" id="transitTrend">
+                <i class="fas fa-minus"></i>
+                <span>Chargement...</span>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Volume COD
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" x-text="`${stats.total_cod_amount} TND`"></div>
-                            <div class="small">
-                                <span :class="stats.cod_trend >= 0 ? 'text-success' : 'text-danger'">
-                                    <i :class="stats.cod_trend >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
-                                    <span x-text="Math.abs(stats.cod_trend)"></span>%
-                                </span>
-                                <span class="text-muted">vs période précédente</span>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="metric-card info">
+            <div class="metric-header">
+                <h3 class="metric-title">Problèmes</h3>
+                <div class="metric-icon info">
+                    <i class="fas fa-exclamation-triangle"></i>
                 </div>
+            </div>
+            <p class="metric-value" id="problemShipments">-</p>
+            <div class="metric-trend" id="problemTrend">
+                <i class="fas fa-minus"></i>
+                <span>Chargement...</span>
             </div>
         </div>
     </div>
 
-    <!-- Graphiques -->
-    <div class="row mb-4">
-        <!-- Évolution des expéditions -->
-        <div class="col-xl-8 col-lg-7">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Évolution des Expéditions</h6>
-                    <div class="dropdown no-arrow">
-                        <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in">
-                            <div class="dropdown-header">Options:</div>
-                            <a class="dropdown-item" href="#" @click="changeChartType('line')">Graphique linéaire</a>
-                            <a class="dropdown-item" href="#" @click="changeChartType('bar')">Graphique en barres</a>
-                        </div>
-                    </div>
+    <!-- Contenu principal -->
+    <div class="content-grid fade-in">
+        <!-- Graphique principal -->
+        <div class="content-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>Évolution des Expéditions</span>
+                    <select id="chartPeriod" class="btn-modern" onchange="updateChart()">
+                        <option value="7">7 jours</option>
+                        <option value="30" selected>30 jours</option>
+                    </select>
                 </div>
-                <div class="card-body">
-                    <div x-show="loading" class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Chargement...</span>
-                        </div>
-                    </div>
-                    <canvas id="shipmentsChart" x-show="!loading" width="100" height="40"></canvas>
+            </div>
+            <div class="card-body">
+                <div id="chartLoading" class="loading">
+                    <div class="spinner"></div>
+                    Chargement du graphique...
+                </div>
+                <div class="chart-container" id="chartContainer" style="display: none;">
+                    <canvas id="shipmentsChart"></canvas>
                 </div>
             </div>
         </div>
 
         <!-- Répartition par transporteur -->
-        <div class="col-xl-4 col-lg-5">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Répartition par Transporteur</h6>
+        <div class="content-card">
+            <div class="card-header">
+                <h3 class="card-title">Par Transporteur</h3>
+            </div>
+            <div class="card-body">
+                <div id="carriersLoading" class="loading">
+                    <div class="spinner"></div>
+                    Chargement...
                 </div>
-                <div class="card-body">
-                    <div x-show="loading" class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Chargement...</span>
-                        </div>
+                <div id="carriersData" style="display: none;">
+                    <div class="chart-container" style="height: 200px;">
+                        <canvas id="carriersChart"></canvas>
                     </div>
-                    <canvas id="carriersChart" x-show="!loading" width="100" height="100"></canvas>
-                    
-                    <!-- Légende -->
-                    <div class="mt-3" x-show="!loading">
-                        <template x-for="carrier in carrierStats" :key="carrier.slug">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center">
-                                    <div class="carrier-color-indicator me-2" :style="`background-color: ${carrier.color}`"></div>
-                                    <span x-text="carrier.name"></span>
-                                </div>
-                                <div class="text-end">
-                                    <strong x-text="carrier.count"></strong>
-                                    <br>
-                                    <small class="text-muted" x-text="`${carrier.percentage}%`"></small>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
+                    <div id="carriersLegend" class="mt-2"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tableaux de détails -->
-    <div class="row">
-        <!-- Performance par région -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Performance par Région</h6>
+    <!-- Tables de données -->
+    <div class="content-grid fade-in">
+        <!-- Statuts détaillés -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3 class="card-title">Répartition par Statut</h3>
+            </div>
+            <div class="card-body no-padding">
+                <div id="statusLoading" class="loading">
+                    <div class="spinner"></div>
+                    Chargement...
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Gouvernorat</th>
-                                    <th>Expéditions</th>
-                                    <th>Taux de Livraison</th>
-                                    <th>Délai Moyen</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="region in regionStats.slice(0, 10)" :key="region.id">
-                                    <tr>
-                                        <td x-text="region.name"></td>
-                                        <td>
-                                            <strong x-text="region.shipments"></strong>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="progress flex-grow-1 me-2" style="height: 4px;">
-                                                    <div class="progress-bar" 
-                                                         :style="`width: ${region.delivery_rate}%; background-color: ${region.delivery_rate >= 80 ? '#28a745' : region.delivery_rate >= 60 ? '#ffc107' : '#dc3545'}`">
-                                                    </div>
-                                                </div>
-                                                <span class="small" x-text="`${region.delivery_rate}%`"></span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span x-text="`${region.avg_delivery_time} j`"></span>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <table class="compact-table" id="statusTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Statut</th>
+                            <th>Nombre</th>
+                            <th>Pourcentage</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statusTableBody">
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Analyse des problèmes -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-danger">Analyse des Problèmes</h6>
+        <!-- Activité récente -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3 class="card-title">Activité Récente</h3>
+            </div>
+            <div class="card-body no-padding">
+                <div id="activityLoading" class="loading">
+                    <div class="spinner"></div>
+                    Chargement...
                 </div>
-                <div class="card-body">
-                    <!-- Types de problèmes -->
-                    <div class="mb-4">
-                        <h6 class="text-muted">Types de Problèmes</h6>
-                        <template x-for="problem in problemStats" :key="problem.type">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div>
-                                    <span x-text="problem.label"></span>
-                                    <br>
-                                    <small class="text-muted" x-text="problem.description"></small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-danger" x-text="problem.count"></span>
-                                    <br>
-                                    <small class="text-muted" x-text="`${problem.percentage}%`"></small>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-
-                    <!-- Actions recommandées -->
-                    <div>
-                        <h6 class="text-primary">Actions Recommandées</h6>
-                        <div class="list-group list-group-flush">
-                            <template x-for="recommendation in recommendations" :key="recommendation.id">
-                                <div class="list-group-item border-0 px-0">
-                                    <div class="d-flex align-items-start">
-                                        <i :class="recommendation.icon" class="me-2 mt-1"></i>
-                                        <div>
-                                            <strong x-text="recommendation.title"></strong>
-                                            <br>
-                                            <small class="text-muted" x-text="recommendation.description"></small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
+                <div id="activityList" style="display: none;">
+                    <!-- L'activité sera injectée ici -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Export et actions -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Export et Rapports</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <p class="text-muted mb-3">
-                                Exportez vos données de livraison pour analyse approfondie ou reporting externe.
-                            </p>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn btn-outline-success" @click="exportData('excel')">
-                                    <i class="fas fa-file-excel me-1"></i>
-                                    Excel
-                                </button>
-                                <button class="btn btn-outline-danger" @click="exportData('pdf')">
-                                    <i class="fas fa-file-pdf me-1"></i>
-                                    PDF
-                                </button>
-                                <button class="btn btn-outline-primary" @click="exportData('csv')">
-                                    <i class="fas fa-file-csv me-1"></i>
-                                    CSV
-                                </button>
-                                <button class="btn btn-outline-info" @click="scheduleReport()">
-                                    <i class="fas fa-calendar me-1"></i>
-                                    Programmer un Rapport
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-4 text-md-end">
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-primary" @click="refreshAllData()">
-                                    <i class="fas fa-sync me-1"></i>
-                                    Actualiser les Données
-                                </button>
-                                <button class="btn btn-outline-secondary" @click="configureKPIs()">
-                                    <i class="fas fa-cogs me-1"></i>
-                                    Configurer KPIs
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Section export -->
+    <div class="export-section fade-in">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="mb-0">Export des Données</h3>
+            <div class="export-actions">
+                <button class="btn-modern btn-primary" onclick="exportData('csv')">
+                    <i class="fas fa-file-csv"></i>
+                    CSV
+                </button>
+                <button class="btn-modern btn-primary" onclick="exportData('excel')">
+                    <i class="fas fa-file-excel"></i>
+                    Excel
+                </button>
             </div>
         </div>
+        <p class="mb-0" style="color: var(--gray-600); font-size: 0.875rem;">
+            Exportez vos statistiques de livraison pour analyse externe ou reporting.
+        </p>
     </div>
 </div>
-@endsection
 
-@push('scripts')
-<!-- Chart.js -->
+<!-- Toast notifications -->
+<div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('deliveryStats', () => ({
-        loading: true,
-        selectedPeriod: '30days',
-        chartType: 'line',
-        periodLabels: {
-            '7days': '7 derniers jours',
-            '30days': '30 derniers jours',
-            '3months': '3 derniers mois',
-            'year': 'Cette année'
-        },
-        stats: {
-            total_shipments: 0,
-            delivered_shipments: 0,
-            delivery_rate: 0,
-            avg_delivery_time: 0,
-            total_cod_amount: 0,
-            shipments_trend: 0,
-            delivery_time_trend: 0,
-            cod_trend: 0
-        },
-        carrierStats: [],
-        regionStats: [],
-        problemStats: [],
-        recommendations: [],
-        shipmentsChart: null,
-        carriersChart: null,
+// Variables globales
+let shipmentsChart = null;
+let carriersChart = null;
+let statsData = {};
 
-        init() {
-            this.loadAllData();
-        },
-
-        async loadAllData() {
-            this.loading = true;
-            
-            try {
-                await Promise.all([
-                    this.loadStats(),
-                    this.loadCarrierStats(),
-                    this.loadRegionStats(),
-                    this.loadProblemStats(),
-                    this.loadRecommendations()
-                ]);
-                
-                // Initialiser les graphiques après le chargement des données
-                this.$nextTick(() => {
-                    this.initCharts();
-                });
-            } catch (error) {
-                console.error('Erreur chargement données:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erreur',
-                    text: 'Impossible de charger les statistiques',
-                });
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        async loadStats() {
-            // TODO: Remplacer par un vrai appel API
-            // const response = await axios.get('/admin/delivery/api/stats', { params: { period: this.selectedPeriod } });
-            
-            // Simulation de données
-            this.stats = {
-                total_shipments: Math.floor(Math.random() * 1000) + 500,
-                delivered_shipments: Math.floor(Math.random() * 800) + 400,
-                delivery_rate: (Math.random() * 20 + 75).toFixed(1),
-                avg_delivery_time: (Math.random() * 2 + 2).toFixed(1),
-                total_cod_amount: (Math.random() * 50000 + 10000).toFixed(3),
-                shipments_trend: (Math.random() * 30 - 15).toFixed(1),
-                delivery_time_trend: (Math.random() * 20 - 10).toFixed(1),
-                cod_trend: (Math.random() * 40 - 20).toFixed(1)
-            };
-        },
-
-        async loadCarrierStats() {
-            this.carrierStats = [
-                {
-                    slug: 'jax_delivery',
-                    name: 'JAX Delivery',
-                    count: Math.floor(Math.random() * 400) + 200,
-                    percentage: (Math.random() * 30 + 40).toFixed(1),
-                    color: '#007bff'
-                },
-                {
-                    slug: 'mes_colis',
-                    name: 'Mes Colis Express',
-                    count: Math.floor(Math.random() * 300) + 150,
-                    percentage: (Math.random() * 30 + 25).toFixed(1),
-                    color: '#28a745'
-                }
-            ];
-        },
-
-        async loadRegionStats() {
-            const regions = ['Tunis', 'Ariana', 'Ben Arous', 'Sousse', 'Sfax', 'Nabeul', 'Monastir', 'Bizerte'];
-            this.regionStats = regions.map((name, index) => ({
-                id: index + 1,
-                name,
-                shipments: Math.floor(Math.random() * 100) + 20,
-                delivery_rate: (Math.random() * 30 + 60).toFixed(0),
-                avg_delivery_time: (Math.random() * 3 + 2).toFixed(1)
-            }));
-        },
-
-        async loadProblemStats() {
-            this.problemStats = [
-                {
-                    type: 'address_not_found',
-                    label: 'Adresse introuvable',
-                    description: 'Adresses incorrectes ou incomplètes',
-                    count: Math.floor(Math.random() * 20) + 5,
-                    percentage: (Math.random() * 10 + 5).toFixed(1)
-                },
-                {
-                    type: 'customer_absent',
-                    label: 'Client absent',
-                    description: 'Client non disponible lors de la livraison',
-                    count: Math.floor(Math.random() * 15) + 3,
-                    percentage: (Math.random() * 8 + 3).toFixed(1)
-                },
-                {
-                    type: 'damaged_package',
-                    label: 'Colis endommagé',
-                    description: 'Dommages pendant le transport',
-                    count: Math.floor(Math.random() * 8) + 1,
-                    percentage: (Math.random() * 5 + 1).toFixed(1)
-                }
-            ];
-        },
-
-        async loadRecommendations() {
-            this.recommendations = [
-                {
-                    id: 1,
-                    icon: 'fas fa-map-marker-alt text-warning',
-                    title: 'Améliorer la qualité des adresses',
-                    description: 'Ajouter une validation des adresses lors de la saisie des commandes'
-                },
-                {
-                    id: 2,
-                    icon: 'fas fa-phone text-info',
-                    title: 'Confirmer les livraisons par SMS',
-                    description: 'Envoyer un SMS de confirmation avant la livraison'
-                },
-                {
-                    id: 3,
-                    icon: 'fas fa-chart-line text-success',
-                    title: 'Optimiser les créneaux de livraison',
-                    description: 'Analyser les heures de livraison les plus efficaces'
-                }
-            ];
-        },
-
-        changePeriod(period) {
-            this.selectedPeriod = period;
-            this.loadAllData();
-        },
-
-        changeChartType(type) {
-            this.chartType = type;
-            this.updateShipmentsChart();
-        },
-
-        initCharts() {
-            this.initShipmentsChart();
-            this.initCarriersChart();
-        },
-
-        initShipmentsChart() {
-            const ctx = document.getElementById('shipmentsChart');
-            if (!ctx) return;
-
-            // Générer des données factices pour la période
-            const labels = [];
-            const data = [];
-            const days = this.selectedPeriod === '7days' ? 7 : this.selectedPeriod === '30days' ? 30 : 90;
-            
-            for (let i = days - 1; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                labels.push(date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));
-                data.push(Math.floor(Math.random() * 50) + 10);
-            }
-
-            this.shipmentsChart = new Chart(ctx, {
-                type: this.chartType,
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Expéditions',
-                        data: data,
-                        backgroundColor: this.chartType === 'line' ? 'rgba(54, 162, 235, 0.1)' : 'rgba(54, 162, 235, 0.8)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 2,
-                        fill: this.chartType === 'line'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        },
-
-        initCarriersChart() {
-            const ctx = document.getElementById('carriersChart');
-            if (!ctx) return;
-
-            this.carriersChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: this.carrierStats.map(c => c.name),
-                    datasets: [{
-                        data: this.carrierStats.map(c => c.count),
-                        backgroundColor: this.carrierStats.map(c => c.color),
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        },
-
-        updateShipmentsChart() {
-            if (this.shipmentsChart) {
-                this.shipmentsChart.destroy();
-                this.initShipmentsChart();
-            }
-        },
-
-        async refreshAllData() {
-            await this.loadAllData();
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Données actualisées !',
-                text: 'Les statistiques ont été mises à jour',
-                showConfirmButton: false,
-                timer: 2000
-            });
-        },
-
-        async exportData(format) {
-            Swal.fire({
-                icon: 'info',
-                title: 'Export en cours...',
-                text: `Génération du fichier ${format.toUpperCase()}`,
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                willOpen: () => Swal.showLoading()
-            });
-
-            // TODO: Implémenter l'export réel
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Export terminé !',
-                text: `Fichier ${format.toUpperCase()} téléchargé`,
-                showConfirmButton: false,
-                timer: 2000
-            });
-        },
-
-        async scheduleReport() {
-            const { value: formValues } = await Swal.fire({
-                title: 'Programmer un Rapport',
-                html: `
-                    <div class="mb-3">
-                        <label class="form-label">Fréquence</label>
-                        <select id="frequency" class="form-select">
-                            <option value="daily">Quotidien</option>
-                            <option value="weekly">Hebdomadaire</option>
-                            <option value="monthly">Mensuel</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email de destination</label>
-                        <input id="email" type="email" class="form-control" placeholder="votre@email.com">
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Programmer',
-                cancelButtonText: 'Annuler',
-                preConfirm: () => {
-                    return {
-                        frequency: document.getElementById('frequency').value,
-                        email: document.getElementById('email').value
-                    }
-                }
-            });
-
-            if (formValues) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Rapport programmé !',
-                    text: `Rapport ${formValues.frequency} programmé pour ${formValues.email}`,
-                    showConfirmButton: false,
-                    timer: 3000
-                });
-            }
-        },
-
-        async configureKPIs() {
-            Swal.fire({
-                icon: 'info',
-                title: 'Configuration KPIs',
-                text: 'Fonctionnalité en développement',
-                showConfirmButton: true
-            });
-        },
-
-        exportStats() {
-            this.exportData('excel');
-        }
-    }));
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    loadAllStats();
+    
+    // Event listeners
+    document.getElementById('periodSelect').addEventListener('change', function() {
+        loadAllStats();
+    });
 });
-</script>
-@endpush
 
-@push('styles')
-<style>
-.card {
-    transition: transform 0.2s ease-in-out;
+// Chargement des statistiques
+async function loadAllStats() {
+    showLoading();
+    
+    try {
+        // Charger les statistiques générales
+        const statsResponse = await fetch('/admin/delivery/api/general-stats', {
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!statsResponse.ok) {
+            throw new Error(`Erreur ${statsResponse.status}`);
+        }
+        
+        const data = await statsResponse.json();
+        
+        if (data.success) {
+            statsData = data;
+            updateMetrics(data);
+            updateCharts(data);
+            updateTables(data);
+            hideLoading();
+            showToast('Données mises à jour', 'success');
+        } else {
+            throw new Error(data.error || 'Erreur de chargement');
+        }
+        
+    } catch (error) {
+        console.error('Erreur chargement stats:', error);
+        hideLoading();
+        showToast('Erreur de chargement des données', 'error');
+        
+        // Données de fallback
+        const fallbackData = {
+            success: true,
+            general_stats: {
+                total_shipments: 0,
+                active_shipments: 0
+            },
+            stats: {
+                shipments: {
+                    in_transit: 0,
+                    delivered: 0,
+                    in_return: 0,
+                    anomaly: 0
+                }
+            }
+        };
+        
+        updateMetrics(fallbackData);
+        updateTables(fallbackData);
+    }
 }
 
-.card:hover {
-    transform: translateY(-2px);
+// Mise à jour des métriques
+function updateMetrics(data) {
+    const generalStats = data.general_stats || {};
+    const shipmentStats = data.stats?.shipments || {};
+    
+    // Total expéditions
+    document.getElementById('totalShipments').textContent = generalStats.total_shipments || 0;
+    
+    // Livrées
+    document.getElementById('deliveredShipments').textContent = shipmentStats.delivered || 0;
+    
+    // En transit
+    document.getElementById('inTransitShipments').textContent = shipmentStats.in_transit || 0;
+    
+    // Problèmes (retours + anomalies)
+    const problems = (shipmentStats.in_return || 0) + (shipmentStats.anomaly || 0);
+    document.getElementById('problemShipments').textContent = problems;
+    
+    // Mise à jour des tendances (simulées pour le moment)
+    updateTrend('shipmentsTrend', Math.random() > 0.5 ? 5 : -3);
+    updateTrend('deliveredTrend', Math.random() > 0.3 ? 8 : -2);
+    updateTrend('transitTrend', Math.random() > 0.5 ? 3 : -5);
+    updateTrend('problemTrend', Math.random() > 0.7 ? -10 : 2);
 }
 
-.border-left-primary {
-    border-left: 0.25rem solid #4e73df !important;
+// Mise à jour d'une tendance
+function updateTrend(elementId, value) {
+    const element = document.getElementById(elementId);
+    const isPositive = value >= 0;
+    
+    element.className = `metric-trend ${isPositive ? 'trend-positive' : 'trend-negative'}`;
+    element.innerHTML = `
+        <i class="fas fa-${isPositive ? 'arrow-up' : 'arrow-down'}"></i>
+        <span>${Math.abs(value)}% vs période précédente</span>
+    `;
 }
 
-.border-left-success {
-    border-left: 0.25rem solid #1cc88a !important;
+// Mise à jour des graphiques
+function updateCharts(data) {
+    const shipmentStats = data.stats?.shipments || {};
+    
+    // Graphique principal (simulation de données temporelles)
+    updateShipmentsChart();
+    
+    // Graphique par transporteur
+    updateCarriersChart(shipmentStats);
 }
 
-.border-left-info {
-    border-left: 0.25rem solid #36b9cc !important;
-}
-
-.border-left-warning {
-    border-left: 0.25rem solid #f6c23e !important;
-}
-
-.carrier-color-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.progress {
-    height: 6px;
-}
-
-.list-group-item:hover {
-    background-color: rgba(0, 123, 255, 0.05);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .h5 {
-        font-size: 1.1rem;
+// Graphique des expéditions
+function updateShipmentsChart() {
+    const ctx = document.getElementById('shipmentsChart');
+    if (!ctx) return;
+    
+    // Générer des données factices pour les 30 derniers jours
+    const labels = [];
+    const data = [];
+    
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        labels.push(date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));
+        data.push(Math.floor(Math.random() * 20) + 5);
     }
     
-    .card-body {
-        padding: 1rem;
+    if (shipmentsChart) {
+        shipmentsChart.destroy();
     }
     
-    .btn {
-        padding: 0.375rem 0.5rem;
+    shipmentsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Expéditions',
+                data: data,
+                borderColor: 'rgb(37, 99, 235)',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+    
+    document.getElementById('chartLoading').style.display = 'none';
+    document.getElementById('chartContainer').style.display = 'block';
+}
+
+// Graphique par transporteur
+function updateCarriersChart(shipmentStats) {
+    const ctx = document.getElementById('carriersChart');
+    if (!ctx) return;
+    
+    // Calculer la répartition par transporteur (simulation)
+    const total = Object.values(shipmentStats).reduce((sum, val) => sum + (val || 0), 0);
+    const jaxPercent = total > 0 ? Math.floor((shipmentStats.in_transit || 0) / total * 100) : 50;
+    const mesColisPercent = 100 - jaxPercent;
+    
+    const carriers = [
+        { name: 'JAX Delivery', count: Math.floor(total * jaxPercent / 100), color: '#2563eb' },
+        { name: 'Mes Colis', count: Math.floor(total * mesColisPercent / 100), color: '#10b981' }
+    ];
+    
+    if (carriersChart) {
+        carriersChart.destroy();
+    }
+    
+    carriersChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: carriers.map(c => c.name),
+            datasets: [{
+                data: carriers.map(c => c.count),
+                backgroundColor: carriers.map(c => c.color),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Mise à jour de la légende
+    const legend = document.getElementById('carriersLegend');
+    legend.innerHTML = carriers.map(carrier => `
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <div class="d-flex align-items-center gap-2">
+                <div style="width: 12px; height: 12px; background: ${carrier.color}; border-radius: 50%;"></div>
+                <span style="font-size: 0.875rem;">${carrier.name}</span>
+            </div>
+            <span style="font-weight: 600;">${carrier.count}</span>
+        </div>
+    `).join('');
+    
+    document.getElementById('carriersLoading').style.display = 'none';
+    document.getElementById('carriersData').style.display = 'block';
+}
+
+// Mise à jour des tables
+function updateTables(data) {
+    const shipmentStats = data.stats?.shipments || {};
+    const total = Object.values(shipmentStats).reduce((sum, val) => sum + (val || 0), 0);
+    
+    // Table des statuts
+    const statusMap = {
+        'created': { label: 'Créées', color: 'info' },
+        'validated': { label: 'Validées', color: 'warning' },
+        'picked_up_by_carrier': { label: 'Récupérées', color: 'warning' },
+        'in_transit': { label: 'En Transit', color: 'info' },
+        'delivered': { label: 'Livrées', color: 'success' },
+        'in_return': { label: 'En Retour', color: 'warning' },
+        'anomaly': { label: 'Anomalies', color: 'danger' }
+    };
+    
+    const tbody = document.getElementById('statusTableBody');
+    tbody.innerHTML = Object.entries(statusMap).map(([status, config]) => {
+        const count = shipmentStats[status] || 0;
+        const percentage = total > 0 ? Math.round(count / total * 100) : 0;
+        
+        return `
+            <tr>
+                <td>
+                    <span class="badge badge-${config.color}">${config.label}</span>
+                </td>
+                <td><strong>${count}</strong></td>
+                <td>${percentage}%</td>
+                <td>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-${config.color}" style="width: ${percentage}%"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    document.getElementById('statusLoading').style.display = 'none';
+    document.getElementById('statusTable').style.display = 'table';
+    
+    // Activité récente (simulation)
+    updateRecentActivity();
+}
+
+// Activité récente
+function updateRecentActivity() {
+    const activities = [
+        { type: 'delivered', message: 'Expédition #1234 livrée', time: '2 min' },
+        { type: 'created', message: 'Nouvel enlèvement créé', time: '15 min' },
+        { type: 'problem', message: 'Problème expédition #5678', time: '1 h' },
+        { type: 'delivered', message: 'Expédition #9012 livrée', time: '2 h' }
+    ];
+    
+    const activityList = document.getElementById('activityList');
+    activityList.innerHTML = activities.map(activity => `
+        <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--gray-200);">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span style="font-size: 0.875rem; color: var(--gray-800);">${activity.message}</span>
+                </div>
+                <span style="font-size: 0.75rem; color: var(--gray-600);">${activity.time}</span>
+            </div>
+        </div>
+    `).join('');
+    
+    document.getElementById('activityLoading').style.display = 'none';
+    document.getElementById('activityList').style.display = 'block';
+}
+
+// Fonctions utilitaires
+function showLoading() {
+    // Déjà géré par les états de loading individuels
+}
+
+function hideLoading() {
+    // Déjà géré par les fonctions de mise à jour
+}
+
+function refreshStats() {
+    const icon = document.getElementById('refreshIcon');
+    icon.classList.add('fa-spin');
+    
+    loadAllStats().finally(() => {
+        icon.classList.remove('fa-spin');
+    });
+}
+
+function updateChart() {
+    updateShipmentsChart();
+}
+
+function exportStats() {
+    exportData('csv');
+}
+
+function exportData(format) {
+    showToast(`Export ${format.toUpperCase()} en cours...`, 'info');
+    
+    // TODO: Implémenter l'export réel
+    setTimeout(() => {
+        showToast(`Export ${format.toUpperCase()} terminé`, 'success');
+    }, 2000);
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    
+    const colors = {
+        success: 'var(--success)',
+        error: 'var(--danger)',
+        warning: 'var(--warning)',
+        info: 'var(--info)'
+    };
+    
+    toast.style.cssText = `
+        background: ${colors[type]};
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-sm);
+        margin-bottom: 0.5rem;
+        font-weight: 500;
         font-size: 0.875rem;
-    }
+        box-shadow: var(--shadow-lg);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    `;
+    
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    // Animer l'entrée
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Auto-suppression
+    setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            container.removeChild(toast);
+        }, 300);
+    }, 4000);
 }
 
-/* Animation pour les métriques */
-@keyframes countUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.h5 {
-    animation: countUp 0.6s ease-out;
-}
-
-/* Scrollbar pour les tableaux sur mobile */
-.table-responsive {
-    scrollbar-width: thin;
-    scrollbar-color: #c1c1c1 #f1f1f1;
-}
-
-.table-responsive::-webkit-scrollbar {
-    height: 6px;
-}
-
-.table-responsive::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.table-responsive::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-</style>
-@endpush
+console.log('📊 Statistiques de livraison initialisées');
+</script>
+@endsection

@@ -4,12 +4,13 @@
 
 @section('content')
 <div class="container-fluid" x-data="pickupsManager">
-    <!-- Header Simple -->
+    <!-- Header Amélioré avec Debug -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-primary">
                 <i class="fas fa-warehouse me-2"></i>
                 Gestion des Enlèvements
+                <span class="badge bg-info ms-2" x-show="pickups.length > 0" x-text="pickups.length"></span>
             </h1>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
@@ -20,6 +21,10 @@
             </nav>
         </div>
         <div class="d-flex gap-2">
+            <button class="btn btn-outline-info btn-sm" @click="toggleDebugMode()">
+                <i class="fas fa-bug me-1"></i>
+                <span x-text="debugMode ? 'Masquer Debug' : 'Debug'"></span>
+            </button>
             <button class="btn btn-outline-secondary" @click="refreshData()" :disabled="loading">
                 <i class="fas fa-sync me-1" :class="{ 'fa-spin': loading }"></i>
                 Actualiser
@@ -31,33 +36,101 @@
         </div>
     </div>
 
-    <!-- Zone de Debug (masquée en production) -->
-    <div x-show="showDebug" class="alert alert-info mb-4">
-        <h6>🔧 Informations de Debug:</h6>
+    <!-- Zone de Debug Extensif (améliorée) -->
+    <div x-show="debugMode" class="alert alert-info mb-4 border-0 shadow-sm">
         <div class="row">
             <div class="col-md-6">
-                <small>
-                    <strong>État de chargement:</strong> <span x-text="loading ? 'En cours...' : 'Terminé'"></span><br>
-                    <strong>Nombre de pickups:</strong> <span x-text="pickups.length"></span><br>
-                    <strong>Erreur:</strong> <span x-text="error || 'Aucune'"></span><br>
-                    <strong>URL API:</strong> <span x-text="apiUrl"></span><br>
-                </small>
+                <h6 class="fw-bold mb-2">🔧 État du Système</h6>
+                <div class="small">
+                    <div class="mb-1">
+                        <strong>Chargement:</strong> 
+                        <span x-text="loading ? '⏳ En cours...' : '✅ Terminé'" 
+                              :class="loading ? 'text-warning' : 'text-success'"></span>
+                    </div>
+                    <div class="mb-1">
+                        <strong>Pickups chargés:</strong> 
+                        <span x-text="pickups.length" class="badge bg-primary"></span>
+                        <span x-show="originalData.length !== pickups.length" class="text-muted">
+                            (filtré depuis <span x-text="originalData.length"></span>)
+                        </span>
+                    </div>
+                    <div class="mb-1">
+                        <strong>Dernière tentative:</strong> 
+                        <span x-text="lastAttempt" class="text-muted"></span>
+                    </div>
+                    <div class="mb-1">
+                        <strong>Tentatives échouées:</strong> 
+                        <span x-text="failedAttempts" 
+                              :class="failedAttempts > 0 ? 'text-danger' : 'text-success'"></span>
+                    </div>
+                    <div class="mb-1">
+                        <strong>Mode fallback:</strong> 
+                        <span x-text="useFallback ? '🔴 Activé' : '🟢 Désactivé'" 
+                              :class="useFallback ? 'text-danger' : 'text-success'"></span>
+                    </div>
+                </div>
             </div>
             <div class="col-md-6">
-                <small>
-                    <strong>Dernière tentative:</strong> <span x-text="lastAttempt"></span><br>
-                    <strong>Tentatives échouées:</strong> <span x-text="failedAttempts"></span><br>
-                    <strong>Mode fallback:</strong> <span x-text="useFallback ? 'Activé' : 'Désactivé'"></span><br>
-                </small>
+                <h6 class="fw-bold mb-2">🌐 Informations Réseau</h6>
+                <div class="small">
+                    <div class="mb-1">
+                        <strong>URL API:</strong> 
+                        <code class="text-primary" x-text="apiUrl"></code>
+                    </div>
+                    <div class="mb-1">
+                        <strong>Temps de réponse:</strong> 
+                        <span x-text="responseTime ? responseTime + ' ms' : 'N/A'" 
+                              :class="responseTime > 2000 ? 'text-danger' : 'text-success'"></span>
+                    </div>
+                    <div class="mb-1">
+                        <strong>Statut connexion:</strong> 
+                        <span x-text="connectionStatus" 
+                              :class="connectionStatus === 'Connecté' ? 'text-success' : 'text-danger'"></span>
+                    </div>
+                    <div class="mb-1">
+                        <strong>Erreur actuelle:</strong>
+                        <span x-show="error" x-text="error" class="text-danger"></span>
+                        <span x-show="!error" class="text-success">Aucune</span>
+                    </div>
+                </div>
             </div>
         </div>
-        <button class="btn btn-sm btn-outline-info mt-2" @click="showDebug = false">Masquer Debug</button>
-        <button class="btn btn-sm btn-outline-warning mt-2" @click="testApiConnection()">Test API</button>
-        <button class="btn btn-sm btn-outline-danger mt-2" @click="toggleFallbackMode()">Basculer Fallback</button>
+        
+        <!-- Console de Debug -->
+        <div class="mt-3">
+            <h6 class="fw-bold mb-2">📋 Console de Debug</h6>
+            <div class="bg-dark text-light p-3 rounded" style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                <template x-for="log in debugLogs.slice(-10)" :key="log.timestamp">
+                    <div class="mb-1">
+                        <span class="text-muted" x-text="log.timestamp"></span>
+                        <span :class="log.level === 'error' ? 'text-danger' : log.level === 'warn' ? 'text-warning' : 'text-info'">
+                            [<span x-text="log.level.toUpperCase()"></span>]
+                        </span>
+                        <span x-text="log.message"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+        
+        <!-- Actions de Debug -->
+        <div class="mt-3 d-flex gap-2 flex-wrap">
+            <button class="btn btn-sm btn-outline-info" @click="testApiConnection()">
+                <i class="fas fa-flask me-1"></i>Test API
+            </button>
+            <button class="btn btn-sm btn-outline-warning" @click="toggleFallbackMode()">
+                <i class="fas fa-shield-alt me-1"></i>Basculer Fallback
+            </button>
+            <button class="btn btn-sm btn-outline-success" @click="clearDebugLogs()">
+                <i class="fas fa-broom me-1"></i>Vider Console
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @click="downloadDebugReport()">
+                <i class="fas fa-download me-1"></i>Rapport Debug
+            </button>
+        </div>
     </div>
 
-    <!-- Filtres Simples -->
-    <div class="card mb-4">
+    <!-- Filtres Améliorés -->
+    <div class="card mb-4 border-0 shadow-sm">
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-md-4">
@@ -69,11 +142,12 @@
                                class="form-control" 
                                placeholder="Rechercher un enlèvement..."
                                x-model="filters.search"
-                               @input.debounce.500ms="loadPickups()">
+                               @input.debounce.500ms="applyFilters()"
+                               :disabled="loading">
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <select class="form-select" x-model="filters.status" @change="loadPickups()">
+                    <select class="form-select" x-model="filters.status" @change="applyFilters()" :disabled="loading">
                         <option value="">Tous les statuts</option>
                         <option value="draft">Brouillons</option>
                         <option value="validated">Validés</option>
@@ -82,33 +156,39 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <select class="form-select" x-model="filters.carrier" @change="loadPickups()">
+                    <select class="form-select" x-model="filters.carrier" @change="applyFilters()" :disabled="loading">
                         <option value="">Tous transporteurs</option>
                         <option value="jax_delivery">JAX Delivery</option>
                         <option value="mes_colis">Mes Colis</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button class="btn btn-outline-primary w-100" @click="showDebug = !showDebug">
-                        <i class="fas fa-bug me-1"></i>
-                        Debug
-                    </button>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-outline-primary flex-fill" @click="loadPickups(true)" :disabled="loading">
+                            <i class="fas fa-sync" :class="{ 'fa-spin': loading }"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" @click="clearFilters()" :disabled="loading">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Stats Cards Simples -->
+    <!-- Stats Cards Améliorées -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
                                 Brouillons
                             </div>
-                            <div class="h4 mb-0 font-weight-bold text-gray-800" x-text="stats.draft">0</div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800" x-text="stats.draft">
+                                <span x-show="loading">...</span>
+                            </div>
                         </div>
                         <div class="ms-3">
                             <i class="fas fa-edit fa-2x text-secondary"></i>
@@ -119,14 +199,16 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Validés
                             </div>
-                            <div class="h4 mb-0 font-weight-bold text-gray-800" x-text="stats.validated">0</div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800" x-text="stats.validated">
+                                <span x-show="loading">...</span>
+                            </div>
                         </div>
                         <div class="ms-3">
                             <i class="fas fa-check fa-2x text-success"></i>
@@ -137,14 +219,16 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Récupérés
                             </div>
-                            <div class="h4 mb-0 font-weight-bold text-gray-800" x-text="stats.picked_up">0</div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800" x-text="stats.picked_up">
+                                <span x-show="loading">...</span>
+                            </div>
                         </div>
                         <div class="ms-3">
                             <i class="fas fa-truck fa-2x text-primary"></i>
@@ -155,14 +239,16 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-grow-1">
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
                                 Problèmes
                             </div>
-                            <div class="h4 mb-0 font-weight-bold text-gray-800" x-text="stats.problems">0</div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800" x-text="stats.problems">
+                                <span x-show="loading">...</span>
+                            </div>
                         </div>
                         <div class="ms-3">
                             <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
@@ -173,25 +259,41 @@
         </div>
     </div>
 
+    <!-- Zone de Status Global -->
+    <div class="alert border-0 shadow-sm mb-4" 
+         :class="getGlobalStatusClass()" 
+         x-show="!loading">
+        <div class="d-flex align-items-center">
+            <i :class="getGlobalStatusIcon()" class="me-2 fa-lg"></i>
+            <div class="flex-grow-1">
+                <strong x-text="getGlobalStatusMessage()"></strong>
+                <div class="small text-muted mt-1" x-text="getGlobalStatusDetails()"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Liste des Pickups -->
-    <div class="card shadow">
-        <div class="card-header py-3">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header border-0 bg-white py-3">
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="m-0 font-weight-bold text-primary">
                     <i class="fas fa-list me-1"></i>
                     Enlèvements
-                    <span x-show="pickups.length > 0" class="badge bg-primary ms-2" x-text="pickups.length"></span>
+                    <span x-show="!loading && pickups.length > 0" class="badge bg-primary ms-2" x-text="pickups.length"></span>
+                    <span x-show="loading" class="spinner-border spinner-border-sm ms-2" role="status"></span>
                 </h6>
                 <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-success" 
                             x-show="selectedPickups.length > 0" 
-                            @click="validateSelected()">
+                            @click="validateSelected()"
+                            :disabled="loading">
                         <i class="fas fa-check me-1"></i>
                         Valider (<span x-text="selectedPickups.length"></span>)
                     </button>
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
-                                type="button" data-bs-toggle="dropdown">
+                                type="button" data-bs-toggle="dropdown"
+                                :disabled="loading">
                             <i class="fas fa-cog me-1"></i>
                             Actions
                         </button>
@@ -209,56 +311,94 @@
             </div>
         </div>
         
-        <div class="card-body">
-            <!-- Chargement -->
-            <div x-show="loading" class="text-center py-4">
-                <div class="spinner-border text-primary mb-3" role="status"></div>
-                <p class="text-muted">Chargement des enlèvements...</p>
+        <div class="card-body p-0">
+            <!-- État de Chargement Amélioré -->
+            <div x-show="loading" class="text-center py-5">
+                <div class="mb-3">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                </div>
+                <h5 class="text-muted mb-2">Chargement des enlèvements...</h5>
+                <div class="progress mx-auto mb-3" style="max-width: 300px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: 100%" 
+                         x-bind:style="'width: ' + loadingProgress + '%'"></div>
+                </div>
+                <p class="text-muted small" x-text="loadingMessage">Récupération des données...</p>
             </div>
 
-            <!-- Message d'erreur avec options -->
-            <div x-show="error && !loading" class="alert alert-danger">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
+            <!-- Message d'erreur amélioré -->
+            <div x-show="error && !loading && !useFallback" class="alert alert-danger m-4 border-0 shadow-sm">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-exclamation-triangle me-3 fa-2x text-danger"></i>
                     <div class="flex-grow-1">
-                        <strong>Erreur de chargement</strong>
-                        <div class="small" x-text="error"></div>
-                        <div class="small text-muted mt-1">
-                            Tentatives: <span x-text="failedAttempts"></span>/3
+                        <h5 class="alert-heading mb-2">
+                            <strong>Erreur de chargement</strong>
+                            <span class="badge bg-danger ms-2">
+                                Tentative <span x-text="failedAttempts"></span>/3
+                            </span>
+                        </h5>
+                        <p class="mb-2" x-text="error"></p>
+                        <div class="small text-muted mb-3">
+                            <div>Dernière tentative: <span x-text="lastAttempt"></span></div>
+                            <div>Temps de réponse: <span x-text="responseTime ? responseTime + ' ms' : 'N/A'"></span></div>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-sm btn-danger" @click="retryLoad()">
+                                <i class="fas fa-redo me-1"></i>Réessayer
+                            </button>
+                            <button class="btn btn-sm btn-warning" @click="toggleFallbackMode()">
+                                <i class="fas fa-shield-alt me-1"></i>Mode Sécurisé
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" @click="downloadDebugReport()">
+                                <i class="fas fa-bug me-1"></i>Rapport d'Erreur
+                            </button>
                         </div>
                     </div>
-                    <div class="btn-group ms-2">
-                        <button class="btn btn-sm btn-outline-danger" @click="retryLoad()">
-                            <i class="fas fa-redo me-1"></i>Réessayer
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning" @click="useFallback = true; loadPickups()">
-                            <i class="fas fa-shield-alt me-1"></i>Mode Sécurisé
+                </div>
+            </div>
+
+            <!-- Mode Fallback Activé -->
+            <div x-show="useFallback && !loading" class="alert alert-warning m-4 border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-shield-alt me-3 fa-lg text-warning"></i>
+                    <div class="flex-grow-1">
+                        <strong>Mode Sécurisé Activé</strong>
+                        <p class="mb-2 small">Affichage des données de démonstration car l'API principale n'est pas disponible.</p>
+                        <button class="btn btn-sm btn-outline-warning" @click="toggleFallbackMode()">
+                            <i class="fas fa-sync me-1"></i>Réessayer l'API Normale
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Aucun enlèvement -->
-            <div x-show="!loading && !error && pickups.length === 0" class="text-center py-5">
+            <div x-show="!loading && !error && pickups.length === 0" class="text-center py-5 m-4">
                 <div class="empty-state">
-                    <i class="fas fa-warehouse fa-3x text-muted mb-3"></i>
-                    <h6 class="text-muted mb-2">Aucun enlèvement trouvé</h6>
-                    <p class="text-muted small mb-4">
+                    <i class="fas fa-warehouse fa-4x text-muted mb-4"></i>
+                    <h5 class="text-muted mb-2">Aucun enlèvement trouvé</h5>
+                    <p class="text-muted mb-4">
                         <span x-show="!hasFilters()">Créez votre premier enlèvement pour commencer</span>
-                        <span x-show="hasFilters()">Aucun enlèvement ne correspond aux filtres</span>
+                        <span x-show="hasFilters()">Aucun enlèvement ne correspond aux filtres appliqués</span>
                     </p>
-                    <a href="{{ route('admin.delivery.preparation') }}" class="btn btn-primary" x-show="!hasFilters()">
-                        <i class="fas fa-plus me-1"></i>
-                        Créer un Enlèvement
-                    </a>
-                    <button class="btn btn-outline-secondary" @click="clearFilters()" x-show="hasFilters()">
-                        <i class="fas fa-times me-1"></i>
-                        Effacer les filtres
-                    </button>
+                    <div x-show="!hasFilters()">
+                        <a href="{{ route('admin.delivery.preparation') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>
+                            Créer un Enlèvement
+                        </a>
+                    </div>
+                    <div x-show="hasFilters()">
+                        <button class="btn btn-outline-secondary" @click="clearFilters()">
+                            <i class="fas fa-times me-1"></i>
+                            Effacer les filtres
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Table Desktop -->
+            <!-- Table Desktop Améliorée -->
             <div x-show="!loading && pickups.length > 0" class="d-none d-lg-block">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -275,15 +415,18 @@
                                 <th>ID & Date</th>
                                 <th>Transporteur</th>
                                 <th>Date Enlèvement</th>
-                                <th>Commandes</th>
+                                <th class="text-center">Commandes</th>
                                 <th>Totaux</th>
                                 <th>Statut</th>
-                                <th>Actions</th>
+                                <th style="width: 200px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <template x-for="pickup in pickups" :key="pickup.id">
-                                <tr class="pickup-row" @click="viewPickup(pickup)">
+                                <tr class="pickup-row" 
+                                    @click="viewPickup(pickup)"
+                                    :class="pickup.error ? 'table-warning' : ''"
+                                    style="cursor: pointer;">
                                     <td @click.stop>
                                         <div class="form-check">
                                             <input class="form-check-input" 
@@ -298,6 +441,10 @@
                                             <div>
                                                 <strong class="text-primary" x-text="`#${pickup.id}`"></strong>
                                                 <br><small class="text-muted" x-text="formatDateTime(pickup.created_at)"></small>
+                                                <div x-show="pickup.error" class="small text-warning mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    Données partielles
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -314,16 +461,14 @@
                                         <div x-text="formatDate(pickup.pickup_date)"></div>
                                         <small class="text-muted" x-text="getRelativeDate(pickup.pickup_date)"></small>
                                     </td>
-                                    <td>
-                                        <div class="text-center">
-                                            <div class="h6 mb-0 text-primary" x-text="pickup.orders_count"></div>
-                                            <small class="text-muted">commandes</small>
-                                        </div>
+                                    <td class="text-center">
+                                        <div class="h6 mb-0 text-primary" x-text="pickup.orders_count || 0"></div>
+                                        <small class="text-muted">commandes</small>
                                     </td>
                                     <td>
                                         <div>
-                                            <div><strong x-text="`${pickup.total_weight} kg`"></strong></div>
-                                            <small class="text-success" x-text="`${pickup.total_cod_amount} TND`"></small>
+                                            <div><strong x-text="`${pickup.total_weight || 0} kg`"></strong></div>
+                                            <small class="text-success" x-text="`${pickup.total_cod_amount || 0} TND`"></small>
                                         </div>
                                     </td>
                                     <td>
@@ -340,7 +485,7 @@
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             
-                                            <button x-show="pickup.status === 'draft'" 
+                                            <button x-show="pickup.status === 'draft' && !pickup.error" 
                                                     class="btn btn-sm btn-outline-success" 
                                                     @click="validatePickup(pickup.id)"
                                                     title="Valider">
@@ -360,7 +505,7 @@
                                                 <i class="fas fa-print"></i>
                                             </button>
                                             
-                                            <button x-show="pickup.status === 'draft'" 
+                                            <button x-show="pickup.status === 'draft' && !pickup.error" 
                                                     class="btn btn-sm btn-outline-danger" 
                                                     @click="deletePickup(pickup.id)"
                                                     title="Supprimer">
@@ -375,10 +520,13 @@
                 </div>
             </div>
 
-            <!-- Cards Mobile -->
-            <div x-show="!loading && pickups.length > 0" class="d-lg-none">
+            <!-- Cards Mobile Améliorées -->
+            <div x-show="!loading && pickups.length > 0" class="d-lg-none p-3">
                 <template x-for="pickup in pickups" :key="pickup.id">
-                    <div class="card mb-3 pickup-card" @click="viewPickup(pickup)">
+                    <div class="card mb-3 pickup-card border-0 shadow-sm" 
+                         @click="viewPickup(pickup)"
+                         :class="pickup.error ? 'border-warning' : ''"
+                         style="cursor: pointer;">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div class="d-flex align-items-center">
@@ -391,6 +539,10 @@
                                     <div>
                                         <h6 class="mb-0 text-primary" x-text="`#${pickup.id}`"></h6>
                                         <small class="text-muted" x-text="getCarrierName(pickup.carrier_slug)"></small>
+                                        <div x-show="pickup.error" class="small text-warning mt-1">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            Données partielles
+                                        </div>
                                     </div>
                                 </div>
                                 <span class="badge" :class="getStatusBadgeClass(pickup.status)">
@@ -401,15 +553,15 @@
                             <div class="row text-center mb-3">
                                 <div class="col-3">
                                     <div class="small text-muted">Commandes</div>
-                                    <div class="fw-bold text-primary" x-text="pickup.orders_count"></div>
+                                    <div class="fw-bold text-primary" x-text="pickup.orders_count || 0"></div>
                                 </div>
                                 <div class="col-3">
                                     <div class="small text-muted">Poids</div>
-                                    <div class="fw-bold" x-text="`${pickup.total_weight}kg`"></div>
+                                    <div class="fw-bold" x-text="`${pickup.total_weight || 0}kg`"></div>
                                 </div>
                                 <div class="col-3">
                                     <div class="small text-muted">COD</div>
-                                    <div class="fw-bold text-success" x-text="`${pickup.total_cod_amount}`"></div>
+                                    <div class="fw-bold text-success" x-text="`${pickup.total_cod_amount || 0}`"></div>
                                 </div>
                                 <div class="col-3">
                                     <div class="small text-muted">Date</div>
@@ -425,7 +577,7 @@
                                     <button class="btn btn-outline-primary" @click="viewPickup(pickup)">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button x-show="pickup.status === 'draft'" 
+                                    <button x-show="pickup.status === 'draft' && !pickup.error" 
                                             class="btn btn-outline-success" 
                                             @click="validatePickup(pickup.id)">
                                         <i class="fas fa-check"></i>
@@ -441,35 +593,46 @@
             </div>
         </div>
 
-        <!-- Footer avec pagination simple -->
+        <!-- Footer avec pagination améliorée -->
         <div x-show="!loading && pickups.length > 0" class="card-footer bg-white border-0">
             <div class="d-flex justify-content-between align-items-center">
-                <small class="text-muted">
+                <div class="text-muted small">
                     <span x-text="`${pickups.length} enlèvement(s) affiché(s)`"></span>
+                    <span x-show="originalData.length !== pickups.length" class="ms-2">
+                        <span class="text-primary">
+                            (filtré depuis <span x-text="originalData.length"></span>)
+                        </span>
+                    </span>
                     <span x-show="hasFilters()" class="ms-2">
                         <button class="btn btn-sm btn-link text-decoration-none p-0" @click="clearFilters()">
-                            (effacer filtres)
+                            <i class="fas fa-times me-1"></i>effacer filtres
                         </button>
                     </span>
-                </small>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-primary" @click="loadPickups()" :disabled="loading">
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <small class="text-muted">
+                        Dernière actualisation: <span x-text="lastUpdateTime || 'Jamais'"></span>
+                    </small>
+                    <button class="btn btn-sm btn-outline-primary" @click="loadPickups(true)" :disabled="loading">
                         <i class="fas fa-sync" :class="{ 'fa-spin': loading }"></i>
-                        Actualiser
+                        <span class="d-none d-sm-inline">Actualiser</span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Détails Pickup Simplifié -->
+    <!-- Modal Détails Pickup Amélioré -->
     <div class="modal fade" id="pickupDetailsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
-            <div class="modal-content">
+            <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
                         <i class="fas fa-warehouse me-2"></i>
                         Détails Enlèvement <span x-show="selectedPickup" x-text="`#${selectedPickup?.id}`"></span>
+                        <span x-show="selectedPickup?.error" class="badge bg-warning ms-2">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Données partielles
+                        </span>
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -477,7 +640,7 @@
                     <!-- Informations de base -->
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <div class="card bg-light">
+                            <div class="card bg-light border-0">
                                 <div class="card-body">
                                     <h6 class="text-primary mb-3">
                                         <i class="fas fa-info-circle me-1"></i>
@@ -510,7 +673,7 @@
                         </div>
                         
                         <div class="col-md-6">
-                            <div class="card bg-light">
+                            <div class="card bg-light border-0">
                                 <div class="card-body">
                                     <h6 class="text-success mb-3">
                                         <i class="fas fa-truck me-1"></i>
@@ -558,7 +721,7 @@
 
                     <!-- Actions -->
                     <div class="d-flex gap-2 mb-4 p-3 bg-light rounded">
-                        <button x-show="selectedPickup && selectedPickup.status === 'draft'" 
+                        <button x-show="selectedPickup && selectedPickup.status === 'draft' && !selectedPickup.error" 
                                 @click="validatePickup(selectedPickup.id)"
                                 class="btn btn-success">
                             <i class="fas fa-check me-1"></i>Valider
@@ -571,7 +734,7 @@
                         <button @click="printManifest(selectedPickup)" class="btn btn-outline-primary">
                             <i class="fas fa-print me-1"></i>Manifeste
                         </button>
-                        <button x-show="selectedPickup && selectedPickup.status === 'draft'" 
+                        <button x-show="selectedPickup && selectedPickup.status === 'draft' && !selectedPickup.error" 
                                 @click="deletePickup(selectedPickup.id)"
                                 class="btn btn-outline-danger">
                             <i class="fas fa-trash me-1"></i>Supprimer
@@ -615,6 +778,7 @@
                                         
                                         <tr x-show="!selectedPickup?.orders?.length">
                                             <td colspan="5" class="text-center py-3 text-muted">
+                                                <i class="fas fa-inbox fa-2x mb-2"></i><br>
                                                 Aucune commande dans cet enlèvement
                                             </td>
                                         </tr>
@@ -627,7 +791,7 @@
                 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        Fermer
+                        <i class="fas fa-times me-1"></i>Fermer
                     </button>
                 </div>
             </div>
@@ -638,7 +802,7 @@
 
 @push('styles')
 <style>
-/* Styles simples et compatibles */
+/* Styles existants améliorés */
 .pickup-indicator {
     width: 10px;
     height: 10px;
@@ -652,22 +816,21 @@
 .pickup-indicator.status-problem { background-color: #dc3545; }
 
 .pickup-row {
-    transition: background-color 0.2s ease;
-    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .pickup-row:hover {
     background-color: rgba(13, 110, 253, 0.05);
+    transform: translateX(2px);
 }
 
 .pickup-card {
-    transition: transform 0.2s ease;
-    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .pickup-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .empty-state {
@@ -686,11 +849,90 @@
     color: #5a5c69;
 }
 
+/* Animations pour les états de chargement */
+.progress-bar-striped.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    0% {
+        background-position: 1rem 0;
+    }
+    100% {
+        background-position: 0 0;
+    }
+}
+
+/* Style pour les données avec erreur */
+.table-warning td {
+    border-color: #ffeaa7;
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.border-warning {
+    border-color: #ffc107 !important;
+}
+
+/* Amélioration des modales */
+.modal-content {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.modal-header {
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+/* Style du debug */
+.alert-info {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 1px solid #2196f3;
+    color: #0d47a1;
+}
+
+/* Responsive amélioré */
 @media (max-width: 576px) {
     .btn-group .btn {
         padding: 0.25rem 0.4rem;
         font-size: 0.75rem;
     }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .modal-dialog {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+    }
+}
+
+/* Loading states améliorés */
+.spinner-border {
+    animation: spinner-border 0.75s linear infinite;
+}
+
+@keyframes spinner-border {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Amélioration des badges */
+.badge {
+    font-size: 0.7rem;
+    padding: 0.35em 0.6em;
+}
+
+/* Style pour les boutons disabled */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 </style>
 @endpush
@@ -702,20 +944,31 @@
 <script>
 document.addEventListener('alpine:init', () => {
     Alpine.data('pickupsManager', () => ({
-        // État principal
+        // ========================================
+        // ÉTAT PRINCIPAL AMÉLIORÉ
+        // ========================================
+        
+        // État de base
         loading: false,
         error: null,
         pickups: [],
+        originalData: [], // Pour conserver les données non filtrées
         selectedPickup: null,
         
-        // Debug
-        showDebug: false,
+        // Debug avancé
+        debugMode: false,
+        debugLogs: [],
         apiUrl: '/admin/delivery/pickups/list',
         lastAttempt: 'Jamais',
         failedAttempts: 0,
         useFallback: false,
+        responseTime: null,
+        connectionStatus: 'Non testé',
+        loadingProgress: 0,
+        loadingMessage: 'Récupération des données...',
+        lastUpdateTime: null,
         
-        // Filtres
+        // Filtres améliorés
         filters: {
             search: '',
             status: '',
@@ -725,7 +978,7 @@ document.addEventListener('alpine:init', () => {
         // Sélections
         selectedPickups: [],
         
-        // Stats
+        // Stats dynamiques
         stats: {
             draft: 0,
             validated: 0,
@@ -733,158 +986,364 @@ document.addEventListener('alpine:init', () => {
             problems: 0
         },
 
-        // Initialisation avec debug détaillé
-        init() {
-            console.log('🚀 [PICKUPS] Initialisation du gestionnaire de pickups');
-            console.log('🚀 [PICKUPS] URL API:', this.apiUrl);
-            console.log('🚀 [PICKUPS] Version Alpine.js:', Alpine.version || 'Inconnue');
-            console.log('🚀 [PICKUPS] Axios disponible:', typeof axios !== 'undefined');
+        // ========================================
+        // INITIALISATION AVEC DIAGNOSTIC COMPLET
+        // ========================================
+        
+        async init() {
+            this.addDebugLog('info', '🚀 Initialisation du gestionnaire de pickups');
+            this.addDebugLog('info', `📍 URL API: ${this.apiUrl}`);
+            this.addDebugLog('info', `📊 Version Alpine.js: ${Alpine.version || 'Inconnue'}`);
+            this.addDebugLog('info', `🌐 Axios disponible: ${typeof axios !== 'undefined'}`);
             
+            // Diagnostic initial
+            await this.performInitialDiagnostic();
+            
+            // Chargement initial
             this.loadPickups();
             
-            // Auto-refresh toutes les 2 minutes
-            setInterval(() => {
-                if (!this.loading) {
-                    console.log('🔄 [PICKUPS] Auto-refresh des données');
-                    this.loadPickups(false);
-                }
-            }, 120000);
+            // Auto-refresh amélioré avec gestion intelligente
+            this.setupAutoRefresh();
+            
+            // Écouter les événements de connexion
+            this.setupConnectionListeners();
+            
+            this.addDebugLog('success', '✅ Initialisation terminée avec succès');
         },
 
-        // Chargement des pickups avec debug exhaustif
+        // ========================================
+        // MÉTHODES DE DIAGNOSTIC ÉTENDUES
+        // ========================================
+        
+        async performInitialDiagnostic() {
+            this.addDebugLog('info', '🔍 Début du diagnostic initial');
+            
+            try {
+                // Test 1: Connexion réseau
+                this.addDebugLog('info', '📡 Test de connectivité réseau');
+                if (navigator.onLine) {
+                    this.connectionStatus = 'Connecté';
+                    this.addDebugLog('success', '✅ Connexion réseau OK');
+                } else {
+                    this.connectionStatus = 'Hors ligne';
+                    this.addDebugLog('warn', '⚠️ Aucune connexion réseau détectée');
+                }
+                
+                // Test 2: Authentification
+                this.addDebugLog('info', '🔐 Vérification de l\'authentification');
+                const authResponse = await axios.get('/admin/debug-auth');
+                if (authResponse.data.is_authenticated) {
+                    this.addDebugLog('success', `✅ Authentifié comme: ${authResponse.data.admin_name} (ID: ${authResponse.data.admin_id})`);
+                } else {
+                    this.addDebugLog('error', '❌ Problème d\'authentification détecté');
+                }
+                
+                // Test 3: Disponibilité de l'API
+                this.addDebugLog('info', '🧪 Test de l\'API pickups');
+                const testResponse = await axios.get(this.apiUrl + '?test=1', {
+                    timeout: 5000
+                });
+                
+                if (testResponse.data.success) {
+                    this.addDebugLog('success', `✅ API fonctionnelle - ${testResponse.data.test_results.count} pickups trouvés`);
+                    this.responseTime = testResponse.data.test_results.response_time_ms;
+                } else {
+                    this.addDebugLog('error', '❌ API non fonctionnelle');
+                }
+                
+            } catch (error) {
+                this.addDebugLog('error', `❌ Erreur pendant le diagnostic: ${error.message}`);
+                
+                if (error.code === 'ECONNABORTED') {
+                    this.addDebugLog('warn', '⏰ Timeout durant le diagnostic - l\'API est peut-être lente');
+                } else if (error.response?.status === 401) {
+                    this.addDebugLog('error', '🔒 Problème d\'authentification détecté');
+                } else if (error.response?.status === 404) {
+                    this.addDebugLog('error', '🔍 Route API non trouvée');
+                } else if (!navigator.onLine) {
+                    this.addDebugLog('error', '🌐 Pas de connexion internet');
+                }
+            }
+        },
+
+        // ========================================
+        // CHARGEMENT DES PICKUPS - LOGIQUE COMPLÈTEMENT REFACTORISÉE
+        // ========================================
+        
         async loadPickups(showLoading = true) {
-            console.log('📡 [PICKUPS] Début du chargement des pickups');
-            console.log('📡 [PICKUPS] Paramètres:', {
-                showLoading,
-                filters: this.filters,
-                useFallback: this.useFallback
-            });
+            const startTime = performance.now();
+            
+            this.addDebugLog('info', '📡 === DÉBUT DU CHARGEMENT DES PICKUPS ===');
+            this.addDebugLog('info', `📊 Paramètres: showLoading=${showLoading}, useFallback=${this.useFallback}`);
+            this.addDebugLog('info', `🔍 Filtres actifs: ${JSON.stringify(this.filters)}`);
             
             if (showLoading) {
                 this.loading = true;
                 this.error = null;
+                this.loadingProgress = 0;
+                this.loadingMessage = 'Initialisation...';
             }
             
-            this.lastAttempt = new Date().toLocaleTimeString();
+            this.lastAttempt = new Date().toLocaleTimeString('fr-FR');
             
             // Si mode fallback activé, utiliser les données de test
             if (this.useFallback) {
-                console.log('⚠️ [PICKUPS] Mode fallback activé - utilisation des données de test');
-                setTimeout(() => {
-                    this.pickups = this.getFallbackData();
-                    this.updateStats();
-                    this.loading = false;
-                    console.log('✅ [PICKUPS] Données fallback chargées:', this.pickups.length, 'pickups');
-                }, 500);
-                return;
+                this.addDebugLog('warn', '🔄 Mode fallback activé - utilisation des données de démonstration');
+                return this.loadFallbackData();
             }
             
             try {
-                console.log('🌐 [PICKUPS] Appel API vers:', this.apiUrl);
+                // Étape 1: Préparation de la requête
+                this.updateLoadingProgress(10, 'Préparation de la requête...');
                 
-                const params = {};
-                if (this.filters.search) params.search = this.filters.search;
-                if (this.filters.status) params.status = this.filters.status;
-                if (this.filters.carrier) params.carrier = this.filters.carrier;
-                params.per_page = 50;
+                const params = this.buildApiParams();
+                this.addDebugLog('info', `📝 Paramètres de requête: ${JSON.stringify(params)}`);
                 
-                console.log('🌐 [PICKUPS] Paramètres de requête:', params);
+                // Étape 2: Envoi de la requête
+                this.updateLoadingProgress(25, 'Envoi de la requête...');
                 
-                const response = await axios.get(this.apiUrl, {
-                    params: params,
+                const config = {
                     timeout: 15000,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json'
                     }
-                });
+                };
                 
-                console.log('✅ [PICKUPS] Réponse API reçue:', {
-                    status: response.status,
-                    success: response.data?.success,
-                    pickups_count: response.data?.pickups?.length || 0
-                });
+                this.addDebugLog('info', '🌐 Envoi de la requête vers l\'API...');
+                const response = await axios.get(this.apiUrl, { params, ...config });
+                
+                // Étape 3: Traitement de la réponse
+                this.updateLoadingProgress(80, 'Traitement de la réponse...');
+                
+                const endTime = performance.now();
+                this.responseTime = Math.round(endTime - startTime);
+                
+                this.addDebugLog('success', `✅ Réponse reçue en ${this.responseTime}ms`);
+                this.addDebugLog('info', `📊 Statut: ${response.status}, Taille: ${JSON.stringify(response.data).length} chars`);
                 
                 if (response.data && response.data.success) {
-                    this.pickups = response.data.pickups || [];
+                    // Étape 4: Validation et stockage des données
+                    this.updateLoadingProgress(90, 'Validation des données...');
+                    
+                    const pickupsData = this.validateAndProcessPickupsData(response.data.pickups || []);
+                    
+                    this.originalData = [...pickupsData];
+                    this.pickups = this.applyClientSideFilters(pickupsData);
                     this.updateStats();
+                    
                     this.error = null;
                     this.failedAttempts = 0;
+                    this.connectionStatus = 'Connecté';
+                    this.lastUpdateTime = new Date().toLocaleTimeString('fr-FR');
                     
-                    console.log('✅ [PICKUPS] Pickups chargés avec succès:', this.pickups.length);
-                } else {
-                    throw new Error(response.data?.error || 'Réponse API invalide');
-                }
-                
-            } catch (error) {
-                this.failedAttempts++;
-                console.error('❌ [PICKUPS] Erreur chargement pickups:', {
-                    message: error.message,
-                    status: error.response?.status,
-                    data: error.response?.data,
-                    failedAttempts: this.failedAttempts
-                });
-                
-                if (error.code === 'ECONNABORTED') {
-                    this.error = 'Timeout: La requête a pris trop de temps (15s)';
-                } else if (error.response) {
-                    if (error.response.status === 404) {
-                        this.error = `Route non trouvée (404): ${this.apiUrl}`;
-                    } else if (error.response.status === 500) {
-                        this.error = `Erreur serveur (500): ${error.response.data?.message || error.message}`;
-                    } else {
-                        this.error = `Erreur ${error.response.status}: ${error.response.data?.message || error.message}`;
+                    // Log détaillé des données reçues
+                    this.addDebugLog('success', `📦 ${pickupsData.length} pickups chargés avec succès`);
+                    this.addDebugLog('info', `📊 Stats: ${this.stats.draft} brouillons, ${this.stats.validated} validés, ${this.stats.picked_up} récupérés`);
+                    
+                    if (response.data.debug_info) {
+                        this.addDebugLog('info', `🔧 Debug API: ${JSON.stringify(response.data.debug_info)}`);
                     }
-                } else if (error.request) {
-                    this.error = 'Erreur réseau: Impossible de contacter le serveur';
+                    
+                    // Vérifier la qualité des données
+                    this.checkDataQuality(pickupsData);
+                    
                 } else {
-                    this.error = error.message || 'Erreur inconnue';
+                    throw new Error(response.data?.error || response.data?.message || 'Réponse API invalide');
                 }
                 
-                // Après 3 tentatives échouées, passer automatiquement en mode fallback
-                if (this.failedAttempts >= 3 && this.pickups.length === 0) {
-                    console.log('⚠️ [PICKUPS] 3 tentatives échouées - passage automatique en mode fallback');
-                    this.useFallback = true;
-                    this.pickups = this.getFallbackData();
-                    this.updateStats();
-                    this.error = this.error + ' (Mode sécurisé activé)';
-                }
-                
-            } finally {
-                if (showLoading) {
-                    this.loading = false;
-                }
-                console.log('🏁 [PICKUPS] Fin du chargement');
-            }
-        },
-
-        // Test de connection API
-        async testApiConnection() {
-            console.log('🔧 [PICKUPS] Test de connexion API');
-            
-            try {
-                const response = await axios.get('/admin/debug-auth');
-                console.log('🔧 [PICKUPS] Test auth:', response.data);
-                
-                const testResponse = await axios.get(this.apiUrl + '?test=1');
-                console.log('🔧 [PICKUPS] Test API:', testResponse.data);
-                
-                alert('Test API réussi ! Voir la console pour les détails.');
             } catch (error) {
-                console.error('🔧 [PICKUPS] Erreur test API:', error);
-                alert(`Erreur test API: ${error.message}\nVoir la console pour plus de détails.`);
+                this.handleLoadingError(error, startTime);
+            } finally {
+                this.updateLoadingProgress(100, 'Terminé');
+                
+                if (showLoading) {
+                    // Petit délai pour que l'utilisateur voit la completion
+                    setTimeout(() => {
+                        this.loading = false;
+                        this.loadingProgress = 0;
+                    }, 200);
+                }
+                
+                this.addDebugLog('info', '🏁 === FIN DU CHARGEMENT DES PICKUPS ===');
             }
         },
 
-        // Basculer le mode fallback
-        toggleFallbackMode() {
-            this.useFallback = !this.useFallback;
-            console.log('🔧 [PICKUPS] Mode fallback:', this.useFallback ? 'ACTIVÉ' : 'DÉSACTIVÉ');
-            this.failedAttempts = 0;
-            this.loadPickups();
+        // ========================================
+        // MÉTHODES UTILITAIRES POUR LE CHARGEMENT
+        // ========================================
+        
+        buildApiParams() {
+            const params = {};
+            
+            if (this.filters.search?.trim()) {
+                params.search = this.filters.search.trim();
+            }
+            if (this.filters.status) {
+                params.status = this.filters.status;
+            }
+            if (this.filters.carrier) {
+                params.carrier = this.filters.carrier;
+            }
+            
+            params.per_page = 50; // Limite raisonnable
+            
+            return params;
+        },
+        
+        validateAndProcessPickupsData(rawPickups) {
+            if (!Array.isArray(rawPickups)) {
+                this.addDebugLog('warn', '⚠️ Données pickups non valides - ce n\'est pas un tableau');
+                return [];
+            }
+            
+            const validPickups = [];
+            let errorsCount = 0;
+            
+            rawPickups.forEach((pickup, index) => {
+                try {
+                    // Validation des champs essentiels
+                    const processedPickup = {
+                        id: pickup.id || `temp_${index}`,
+                        status: pickup.status || 'unknown',
+                        carrier_slug: pickup.carrier_slug || 'unknown',
+                        configuration_name: pickup.configuration_name || 'Configuration inconnue',
+                        pickup_date: pickup.pickup_date || null,
+                        created_at: pickup.created_at || new Date().toISOString(),
+                        orders_count: Math.max(0, pickup.orders_count || 0),
+                        total_weight: Math.max(0, pickup.total_weight || 0),
+                        total_pieces: Math.max(0, pickup.total_pieces || 0),
+                        total_cod_amount: Math.max(0, pickup.total_cod_amount || 0),
+                        orders: Array.isArray(pickup.orders) ? pickup.orders : [],
+                        can_be_validated: pickup.can_be_validated || false,
+                        can_be_edited: pickup.can_be_edited || false,
+                        can_be_deleted: pickup.can_be_deleted || false,
+                        error: pickup.error || null, // Marquer les erreurs de l'API
+                    };
+                    
+                    validPickups.push(processedPickup);
+                    
+                } catch (validationError) {
+                    errorsCount++;
+                    this.addDebugLog('warn', `⚠️ Erreur validation pickup index ${index}: ${validationError.message}`);
+                }
+            });
+            
+            if (errorsCount > 0) {
+                this.addDebugLog('warn', `⚠️ ${errorsCount} pickup(s) ont eu des erreurs de validation`);
+            }
+            
+            return validPickups;
+        },
+        
+        checkDataQuality(pickups) {
+            const qualityIssues = [];
+            
+            // Vérifier les pickups avec des erreurs
+            const pickupsWithErrors = pickups.filter(p => p.error);
+            if (pickupsWithErrors.length > 0) {
+                qualityIssues.push(`${pickupsWithErrors.length} pickup(s) ont des données partielles`);
+            }
+            
+            // Vérifier les pickups sans commandes
+            const emptyPickups = pickups.filter(p => p.orders_count === 0);
+            if (emptyPickups.length > 0) {
+                qualityIssues.push(`${emptyPickups.length} pickup(s) sans commandes`);
+            }
+            
+            // Vérifier les configurations manquantes
+            const missingConfigs = pickups.filter(p => p.configuration_name === 'Configuration inconnue');
+            if (missingConfigs.length > 0) {
+                qualityIssues.push(`${missingConfigs.length} pickup(s) avec configuration inconnue`);
+            }
+            
+            if (qualityIssues.length > 0) {
+                this.addDebugLog('warn', `⚠️ Problèmes de qualité détectés: ${qualityIssues.join(', ')}`);
+            } else {
+                this.addDebugLog('success', '✅ Qualité des données: Excellente');
+            }
+        },
+        
+        handleLoadingError(error, startTime) {
+            this.failedAttempts++;
+            const errorTime = Math.round(performance.now() - startTime);
+            this.responseTime = errorTime;
+            this.connectionStatus = 'Erreur';
+            
+            let errorMessage = 'Erreur inconnue';
+            let errorLevel = 'error';
+            
+            if (error.code === 'ECONNABORTED') {
+                errorMessage = `Timeout après ${errorTime}ms - L'API met trop de temps à répondre`;
+                errorLevel = 'warn';
+            } else if (error.response) {
+                const status = error.response.status;
+                const data = error.response.data;
+                
+                switch (status) {
+                    case 401:
+                        errorMessage = 'Session expirée - Veuillez vous reconnecter';
+                        break;
+                    case 403:
+                        errorMessage = 'Accès refusé - Permissions insuffisantes';
+                        break;
+                    case 404:
+                        errorMessage = `Route API non trouvée: ${this.apiUrl}`;
+                        break;
+                    case 422:
+                        errorMessage = `Données invalides: ${data?.message || 'Erreur de validation'}`;
+                        break;
+                    case 500:
+                        errorMessage = `Erreur serveur: ${data?.message || data?.error || 'Erreur interne'}`;
+                        break;
+                    default:
+                        errorMessage = `Erreur HTTP ${status}: ${data?.message || error.message}`;
+                }
+            } else if (error.request) {
+                errorMessage = 'Impossible de contacter le serveur - Vérifiez votre connexion';
+            } else {
+                errorMessage = error.message || 'Erreur lors de la configuration de la requête';
+            }
+            
+            this.error = errorMessage;
+            
+            this.addDebugLog(errorLevel, `❌ Erreur chargement (tentative ${this.failedAttempts}): ${errorMessage}`);
+            this.addDebugLog('info', `⏱️ Temps écoulé: ${errorTime}ms`);
+            
+            // Après 3 tentatives échouées, proposer automatiquement le mode fallback
+            if (this.failedAttempts >= 3 && !this.useFallback) {
+                this.addDebugLog('warn', '🔄 3 tentatives échouées - Activation automatique du mode fallback');
+                this.useFallback = true;
+                this.loadFallbackData();
+            }
+        },
+        
+        updateLoadingProgress(progress, message) {
+            this.loadingProgress = Math.min(progress, 100);
+            this.loadingMessage = message;
         },
 
-        // Données de fallback pour les tests
+        // ========================================
+        // DONNÉES DE FALLBACK AMÉLIORÉES
+        // ========================================
+        
+        loadFallbackData() {
+            this.addDebugLog('info', '🔄 Chargement des données de démonstration');
+            
+            setTimeout(() => {
+                const fallbackPickups = this.getFallbackData();
+                this.originalData = [...fallbackPickups];
+                this.pickups = this.applyClientSideFilters(fallbackPickups);
+                this.updateStats();
+                
+                this.loading = false;
+                this.connectionStatus = 'Mode Démonstration';
+                this.lastUpdateTime = new Date().toLocaleTimeString('fr-FR');
+                
+                this.addDebugLog('success', `✅ ${fallbackPickups.length} pickups de démonstration chargés`);
+            }, 1000); // Simuler un délai de chargement
+        },
+        
         getFallbackData() {
             return [
                 {
@@ -892,7 +1351,7 @@ document.addEventListener('alpine:init', () => {
                     status: 'draft',
                     carrier_slug: 'jax_delivery',
                     configuration_name: 'Configuration Test JAX',
-                    pickup_date: '2025-01-10',
+                    pickup_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
                     orders_count: 8,
                     total_weight: 12.5,
@@ -925,7 +1384,7 @@ document.addEventListener('alpine:init', () => {
                     status: 'validated',
                     carrier_slug: 'mes_colis',
                     configuration_name: 'Configuration Test Mes Colis',
-                    pickup_date: '2025-01-09',
+                    pickup_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
                     orders_count: 12,
                     total_weight: 18.3,
@@ -950,7 +1409,7 @@ document.addEventListener('alpine:init', () => {
                     status: 'picked_up',
                     carrier_slug: 'jax_delivery',
                     configuration_name: 'Configuration Boutique Sud',
-                    pickup_date: '2025-01-08',
+                    pickup_date: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().split('T')[0],
                     created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
                     orders_count: 5,
                     total_weight: 7.8,
@@ -964,52 +1423,309 @@ document.addEventListener('alpine:init', () => {
             ];
         },
 
-        // Mise à jour des statistiques
-        updateStats() {
-            this.stats = {
-                draft: this.pickups.filter(p => p.status === 'draft').length,
-                validated: this.pickups.filter(p => p.status === 'validated').length,
-                picked_up: this.pickups.filter(p => p.status === 'picked_up').length,
-                problems: this.pickups.filter(p => p.status === 'problem').length
-            };
+        // ========================================
+        // GESTION DES FILTRES AMÉLIORÉE
+        // ========================================
+        
+        applyFilters() {
+            this.addDebugLog('info', `🔍 Application des filtres: ${JSON.stringify(this.filters)}`);
             
-            console.log('📊 [PICKUPS] Stats mises à jour:', this.stats);
+            // Réappliquer les filtres côté client si on a déjà des données
+            if (this.originalData.length > 0) {
+                this.pickups = this.applyClientSideFilters(this.originalData);
+                this.updateStats();
+                this.addDebugLog('info', `📊 Filtres appliqués: ${this.pickups.length}/${this.originalData.length} pickups affichés`);
+            } else {
+                // Recharger depuis l'API avec les nouveaux filtres
+                this.loadPickups();
+            }
         },
-
-        // Actualisation
-        refreshData() {
-            console.log('🔄 [PICKUPS] Actualisation manuelle');
-            this.failedAttempts = 0;
-            this.loadPickups(true);
+        
+        applyClientSideFilters(data) {
+            let filtered = [...data];
+            
+            // Filtre par recherche
+            if (this.filters.search?.trim()) {
+                const search = this.filters.search.trim().toLowerCase();
+                filtered = filtered.filter(pickup => 
+                    pickup.id.toString().includes(search) ||
+                    pickup.configuration_name.toLowerCase().includes(search) ||
+                    pickup.carrier_slug.toLowerCase().includes(search)
+                );
+            }
+            
+            // Filtre par statut
+            if (this.filters.status) {
+                filtered = filtered.filter(pickup => pickup.status === this.filters.status);
+            }
+            
+            // Filtre par transporteur
+            if (this.filters.carrier) {
+                filtered = filtered.filter(pickup => pickup.carrier_slug === this.filters.carrier);
+            }
+            
+            return filtered;
         },
-
-        // Retry après erreur
-        retryLoad() {
-            console.log('🔄 [PICKUPS] Nouvelle tentative après erreur');
-            this.error = null;
-            this.loadPickups(true);
-        },
-
-        // Gestion des filtres
+        
         hasFilters() {
-            return this.filters.search || this.filters.status || this.filters.carrier;
+            return !!(this.filters.search || this.filters.status || this.filters.carrier);
         },
-
+        
         clearFilters() {
-            console.log('🧹 [PICKUPS] Nettoyage des filtres');
+            this.addDebugLog('info', '🧹 Effacement de tous les filtres');
             this.filters = {
                 search: '',
                 status: '',
                 carrier: ''
             };
-            this.loadPickups();
+            this.applyFilters();
         },
 
-        // Gestion des sélections
+        // ========================================
+        // GESTION DES STATISTIQUES
+        // ========================================
+        
+        updateStats() {
+            // Calculer les stats à partir des données filtrées actuelles
+            const stats = {
+                draft: 0,
+                validated: 0,
+                picked_up: 0,
+                problems: 0
+            };
+            
+            this.pickups.forEach(pickup => {
+                switch (pickup.status) {
+                    case 'draft':
+                        stats.draft++;
+                        break;
+                    case 'validated':
+                        stats.validated++;
+                        break;
+                    case 'picked_up':
+                        stats.picked_up++;
+                        break;
+                    case 'problem':
+                        stats.problems++;
+                        break;
+                }
+            });
+            
+            this.stats = stats;
+            
+            this.addDebugLog('info', `📊 Stats mises à jour: ${JSON.stringify(stats)}`);
+        },
+
+        // ========================================
+        // MÉTHODES D'AUTO-REFRESH ET CONNEXION
+        // ========================================
+        
+        setupAutoRefresh() {
+            // Auto-refresh intelligent - plus fréquent si des pickups en brouillon
+            setInterval(() => {
+                if (!this.loading && !this.useFallback) {
+                    const hasDrafts = this.stats.draft > 0;
+                    const shouldRefresh = hasDrafts || Math.random() < 0.1; // 10% de chance si pas de brouillons
+                    
+                    if (shouldRefresh) {
+                        this.addDebugLog('info', '🔄 Auto-refresh déclenché');
+                        this.loadPickups(false); // Refresh silencieux
+                    }
+                }
+            }, 120000); // Toutes les 2 minutes
+        },
+        
+        setupConnectionListeners() {
+            // Écouter les changements de connexion
+            window.addEventListener('online', () => {
+                this.addDebugLog('success', '🌐 Connexion rétablie');
+                this.connectionStatus = 'Connecté';
+                if (this.useFallback) {
+                    this.addDebugLog('info', '🔄 Tentative de sortie du mode fallback');
+                    this.useFallback = false;
+                    this.loadPickups();
+                }
+            });
+            
+            window.addEventListener('offline', () => {
+                this.addDebugLog('warn', '🌐 Connexion perdue');
+                this.connectionStatus = 'Hors ligne';
+            });
+        },
+
+        // ========================================
+        // MÉTHODES DE DEBUG AMÉLIORÉES
+        // ========================================
+        
+        addDebugLog(level, message) {
+            const timestamp = new Date().toLocaleTimeString('fr-FR', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                fractionalSecondDigits: 3 
+            });
+            
+            this.debugLogs.push({
+                timestamp,
+                level,
+                message
+            });
+            
+            // Garder seulement les 50 derniers logs
+            if (this.debugLogs.length > 50) {
+                this.debugLogs = this.debugLogs.slice(-50);
+            }
+            
+            // Log aussi dans la console du navigateur
+            const consoleMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
+            console[consoleMethod](`[PICKUPS ${level.toUpperCase()}] ${message}`);
+        },
+        
+        toggleDebugMode() {
+            this.debugMode = !this.debugMode;
+            this.addDebugLog('info', `🔧 Mode debug ${this.debugMode ? 'activé' : 'désactivé'}`);
+        },
+        
+        clearDebugLogs() {
+            this.debugLogs = [];
+            this.addDebugLog('info', '🧹 Console de debug vidée');
+        },
+        
+        downloadDebugReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                system_info: {
+                    user_agent: navigator.userAgent,
+                    online: navigator.onLine,
+                    language: navigator.language,
+                    url: window.location.href
+                },
+                app_state: {
+                    loading: this.loading,
+                    error: this.error,
+                    failed_attempts: this.failedAttempts,
+                    use_fallback: this.useFallback,
+                    connection_status: this.connectionStatus,
+                    response_time: this.responseTime,
+                    pickups_count: this.pickups.length,
+                    original_data_count: this.originalData.length,
+                    stats: this.stats,
+                    filters: this.filters
+                },
+                debug_logs: this.debugLogs.slice(-20), // 20 derniers logs
+                api_url: this.apiUrl
+            };
+            
+            const blob = new Blob([JSON.stringify(report, null, 2)], { 
+                type: 'application/json' 
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pickups_debug_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            this.addDebugLog('info', '📥 Rapport de debug téléchargé');
+        },
+
+        // ========================================
+        // MÉTHODES D'ÉTAT GLOBAL
+        // ========================================
+        
+        getGlobalStatusClass() {
+            if (this.error) return 'alert-danger';
+            if (this.useFallback) return 'alert-warning';
+            if (this.stats.problems > 0) return 'alert-warning';
+            if (this.stats.draft > 0) return 'alert-info';
+            return 'alert-success';
+        },
+        
+        getGlobalStatusIcon() {
+            if (this.error) return 'fas fa-exclamation-circle';
+            if (this.useFallback) return 'fas fa-shield-alt';
+            if (this.stats.problems > 0) return 'fas fa-exclamation-triangle';
+            if (this.stats.draft > 0) return 'fas fa-clock';
+            return 'fas fa-check-circle';
+        },
+        
+        getGlobalStatusMessage() {
+            if (this.error) return 'Problème de connexion détecté';
+            if (this.useFallback) return 'Mode démonstration activé';
+            if (this.stats.problems > 0) return `${this.stats.problems} pickup(s) avec des problèmes`;
+            if (this.stats.draft > 0) return `${this.stats.draft} pickup(s) en attente de validation`;
+            return 'Tous les enlèvements sont à jour';
+        },
+        
+        getGlobalStatusDetails() {
+            if (this.error) return 'Vérifiez votre connexion ou contactez l\'administrateur';
+            if (this.useFallback) return 'Données de démonstration uniquement';
+            if (this.stats.problems > 0) return 'Vérifiez les pickups marqués avec des problèmes';
+            if (this.stats.draft > 0) return 'Certains pickups peuvent être validés';
+            return `Dernière mise à jour: ${this.lastUpdateTime || 'Jamais'}`;
+        },
+
+        // ========================================
+        // MÉTHODES D'ACTIONS PRINCIPALES
+        // ========================================
+        
+        refreshData() {
+            this.addDebugLog('info', '🔄 Actualisation manuelle demandée');
+            this.failedAttempts = 0;
+            this.error = null;
+            this.loadPickups(true);
+        },
+        
+        retryLoad() {
+            this.addDebugLog('info', '🔄 Nouvelle tentative après erreur');
+            this.error = null;
+            this.loadPickups(true);
+        },
+        
+        toggleFallbackMode() {
+            this.useFallback = !this.useFallback;
+            this.addDebugLog('info', `🔄 Mode fallback ${this.useFallback ? 'activé' : 'désactivé'}`);
+            this.failedAttempts = 0;
+            this.loadPickups(true);
+        },
+        
+        async testApiConnection() {
+            this.addDebugLog('info', '🧪 Test de connexion API demandé');
+            
+            try {
+                // Test auth d'abord
+                const authResponse = await axios.get('/admin/debug-auth', { timeout: 5000 });
+                this.addDebugLog('success', `✅ Auth test: ${authResponse.data.admin_name}`);
+                
+                // Test API pickups
+                const testResponse = await axios.get(this.apiUrl + '?test=1', { timeout: 10000 });
+                
+                if (testResponse.data.success) {
+                    this.addDebugLog('success', `✅ API test réussi: ${testResponse.data.test_results.count} pickups, ${testResponse.data.test_results.response_time_ms}ms`);
+                    this.connectionStatus = 'Connecté';
+                    alert('✅ Test API réussi ! Voir la console de debug pour les détails.');
+                } else {
+                    this.addDebugLog('error', `❌ API test échoué: ${testResponse.data.message}`);
+                    alert('❌ Test API échoué. Voir la console de debug pour les détails.');
+                }
+                
+            } catch (error) {
+                this.addDebugLog('error', `❌ Erreur test API: ${error.message}`);
+                alert(`❌ Erreur test API: ${error.message}\nVoir la console de debug pour plus de détails.`);
+            }
+        },
+
+        // ========================================
+        // GESTION DES SÉLECTIONS
+        // ========================================
+        
         isSelected(pickupId) {
             return this.selectedPickups.includes(pickupId);
         },
-
+        
         toggleSelection(pickupId) {
             const index = this.selectedPickups.indexOf(pickupId);
             if (index > -1) {
@@ -1017,87 +1733,102 @@ document.addEventListener('alpine:init', () => {
             } else {
                 this.selectedPickups.push(pickupId);
             }
-            console.log('✅ [PICKUPS] Sélection:', this.selectedPickups);
+            this.addDebugLog('info', `✅ Sélection mise à jour: ${this.selectedPickups.length} pickup(s)`);
         },
-
+        
         isAllSelected() {
             return this.pickups.length > 0 && 
                    this.pickups.every(pickup => this.isSelected(pickup.id));
         },
-
+        
         toggleAllSelection() {
             if (this.isAllSelected()) {
                 this.selectedPickups = [];
+                this.addDebugLog('info', '❌ Toutes les sélections supprimées');
             } else {
                 this.selectedPickups = this.pickups.map(p => p.id);
+                this.addDebugLog('info', `✅ Tous les pickups sélectionnés: ${this.selectedPickups.length}`);
             }
-            console.log('✅ [PICKUPS] Sélection tous:', this.selectedPickups);
         },
 
-        // Visualiser un pickup
+        // ========================================
+        // ACTIONS SUR LES PICKUPS
+        // ========================================
+        
         viewPickup(pickup) {
-            console.log('👁️ [PICKUPS] Visualisation pickup:', pickup.id);
+            this.addDebugLog('info', `👁️ Visualisation pickup #${pickup.id}`);
             this.selectedPickup = pickup;
             const modal = new bootstrap.Modal(document.getElementById('pickupDetailsModal'));
             modal.show();
         },
-
-        // Actions sur les pickups
+        
         async validatePickup(pickupId) {
             if (!confirm('Valider cet enlèvement ? Il sera envoyé au transporteur et ne pourra plus être modifié.')) {
                 return;
             }
 
-            console.log('✅ [PICKUPS] Validation pickup:', pickupId);
+            this.addDebugLog('info', `✅ Validation pickup #${pickupId}`);
 
             try {
                 const response = await axios.post(`/admin/delivery/pickups/${pickupId}/validate`);
                 
                 if (response.data.success) {
-                    alert('Enlèvement validé avec succès');
+                    this.addDebugLog('success', `✅ Pickup #${pickupId} validé avec succès`);
+                    alert('✅ Enlèvement validé avec succès');
                     this.loadPickups(false);
                     
+                    // Mettre à jour le pickup sélectionné si c'est le même
                     if (this.selectedPickup && this.selectedPickup.id === pickupId) {
                         this.selectedPickup.status = 'validated';
+                        this.selectedPickup.can_be_validated = false;
+                        this.selectedPickup.can_be_edited = false;
                     }
+                } else {
+                    this.addDebugLog('error', `❌ Erreur validation pickup #${pickupId}: ${response.data.error}`);
+                    alert(`❌ Erreur: ${response.data.error}`);
                 }
             } catch (error) {
-                console.error('❌ [PICKUPS] Erreur validation:', error);
-                alert('Erreur lors de la validation: ' + error.message);
+                this.addDebugLog('error', `❌ Erreur validation pickup #${pickupId}: ${error.message}`);
+                alert('❌ Erreur lors de la validation: ' + error.message);
             }
         },
-
+        
         async markAsPickedUp(pickupId) {
-            console.log('🚛 [PICKUPS] Marquage récupération:', pickupId);
+            this.addDebugLog('info', `🚛 Marquage récupération pickup #${pickupId}`);
             
             try {
                 const response = await axios.post(`/admin/delivery/pickups/${pickupId}/mark-picked-up`);
                 
                 if (response.data.success) {
-                    alert('Enlèvement marqué comme récupéré');
+                    this.addDebugLog('success', `✅ Pickup #${pickupId} marqué récupéré`);
+                    alert('✅ Enlèvement marqué comme récupéré');
                     this.loadPickups(false);
                     
                     if (this.selectedPickup && this.selectedPickup.id === pickupId) {
                         this.selectedPickup.status = 'picked_up';
                     }
+                } else {
+                    this.addDebugLog('error', `❌ Erreur marquage pickup #${pickupId}: ${response.data.error}`);
+                    alert(`❌ Erreur: ${response.data.error}`);
                 }
             } catch (error) {
-                console.error('❌ [PICKUPS] Erreur marquage:', error);
-                alert('Erreur lors du marquage: ' + error.message);
+                this.addDebugLog('error', `❌ Erreur marquage pickup #${pickupId}: ${error.message}`);
+                alert('❌ Erreur lors du marquage: ' + error.message);
             }
         },
-
+        
         async deletePickup(pickupId) {
-            if (!confirm('Supprimer définitivement cet enlèvement ?')) {
+            if (!confirm('Supprimer définitivement cet enlèvement ? Cette action est irréversible.')) {
                 return;
             }
 
-            console.log('🗑️ [PICKUPS] Suppression pickup:', pickupId);
+            this.addDebugLog('info', `🗑️ Suppression pickup #${pickupId}`);
 
             try {
                 await axios.delete(`/admin/delivery/pickups/${pickupId}`);
                 
-                alert('Enlèvement supprimé');
+                this.addDebugLog('success', `✅ Pickup #${pickupId} supprimé`);
+                alert('✅ Enlèvement supprimé avec succès');
                 this.loadPickups(false);
                 
                 // Fermer le modal si c'est le pickup sélectionné
@@ -1106,36 +1837,137 @@ document.addEventListener('alpine:init', () => {
                     if (modal) modal.hide();
                 }
             } catch (error) {
-                console.error('❌ [PICKUPS] Erreur suppression:', error);
-                alert('Erreur lors de la suppression: ' + error.message);
+                this.addDebugLog('error', `❌ Erreur suppression pickup #${pickupId}: ${error.message}`);
+                alert('❌ Erreur lors de la suppression: ' + error.message);
             }
         },
-
-        // Validation en masse
+        
         async validateSelected() {
             if (this.selectedPickups.length === 0) return;
 
-            if (!confirm(`Valider ${this.selectedPickups.length} enlèvement(s) ?`)) return;
+            if (!confirm(`Valider ${this.selectedPickups.length} enlèvement(s) sélectionné(s) ?`)) return;
 
-            console.log('✅ [PICKUPS] Validation en masse:', this.selectedPickups);
+            this.addDebugLog('info', `✅ Validation en masse: ${this.selectedPickups.length} pickups`);
 
             try {
-                await axios.post('/admin/delivery/pickups/bulk-validate', {
+                const response = await axios.post('/admin/delivery/pickups/bulk-validate', {
                     pickup_ids: this.selectedPickups
                 });
                 
-                alert(`${this.selectedPickups.length} enlèvement(s) validé(s)`);
-                this.selectedPickups = [];
-                this.loadPickups(false);
+                if (response.data.success) {
+                    this.addDebugLog('success', `✅ ${response.data.data.validated} pickup(s) validé(s)`);
+                    alert(`✅ ${response.data.data.validated} enlèvement(s) validé(s)`);
+                    this.selectedPickups = [];
+                    this.loadPickups(false);
+                } else {
+                    this.addDebugLog('error', `❌ Erreur validation groupée: ${response.data.error}`);
+                    alert(`❌ Erreur: ${response.data.error}`);
+                }
             } catch (error) {
-                console.error('❌ [PICKUPS] Erreur validation groupée:', error);
-                alert('Erreur lors de la validation groupée: ' + error.message);
+                this.addDebugLog('error', `❌ Erreur validation groupée: ${error.message}`);
+                alert('❌ Erreur lors de la validation groupée: ' + error.message);
             }
         },
 
-        // Impression
+        // ========================================
+        // UTILITAIRES D'AFFICHAGE
+        // ========================================
+        
+        formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                return new Date(dateString).toLocaleDateString('fr-FR');
+            } catch {
+                return 'Date invalide';
+            }
+        },
+
+        formatDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                return new Date(dateString).toLocaleString('fr-FR');
+            } catch {
+                return 'Date invalide';
+            }
+        },
+
+        getRelativeDate(dateString) {
+            if (!dateString) return '';
+            
+            try {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffInDays = Math.floor((date - now) / (1000 * 60 * 60 * 24));
+                
+                if (diffInDays === 0) return 'Aujourd\'hui';
+                if (diffInDays === 1) return 'Demain';
+                if (diffInDays === -1) return 'Hier';
+                if (diffInDays > 1) return `Dans ${diffInDays} jours`;
+                if (diffInDays < -1) return `Il y a ${Math.abs(diffInDays)} jours`;
+                
+                return '';
+            } catch {
+                return '';
+            }
+        },
+
+        getCarrierName(carrierSlug) {
+            const names = {
+                'jax_delivery': 'JAX Delivery',
+                'mes_colis': 'Mes Colis Express'
+            };
+            return names[carrierSlug] || carrierSlug || 'Transporteur inconnu';
+        },
+
+        getCarrierIcon(carrierSlug) {
+            const icons = {
+                'jax_delivery': 'fas fa-truck',
+                'mes_colis': 'fas fa-shipping-fast'
+            };
+            return icons[carrierSlug] || 'fas fa-truck';
+        },
+
+        getStatusLabel(status) {
+            const labels = {
+                'draft': 'Brouillon',
+                'validated': 'Validé',
+                'picked_up': 'Récupéré',
+                'problem': 'Problème'
+            };
+            return labels[status] || 'Statut inconnu';
+        },
+
+        getStatusIcon(status) {
+            const icons = {
+                'draft': 'fas fa-edit',
+                'validated': 'fas fa-check',
+                'picked_up': 'fas fa-truck',
+                'problem': 'fas fa-exclamation-triangle'
+            };
+            return icons[status] || 'fas fa-question';
+        },
+
+        getStatusBadgeClass(status) {
+            const classes = {
+                'draft': 'bg-secondary',
+                'validated': 'bg-success',
+                'picked_up': 'bg-primary',
+                'problem': 'bg-danger'
+            };
+            return classes[status] || 'bg-secondary';
+        },
+
+        // ========================================
+        // MÉTHODES D'EXPORT ET IMPRESSION
+        // ========================================
+        
+        exportPickups() {
+            this.addDebugLog('info', '📤 Export des pickups');
+            window.open('/admin/delivery/pickups/export', '_blank');
+        },
+        
         printManifest(pickup) {
-            console.log('🖨️ [PICKUPS] Impression manifeste:', pickup.id);
+            this.addDebugLog('info', `🖨️ Impression manifeste pickup #${pickup.id}`);
             
             const manifestWindow = window.open('', '_blank');
             const manifestHtml = this.generateManifestHtml(pickup);
@@ -1144,7 +1976,7 @@ document.addEventListener('alpine:init', () => {
             manifestWindow.document.close();
             manifestWindow.print();
         },
-
+        
         generateManifestHtml(pickup) {
             const orders = pickup.orders || [];
             const date = new Date().toLocaleDateString('fr-FR');
@@ -1208,89 +2040,17 @@ document.addEventListener('alpine:init', () => {
                     </table>
                     
                     <div class="footer">
-                        <p>Document généré le ${date}</p>
+                        <p>Document généré le ${date} à ${new Date().toLocaleTimeString('fr-FR')}</p>
                         <p>Signature transporteur: _________________________</p>
+                        <p style="margin-top: 20px; font-size: 10px;">
+                            Mode: ${this.useFallback ? 'Démonstration' : 'Production'} | 
+                            Version: ${this.connectionStatus}
+                        </p>
                     </div>
                 </body>
                 </html>
             `;
-        },
-
-        // Export
-        exportPickups() {
-            console.log('📤 [PICKUPS] Export des pickups');
-            window.open('/admin/delivery/pickups/export', '_blank');
-        },
-
-        // Utilitaires
-        formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('fr-FR');
-        },
-
-        formatDateTime(dateString) {
-            return new Date(dateString).toLocaleString('fr-FR');
-        },
-
-        getRelativeDate(dateString) {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffInDays = Math.floor((date - now) / (1000 * 60 * 60 * 24));
-            
-            if (diffInDays === 0) return 'Aujourd\'hui';
-            if (diffInDays === 1) return 'Demain';
-            if (diffInDays === -1) return 'Hier';
-            if (diffInDays > 1) return `Dans ${diffInDays} jours`;
-            if (diffInDays < -1) return `Il y a ${Math.abs(diffInDays)} jours`;
-            
-            return '';
-        },
-
-        getCarrierName(carrierSlug) {
-            const names = {
-                'jax_delivery': 'JAX Delivery',
-                'mes_colis': 'Mes Colis Express'
-            };
-            return names[carrierSlug] || carrierSlug;
-        },
-
-        getCarrierIcon(carrierSlug) {
-            const icons = {
-                'jax_delivery': 'fas fa-truck',
-                'mes_colis': 'fas fa-shipping-fast'
-            };
-            return icons[carrierSlug] || 'fas fa-truck';
-        },
-
-        getStatusLabel(status) {
-            const labels = {
-                'draft': 'Brouillon',
-                'validated': 'Validé',
-                'picked_up': 'Récupéré',
-                'problem': 'Problème'
-            };
-            return labels[status] || 'Inconnu';
-        },
-
-        getStatusIcon(status) {
-            const icons = {
-                'draft': 'fas fa-edit',
-                'validated': 'fas fa-check',
-                'picked_up': 'fas fa-truck',
-                'problem': 'fas fa-exclamation-triangle'
-            };
-            return icons[status] || 'fas fa-question';
-        },
-
-        getStatusBadgeClass(status) {
-            const classes = {
-                'draft': 'bg-secondary',
-                'validated': 'bg-success',
-                'picked_up': 'bg-primary',
-                'problem': 'bg-danger'
-            };
-            return classes[status] || 'bg-secondary';
         }
     }));
 });
 </script>
-@endpush
