@@ -51,6 +51,10 @@ class JaxDeliveryService extends BaseCarrierService
                     'details' => [
                         'test_time' => now()->toISOString(),
                         'carrier' => 'JAX Delivery',
+                        'config_id' => $config->id,
+                        'has_credentials' => !empty($credentials),
+                        'username_length' => $config->username ? strlen($config->username) : 0,
+                        'password_length' => $config->password ? strlen($config->password) : 0,
                     ]
                 ];
             }
@@ -62,7 +66,10 @@ class JaxDeliveryService extends BaseCarrierService
             Log::info("Test connexion JAX Delivery", [
                 'config_id' => $config->id,
                 'account_number' => $credentials['account_number'],
+                'token_length' => strlen($credentials['api_token']),
                 'api_url' => $config->getApiEndpoint('create_shipment'),
+                'test_data' => $testData,
+                'headers' => array_keys($headers), // Ne pas logger les valeurs sensibles
             ]);
 
             $response = $this->makeHttpRequest(
@@ -70,11 +77,19 @@ class JaxDeliveryService extends BaseCarrierService
                 $config->getApiEndpoint('create_shipment'),
                 $testData,
                 $headers,
-                10 // timeout court pour test
+                15 // timeout de 15 secondes pour test
             );
 
             if ($response->successful()) {
                 $data = $response->json();
+                
+                Log::info("Test JAX - Réponse API reçue", [
+                    'status' => $response->status(),
+                    'response_keys' => array_keys($data),
+                    'has_id' => isset($data['id']),
+                    'has_colis_id' => isset($data['colis_id']),
+                    'has_tracking' => isset($data['tracking_number']),
+                ]);
                 
                 // JAX renvoie généralement un objet avec un ID de colis
                 if (isset($data['id']) || isset($data['colis_id']) || isset($data['tracking_number'])) {
@@ -95,16 +110,23 @@ class JaxDeliveryService extends BaseCarrierService
                 } else {
                     return [
                         'success' => false,
-                        'error' => 'Réponse API JAX inattendue: ' . json_encode($data),
+                        'error' => 'Réponse API JAX inattendue: Structure de réponse non reconnue',
                         'details' => [
                             'status_code' => $response->status(),
-                            'response_data' => $data,
+                            'response_keys' => array_keys($data),
+                            'response_sample' => array_slice($data, 0, 3, true), // Première partie seulement
                         ]
                     ];
                 }
             } else {
-                $errorData = $response->json();
+                $errorData = $response->json() ?: [];
                 $errorMessage = $this->extractJaxErrorMessage($errorData);
+                
+                Log::warning("Test JAX - Erreur API", [
+                    'status' => $response->status(),
+                    'error_data' => $errorData,
+                    'extracted_message' => $errorMessage,
+                ]);
                 
                 return [
                     'success' => false,
@@ -121,6 +143,7 @@ class JaxDeliveryService extends BaseCarrierService
             Log::error("Erreur test connexion JAX Delivery", [
                 'config_id' => $config->id,
                 'error' => $e->getMessage(),
+                'error_class' => get_class($e),
                 'trace' => $e->getTraceAsString(),
             ]);
 
@@ -130,6 +153,7 @@ class JaxDeliveryService extends BaseCarrierService
                 'details' => [
                     'exception' => get_class($e),
                     'test_time' => now()->toISOString(),
+                    'config_id' => $config->id,
                 ]
             ];
         }
@@ -138,19 +162,24 @@ class JaxDeliveryService extends BaseCarrierService
     protected function doCreateShipment(array $shipmentData, DeliveryConfiguration $config): array
     {
         try {
+            // Valider les données avant envoi
+            $this->validateShipmentDataForJax($shipmentData);
+            
             $jaxData = $this->formatDataForJax($shipmentData, $config);
             $headers = $this->prepareAuthHeaders($config);
 
             Log::info("Création expédition JAX Delivery", [
                 'config_id' => $config->id,
                 'jax_data' => $jaxData,
+                'endpoint' => $config->getApiEndpoint('create_shipment'),
             ]);
 
             $response = $this->makeHttpRequest(
                 'POST',
                 $config->getApiEndpoint('create_shipment'),
                 $jaxData,
-                $headers
+                $headers,
+                30 // timeout de 30 secondes pour création
             );
 
             if ($response->successful()) {
@@ -158,29 +187,42 @@ class JaxDeliveryService extends BaseCarrierService
                 
                 Log::info("Expédition JAX créée avec succès", [
                     'config_id' => $config->id,
-                    'response_data' => $data,
+                    'response_status' => $response->status(),
+                    'response_keys' => array_keys($data),
+                    'tracking_info' => [
+                        'id' => $data['id'] ?? null,
+                        'colis_id' => $data['colis_id'] ?? null,
+                        'ean' => $data['ean'] ?? null,
+                        'tracking_number' => $data['tracking_number'] ?? null,
+                    ]
                 ]);
+
+                // Extraire le numéro de suivi selon les différents formats JAX
+                $trackingNumber = $this->extractJaxTrackingNumber($data);
+                $carrierReference = $this->extractJaxReference($data);
 
                 return [
                     'success' => true,
-                    'tracking_number' => $data['id'] ?? $data['colis_id'] ?? $data['ean'] ?? $data['tracking_number'] ?? null,
-                    'carrier_reference' => $data['reference'] ?? $data['barcode'] ?? null,
+                    'tracking_number' => $trackingNumber,
+                    'carrier_reference' => $carrierReference,
                     'estimated_delivery' => $data['estimated_delivery'] ?? null,
                     'carrier_response' => $data,
                     'details' => [
                         'carrier' => 'JAX Delivery',
                         'api_response' => $data,
                         'created_at' => now()->toISOString(),
+                        'account_number' => $jaxData['compte'] ?? 'N/A',
                     ]
                 ];
             } else {
-                $errorData = $response->json();
+                $errorData = $response->json() ?: [];
                 $errorMessage = $this->extractJaxErrorMessage($errorData);
                 
                 Log::error("Erreur création expédition JAX", [
                     'config_id' => $config->id,
                     'status_code' => $response->status(),
                     'error_data' => $errorData,
+                    'jax_data_sent' => $jaxData,
                 ]);
 
                 throw new CarrierApiException(
@@ -193,10 +235,13 @@ class JaxDeliveryService extends BaseCarrierService
 
         } catch (CarrierApiException $e) {
             throw $e;
+        } catch (CarrierValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error("Exception création expédition JAX", [
                 'config_id' => $config->id,
                 'error' => $e->getMessage(),
+                'error_class' => get_class($e),
             ]);
 
             throw new CarrierServiceException(
@@ -223,7 +268,8 @@ class JaxDeliveryService extends BaseCarrierService
                 'GET',
                 $trackingUrl,
                 [],
-                $headers
+                $headers,
+                20 // timeout de 20 secondes pour tracking
             );
 
             if ($response->successful()) {
@@ -231,19 +277,20 @@ class JaxDeliveryService extends BaseCarrierService
                 
                 Log::info("Suivi JAX récupéré", [
                     'tracking_number' => $trackingNumber,
-                    'response_data' => $data,
+                    'response_keys' => array_keys($data),
+                    'status' => $data['status'] ?? 'Non défini',
                 ]);
 
                 return [
                     'success' => true,
                     'tracking_number' => $trackingNumber,
                     'carrier_status' => $data['status'] ?? 'UNKNOWN',
-                    'carrier_status_label' => $data['status_label'] ?? $data['status_description'] ?? 'Statut inconnu',
-                    'location' => $data['current_location'] ?? $data['location'] ?? null,
-                    'last_update' => $data['last_update'] ?? $data['updated_at'] ?? now()->toISOString(),
-                    'estimated_delivery' => $data['estimated_delivery'] ?? null,
-                    'delivery_notes' => $data['notes'] ?? $data['comment'] ?? null,
-                    'history' => $this->formatJaxHistory($data['history'] ?? []),
+                    'carrier_status_label' => $data['status_label'] ?? $data['status_description'] ?? $data['libelle'] ?? 'Statut inconnu',
+                    'location' => $data['current_location'] ?? $data['location'] ?? $data['lieu'] ?? null,
+                    'last_update' => $data['last_update'] ?? $data['updated_at'] ?? $data['date_maj'] ?? now()->toISOString(),
+                    'estimated_delivery' => $data['estimated_delivery'] ?? $data['date_livraison_prevue'] ?? null,
+                    'delivery_notes' => $data['notes'] ?? $data['comment'] ?? $data['commentaire'] ?? null,
+                    'history' => $this->formatJaxHistory($data['history'] ?? $data['historique'] ?? []),
                     'carrier_response' => $data,
                     'details' => [
                         'carrier' => 'JAX Delivery',
@@ -252,7 +299,7 @@ class JaxDeliveryService extends BaseCarrierService
                     ]
                 ];
             } else {
-                $errorData = $response->json();
+                $errorData = $response->json() ?: [];
                 $errorMessage = $this->extractJaxErrorMessage($errorData);
                 
                 Log::warning("Erreur suivi JAX", [
@@ -261,7 +308,7 @@ class JaxDeliveryService extends BaseCarrierService
                     'error_data' => $errorData,
                 ]);
 
-                // Si le colis n'est pas trouvé, ce n'est pas forcément une erreur
+                // Si le colis n'est pas trouvé, ce n'est pas forcément une erreur fatale
                 if ($response->status() === 404) {
                     return [
                         'success' => false,
@@ -289,6 +336,7 @@ class JaxDeliveryService extends BaseCarrierService
             Log::error("Exception suivi JAX", [
                 'tracking_number' => $trackingNumber,
                 'error' => $e->getMessage(),
+                'error_class' => get_class($e),
             ]);
 
             throw new CarrierServiceException(
@@ -302,6 +350,32 @@ class JaxDeliveryService extends BaseCarrierService
     // ========================================
     // MÉTHODES UTILITAIRES JAX DELIVERY
     // ========================================
+
+    /**
+     * Valider les données spécifiques à JAX avant envoi
+     */
+    protected function validateShipmentDataForJax(array $shipmentData): void
+    {
+        $required = ['recipient_name', 'recipient_phone', 'recipient_address', 'cod_amount'];
+        $missing = [];
+        
+        foreach ($required as $field) {
+            if (empty($shipmentData[$field])) {
+                $missing[] = $field;
+            }
+        }
+        
+        if (!empty($missing)) {
+            throw new CarrierValidationException(
+                "Champs requis manquants pour JAX: " . implode(', ', $missing)
+            );
+        }
+        
+        // Valider le gouvernorat
+        if (empty($shipmentData['recipient_governorate']) && empty($shipmentData['governorate_id'])) {
+            throw new CarrierValidationException("Gouvernorat manquant pour JAX Delivery");
+        }
+    }
 
     /**
      * Formater les données pour l'API JAX
@@ -321,26 +395,49 @@ class JaxDeliveryService extends BaseCarrierService
 
         if (!$governorateCode) {
             throw new CarrierValidationException(
-                "Gouvernorat non supporté ou manquant pour JAX Delivery"
+                "Gouvernorat non supporté ou manquant pour JAX Delivery. " .
+                "Gouvernorat fourni: " . ($shipmentData['recipient_governorate'] ?? $shipmentData['governorate_id'] ?? 'Aucun')
             );
         }
 
-        // Format attendu par JAX Delivery
-        return [
-            'compte' => $credentials['account_number'],
-            'nom' => $shipmentData['recipient_name'],
-            'telephone' => $this->formatPhoneForJax($shipmentData['recipient_phone']),
-            'telephone2' => $this->formatPhoneForJax($shipmentData['recipient_phone_2'] ?? ''),
-            'adresse' => $shipmentData['recipient_address'],
+        // Format attendu par JAX Delivery selon leur documentation
+        $jaxData = [
+            'referenceExterne' => $shipmentData['external_reference'] ?? '',
+            'nomContact' => $shipmentData['recipient_name'],
+            'tel' => $this->formatPhoneForJax($shipmentData['recipient_phone']),
+            'tel2' => $this->formatPhoneForJax($shipmentData['recipient_phone_2'] ?? ''),
+            'adresseLivraison' => $shipmentData['recipient_address'],
             'gouvernorat' => $governorateCode, // Code numérique (1-24)
-            'delegation' => $shipmentData['delegation'] ?? $shipmentData['recipient_city'],
-            'montant' => (float) $shipmentData['cod_amount'],
-            'description' => $shipmentData['content_description'],
-            'poids' => (float) ($shipmentData['weight'] ?? 1.0),
-            'pieces' => (int) ($shipmentData['nb_pieces'] ?? 1),
-            'date_enlevement' => $shipmentData['pickup_date'] ?? now()->format('Y-m-d'),
-            'commentaire' => $shipmentData['delivery_notes'] ?? '',
+            'delegation' => $shipmentData['delegation'] ?? $shipmentData['recipient_city'] ?? '',
+            'description' => $shipmentData['content_description'] ?? 'Colis e-commerce',
+            'cod' => (string) $shipmentData['cod_amount'],
+            'echange' => $shipmentData['exchange'] ?? 0,
         ];
+
+        // Ajouter les champs optionnels si disponibles
+        if (isset($shipmentData['weight'])) {
+            $jaxData['poids'] = (float) $shipmentData['weight'];
+        }
+        
+        if (isset($shipmentData['nb_pieces'])) {
+            $jaxData['pieces'] = (int) $shipmentData['nb_pieces'];
+        }
+        
+        if (isset($shipmentData['pickup_date'])) {
+            $jaxData['date_enlevement'] = $shipmentData['pickup_date'];
+        }
+        
+        if (isset($shipmentData['delivery_notes'])) {
+            $jaxData['commentaire'] = $shipmentData['delivery_notes'];
+        }
+
+        Log::debug("Données formatées pour JAX", [
+            'original_governorate' => $shipmentData['recipient_governorate'] ?? $shipmentData['governorate_id'] ?? null,
+            'mapped_governorate' => $governorateCode,
+            'jax_data_keys' => array_keys($jaxData),
+        ]);
+
+        return $jaxData;
     }
 
     /**
@@ -364,7 +461,34 @@ class JaxDeliveryService extends BaseCarrierService
             return substr($phone, 1); // Retirer le + initial
         }
         
-        return $phone; // Retourner tel quel si format non reconnu
+        // Si le format n'est pas reconnu, retourner tel quel et laisser JAX décider
+        return $phone;
+    }
+
+    /**
+     * Extraire le numéro de suivi de la réponse JAX
+     */
+    protected function extractJaxTrackingNumber(array $data): ?string
+    {
+        // JAX peut retourner différents champs pour le numéro de suivi
+        return $data['id'] ?? 
+               $data['colis_id'] ?? 
+               $data['ean'] ?? 
+               $data['tracking_number'] ?? 
+               $data['numero_suivi'] ?? 
+               null;
+    }
+
+    /**
+     * Extraire la référence transporteur de la réponse JAX
+     */
+    protected function extractJaxReference(array $data): ?string
+    {
+        return $data['reference'] ?? 
+               $data['barcode'] ?? 
+               $data['reference_jax'] ?? 
+               $data['numero_reference'] ?? 
+               null;
     }
 
     /**
@@ -376,11 +500,18 @@ class JaxDeliveryService extends BaseCarrierService
         if (isset($errorData['message'])) {
             return $errorData['message'];
         } elseif (isset($errorData['error'])) {
-            return $errorData['error'];
+            return is_array($errorData['error']) ? implode(', ', $errorData['error']) : $errorData['error'];
         } elseif (isset($errorData['erreur'])) {
             return $errorData['erreur'];
         } elseif (isset($errorData['errors']) && is_array($errorData['errors'])) {
             return implode(', ', $errorData['errors']);
+        } elseif (isset($errorData['data']) && is_array($errorData['data'])) {
+            return 'Erreur de données: ' . json_encode($errorData['data']);
+        }
+        
+        // Si aucun message d'erreur standard n'est trouvé
+        if (!empty($errorData)) {
+            return 'Erreur JAX: ' . json_encode($errorData);
         }
         
         return 'Erreur inconnue de JAX Delivery';
@@ -395,11 +526,21 @@ class JaxDeliveryService extends BaseCarrierService
         
         foreach ($history as $entry) {
             $formattedHistory[] = [
-                'status' => $entry['status'] ?? 'UNKNOWN',
-                'label' => $entry['status_label'] ?? $entry['description'] ?? 'Mise à jour',
-                'location' => $entry['location'] ?? $entry['lieu'] ?? '',
-                'timestamp' => $entry['date'] ?? $entry['created_at'] ?? now()->toISOString(),
-                'notes' => $entry['comment'] ?? $entry['commentaire'] ?? '',
+                'status' => $entry['status'] ?? $entry['statut'] ?? 'UNKNOWN',
+                'label' => $entry['status_label'] ?? 
+                          $entry['description'] ?? 
+                          $entry['libelle'] ?? 
+                          'Mise à jour',
+                'location' => $entry['location'] ?? 
+                             $entry['lieu'] ?? 
+                             $entry['localisation'] ?? '',
+                'timestamp' => $entry['date'] ?? 
+                              $entry['created_at'] ?? 
+                              $entry['date_maj'] ?? 
+                              now()->toISOString(),
+                'notes' => $entry['comment'] ?? 
+                          $entry['commentaire'] ?? 
+                          $entry['note'] ?? '',
             ];
         }
         
@@ -412,13 +553,13 @@ class JaxDeliveryService extends BaseCarrierService
     protected function prepareTestShipmentData(DeliveryConfiguration $config): array
     {
         return $this->formatDataForJax([
-            'recipient_name' => 'Test Client',
+            'recipient_name' => 'Client Test JAX',
             'recipient_phone' => '12345678',
-            'recipient_address' => 'Adresse de test',
+            'recipient_address' => 'Adresse de test JAX Delivery',
             'recipient_governorate' => 1, // Tunis
             'recipient_city' => 'Tunis',
             'cod_amount' => 10.0,
-            'content_description' => 'Test de connexion',
+            'content_description' => 'Test de connexion JAX',
             'weight' => 1.0,
             'nb_pieces' => 1,
         ], $config);
@@ -440,13 +581,18 @@ class JaxDeliveryService extends BaseCarrierService
         // Vérifier le format du téléphone
         $phone = preg_replace('/[^0-9]/', '', $order->customer_phone);
         if (strlen($phone) < 8) {
-            $errors[] = 'Numéro de téléphone invalide pour JAX Delivery';
+            $errors[] = 'Numéro de téléphone invalide pour JAX Delivery (minimum 8 chiffres)';
         }
         
         // Vérifier le gouvernorat
         $governorateMapping = $this->getSupportedGovernorates();
         if (!isset($governorateMapping[$order->customer_governorate])) {
             $errors[] = "Gouvernorat {$order->customer_governorate} non supporté par JAX Delivery";
+        }
+        
+        // Vérifier l'adresse
+        if (strlen($order->customer_address) < 10) {
+            $errors[] = 'Adresse trop courte pour JAX Delivery (minimum 10 caractères)';
         }
         
         return $errors;
@@ -461,6 +607,74 @@ class JaxDeliveryService extends BaseCarrierService
             'recipient_governorate' => $order->customer_governorate,
             'delegation' => $order->customer_city,
             'governorate_id' => $order->customer_governorate,
+            'external_reference' => $additionalData['external_reference'] ?? "ORDER_{$order->id}",
         ]);
+    }
+
+    protected function prepareAuthHeaders(DeliveryConfiguration $config): array
+    {
+        $credentials = $config->getApiCredentials();
+        
+        if (!$credentials || !isset($credentials['api_token'])) {
+            throw new CarrierServiceException("Token API manquant pour l'authentification JAX");
+        }
+
+        return [
+            'Authorization' => 'Bearer ' . $credentials['api_token'],
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+        ];
+    }
+
+    // ========================================
+    // MÉTHODES SPÉCIFIQUES AU MAPPING GOUVERNORATS JAX
+    // ========================================
+
+    public function getSupportedGovernorates(): array
+    {
+        // JAX utilise des codes numériques pour les gouvernorats (1-24)
+        return [
+            1 => '1',   // Tunis
+            2 => '2',   // Ariana  
+            3 => '3',   // Ben Arous
+            4 => '4',   // Manouba
+            5 => '5',   // Nabeul
+            6 => '6',   // Zaghouan
+            7 => '7',   // Bizerte
+            8 => '8',   // Béja
+            9 => '9',   // Jendouba
+            10 => '10', // Le Kef
+            11 => '11', // Siliana
+            12 => '12', // Kairouan
+            13 => '13', // Kasserine
+            14 => '14', // Sidi Bouzid
+            15 => '15', // Sousse
+            16 => '16', // Monastir
+            17 => '17', // Mahdia
+            18 => '18', // Sfax
+            19 => '19', // Gafsa
+            20 => '20', // Tozeur
+            21 => '21', // Kebili
+            22 => '22', // Gabès
+            23 => '23', // Medenine
+            24 => '24', // Tataouine
+        ];
+    }
+
+    /**
+     * Obtenir le nom du gouvernorat par son ID
+     */
+    public function getGovernorateNameById(int $id): ?string
+    {
+        $names = [
+            1 => 'Tunis', 2 => 'Ariana', 3 => 'Ben Arous', 4 => 'Manouba',
+            5 => 'Nabeul', 6 => 'Zaghouan', 7 => 'Bizerte', 8 => 'Béja',
+            9 => 'Jendouba', 10 => 'Le Kef', 11 => 'Siliana', 12 => 'Kairouan',
+            13 => 'Kasserine', 14 => 'Sidi Bouzid', 15 => 'Sousse', 16 => 'Monastir',
+            17 => 'Mahdia', 18 => 'Sfax', 19 => 'Gafsa', 20 => 'Tozeur',
+            21 => 'Kebili', 22 => 'Gabès', 23 => 'Medenine', 24 => 'Tataouine'
+        ];
+        
+        return $names[$id] ?? null;
     }
 }
