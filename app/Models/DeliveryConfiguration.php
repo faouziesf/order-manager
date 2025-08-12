@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use App\Services\Delivery\SimpleCarrierFactory;
 
 class DeliveryConfiguration extends Model
 {
@@ -56,54 +57,6 @@ class DeliveryConfiguration extends Model
     }
 
     // ========================================
-    // 🔧 ACCESSORS SIMPLIFIÉS - PLUS DE CHIFFREMENT COMPLEXE
-    // ========================================
-
-    /**
-     * 🆕 CORRECTION : Gestion simplifiée - pas de chiffrement automatique
-     * Les tokens JWT et API sont stockés en clair pour éviter les problèmes
-     */
-    public function setPasswordAttribute($value)
-    {
-        $this->attributes['password'] = $value;
-    }
-
-    public function getPasswordAttribute($value)
-    {
-        return $value;
-    }
-
-    public function setUsernameAttribute($value)
-    {
-        $this->attributes['username'] = $value;
-    }
-
-    public function getUsernameAttribute($value)
-    {
-        return $value;
-    }
-
-    public function setApiKeyAttribute($value)
-    {
-        $this->attributes['api_key'] = $value;
-    }
-
-    public function getApiKeyAttribute($value)
-    {
-        return $value;
-    }
-
-    public function setTokenAttribute($value)
-    {
-        $this->attributes['token'] = $value;
-    }
-
-    public function getTokenAttribute($value)
-    {
-        return $value;
-    }
-
-    // ========================================
     // ACCESSORS MÉTIER
     // ========================================
 
@@ -117,30 +70,60 @@ class DeliveryConfiguration extends Model
     }
 
     /**
-     * 🆕 CORRECTION : Vérifier si la configuration est valide - LOGIQUE SIMPLIFIÉE
+     * 🆕 CORRECTION : Vérifier si la configuration est valide - LOGIQUE CORRIGÉE
      */
     public function getIsValidAttribute()
     {
+        Log::debug('🔍 [CONFIG] Vérification validité', [
+            'config_id' => $this->id,
+            'carrier' => $this->carrier_slug,
+            'has_username' => !empty($this->username),
+            'has_password' => !empty($this->password),
+        ]);
+
         // Pour JAX Delivery : username (numéro compte) + password (token JWT) requis
         if ($this->carrier_slug === 'jax_delivery') {
-            return !empty($this->username) && !empty($this->password);
+            $valid = !empty($this->username) && !empty($this->password);
+            Log::debug('🔍 [CONFIG] Validation JAX', [
+                'valid' => $valid,
+                'username_length' => strlen($this->username ?? ''),
+                'password_length' => strlen($this->password ?? ''),
+            ]);
+            return $valid;
         }
 
-        // Pour Mes Colis : seulement username (token) requis  
+        // Pour Mes Colis : username (token) requis  
         if ($this->carrier_slug === 'mes_colis') {
-            return !empty($this->username);
+            $valid = !empty($this->username);
+            Log::debug('🔍 [CONFIG] Validation Mes Colis', [
+                'valid' => $valid,
+                'username_length' => strlen($this->username ?? ''),
+            ]);
+            return $valid;
         }
 
         // Pour autres transporteurs futurs
-        return !empty($this->password) || !empty($this->username);
+        $valid = !empty($this->password) || !empty($this->username);
+        Log::debug('🔍 [CONFIG] Validation générique', ['valid' => $valid]);
+        return $valid;
     }
 
     /**
-     * 🆕 NOUVELLE MÉTHODE : Vérifier si valide pour appels API
+     * 🆕 MÉTHODE CORRIGÉE : Vérifier si valide pour appels API
      */
     public function isValidForApiCalls(): bool
     {
-        return $this->is_active && $this->is_valid;
+        $basic_valid = $this->is_active && $this->is_valid;
+        
+        Log::debug('🔍 [CONFIG] Vérification API calls', [
+            'config_id' => $this->id,
+            'is_active' => $this->is_active,
+            'is_valid' => $this->is_valid,
+            'basic_valid' => $basic_valid,
+            'carrier' => $this->carrier_slug,
+        ]);
+        
+        return $basic_valid;
     }
 
     /**
@@ -186,57 +169,60 @@ class DeliveryConfiguration extends Model
     }
 
     // ========================================
-    // 🆕 NOUVELLES MÉTHODES POUR L'INTÉGRATION API SIMPLIFIÉES
+    // 🆕 MÉTHODES CORRIGÉES POUR L'INTÉGRATION API
     // ========================================
 
     /**
-     * 🆕 CORRECTION : Obtenir la configuration déchiffrée pour les services - VERSION SIMPLIFIÉE
+     * 🆕 CORRECTION : Obtenir la configuration pour les services transporteurs
      */
-    public function getDecryptedConfig(): array
+    public function getApiConfig(): array
     {
-        // Plus de déchiffrement complexe, retourner les valeurs directement
-        return [
-            'api_key' => $this->password ?: $this->username, // Token principal
-            'username' => $this->username, // Numéro de compte pour JAX ou token pour Mes Colis
-            'environment' => $this->environment ?? 'test',
-        ];
-    }
+        Log::info('🔧 [CONFIG] Préparation config API', [
+            'config_id' => $this->id,
+            'carrier' => $this->carrier_slug,
+            'integration_name' => $this->integration_name,
+        ]);
 
-    /**
-     * 🆕 NOUVELLE MÉTHODE : Obtenir les credentials selon le transporteur
-     */
-    public function getApiCredentials(): array
-    {
         if ($this->carrier_slug === 'jax_delivery') {
-            return [
-                'account_number' => $this->username, // Numéro de compte (ex: 2304)
+            $config = [
                 'api_token' => $this->password,      // Token JWT
-                'auth_type' => 'bearer_token',
-                'header_name' => 'Authorization',
-                'header_value' => 'Bearer ' . $this->password,
+                'username' => $this->username,       // Numéro de compte
+                'account_number' => $this->username, // Alias pour clarté
+                'environment' => $this->environment ?? 'test',
             ];
-        }
-
-        if ($this->carrier_slug === 'mes_colis') {
-            return [
+        } elseif ($this->carrier_slug === 'mes_colis') {
+            $config = [
                 'api_token' => $this->username,      // Token API
-                'auth_type' => 'header_token',
-                'header_name' => 'x-access-token',
-                'header_value' => $this->username,
+                'environment' => $this->environment ?? 'test',
+            ];
+        } else {
+            // Configuration générique pour futurs transporteurs
+            $config = [
+                'api_token' => $this->password ?? $this->username,
+                'username' => $this->username,
+                'environment' => $this->environment ?? 'test',
             ];
         }
 
-        return [];
+        Log::debug('✅ [CONFIG] Config API préparée', [
+            'carrier' => $this->carrier_slug,
+            'has_api_token' => !empty($config['api_token']),
+            'token_preview' => !empty($config['api_token']) ? substr($config['api_token'], 0, 10) . '...' : 'vide',
+            'environment' => $config['environment'],
+        ]);
+
+        return $config;
     }
 
     /**
-     * 🆕 CORRECTION : Test de connexion simplifié
+     * 🆕 CORRECTION : Test de connexion avec le transporteur
      */
     public function testConnection(): array
     {
         Log::info('🧪 [CONFIG] Test de connexion', [
             'config_id' => $this->id,
             'carrier' => $this->carrier_slug,
+            'integration_name' => $this->integration_name,
             'is_valid' => $this->is_valid,
             'is_active' => $this->is_active
         ]);
@@ -255,22 +241,22 @@ class DeliveryConfiguration extends Model
         }
 
         try {
-            // Utiliser SimpleCarrierFactory pour tester
-            $carrierService = \App\Services\Delivery\SimpleCarrierFactory::create(
-                $this->carrier_slug, 
-                $this->getDecryptedConfig()
-            );
+            // Créer le service transporteur avec la configuration
+            $apiConfig = $this->getApiConfig();
+            $carrierService = SimpleCarrierFactory::create($this->carrier_slug, $apiConfig);
             
+            // Tester la connexion
             $result = $carrierService->testConnection();
             
             if ($result['success']) {
                 Log::info('✅ [CONFIG] Test connexion réussi', [
                     'config_id' => $this->id,
-                    'carrier' => $this->carrier_slug
+                    'carrier' => $this->carrier_slug,
+                    'message' => $result['message'],
                 ]);
                 return [
                     'success' => true,
-                    'message' => 'Connexion réussie avec ' . $this->carrier_name,
+                    'message' => $result['message'] ?? 'Connexion réussie avec ' . $this->carrier_name,
                 ];
             } else {
                 Log::error('❌ [CONFIG] Test connexion échoué', [
@@ -287,13 +273,44 @@ class DeliveryConfiguration extends Model
             Log::error('❌ [CONFIG] Erreur test connexion', [
                 'config_id' => $this->id,
                 'carrier' => $this->carrier_slug,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return [
                 'success' => false,
                 'message' => 'Erreur test connexion: ' . $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Valider les credentials selon le transporteur
+     */
+    public function validateCredentials(): array
+    {
+        $errors = [];
+        
+        if ($this->carrier_slug === 'jax_delivery') {
+            if (empty($this->username)) {
+                $errors[] = 'Numéro de compte JAX manquant';
+            }
+            if (empty($this->password)) {
+                $errors[] = 'Token JWT JAX manquant';
+            } elseif (substr_count($this->password, '.') !== 2) {
+                $errors[] = 'Token JWT JAX invalide (format incorrect)';
+            }
+        } elseif ($this->carrier_slug === 'mes_colis') {
+            if (empty($this->username)) {
+                $errors[] = 'Token Mes Colis manquant';
+            } elseif (strlen($this->username) < 10) {
+                $errors[] = 'Token Mes Colis trop court';
+            }
+        }
+        
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+        ];
     }
 
     // ========================================
@@ -321,7 +338,7 @@ class DeliveryConfiguration extends Model
     }
 
     /**
-     * 🆕 CORRECTION : Scope pour les configurations valides - LOGIQUE SIMPLIFIÉE
+     * 🆕 CORRECTION : Scope pour les configurations valides
      */
     public function scopeValid($query)
     {
@@ -338,6 +355,16 @@ class DeliveryConfiguration extends Model
                 $subQ->where('carrier_slug', 'mes_colis')
                      ->whereNotNull('username')
                      ->where('username', '!=', '');
+            })->orWhere(function($subQ) {
+                // Autres transporteurs : au moins un des deux
+                $subQ->whereNotIn('carrier_slug', ['jax_delivery', 'mes_colis'])
+                     ->where(function($subSubQ) {
+                         $subSubQ->where(function($q1) {
+                             $q1->whereNotNull('username')->where('username', '!=', '');
+                         })->orWhere(function($q2) {
+                             $q2->whereNotNull('password')->where('password', '!=', '');
+                         });
+                     });
             });
         });
     }
@@ -367,5 +394,37 @@ class DeliveryConfiguration extends Model
             ->active()
             ->valid()
             ->first();
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Créer une configuration de test
+     */
+    public static function createTestConfig($adminId, $carrierSlug, $testCredentials = []): self
+    {
+        $defaultCredentials = [
+            'jax_delivery' => [
+                'username' => '2304',
+                'password' => 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.test.token',
+            ],
+            'mes_colis' => [
+                'username' => 'TEST_TOKEN_MESCOLIS',
+                'password' => null,
+            ],
+        ];
+
+        $credentials = array_merge(
+            $defaultCredentials[$carrierSlug] ?? [],
+            $testCredentials
+        );
+
+        return static::create([
+            'admin_id' => $adminId,
+            'carrier_slug' => $carrierSlug,
+            'integration_name' => "Test {$carrierSlug} " . now()->format('Y-m-d H:i'),
+            'username' => $credentials['username'] ?? null,
+            'password' => $credentials['password'] ?? null,
+            'environment' => 'test',
+            'is_active' => true,
+        ]);
     }
 }
