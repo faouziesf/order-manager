@@ -3,379 +3,423 @@
 namespace App\Services\Delivery;
 
 use App\Services\Delivery\Contracts\CarrierServiceInterface;
-use App\Models\DeliveryConfiguration;
+use App\Services\Delivery\Contracts\CarrierServiceException;
+use App\Services\Delivery\Contracts\CarrierValidationException;
 use App\Models\Order;
-use Illuminate\Support\Str;
+use App\Models\DeliveryConfiguration;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Service de simulation pour tests et développement
- * 
- * Permet de tester l'interface de livraison sans vraies APIs
- * Simule les réponses des transporteurs
+ * Service de simulation/mock pour les tests et développement
  */
 class MockCarrierService implements CarrierServiceInterface
 {
-    protected string $carrierSlug;
-    
-    public function __construct(string $carrierSlug = 'mock_carrier')
+    protected $config;
+    protected $carrierName;
+
+    public function __construct(array $config)
     {
-        $this->carrierSlug = $carrierSlug;
+        $this->config = $config;
+        $this->carrierName = $config['carrier_name'] ?? 'Mock Carrier';
     }
 
-    public function testConnection(DeliveryConfiguration $config): array
+    /**
+     * 🆕 NOUVELLE SIGNATURE - Compatible avec l'interface
+     */
+    public function createShipment(array $shipmentData): array
     {
-        // Simuler différents cas selon la configuration
-        if (empty($config->username)) {
-            return [
-                'success' => false,
-                'error' => 'Nom d\'utilisateur manquant',
-                'details' => [
-                    'test_time' => now()->toISOString(),
-                    'simulated' => true,
-                ]
-            ];
-        }
+        Log::info('🧪 [MOCK CARRIER] Création shipment simulée', [
+            'shipment_data' => $shipmentData,
+            'carrier' => $this->carrierName
+        ]);
 
-        if ($config->username === 'test_error') {
-            return [
-                'success' => false,
-                'error' => 'Erreur de connexion simulée',
-                'details' => [
-                    'test_time' => now()->toISOString(),
-                    'simulated' => true,
-                ]
-            ];
-        }
+        try {
+            // Valider les données requises
+            $this->validateShipmentData($shipmentData);
 
-        // Simuler une connexion réussie
-        return [
-            'success' => true,
-            'message' => 'Connexion réussie (simulée)',
-            'details' => [
-                'carrier' => $this->getCarrierInfo()['name'],
-                'api_url' => 'https://api.mock-carrier.com',
-                'test_time' => now()->toISOString(),
-                'simulated' => true,
-                'account_info' => [
-                    'account_id' => $config->username,
-                    'account_status' => 'active',
-                    'balance' => 1500.50,
-                ]
-            ]
-        ];
-    }
+            // Simuler un délai d'API
+            if ($this->config['simulate_delay'] ?? false) {
+                sleep(1);
+            }
 
-    public function createShipment(Order $order, DeliveryConfiguration $config, array $additionalData = []): array
-    {
-        // Simuler la validation
-        $validationErrors = $this->validateOrderData($order, $config);
-        if (!empty($validationErrors)) {
-            return [
-                'success' => false,
-                'error' => 'Données invalides: ' . implode(', ', $validationErrors),
-                'validation_errors' => $validationErrors,
-            ];
-        }
+            // Simuler des erreurs aléatoirement pour les tests
+            if ($this->config['simulate_errors'] ?? false) {
+                if (rand(1, 10) <= 2) { // 20% de chance d'erreur
+                    throw new CarrierServiceException(
+                        'Erreur simulée pour test - ' . $this->carrierName,
+                        500,
+                        ['simulated' => true]
+                    );
+                }
+            }
 
-        // Générer un numéro de suivi factice
-        $trackingNumber = $this->generateMockTrackingNumber($config->carrier_slug);
-        
-        // Simuler une réponse d'API
-        return [
-            'success' => true,
-            'tracking_number' => $trackingNumber,
-            'carrier_reference' => 'REF-' . strtoupper(Str::random(8)),
-            'estimated_delivery' => now()->addDays(2)->format('Y-m-d'),
-            'cost' => [
-                'amount' => 8.5,
-                'currency' => 'TND',
-            ],
-            'details' => [
-                'carrier' => $this->getCarrierInfo()['name'],
-                'service_type' => 'standard',
-                'weight' => $additionalData['weight'] ?? 1.0,
-                'dimensions' => $additionalData['dimensions'] ?? '20x15x10',
-                'created_at' => now()->toISOString(),
-                'simulated' => true,
-            ]
-        ];
-    }
+            // Générer un numéro de suivi fictif
+            $trackingNumber = $this->generateMockTrackingNumber();
 
-    public function trackShipment(string $trackingNumber, DeliveryConfiguration $config): array
-    {
-        // Simuler différents statuts selon le numéro
-        $status = $this->generateMockStatus($trackingNumber);
-        
-        return [
-            'success' => true,
-            'tracking_number' => $trackingNumber,
-            'carrier_status' => $status['carrier_status'],
-            'carrier_status_label' => $status['label'],
-            'internal_status' => $status['internal_status'],
-            'location' => 'Centre de tri Tunis',
-            'last_update' => now()->subHours(rand(1, 24))->toISOString(),
-            'estimated_delivery' => now()->addDays(rand(1, 3))->format('Y-m-d'),
-            'history' => $this->generateMockHistory($trackingNumber),
-            'details' => [
-                'carrier' => $this->getCarrierInfo()['name'],
-                'simulated' => true,
-            ]
-        ];
-    }
-
-    public function trackMultipleShipments(array $trackingNumbers, DeliveryConfiguration $config): array
-    {
-        $results = [];
-        
-        foreach ($trackingNumbers as $trackingNumber) {
-            $results[$trackingNumber] = $this->trackShipment($trackingNumber, $config);
-        }
-        
-        return $results;
-    }
-
-    public function validateOrderData(Order $order, DeliveryConfiguration $config): array
-    {
-        $errors = [];
-        
-        if (empty($order->customer_name)) {
-            $errors[] = 'Nom du client manquant';
-        }
-        
-        if (empty($order->customer_phone)) {
-            $errors[] = 'Téléphone du client manquant';
-        }
-        
-        if (empty($order->customer_address)) {
-            $errors[] = 'Adresse du client manquante';
-        }
-        
-        if (empty($order->customer_governorate)) {
-            $errors[] = 'Gouvernorat manquant';
-        }
-        
-        if ($order->total_price <= 0) {
-            $errors[] = 'Montant COD invalide';
-        }
-        
-        // Simuler des erreurs spécifiques pour les tests
-        if ($order->customer_name === 'TEST_ERROR') {
-            $errors[] = 'Nom de test pour simulation d\'erreur';
-        }
-        
-        if ($order->total_price > 5000) {
-            $errors[] = 'Montant COD dépassé (max: 5000 TND)';
-        }
-        
-        return $errors;
-    }
-
-    public function mapCarrierStatusToInternal(string $carrierStatus, DeliveryConfiguration $config): string
-    {
-        return match($carrierStatus) {
-            'CREATED' => 'created',
-            'VALIDATED' => 'validated',
-            'PICKED_UP' => 'picked_up_by_carrier',
-            'IN_TRANSIT' => 'in_transit',
-            'OUT_FOR_DELIVERY' => 'in_transit',
-            'DELIVERED' => 'delivered',
-            'FAILED' => 'delivery_failed',
-            'RETURNED' => 'in_return',
-            'CANCELLED' => 'cancelled',
-            default => 'unknown',
-        };
-    }
-
-    public function getCarrierInfo(): array
-    {
-        return [
-            'slug' => $this->carrierSlug,
-            'name' => match($this->carrierSlug) {
-                'jax_delivery' => 'JAX Delivery (Simulé)',
-                'mes_colis' => 'Mes Colis Express (Simulé)',
-                default => 'Transporteur Simulé',
-            },
-            'description' => 'Service de test pour développement',
-            'website' => 'https://mock-carrier.test',
-            'support_phone' => '+216 12 345 678',
-            'support_email' => 'support@mock-carrier.test',
-        ];
-    }
-
-    public function getCarrierLimits(): array
-    {
-        return [
-            'max_weight' => 30.0,
-            'max_cod_amount' => 5000.0,
-            'max_content_length' => 255,
-            'max_address_length' => 500,
-        ];
-    }
-
-    public function supportsFeature(string $feature): bool
-    {
-        $supportedFeatures = [
-            'create_shipment' => true,
-            'track_shipment' => true,
-            'test_connection' => true,
-            'cancel_shipment' => true,
-            'multiple_tracking' => true,
-            'pickup_support' => false,
-            'webhook_support' => false,
-            'label_generation' => false,
-            'cost_calculation' => true,
-        ];
-        
-        return $supportedFeatures[$feature] ?? false;
-    }
-
-    public function getSupportedGovernorates(): array
-    {
-        // Simuler le mapping pour tous les gouvernorats tunisiens
-        $governorates = [];
-        for ($i = 1; $i <= 24; $i++) {
-            $governorates[$i] = (string)$i;
-        }
-        return $governorates;
-    }
-
-    public function cancelShipment(string $trackingNumber, DeliveryConfiguration $config, string $reason = ''): array
-    {
-        return [
-            'success' => true,
-            'tracking_number' => $trackingNumber,
-            'cancelled_at' => now()->toISOString(),
-            'reason' => $reason ?: 'Annulation demandée',
-            'details' => [
-                'simulated' => true,
-            ]
-        ];
-    }
-
-    public function getShipmentDetails(string $trackingNumber, DeliveryConfiguration $config): array
-    {
-        return $this->trackShipment($trackingNumber, $config);
-    }
-
-    public function generateShipmentLabel(string $trackingNumber, DeliveryConfiguration $config): array
-    {
-        return [
-            'success' => true,
-            'label_url' => "https://mock-carrier.test/labels/{$trackingNumber}.pdf",
-            'label_format' => 'PDF',
-            'details' => [
+            Log::info('✅ [MOCK CARRIER] Shipment simulé créé', [
                 'tracking_number' => $trackingNumber,
-                'generated_at' => now()->toISOString(),
-                'simulated' => true,
-            ]
-        ];
+                'carrier' => $this->carrierName
+            ]);
+
+            return [
+                'success' => true,
+                'tracking_number' => $trackingNumber,
+                'carrier_response' => [
+                    'mock' => true,
+                    'carrier' => $this->carrierName,
+                    'created_at' => now()->toISOString(),
+                    'simulated_response' => 'Colis créé avec succès (simulation)',
+                ],
+                'carrier_id' => $trackingNumber,
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('❌ [MOCK CARRIER] Erreur création shipment simulée', [
+                'error' => $e->getMessage(),
+                'carrier' => $this->carrierName
+            ]);
+            throw $e;
+        }
     }
 
-    public function calculateShippingCost(Order $order, DeliveryConfiguration $config): array
+    /**
+     * 🆕 NOUVELLE SIGNATURE - Compatible avec l'interface
+     */
+    public function createPickup(array $pickupData): array
     {
-        // Calculer un coût simulé basé sur le poids et la région
-        $baseCost = 7.0;
-        $weightCost = ($order->items->sum('quantity') * 0.5) * 1.5; // 1.5 TND par kg
-        $totalCost = $baseCost + $weightCost;
-        
-        return [
-            'success' => true,
-            'cost' => round($totalCost, 2),
-            'currency' => 'TND',
-            'breakdown' => [
-                'base_cost' => $baseCost,
-                'weight_cost' => $weightCost,
-                'total' => $totalCost,
-            ],
-            'details' => [
-                'estimated_weight' => $order->items->sum('quantity') * 0.5,
-                'governorate' => $order->customer_governorate,
-                'simulated' => true,
-            ]
-        ];
+        Log::info('🧪 [MOCK CARRIER] Création pickup simulée', [
+            'pickup_data' => $pickupData,
+            'carrier' => $this->carrierName
+        ]);
+
+        try {
+            // Valider les données requises
+            $this->validatePickupData($pickupData);
+
+            // Simuler un délai d'API
+            if ($this->config['simulate_delay'] ?? false) {
+                sleep(1);
+            }
+
+            $pickupId = 'PICKUP_MOCK_' . time() . '_' . rand(1000, 9999);
+
+            Log::info('✅ [MOCK CARRIER] Pickup simulé créé', [
+                'pickup_id' => $pickupId,
+                'carrier' => $this->carrierName
+            ]);
+
+            return [
+                'success' => true,
+                'pickup_id' => $pickupId,
+                'carrier_response' => [
+                    'mock' => true,
+                    'carrier' => $this->carrierName,
+                    'pickup_scheduled' => $pickupData['pickup_date'] ?? now()->addDay()->toDateString(),
+                    'shipments_count' => count($pickupData['tracking_numbers'] ?? []),
+                ],
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('❌ [MOCK CARRIER] Erreur création pickup simulée', [
+                'error' => $e->getMessage(),
+                'carrier' => $this->carrierName
+            ]);
+            throw $e;
+        }
     }
 
-    // ========================================
-    // MÉTHODES PRIVÉES POUR LA SIMULATION
-    // ========================================
-
-    private function generateMockTrackingNumber(string $carrierSlug): string
+    /**
+     * 🆕 NOUVELLE SIGNATURE - Compatible avec l'interface
+     */
+    public function getShipmentStatus(string $trackingNumber): array
     {
-        $prefix = match($carrierSlug) {
-            'jax_delivery' => 'JAX',
-            'mes_colis' => 'MC',
-            default => 'MOCK',
-        };
-        
-        return $prefix . date('Ymd') . rand(100000, 999999);
+        Log::info('🧪 [MOCK CARRIER] Récupération statut simulée', [
+            'tracking_number' => $trackingNumber,
+            'carrier' => $this->carrierName
+        ]);
+
+        try {
+            // Simuler différents statuts selon le numéro de suivi
+            $status = $this->simulateStatusFromTrackingNumber($trackingNumber);
+
+            return [
+                'success' => true,
+                'status' => $status,
+                'carrier_status' => strtoupper($status),
+                'carrier_response' => [
+                    'mock' => true,
+                    'carrier' => $this->carrierName,
+                    'tracking_number' => $trackingNumber,
+                    'status' => $status,
+                    'simulated_events' => $this->generateMockEvents($status),
+                ],
+                'last_update' => now(),
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('❌ [MOCK CARRIER] Erreur récupération statut simulée', [
+                'tracking_number' => $trackingNumber,
+                'error' => $e->getMessage(),
+                'carrier' => $this->carrierName
+            ]);
+            throw $e;
+        }
     }
 
-    private function generateMockStatus(string $trackingNumber): array
+    /**
+     * 🆕 NOUVELLE SIGNATURE - Compatible avec l'interface
+     */
+    public function testConnection(): array
     {
-        // Générer un statut basé sur le hash du numéro de suivi
-        $hash = crc32($trackingNumber) % 8;
-        
-        return match($hash) {
-            0 => [
-                'carrier_status' => 'CREATED',
-                'label' => 'Colis créé',
-                'internal_status' => 'created',
-            ],
-            1 => [
-                'carrier_status' => 'VALIDATED',
-                'label' => 'Colis validé',
-                'internal_status' => 'validated',
-            ],
-            2 => [
-                'carrier_status' => 'PICKED_UP',
-                'label' => 'Colis récupéré',
-                'internal_status' => 'picked_up_by_carrier',
-            ],
-            3, 4 => [
-                'carrier_status' => 'IN_TRANSIT',
-                'label' => 'En transit',
-                'internal_status' => 'in_transit',
-            ],
-            5, 6 => [
-                'carrier_status' => 'DELIVERED',
-                'label' => 'Livré',
-                'internal_status' => 'delivered',
-            ],
-            7 => [
-                'carrier_status' => 'FAILED',
-                'label' => 'Échec de livraison',
-                'internal_status' => 'delivery_failed',
-            ],
-            default => [
-                'carrier_status' => 'IN_TRANSIT',
-                'label' => 'En transit',
-                'internal_status' => 'in_transit',
-            ],
-        };
-    }
+        Log::info('🧪 [MOCK CARRIER] Test connexion simulée', [
+            'carrier' => $this->carrierName
+        ]);
 
-    private function generateMockHistory(string $trackingNumber): array
-    {
-        $history = [];
-        $statuses = [
-            ['status' => 'CREATED', 'label' => 'Colis créé', 'location' => 'Entrepôt'],
-            ['status' => 'VALIDATED', 'label' => 'Colis validé', 'location' => 'Entrepôt'],
-            ['status' => 'PICKED_UP', 'label' => 'Récupéré par transporteur', 'location' => 'Centre de tri'],
-            ['status' => 'IN_TRANSIT', 'label' => 'En transit', 'location' => 'Centre de tri Tunis'],
-        ];
-        
-        $currentTime = now()->subDays(2);
-        
-        foreach ($statuses as $index => $statusInfo) {
-            $history[] = [
-                'status' => $statusInfo['status'],
-                'label' => $statusInfo['label'],
-                'location' => $statusInfo['location'],
-                'timestamp' => $currentTime->addHours(rand(6, 12))->toISOString(),
-                'notes' => 'Mise à jour automatique',
+        try {
+            // Simuler un test de connexion
+            if ($this->config['simulate_connection_failure'] ?? false) {
+                throw new CarrierServiceException(
+                    'Test de connexion échoué (simulation)',
+                    500
+                );
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Connexion ' . $this->carrierName . ' réussie (simulation)',
+                'response_time' => rand(100, 500), // ms
+                'environment' => $this->config['environment'] ?? 'test',
+                'mock' => true,
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Échec connexion ' . $this->carrierName . ' (simulation): ' . $e->getMessage(),
+                'error' => $e->getMessage(),
+                'mock' => true,
             ];
         }
+    }
+
+    /**
+     * 🔄 MÉTHODE DE COMPATIBILITÉ - Ancienne signature pour rétrocompatibilité
+     */
+    public function createShipmentLegacy(Order $order, DeliveryConfiguration $config, array $additionalData = []): array
+    {
+        Log::info('🔄 [MOCK CARRIER] Utilisation méthode legacy', [
+            'order_id' => $order->id,
+            'config_id' => $config->id
+        ]);
+
+        // Convertir vers la nouvelle signature
+        $shipmentData = [
+            'external_reference' => "ORDER_{$order->id}",
+            'recipient_info' => [
+                'name' => $order->customer_name,
+                'phone' => $order->customer_phone,
+                'phone_2' => $order->customer_phone_2,
+                'address' => $order->customer_address,
+                'governorate' => $order->customer_governorate,
+                'city' => $order->customer_city,
+            ],
+            'cod_amount' => $order->total_price,
+            'content_description' => "Commande #{$order->id}",
+            'weight' => $additionalData['weight'] ?? 1.0,
+            'nb_pieces' => $additionalData['nb_pieces'] ?? 1,
+        ];
+
+        // Appeler la nouvelle méthode
+        return $this->createShipment($shipmentData);
+    }
+
+    /**
+     * Valider les données de shipment
+     */
+    protected function validateShipmentData(array $data): void
+    {
+        $required = ['recipient_info', 'cod_amount'];
+        $missing = [];
+
+        foreach ($required as $field) {
+            if (!isset($data[$field])) {
+                $missing[] = $field;
+            }
+        }
+
+        if (!empty($missing)) {
+            throw new CarrierValidationException(
+                'Données manquantes pour Mock Carrier: ' . implode(', ', $missing),
+                422,
+                $missing
+            );
+        }
+
+        // Valider les informations du destinataire
+        $recipientInfo = $data['recipient_info'];
+        $requiredRecipient = ['name', 'phone', 'address'];
+        $missingRecipient = [];
+
+        foreach ($requiredRecipient as $field) {
+            if (empty($recipientInfo[$field])) {
+                $missingRecipient[] = $field;
+            }
+        }
+
+        if (!empty($missingRecipient)) {
+            throw new CarrierValidationException(
+                'Informations destinataire manquantes pour Mock Carrier: ' . implode(', ', $missingRecipient),
+                422,
+                $missingRecipient
+            );
+        }
+    }
+
+    /**
+     * Valider les données de pickup
+     */
+    protected function validatePickupData(array $data): void
+    {
+        $required = ['tracking_numbers'];
+        $missing = [];
+
+        foreach ($required as $field) {
+            if (!isset($data[$field])) {
+                $missing[] = $field;
+            }
+        }
+
+        if (!empty($missing)) {
+            throw new CarrierValidationException(
+                'Données de pickup manquantes pour Mock Carrier: ' . implode(', ', $missing),
+                422,
+                $missing
+            );
+        }
+
+        if (empty($data['tracking_numbers']) || !is_array($data['tracking_numbers'])) {
+            throw new CarrierValidationException(
+                'Liste des numéros de suivi requise pour Mock Carrier',
+                422,
+                ['tracking_numbers']
+            );
+        }
+    }
+
+    /**
+     * Générer un numéro de suivi fictif
+     */
+    protected function generateMockTrackingNumber(): string
+    {
+        $prefix = strtoupper(substr($this->carrierName, 0, 3));
+        $timestamp = time();
+        $random = rand(1000, 9999);
         
-        return $history;
+        return "{$prefix}{$timestamp}{$random}";
+    }
+
+    /**
+     * Simuler un statut basé sur le numéro de suivi
+     */
+    protected function simulateStatusFromTrackingNumber(string $trackingNumber): string
+    {
+        // Utiliser le hash du tracking number pour déterminer le statut
+        $hash = crc32($trackingNumber);
+        $statuses = ['created', 'validated', 'picked_up_by_carrier', 'in_transit', 'delivered'];
+        
+        return $statuses[abs($hash) % count($statuses)];
+    }
+
+    /**
+     * Générer des événements de suivi fictifs
+     */
+    protected function generateMockEvents(string $status): array
+    {
+        $events = [
+            [
+                'date' => now()->subDays(2)->toISOString(),
+                'status' => 'created',
+                'description' => 'Colis créé (simulation)',
+                'location' => 'Centre de tri principal',
+            ],
+            [
+                'date' => now()->subDays(1)->toISOString(),
+                'status' => 'validated',
+                'description' => 'Colis validé et en cours de traitement (simulation)',
+                'location' => 'Centre de tri principal',
+            ],
+        ];
+
+        if (in_array($status, ['picked_up_by_carrier', 'in_transit', 'delivered'])) {
+            $events[] = [
+                'date' => now()->subHours(12)->toISOString(),
+                'status' => 'picked_up_by_carrier',
+                'description' => 'Colis récupéré par le transporteur (simulation)',
+                'location' => 'Dépôt transporteur',
+            ];
+        }
+
+        if (in_array($status, ['in_transit', 'delivered'])) {
+            $events[] = [
+                'date' => now()->subHours(6)->toISOString(),
+                'status' => 'in_transit',
+                'description' => 'Colis en transit (simulation)',
+                'location' => 'En route vers destination',
+            ];
+        }
+
+        if ($status === 'delivered') {
+            $events[] = [
+                'date' => now()->subHours(2)->toISOString(),
+                'status' => 'delivered',
+                'description' => 'Colis livré avec succès (simulation)',
+                'location' => 'Adresse de livraison',
+            ];
+        }
+
+        return $events;
+    }
+
+    /**
+     * 🆕 MÉTHODES STATIQUES POUR FACILITER LES TESTS
+     */
+    public static function createForTesting(array $config = []): self
+    {
+        $defaultConfig = [
+            'carrier_name' => 'Mock Test Carrier',
+            'environment' => 'test',
+            'simulate_delay' => false,
+            'simulate_errors' => false,
+            'simulate_connection_failure' => false,
+        ];
+
+        return new self(array_merge($defaultConfig, $config));
+    }
+
+    /**
+     * Configuration pour simuler des erreurs (utile pour les tests)
+     */
+    public function enableErrorSimulation(bool $enable = true): self
+    {
+        $this->config['simulate_errors'] = $enable;
+        return $this;
+    }
+
+    /**
+     * Configuration pour simuler des délais (utile pour les tests)
+     */
+    public function enableDelaySimulation(bool $enable = true): self
+    {
+        $this->config['simulate_delay'] = $enable;
+        return $this;
+    }
+
+    /**
+     * Configuration pour simuler des échecs de connexion (utile pour les tests)
+     */
+    public function enableConnectionFailureSimulation(bool $enable = true): self
+    {
+        $this->config['simulate_connection_failure'] = $enable;
+        return $this;
     }
 }

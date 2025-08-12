@@ -5,6 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Services\Delivery\ShippingServiceFactory;
+use App\Services\Delivery\Contracts\CarrierServiceException;
+use App\Services\Delivery\Contracts\CarrierValidationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class Pickup extends Model
 {
@@ -140,7 +145,8 @@ class Pickup extends Model
         return $this->status === self::STATUS_DRAFT && 
                $this->shipments()->exists() &&
                $this->deliveryConfiguration &&
-               $this->deliveryConfiguration->is_active;
+               $this->deliveryConfiguration->is_active &&
+               $this->deliveryConfiguration->isValidForApiCalls();
     }
 
     /**
@@ -302,7 +308,7 @@ class Pickup extends Model
     // ========================================
 
     /**
-     * Valider le pickup (envoi vers l'API transporteur)
+     * Valider le pickup (envoi vers l'API transporteur) - VERSION CORRIGÉE AVEC ENVOI RÉEL
      */
     public function validate()
     {
@@ -310,45 +316,252 @@ class Pickup extends Model
             throw new \Exception('Ce pickup ne peut pas être validé');
         }
 
+        Log::info('🚀 [PICKUP VALIDATE] Début validation avec envoi API réel', [
+            'pickup_id' => $this->id,
+            'carrier' => $this->carrier_slug,
+            'shipments_count' => $this->shipments->count(),
+            'configuration_id' => $this->delivery_configuration_id
+        ]);
+
         try {
-            // TODO: Implémenter l'envoi vers l'API dans Phase 4
-            // Pour l'instant, juste changer le statut
-            
-            $this->update([
-                'status' => self::STATUS_VALIDATED,
-                'validated_at' => now(),
+            DB::beginTransaction();
+
+            // Étape 1: Créer les colis individuels chez le transporteur
+            $successfulShipments = 0;
+            $errors = [];
+            $trackingNumbers = [];
+
+            // Obtenir le service transporteur
+            $shippingFactory = app(ShippingServiceFactory::class);
+            $carrierService = $shippingFactory->create(
+                $this->carrier_slug, 
+                $this->deliveryConfiguration->getDecryptedConfig()
+            );
+
+            Log::info('✅ [PICKUP VALIDATE] Service transporteur créé', [
+                'carrier' => $this->carrier_slug,
+                'service_class' => get_class($carrierService)
             ]);
 
-            // Mettre à jour le statut des expéditions
-            $this->shipments()->update(['status' => 'validated']);
+            // Créer chaque shipment chez le transporteur
+            foreach ($this->shipments as $shipment) {
+                try {
+                    Log::info('📦 [PICKUP VALIDATE] Envoi shipment vers API', [
+                        'shipment_id' => $shipment->id,
+                        'order_id' => $shipment->order_id,
+                        'carrier' => $this->carrier_slug
+                    ]);
 
-            // Enregistrer dans l'historique des commandes
-            foreach ($this->orders as $order) {
-                $order->recordHistory(
-                    'pickup_validated',
-                    "Pickup #{$this->id} validé et envoyé au transporteur {$this->carrier_name}",
-                    [
-                        'pickup_id' => $this->id,
-                        'carrier_slug' => $this->carrier_slug,
-                        'pickup_date' => $this->pickup_date->toDateString(),
-                        'validated_at' => $this->validated_at->toISOString(),
-                    ],
-                    $order->status,
-                    $order->status, // Pas de changement de statut pour l'instant
-                    null,
-                    'Pickup validé',
-                    null,
-                    $this->carrier_name
-                );
+                    // Préparer les données pour l'API transporteur
+                    $shipmentData = [
+                        'external_reference' => "ORDER_{$shipment->order_id}_SHIP_{$shipment->id}",
+                        'recipient_info' => $shipment->recipient_info,
+                        'cod_amount' => $shipment->cod_amount,
+                        'weight' => $shipment->weight,
+                        'nb_pieces' => $shipment->nb_pieces,
+                        'content_description' => $shipment->content_description,
+                        'exchange' => 0,
+                        'open_order' => 0,
+                        'notes' => $shipment->notes ?? "Commande #{$shipment->order_id}",
+                    ];
+
+                    // Appel à l'API du transporteur
+                    $result = $carrierService->createShipment($shipmentData);
+
+                    if ($result['success']) {
+                        // Mettre à jour le shipment avec les données du transporteur
+                        $shipment->update([
+                            'status' => 'validated',
+                            'pos_barcode' => $result['tracking_number'],
+                            'pos_reference' => $result['carrier_id'] ?? $result['tracking_number'],
+                            'carrier_response' => $result['carrier_response'] ?? null,
+                            'carrier_last_status_update' => now(),
+                        ]);
+
+                        $trackingNumbers[] = $result['tracking_number'];
+                        $successfulShipments++;
+
+                        Log::info('✅ [PICKUP VALIDATE] Shipment envoyé avec succès', [
+                            'shipment_id' => $shipment->id,
+                            'tracking_number' => $result['tracking_number'],
+                            'carrier' => $this->carrier_slug
+                        ]);
+
+                        // 🆕 CHANGER LE STATUT DE LA COMMANDE
+                        if ($shipment->order) {
+                            $shipment->order->update([
+                                'status' => 'expédiée',
+                                'shipped_at' => now(),
+                                'tracking_number' => $result['tracking_number'],
+                                'carrier_name' => $this->carrier_name,
+                            ]);
+
+                            // Enregistrer dans l'historique de la commande
+                            $shipment->order->recordHistory(
+                                'shipment_validated',
+                                "Commande expédiée via {$this->carrier_name} dans le pickup #{$this->id}",
+                                [
+                                    'pickup_id' => $this->id,
+                                    'shipment_id' => $shipment->id,
+                                    'tracking_number' => $result['tracking_number'],
+                                    'carrier_slug' => $this->carrier_slug,
+                                    'validated_at' => now()->toISOString(),
+                                ],
+                                'confirmée', // Status avant
+                                'expédiée',  // Status après
+                                null,
+                                'Expédié via pickup',
+                                $result['tracking_number'],
+                                $this->carrier_name
+                            );
+
+                            Log::info('📋 [PICKUP VALIDATE] Statut commande mis à jour', [
+                                'order_id' => $shipment->order->id,
+                                'old_status' => 'confirmée',
+                                'new_status' => 'expédiée',
+                                'tracking_number' => $result['tracking_number']
+                            ]);
+                        }
+
+                    } else {
+                        $errorMsg = "Erreur création shipment #{$shipment->id}: " . 
+                                   implode(', ', $result['errors'] ?? ['Erreur inconnue']);
+                        $errors[] = $errorMsg;
+                        
+                        Log::error('❌ [PICKUP VALIDATE] Erreur envoi shipment', [
+                            'shipment_id' => $shipment->id,
+                            'error' => $errorMsg,
+                            'carrier_response' => $result
+                        ]);
+                    }
+
+                } catch (CarrierValidationException $e) {
+                    $errorMsg = "Validation échouée shipment #{$shipment->id}: {$e->getMessage()}";
+                    $errors[] = $errorMsg;
+                    
+                    Log::error('❌ [PICKUP VALIDATE] Erreur validation shipment', [
+                        'shipment_id' => $shipment->id,
+                        'error' => $e->getMessage(),
+                        'validation_errors' => $e->getValidationErrors()
+                    ]);
+
+                } catch (CarrierServiceException $e) {
+                    $errorMsg = "Erreur API transporteur shipment #{$shipment->id}: {$e->getMessage()}";
+                    $errors[] = $errorMsg;
+                    
+                    Log::error('❌ [PICKUP VALIDATE] Erreur API transporteur', [
+                        'shipment_id' => $shipment->id,
+                        'error' => $e->getMessage(),
+                        'carrier_response' => $e->getCarrierResponse()
+                    ]);
+
+                } catch (\Exception $e) {
+                    $errorMsg = "Erreur générale shipment #{$shipment->id}: {$e->getMessage()}";
+                    $errors[] = $errorMsg;
+                    
+                    Log::error('❌ [PICKUP VALIDATE] Erreur générale shipment', [
+                        'shipment_id' => $shipment->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
             }
 
-            return true;
+            // Étape 2: Créer le pickup/enlèvement chez le transporteur (si supporté)
+            $pickupResult = null;
+            if (!empty($trackingNumbers)) {
+                try {
+                    Log::info('🚛 [PICKUP VALIDATE] Création pickup chez transporteur', [
+                        'pickup_id' => $this->id,
+                        'tracking_numbers' => $trackingNumbers,
+                        'carrier' => $this->carrier_slug
+                    ]);
+
+                    $pickupData = [
+                        'tracking_numbers' => $trackingNumbers,
+                        'shipments_count' => count($trackingNumbers),
+                        'pickup_date' => $this->pickup_date->toDateString(),
+                        'address' => 'Adresse de collecte', // À personnaliser selon vos besoins
+                    ];
+
+                    $pickupResult = $carrierService->createPickup($pickupData);
+
+                    if ($pickupResult['success']) {
+                        Log::info('✅ [PICKUP VALIDATE] Pickup créé chez transporteur', [
+                            'pickup_id' => $this->id,
+                            'carrier_pickup_id' => $pickupResult['pickup_id'],
+                            'carrier' => $this->carrier_slug
+                        ]);
+                    }
+
+                } catch (\Exception $e) {
+                    // Ne pas faire échouer toute la validation si le pickup API échoue
+                    Log::warning('⚠️ [PICKUP VALIDATE] Erreur création pickup API (non bloquant)', [
+                        'pickup_id' => $this->id,
+                        'error' => $e->getMessage(),
+                        'carrier' => $this->carrier_slug
+                    ]);
+                }
+            }
+
+            // Étape 3: Mettre à jour le statut du pickup
+            if ($successfulShipments > 0) {
+                $this->update([
+                    'status' => self::STATUS_VALIDATED,
+                    'validated_at' => now(),
+                ]);
+
+                Log::info('🎉 [PICKUP VALIDATE] Pickup validé avec succès', [
+                    'pickup_id' => $this->id,
+                    'successful_shipments' => $successfulShipments,
+                    'total_shipments' => $this->shipments->count(),
+                    'errors_count' => count($errors),
+                    'carrier' => $this->carrier_slug
+                ]);
+
+            } else {
+                // Aucun shipment n'a réussi - marquer comme problème
+                $this->update(['status' => self::STATUS_PROBLEM]);
+                
+                Log::error('❌ [PICKUP VALIDATE] Aucun shipment envoyé - pickup marqué en problème', [
+                    'pickup_id' => $this->id,
+                    'errors' => $errors,
+                    'carrier' => $this->carrier_slug
+                ]);
+
+                DB::rollBack();
+                
+                return [
+                    'success' => false,
+                    'errors' => $errors,
+                    'successful_shipments' => 0,
+                    'total_shipments' => $this->shipments->count(),
+                ];
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'successful_shipments' => $successfulShipments,
+                'total_shipments' => $this->shipments->count(),
+                'errors' => $errors,
+                'tracking_numbers' => $trackingNumbers,
+                'pickup_result' => $pickupResult,
+            ];
 
         } catch (\Exception $e) {
-            \Log::error('Erreur validation pickup', [
+            DB::rollBack();
+            
+            Log::error('❌ [PICKUP VALIDATE] Erreur fatale validation pickup', [
                 'pickup_id' => $this->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'carrier' => $this->carrier_slug
             ]);
+            
+            // Marquer le pickup comme ayant un problème
+            $this->update(['status' => self::STATUS_PROBLEM]);
             
             throw $e;
         }
@@ -362,6 +575,11 @@ class Pickup extends Model
         if ($this->status !== self::STATUS_VALIDATED) {
             throw new \Exception('Seuls les pickups validés peuvent être marqués comme récupérés');
         }
+
+        Log::info('🚛 [PICKUP PICKED UP] Marquage récupération', [
+            'pickup_id' => $this->id,
+            'carrier' => $this->carrier_slug
+        ]);
 
         $this->update(['status' => self::STATUS_PICKED_UP]);
 
@@ -388,6 +606,11 @@ class Pickup extends Model
             // Mettre à jour le statut de la commande
             $order->update(['status' => 'en_transit']);
         }
+
+        Log::info('✅ [PICKUP PICKED UP] Pickup marqué récupéré avec mise à jour des commandes', [
+            'pickup_id' => $this->id,
+            'orders_updated' => $this->orders->count()
+        ]);
     }
 
     /**
@@ -395,6 +618,12 @@ class Pickup extends Model
      */
     public function markAsProblem($reason = null)
     {
+        Log::info('⚠️ [PICKUP PROBLEM] Marquage problème', [
+            'pickup_id' => $this->id,
+            'reason' => $reason,
+            'carrier' => $this->carrier_slug
+        ]);
+
         $this->update(['status' => self::STATUS_PROBLEM]);
 
         // Enregistrer dans l'historique des commandes
@@ -430,6 +659,12 @@ class Pickup extends Model
             throw new \Exception('Cette expédition est déjà assignée à un autre pickup');
         }
 
+        Log::info('➕ [PICKUP ADD SHIPMENT] Ajout expédition au pickup', [
+            'pickup_id' => $this->id,
+            'shipment_id' => $shipment->id,
+            'order_id' => $shipment->order_id
+        ]);
+
         $shipment->update(['pickup_id' => $this->id]);
         
         return $this;
@@ -445,6 +680,12 @@ class Pickup extends Model
         }
 
         if ($shipment->pickup_id === $this->id) {
+            Log::info('➖ [PICKUP REMOVE SHIPMENT] Retrait expédition du pickup', [
+                'pickup_id' => $this->id,
+                'shipment_id' => $shipment->id,
+                'order_id' => $shipment->order_id
+            ]);
+
             $shipment->update(['pickup_id' => null, 'status' => 'created']);
         }
         
@@ -460,8 +701,13 @@ class Pickup extends Model
             'id' => $this->id,
             'status' => $this->status,
             'status_label' => $this->status_label,
+            'status_color' => $this->status_color,
+            'status_icon' => $this->status_icon,
             'carrier_name' => $this->carrier_name,
+            'carrier_slug' => $this->carrier_slug,
             'pickup_date' => $this->pickup_date?->format('d/m/Y'),
+            'pickup_date_iso' => $this->pickup_date?->toDateString(),
+            'validated_at' => $this->validated_at?->toISOString(),
             'shipments_count' => $this->shipments_count,
             'orders_count' => $this->orders_count,
             'total_cod_amount' => $this->total_cod_amount,
@@ -472,7 +718,82 @@ class Pickup extends Model
             'can_be_validated' => $this->can_be_validated,
             'can_be_edited' => $this->can_be_edited,
             'can_be_deleted' => $this->can_be_deleted,
+            'configuration' => [
+                'id' => $this->deliveryConfiguration?->id,
+                'name' => $this->deliveryConfiguration?->integration_name,
+                'is_active' => $this->deliveryConfiguration?->is_active ?? false,
+                'is_valid_for_api' => $this->deliveryConfiguration?->isValidForApiCalls() ?? false,
+            ],
+            'created_at' => $this->created_at->toISOString(),
+            'updated_at' => $this->updated_at->toISOString(),
         ];
+    }
+
+    /**
+     * Obtenir les détails d'un pickup avec ses relations
+     */
+    public function getFullDetails()
+    {
+        $this->load(['shipments.order', 'deliveryConfiguration']);
+        
+        $summary = $this->getSummary();
+        
+        $summary['shipments'] = $this->shipments->map(function($shipment) {
+            return [
+                'id' => $shipment->id,
+                'order_id' => $shipment->order_id,
+                'status' => $shipment->status,
+                'pos_barcode' => $shipment->pos_barcode,
+                'weight' => $shipment->weight,
+                'cod_amount' => $shipment->cod_amount,
+                'nb_pieces' => $shipment->nb_pieces,
+                'order' => $shipment->order ? [
+                    'id' => $shipment->order->id,
+                    'customer_name' => $shipment->order->customer_name,
+                    'customer_phone' => $shipment->order->customer_phone,
+                    'customer_city' => $shipment->order->customer_city,
+                    'total_price' => $shipment->order->total_price,
+                    'status' => $shipment->order->status,
+                ] : null,
+            ];
+        });
+        
+        return $summary;
+    }
+
+    /**
+     * Test de connexion avec le transporteur configuré
+     */
+    public function testCarrierConnection()
+    {
+        if (!$this->deliveryConfiguration || !$this->deliveryConfiguration->is_active) {
+            return [
+                'success' => false,
+                'error' => 'Configuration transporteur inactive ou manquante',
+            ];
+        }
+
+        try {
+            $shippingFactory = app(ShippingServiceFactory::class);
+            $carrierService = $shippingFactory->create(
+                $this->carrier_slug, 
+                $this->deliveryConfiguration->getDecryptedConfig()
+            );
+
+            return $carrierService->testConnection();
+
+        } catch (\Exception $e) {
+            Log::error('❌ [PICKUP TEST CONNECTION] Erreur test connexion', [
+                'pickup_id' => $this->id,
+                'carrier' => $this->carrier_slug,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erreur test connexion: ' . $e->getMessage(),
+            ];
+        }
     }
 
     // ========================================
@@ -484,6 +805,13 @@ class Pickup extends Model
      */
     public static function createForCarrier($adminId, $carrierSlug, $configurationId, $pickupDate = null)
     {
+        Log::info('🆕 [PICKUP CREATE] Création nouveau pickup', [
+            'admin_id' => $adminId,
+            'carrier_slug' => $carrierSlug,
+            'configuration_id' => $configurationId,
+            'pickup_date' => $pickupDate
+        ]);
+
         return static::create([
             'admin_id' => $adminId,
             'carrier_slug' => $carrierSlug,
@@ -534,5 +862,71 @@ class Pickup extends Model
             self::STATUS_PICKED_UP => 'Récupéré',
             self::STATUS_PROBLEM => 'Problème',
         ];
+    }
+
+    /**
+     * Obtenir les pickups prêts pour validation en masse
+     */
+    public static function getReadyForBulkValidation($adminId, $carrierSlug = null)
+    {
+        $query = static::where('admin_id', $adminId)
+            ->where('status', self::STATUS_DRAFT)
+            ->whereHas('shipments')
+            ->whereHas('deliveryConfiguration', function($q) {
+                $q->where('is_active', true);
+            });
+
+        if ($carrierSlug) {
+            $query->where('carrier_slug', $carrierSlug);
+        }
+
+        return $query->with(['deliveryConfiguration', 'shipments'])->get();
+    }
+
+    /**
+     * Obtenir les performances par transporteur
+     */
+    public static function getCarrierPerformance($adminId, $days = 30)
+    {
+        $startDate = now()->subDays($days);
+        
+        return static::where('admin_id', $adminId)
+            ->where('created_at', '>=', $startDate)
+            ->selectRaw('
+                carrier_slug,
+                COUNT(*) as total_pickups,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as validated_pickups,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as picked_up_pickups,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as problem_pickups,
+                AVG(CASE WHEN validated_at IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, created_at, validated_at) END) as avg_validation_time_minutes
+            ', [self::STATUS_VALIDATED, self::STATUS_PICKED_UP, self::STATUS_PROBLEM])
+            ->groupBy('carrier_slug')
+            ->get()
+            ->map(function($row) {
+                $row->success_rate = $row->total_pickups > 0 
+                    ? round(($row->validated_pickups + $row->picked_up_pickups) / $row->total_pickups * 100, 2)
+                    : 0;
+                return $row;
+            });
+    }
+
+    /**
+     * Nettoyer les anciens pickups brouillons
+     */
+    public static function cleanupOldDrafts($days = 7)
+    {
+        $cutoffDate = now()->subDays($days);
+        
+        $deletedCount = static::where('status', self::STATUS_DRAFT)
+            ->where('created_at', '<', $cutoffDate)
+            ->whereDoesntHave('shipments') // Seulement ceux sans expéditions
+            ->delete();
+
+        Log::info('🧹 [PICKUP CLEANUP] Nettoyage anciens brouillons', [
+            'deleted_count' => $deletedCount,
+            'cutoff_date' => $cutoffDate->toDateString()
+        ]);
+
+        return $deletedCount;
     }
 }

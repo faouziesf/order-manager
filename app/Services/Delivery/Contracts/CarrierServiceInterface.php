@@ -2,209 +2,45 @@
 
 namespace App\Services\Delivery\Contracts;
 
-use App\Models\DeliveryConfiguration;
-use App\Models\Order;
-use App\Models\Shipment;
-
 /**
- * Interface unifiée pour tous les services de transporteurs
- * 
- * Cette interface garantit que tous les transporteurs (JAX Delivery, Mes Colis Express, etc.)
- * implémentent les mêmes méthodes de base pour assurer l'interopérabilité
+ * Interface pour tous les services de transporteurs
  */
 interface CarrierServiceInterface
 {
     /**
-     * Tester la connexion avec l'API du transporteur
+     * Créer un colis/shipment chez le transporteur
      * 
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Résultat du test avec success (bool) et détails
+     * @param array $shipmentData Données du colis
+     * @return array Résultat avec tracking_number, etc.
      */
-    public function testConnection(DeliveryConfiguration $config): array;
+    public function createShipment(array $shipmentData): array;
 
     /**
-     * Créer une expédition via l'API du transporteur
+     * Créer un pickup/enlèvement chez le transporteur
      * 
-     * @param Order $order Commande à expédier
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @param array $additionalData Données supplémentaires optionnelles
-     * @return array Résultat avec success (bool), tracking_number, et détails
-     */
-    public function createShipment(Order $order, DeliveryConfiguration $config, array $additionalData = []): array;
-
-    /**
-     * Suivre le statut d'une expédition
-     * 
-     * @param string $trackingNumber Numéro de suivi
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Statut actuel avec code, label, et métadonnées
-     */
-    public function trackShipment(string $trackingNumber, DeliveryConfiguration $config): array;
-
-    /**
-     * Suivre plusieurs expéditions en lot
-     * 
-     * @param array $trackingNumbers Liste des numéros de suivi
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Résultats indexés par numéro de suivi
-     */
-    public function trackMultipleShipments(array $trackingNumbers, DeliveryConfiguration $config): array;
-
-    /**
-     * Valider les données d'une commande avant expédition
-     * 
-     * @param Order $order Commande à valider
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Erreurs de validation (vide si valide)
-     */
-    public function validateOrderData(Order $order, DeliveryConfiguration $config): array;
-
-    /**
-     * Mapper un statut transporteur vers le statut interne
-     * 
-     * @param string $carrierStatus Statut du transporteur
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return string Statut interne correspondant
-     */
-    public function mapCarrierStatusToInternal(string $carrierStatus, DeliveryConfiguration $config): string;
-
-    /**
-     * Obtenir les informations du transporteur
-     * 
-     * @return array Nom, slug, et métadonnées du transporteur
-     */
-    public function getCarrierInfo(): array;
-
-    /**
-     * Obtenir les limites et contraintes du transporteur
-     * 
-     * @return array Poids max, montant COD max, etc.
-     */
-    public function getCarrierLimits(): array;
-
-    /**
-     * Annuler une expédition (si supporté)
-     * 
-     * @param string $trackingNumber Numéro de suivi
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @param string $reason Raison de l'annulation
-     * @return array Résultat de l'annulation
-     */
-    public function cancelShipment(string $trackingNumber, DeliveryConfiguration $config, string $reason = ''): array;
-
-    /**
-     * Obtenir les détails d'expédition (si supporté)
-     * 
-     * @param string $trackingNumber Numéro de suivi
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Détails complets de l'expédition
-     */
-    public function getShipmentDetails(string $trackingNumber, DeliveryConfiguration $config): array;
-
-    /**
-     * Générer les données pour l'étiquette (si supporté)
-     * 
-     * @param string $trackingNumber Numéro de suivi
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Données pour l'étiquette (URL PDF, base64, etc.)
-     */
-    public function generateShipmentLabel(string $trackingNumber, DeliveryConfiguration $config): array;
-
-    /**
-     * Vérifier si le transporteur supporte une fonctionnalité
-     * 
-     * @param string $feature Nom de la fonctionnalité
-     * @return bool True si supportée
-     */
-    public function supportsFeature(string $feature): bool;
-
-    /**
-     * Obtenir la liste des gouvernorats supportés
-     * 
-     * @return array Liste des gouvernorats avec mapping
-     */
-    public function getSupportedGovernorates(): array;
-
-    /**
-     * Calculer les frais de livraison (si supporté)
-     * 
-     * @param Order $order Commande
-     * @param DeliveryConfiguration $config Configuration
-     * @return array Frais avec détails
-     */
-    public function calculateShippingCost(Order $order, DeliveryConfiguration $config): array;
-}
-
-/**
- * Interface pour les services avec support de pickup groupé
- */
-interface PickupSupportInterface
-{
-    /**
-     * Créer un enlèvement groupé
-     * 
-     * @param array $orders Liste des commandes
-     * @param DeliveryConfiguration $config Configuration du transporteur
      * @param array $pickupData Données de l'enlèvement
-     * @return array Résultat avec pickup_id et détails
+     * @return array Résultat avec pickup_id, etc.
      */
-    public function createPickup(array $orders, DeliveryConfiguration $config, array $pickupData = []): array;
+    public function createPickup(array $pickupData): array;
 
     /**
-     * Valider un enlèvement
+     * Obtenir le statut d'un colis
      * 
-     * @param string $pickupId ID de l'enlèvement
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Résultat de la validation
+     * @param string $trackingNumber Numéro de suivi
+     * @return array Statut et informations
      */
-    public function validatePickup(string $pickupId, DeliveryConfiguration $config): array;
+    public function getShipmentStatus(string $trackingNumber): array;
 
     /**
-     * Obtenir les détails d'un enlèvement
+     * Tester la connexion avec le transporteur
      * 
-     * @param string $pickupId ID de l'enlèvement
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Détails de l'enlèvement
+     * @return array Résultat du test
      */
-    public function getPickupDetails(string $pickupId, DeliveryConfiguration $config): array;
+    public function testConnection(): array;
 }
 
 /**
- * Interface pour les services avec notifications webhook
- */
-interface WebhookSupportInterface
-{
-    /**
-     * Traiter une notification webhook
-     * 
-     * @param array $webhookData Données du webhook
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return array Résultat du traitement
-     */
-    public function processWebhook(array $webhookData, DeliveryConfiguration $config): array;
-
-    /**
-     * Valider la signature d'un webhook
-     * 
-     * @param string $payload Payload du webhook
-     * @param string $signature Signature reçue
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @return bool True si valide
-     */
-    public function validateWebhookSignature(string $payload, string $signature, DeliveryConfiguration $config): bool;
-
-    /**
-     * Configurer les webhooks
-     * 
-     * @param DeliveryConfiguration $config Configuration du transporteur
-     * @param string $webhookUrl URL de callback
-     * @return array Résultat de la configuration
-     */
-    public function setupWebhooks(DeliveryConfiguration $config, string $webhookUrl): array;
-}
-
-/**
- * Exception personnalisée pour les erreurs de transporteur
+ * Exception pour les erreurs de service transporteur
  */
 class CarrierServiceException extends \Exception
 {
@@ -212,18 +48,16 @@ class CarrierServiceException extends \Exception
     protected $carrierCode;
 
     public function __construct(
-        string $message, 
-        int $code = 0, 
-        \Throwable $previous = null,
-        array $carrierResponse = null,
-        string $carrierCode = null
+        string $message = "",
+        int $code = 0,
+        $carrierResponse = null,
+        \Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
         $this->carrierResponse = $carrierResponse;
-        $this->carrierCode = $carrierCode;
     }
 
-    public function getCarrierResponse(): ?array
+    public function getCarrierResponse()
     {
         return $this->carrierResponse;
     }
@@ -232,30 +66,28 @@ class CarrierServiceException extends \Exception
     {
         return $this->carrierCode;
     }
+
+    public function setCarrierCode(?string $code): self
+    {
+        $this->carrierCode = $code;
+        return $this;
+    }
 }
 
 /**
- * Exception pour les erreurs de configuration
- */
-class CarrierConfigurationException extends CarrierServiceException
-{
-    //
-}
-
-/**
- * Exception pour les erreurs de validation
+ * Exception pour les erreurs de validation transporteur
  */
 class CarrierValidationException extends CarrierServiceException
 {
     protected $validationErrors;
 
     public function __construct(
-        string $message,
+        string $message = "",
+        int $code = 422,
         array $validationErrors = [],
-        int $code = 0,
         \Throwable $previous = null
     ) {
-        parent::__construct($message, $code, $previous);
+        parent::__construct($message, $code, $validationErrors, $previous);
         $this->validationErrors = $validationErrors;
     }
 
@@ -266,26 +98,118 @@ class CarrierValidationException extends CarrierServiceException
 }
 
 /**
- * Exception pour les erreurs d'API
+ * Factory pour créer les services de transporteurs
  */
-class CarrierApiException extends CarrierServiceException
+class ShippingServiceFactory
 {
-    protected $httpStatusCode;
-
-    public function __construct(
-        string $message,
-        int $httpStatusCode = 0,
-        array $carrierResponse = null,
-        string $carrierCode = null,
-        int $code = 0,
-        \Throwable $previous = null
-    ) {
-        parent::__construct($message, $code, $previous, $carrierResponse, $carrierCode);
-        $this->httpStatusCode = $httpStatusCode;
+    /**
+     * Créer un service transporteur
+     * 
+     * @param string $carrierSlug Identifiant du transporteur
+     * @param array $config Configuration du transporteur
+     * @return CarrierServiceInterface
+     * @throws \InvalidArgumentException
+     */
+    public function create(string $carrierSlug, array $config): CarrierServiceInterface
+    {
+        switch ($carrierSlug) {
+            case 'jax_delivery':
+                if (!class_exists(\App\Services\Delivery\JaxDeliveryService::class)) {
+                    throw new \InvalidArgumentException("Classe JaxDeliveryService non trouvée");
+                }
+                return new \App\Services\Delivery\JaxDeliveryService($config);
+                
+            case 'mes_colis':
+                if (!class_exists(\App\Services\Delivery\MesColisService::class)) {
+                    throw new \InvalidArgumentException("Classe MesColisService non trouvée");
+                }
+                return new \App\Services\Delivery\MesColisService($config);
+                
+            default:
+                throw new \InvalidArgumentException("Transporteur non supporté: {$carrierSlug}. Transporteurs supportés: " . implode(', ', array_keys($this->getSupportedCarriers())));
+        }
     }
 
-    public function getHttpStatusCode(): int
+    /**
+     * Obtenir la liste des transporteurs supportés
+     * 
+     * @return array
+     */
+    public function getSupportedCarriers(): array
     {
-        return $this->httpStatusCode;
+        return [
+            'jax_delivery' => [
+                'name' => 'JAX Delivery',
+                'service_class' => \App\Services\Delivery\JaxDeliveryService::class,
+                'available' => class_exists(\App\Services\Delivery\JaxDeliveryService::class),
+            ],
+            'mes_colis' => [
+                'name' => 'Mes Colis Express',
+                'service_class' => \App\Services\Delivery\MesColisService::class,
+                'available' => class_exists(\App\Services\Delivery\MesColisService::class),
+            ],
+        ];
+    }
+
+    /**
+     * Vérifier si un transporteur est supporté
+     * 
+     * @param string $carrierSlug
+     * @return bool
+     */
+    public function isSupported(string $carrierSlug): bool
+    {
+        $supported = $this->getSupportedCarriers();
+        return array_key_exists($carrierSlug, $supported) && ($supported[$carrierSlug]['available'] ?? false);
+    }
+
+    /**
+     * Obtenir les informations d'un transporteur
+     * 
+     * @param string $carrierSlug
+     * @return array|null
+     */
+    public function getCarrierInfo(string $carrierSlug): ?array
+    {
+        $supported = $this->getSupportedCarriers();
+        return $supported[$carrierSlug] ?? null;
+    }
+
+    /**
+     * Tester la création de tous les services
+     * 
+     * @return array
+     */
+    public function testAllServices(): array
+    {
+        $results = [];
+        $testConfig = ['api_key' => 'test_token', 'environment' => 'test'];
+        
+        foreach ($this->getSupportedCarriers() as $slug => $info) {
+            try {
+                if ($info['available']) {
+                    $service = $this->create($slug, $testConfig);
+                    $results[$slug] = [
+                        'success' => true,
+                        'service_class' => get_class($service),
+                        'implements_interface' => $service instanceof CarrierServiceInterface,
+                    ];
+                } else {
+                    $results[$slug] = [
+                        'success' => false,
+                        'error' => 'Classe de service non disponible',
+                        'expected_class' => $info['service_class'],
+                    ];
+                }
+            } catch (\Exception $e) {
+                $results[$slug] = [
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'expected_class' => $info['service_class'],
+                ];
+            }
+        }
+        
+        return $results;
     }
 }

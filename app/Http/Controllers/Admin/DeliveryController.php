@@ -1535,7 +1535,8 @@ class DeliveryController extends Controller
         Log::info('✅ [PICKUP VALIDATE] Début validation pickup avec envoi API', [
             'pickup_id' => $pickup->id,
             'carrier' => $pickup->carrier_slug,
-            'shipments_count' => $pickup->shipments->count()
+            'shipments_count' => $pickup->shipments->count(),
+            'admin_id' => auth('admin')->id()
         ]);
         
         try {
@@ -1543,7 +1544,12 @@ class DeliveryController extends Controller
             if (!$pickup->can_be_validated) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Ce pickup ne peut pas être validé'
+                    'error' => 'Ce pickup ne peut pas être validé',
+                    'details' => [
+                        'pickup_status' => $pickup->status,
+                        'shipments_count' => $pickup->shipments->count(),
+                        'config_active' => $pickup->deliveryConfiguration?->is_active ?? false,
+                    ]
                 ], 400);
             }
 
@@ -1559,7 +1565,12 @@ class DeliveryController extends Controller
             if (!$pickup->deliveryConfiguration || !$pickup->deliveryConfiguration->is_active) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Configuration du transporteur inactive ou manquante'
+                    'error' => 'Configuration du transporteur inactive ou manquante',
+                    'details' => [
+                        'config_exists' => $pickup->deliveryConfiguration !== null,
+                        'config_active' => $pickup->deliveryConfiguration?->is_active ?? false,
+                        'carrier_slug' => $pickup->carrier_slug,
+                    ]
                 ], 400);
             }
 
@@ -1575,12 +1586,23 @@ class DeliveryController extends Controller
                     $successMessage .= " Attention : " . count($result['errors']) . " erreur(s) détectée(s).";
                 }
                 
+                // 🆕 AJOUTER INFO SUR LES COMMANDES MISES À JOUR
+                $ordersUpdated = $pickup->shipments()->whereHas('order', function($q) {
+                    $q->where('status', 'expédiée');
+                })->count();
+                
+                if ($ordersUpdated > 0) {
+                    $successMessage .= " {$ordersUpdated} commande(s) marquée(s) comme expédiée(s).";
+                }
+                
                 Log::info('🎉 [PICKUP VALIDATE] Pickup validé avec succès', [
                     'pickup_id' => $pickup->id,
                     'carrier' => $pickup->carrier_slug,
                     'successful_shipments' => $result['successful_shipments'],
                     'total_shipments' => $result['total_shipments'],
-                    'errors_count' => count($result['errors'])
+                    'errors_count' => count($result['errors']),
+                    'orders_updated' => $ordersUpdated,
+                    'tracking_numbers' => $result['tracking_numbers'] ?? []
                 ]);
                 
                 return response()->json([
@@ -1591,15 +1613,23 @@ class DeliveryController extends Controller
                         'carrier_name' => $pickup->carrier_name,
                         'successful_shipments' => $result['successful_shipments'],
                         'total_shipments' => $result['total_shipments'],
+                        'orders_updated' => $ordersUpdated,
+                        'tracking_numbers' => $result['tracking_numbers'] ?? [],
                         'errors' => $result['errors'],
                         'validated_at' => $pickup->fresh()->validated_at->toISOString(),
+                        'pickup_result' => $result['pickup_result'] ?? null,
                     ],
-                    'pickup' => $pickup->fresh()
+                    'pickup' => $pickup->fresh()->load(['shipments.order', 'deliveryConfiguration'])
                 ]);
             } else {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Erreur lors de la validation : ' . implode(', ', $result['errors'])
+                    'error' => 'Erreur lors de la validation : ' . implode(', ', $result['errors']),
+                    'details' => [
+                        'successful_shipments' => $result['successful_shipments'],
+                        'total_shipments' => $result['total_shipments'],
+                        'errors' => $result['errors'],
+                    ]
                 ], 500);
             }
             
@@ -1617,6 +1647,8 @@ class DeliveryController extends Controller
                 'details' => [
                     'carrier_error' => $e->getCarrierResponse(),
                     'carrier_code' => $e->getCarrierCode(),
+                    'pickup_id' => $pickup->id,
+                    'carrier_slug' => $pickup->carrier_slug,
                 ]
             ], 422);
             
@@ -1630,7 +1662,11 @@ class DeliveryController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => "Données invalides pour {$pickup->carrier_name} : " . $e->getMessage(),
-                'validation_errors' => $e->getValidationErrors()
+                'validation_errors' => $e->getValidationErrors(),
+                'details' => [
+                    'pickup_id' => $pickup->id,
+                    'carrier_slug' => $pickup->carrier_slug,
+                ]
             ], 422);
             
         } catch (\Exception $e) {
@@ -1648,6 +1684,7 @@ class DeliveryController extends Controller
                     'pickup_id' => $pickup->id,
                     'carrier' => $pickup->carrier_slug,
                     'timestamp' => now()->toISOString(),
+                    'error_type' => get_class($e),
                 ]
             ], 500);
         }
