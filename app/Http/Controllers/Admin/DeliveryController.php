@@ -8,8 +8,9 @@ use App\Models\Pickup;
 use App\Models\Shipment;
 use App\Models\Order;
 use App\Models\Region;
-use App\Services\Delivery\ShippingServiceFactory;
+//use App\Services\Delivery\ShippingServiceFactory;
 use App\Services\Delivery\Contracts\CarrierServiceException;
+use App\Services\Delivery\SimpleCarrierFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,13 +30,12 @@ class DeliveryController extends Controller
      * Factory pour les services de transporteurs
      * @var ShippingServiceFactory
      */
-    protected $shippingFactory;
+    //protected $shippingFactory;
     
-    public function __construct(ShippingServiceFactory $shippingFactory)
+    public function __construct()
     {
         $this->middleware('auth:admin');
         $this->carriers = config('carriers', []);
-        $this->shippingFactory = $shippingFactory;
     }
 
     // ========================================
@@ -1523,8 +1523,10 @@ class DeliveryController extends Controller
         }
     }
 
+    // 🔧 DANS LE FICHIER DeliveryController.php, REMPLACEZ CES MÉTHODES :
+
     /**
-     * Valider un pickup (envoi vers l'API transporteur) - VERSION CORRIGÉE AVEC ENVOI RÉEL
+     * Valider un pickup (envoi vers l'API transporteur) - VERSION SIMPLIFIÉE CORRIGÉE
      */
     public function validatePickup(Pickup $pickup)
     {
@@ -1532,15 +1534,14 @@ class DeliveryController extends Controller
             abort(403, 'Accès non autorisé');
         }
         
-        Log::info('✅ [PICKUP VALIDATE] Début validation pickup avec envoi API', [
+        Log::info('✅ [PICKUP VALIDATE] Début validation pickup', [
             'pickup_id' => $pickup->id,
             'carrier' => $pickup->carrier_slug,
-            'shipments_count' => $pickup->shipments->count(),
             'admin_id' => auth('admin')->id()
         ]);
         
         try {
-            // Vérifier que le pickup peut être validé
+            // Vérifications de base
             if (!$pickup->can_be_validated) {
                 return response()->json([
                     'success' => false,
@@ -1553,7 +1554,6 @@ class DeliveryController extends Controller
                 ], 400);
             }
 
-            // Vérifier qu'il y a des expéditions à valider
             if ($pickup->shipments->isEmpty()) {
                 return response()->json([
                     'success' => false,
@@ -1561,48 +1561,28 @@ class DeliveryController extends Controller
                 ], 400);
             }
 
-            // Vérifier que la configuration du transporteur est active
             if (!$pickup->deliveryConfiguration || !$pickup->deliveryConfiguration->is_active) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Configuration du transporteur inactive ou manquante',
-                    'details' => [
-                        'config_exists' => $pickup->deliveryConfiguration !== null,
-                        'config_active' => $pickup->deliveryConfiguration?->is_active ?? false,
-                        'carrier_slug' => $pickup->carrier_slug,
-                    ]
+                    'error' => 'Configuration du transporteur inactive ou manquante'
                 ], 400);
             }
 
-            // Valider le pickup (envoi vers l'API transporteur)
+            // Appeler la méthode validate() du modèle Pickup (simplifiée)
             $result = $pickup->validate();
             
             if ($result['success']) {
                 $successMessage = "Pickup #{$pickup->id} validé avec succès ! ";
                 $successMessage .= "{$result['successful_shipments']}/{$result['total_shipments']} expédition(s) envoyée(s) au transporteur {$pickup->carrier_name}.";
                 
-                // Ajouter les détails des erreurs s'il y en a
                 if (!empty($result['errors'])) {
                     $successMessage .= " Attention : " . count($result['errors']) . " erreur(s) détectée(s).";
                 }
                 
-                // 🆕 AJOUTER INFO SUR LES COMMANDES MISES À JOUR
-                $ordersUpdated = $pickup->shipments()->whereHas('order', function($q) {
-                    $q->where('status', 'expédiée');
-                })->count();
-                
-                if ($ordersUpdated > 0) {
-                    $successMessage .= " {$ordersUpdated} commande(s) marquée(s) comme expédiée(s).";
-                }
-                
                 Log::info('🎉 [PICKUP VALIDATE] Pickup validé avec succès', [
                     'pickup_id' => $pickup->id,
-                    'carrier' => $pickup->carrier_slug,
                     'successful_shipments' => $result['successful_shipments'],
                     'total_shipments' => $result['total_shipments'],
-                    'errors_count' => count($result['errors']),
-                    'orders_updated' => $ordersUpdated,
-                    'tracking_numbers' => $result['tracking_numbers'] ?? []
                 ]);
                 
                 return response()->json([
@@ -1613,11 +1593,9 @@ class DeliveryController extends Controller
                         'carrier_name' => $pickup->carrier_name,
                         'successful_shipments' => $result['successful_shipments'],
                         'total_shipments' => $result['total_shipments'],
-                        'orders_updated' => $ordersUpdated,
                         'tracking_numbers' => $result['tracking_numbers'] ?? [],
                         'errors' => $result['errors'],
                         'validated_at' => $pickup->fresh()->validated_at->toISOString(),
-                        'pickup_result' => $result['pickup_result'] ?? null,
                     ],
                     'pickup' => $pickup->fresh()->load(['shipments.order', 'deliveryConfiguration'])
                 ]);
@@ -1633,36 +1611,16 @@ class DeliveryController extends Controller
                 ], 500);
             }
             
-        } catch (\App\Services\Delivery\Contracts\CarrierServiceException $e) {
+        } catch (CarrierServiceException $e) {
             Log::error('❌ [PICKUP VALIDATE] Erreur service transporteur', [
                 'pickup_id' => $pickup->id,
                 'carrier' => $pickup->carrier_slug,
                 'error' => $e->getMessage(),
-                'carrier_response' => $e->getCarrierResponse()
             ]);
             
             return response()->json([
                 'success' => false,
                 'error' => "Erreur du transporteur {$pickup->carrier_name} : " . $e->getMessage(),
-                'details' => [
-                    'carrier_error' => $e->getCarrierResponse(),
-                    'carrier_code' => $e->getCarrierCode(),
-                    'pickup_id' => $pickup->id,
-                    'carrier_slug' => $pickup->carrier_slug,
-                ]
-            ], 422);
-            
-        } catch (\App\Services\Delivery\Contracts\CarrierValidationException $e) {
-            Log::error('❌ [PICKUP VALIDATE] Erreur validation transporteur', [
-                'pickup_id' => $pickup->id,
-                'carrier' => $pickup->carrier_slug,
-                'validation_errors' => $e->getValidationErrors()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => "Données invalides pour {$pickup->carrier_name} : " . $e->getMessage(),
-                'validation_errors' => $e->getValidationErrors(),
                 'details' => [
                     'pickup_id' => $pickup->id,
                     'carrier_slug' => $pickup->carrier_slug,
@@ -1684,8 +1642,62 @@ class DeliveryController extends Controller
                     'pickup_id' => $pickup->id,
                     'carrier' => $pickup->carrier_slug,
                     'timestamp' => now()->toISOString(),
-                    'error_type' => get_class($e),
                 ]
+            ], 500);
+        }
+    }
+
+    /**
+     * Tester la connexion d'une configuration - VERSION SIMPLIFIÉE
+     */
+    public function testConnection(DeliveryConfiguration $config)
+    {
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
+        
+        Log::info('🧪 [CONFIG TEST] Test connexion', ['config_id' => $config->id]);
+        
+        try {
+            if (!$config->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Configuration inactive'
+                ], 422);
+            }
+            
+            // Préparer la configuration pour le service
+            $carrierConfig = [
+                'api_key' => $config->password, // Token stocké dans password
+                'username' => $config->username,
+                'environment' => $config->environment ?? 'test',
+            ];
+            
+            // Créer le service et tester
+            $carrierService = SimpleCarrierFactory::create($config->carrier_slug, $carrierConfig);
+            $testResult = $carrierService->testConnection();
+            
+            Log::info('✅ [CONFIG TEST] Test connexion terminé', [
+                'config_id' => $config->id,
+                'carrier' => $config->carrier_slug,
+                'success' => $testResult['success']
+            ]);
+            
+            return response()->json([
+                'success' => $testResult['success'],
+                'message' => $testResult['message'],
+                'test_result' => $testResult
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [CONFIG TEST] Erreur test connexion', [
+                'config_id' => $config->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du test de connexion: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -2769,60 +2781,7 @@ class DeliveryController extends Controller
         }
     }
 
-    /**
-     * Tester la connexion d'une configuration
-     */
-    public function testConnection(DeliveryConfiguration $config)
-    {
-        if ($config->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        Log::info('🧪 [CONFIG TEST] Test connexion', ['config_id' => $config->id]);
-        
-        try {
-            // TODO: Implémenter le test de connexion réel avec les APIs transporteurs
-            // Pour l'instant, simuler un test basique
-            
-            if (!$config->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Configuration inactive'
-                ], 422);
-            }
-            
-            // Simulation d'un test de connexion
-            $testResult = [
-                'success' => true,
-                'response_time' => rand(100, 500) . 'ms',
-                'api_version' => '1.0',
-                'environment' => $config->environment,
-                'timestamp' => now()->toISOString(),
-            ];
-            
-            Log::info('✅ [CONFIG TEST] Test connexion réussi', [
-                'config_id' => $config->id,
-                'carrier' => $config->carrier_slug
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Connexion établie avec succès',
-                'test_result' => $testResult
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('❌ [CONFIG TEST] Erreur test connexion', [
-                'config_id' => $config->id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du test de connexion: ' . $e->getMessage()
-            ], 500);
-        }
-    }
+    
 
     /**
      * Activer/désactiver une configuration

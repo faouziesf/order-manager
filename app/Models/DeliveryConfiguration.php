@@ -305,87 +305,32 @@ class DeliveryConfiguration extends Model
     // ========================================
 
     /**
-     * Obtenir la configuration déchiffrée pour le service transporteur
-     * Cette méthode est utilisée par les services JAX et Mes Colis
+     * Obtenir la configuration déchiffrée pour les services
      */
     public function getDecryptedConfig(): array
     {
-        $config = [
-            'carrier_slug' => $this->carrier_slug,
-            'integration_name' => $this->integration_name,
-            'environment' => $this->environment ?? 'test',
-            'is_active' => $this->is_active,
-            'username' => $this->username,
-        ];
-
-        // Utiliser password ou api_key selon ce qui est rempli
-        $token = $this->api_key ?: $this->password ?: $this->token;
-        
-        if ($token) {
-            // Les tokens sont déjà déchiffrés par les accesseurs
-            $config['api_key'] = $token;
-            $config['password'] = $token; // Pour compatibilité
+        try {
+            return [
+                'api_key' => $this->password ? decrypt($this->password) : $this->password,
+                'username' => $this->username ? decrypt($this->username) : $this->username,
+                'environment' => $this->environment ?? 'test',
+            ];
+        } catch (\Exception $e) {
+            // Si le déchiffrement échoue, utiliser les valeurs telles quelles
+            return [
+                'api_key' => $this->password,
+                'username' => $this->username,
+                'environment' => $this->environment ?? 'test',
+            ];
         }
-
-        // Ajouter les settings personnalisés
-        if ($this->settings && is_array($this->settings)) {
-            $config = array_merge($config, $this->settings);
-        }
-
-        Log::debug('🔧 [CONFIG] Configuration déchiffrée', [
-            'config_id' => $this->id,
-            'carrier' => $this->carrier_slug,
-            'has_token' => !empty($token),
-            'config_keys' => array_keys($config),
-        ]);
-
-        return $config;
     }
 
-    /**
-     * Vérifier si la configuration est valide pour l'envoi API
-     */
+
     public function isValidForApiCalls(): bool
     {
-        if (!$this->is_active) {
-            Log::warning('🔧 [CONFIG] Configuration inactive', [
-                'config_id' => $this->id,
-                'carrier' => $this->carrier_slug
-            ]);
-            return false;
-        }
-
-        $config = $this->getDecryptedConfig();
-
-        // Vérifier selon le transporteur
-        switch ($this->carrier_slug) {
-            case 'jax_delivery':
-                $isValid = !empty($config['api_key']) || !empty($config['password']);
-                Log::debug('🔧 [CONFIG] Validation JAX Delivery', [
-                    'config_id' => $this->id,
-                    'has_api_key' => !empty($config['api_key']),
-                    'has_password' => !empty($config['password']),
-                    'is_valid' => $isValid
-                ]);
-                return $isValid;
-                
-            case 'mes_colis':
-                $isValid = !empty($config['api_key']) || !empty($config['password']);
-                Log::debug('🔧 [CONFIG] Validation Mes Colis', [
-                    'config_id' => $this->id,
-                    'has_api_key' => !empty($config['api_key']),
-                    'has_password' => !empty($config['password']),
-                    'is_valid' => $isValid
-                ]);
-                return $isValid;
-                
-            default:
-                Log::warning('🔧 [CONFIG] Transporteur non supporté', [
-                    'config_id' => $this->id,
-                    'carrier' => $this->carrier_slug
-                ]);
-                return false;
-        }
+        return $this->is_active && 
+            !empty($this->password) && // Token API
+            !empty($this->carrier_slug);
     }
 
     // ========================================
@@ -661,7 +606,7 @@ class DeliveryConfiguration extends Model
 
         try {
             // Utiliser le service transporteur pour tester la connexion
-            $factory = app(\App\Services\Delivery\ShippingServiceFactory::class);
+            //$factory = app(\App\Services\Delivery\ShippingServiceFactory::class);
             $carrierService = $factory->create($this->carrier_slug, $this->getDecryptedConfig());
             
             $result = $carrierService->testConnection();

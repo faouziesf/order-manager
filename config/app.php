@@ -175,11 +175,7 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
 
-        /*
-         * SYSTÈME DE LIVRAISON MULTI-TRANSPORTEURS
-         * Provider pour JAX Delivery et Mes Colis Express
-         */
-        App\Providers\DeliveryServiceProvider::class,
+        
 
     ],
 
@@ -240,8 +236,8 @@ return [
          * ALIASES PERSONNALISÉS POUR LE SYSTÈME DE LIVRAISON
          * Facilitent l'utilisation des services de livraison
          */
-        'ShippingFactory' => App\Services\Delivery\ShippingServiceFactory::class,
-        'JaxDelivery' => App\Services\Delivery\JaxDeliveryService::class,
+        //'ShippingFactory' => App\Services\Delivery\ShippingServiceFactory::class,
+        //'JaxDelivery' => App\Services\Delivery\JaxDeliveryService::class,
 
     ],
 

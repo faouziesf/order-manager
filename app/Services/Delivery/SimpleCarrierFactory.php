@@ -3,15 +3,19 @@
 namespace App\Services\Delivery;
 
 use App\Services\Delivery\Contracts\CarrierServiceInterface;
+use App\Services\Delivery\Contracts\CarrierServiceException;
 
-class CarrierServiceFactory
+/**
+ * Factory simple pour créer les services de transporteurs
+ */
+class SimpleCarrierFactory
 {
     /**
      * Créer un service transporteur
      */
-    public static function make(string $carrierSlug, array $config): CarrierServiceInterface
+    public static function create(string $carrierSlug, array $config): CarrierServiceInterface
     {
-        switch (strtolower($carrierSlug)) {
+        switch ($carrierSlug) {
             case 'jax_delivery':
                 return new JaxDeliveryService($config);
                 
@@ -19,7 +23,7 @@ class CarrierServiceFactory
                 return new MesColisService($config);
                 
             default:
-                throw new \InvalidArgumentException("Transporteur non supporté: {$carrierSlug}");
+                throw new CarrierServiceException("Transporteur non supporté: {$carrierSlug}");
         }
     }
 
@@ -35,10 +39,10 @@ class CarrierServiceFactory
     }
 
     /**
-     * Tester si un transporteur est supporté
+     * Vérifier si un transporteur est supporté
      */
     public static function isSupported(string $carrierSlug): bool
     {
-        return array_key_exists(strtolower($carrierSlug), self::getSupportedCarriers());
+        return array_key_exists($carrierSlug, self::getSupportedCarriers());
     }
 }

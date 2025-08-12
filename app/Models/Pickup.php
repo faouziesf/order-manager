@@ -5,9 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
-use App\Services\Delivery\ShippingServiceFactory;
+use App\Services\Delivery\SimpleCarrierFactory;
+//use App\Services\Delivery\ShippingServiceFactory;
 use App\Services\Delivery\Contracts\CarrierServiceException;
-use App\Services\Delivery\Contracts\CarrierValidationException;
+//use App\Services\Delivery\Contracts\CarrierValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -308,7 +309,9 @@ class Pickup extends Model
     // ========================================
 
     /**
-     * Valider le pickup (envoi vers l'API transporteur) - VERSION CORRIGÉE AVEC ENVOI RÉEL
+     * Valider le pickup (envoi vers l'API transporteur) - VERSION SIMPLIFIÉE CORRIGÉE
+     * 
+     * 🚨 REMPLACEZ ENTIÈREMENT la méthode validate() dans app/Models/Pickup.php
      */
     public function validate()
     {
@@ -316,65 +319,72 @@ class Pickup extends Model
             throw new \Exception('Ce pickup ne peut pas être validé');
         }
 
-        Log::info('🚀 [PICKUP VALIDATE] Début validation avec envoi API réel', [
+        Log::info('🚀 [PICKUP VALIDATE] Début validation simplifiée', [
             'pickup_id' => $this->id,
             'carrier' => $this->carrier_slug,
             'shipments_count' => $this->shipments->count(),
-            'configuration_id' => $this->delivery_configuration_id
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Étape 1: Créer les colis individuels chez le transporteur
             $successfulShipments = 0;
             $errors = [];
             $trackingNumbers = [];
 
-            // Obtenir le service transporteur
-            $shippingFactory = app(ShippingServiceFactory::class);
-            $carrierService = $shippingFactory->create(
-                $this->carrier_slug, 
-                $this->deliveryConfiguration->getDecryptedConfig()
-            );
+            // Obtenir la configuration déchiffrée
+            if (method_exists($this->deliveryConfiguration, 'getDecryptedConfig')) {
+                $config = $this->deliveryConfiguration->getDecryptedConfig();
+            } else {
+                // Fallback si la méthode n'existe pas
+                $config = [
+                    'api_key' => $this->deliveryConfiguration->password,
+                    'username' => $this->deliveryConfiguration->username,
+                    'environment' => $this->deliveryConfiguration->environment ?? 'test',
+                ];
+            }
+
+            // 🆕 UTILISER LA NOUVELLE FACTORY SIMPLIFIÉE
+            $carrierService = \App\Services\Delivery\SimpleCarrierFactory::create($this->carrier_slug, $config);
 
             Log::info('✅ [PICKUP VALIDATE] Service transporteur créé', [
                 'carrier' => $this->carrier_slug,
                 'service_class' => get_class($carrierService)
             ]);
 
-            // Créer chaque shipment chez le transporteur
+            // Traiter chaque shipment
             foreach ($this->shipments as $shipment) {
                 try {
-                    Log::info('📦 [PICKUP VALIDATE] Envoi shipment vers API', [
+                    Log::info('📦 [PICKUP VALIDATE] Traitement shipment', [
                         'shipment_id' => $shipment->id,
                         'order_id' => $shipment->order_id,
-                        'carrier' => $this->carrier_slug
                     ]);
 
-                    // Préparer les données pour l'API transporteur
+                    // Préparer les données pour l'API
                     $shipmentData = [
                         'external_reference' => "ORDER_{$shipment->order_id}_SHIP_{$shipment->id}",
-                        'recipient_info' => $shipment->recipient_info,
+                        'recipient_name' => $shipment->recipient_info['name'] ?? 'Client',
+                        'recipient_phone' => $shipment->recipient_info['phone'] ?? '',
+                        'recipient_phone_2' => $shipment->recipient_info['phone_2'] ?? '',
+                        'recipient_address' => $shipment->recipient_info['address'] ?? '',
+                        'recipient_governorate' => $shipment->recipient_info['governorate'] ?? 'Tunis',
+                        'recipient_city' => $shipment->recipient_info['city'] ?? '',
                         'cod_amount' => $shipment->cod_amount,
+                        'content_description' => $shipment->content_description ?? "Commande #{$shipment->order_id}",
                         'weight' => $shipment->weight,
-                        'nb_pieces' => $shipment->nb_pieces,
-                        'content_description' => $shipment->content_description,
-                        'exchange' => 0,
-                        'open_order' => 0,
-                        'notes' => $shipment->notes ?? "Commande #{$shipment->order_id}",
+                        'notes' => "Pickup #{$this->id}",
                     ];
 
                     // Appel à l'API du transporteur
                     $result = $carrierService->createShipment($shipmentData);
 
                     if ($result['success']) {
-                        // Mettre à jour le shipment avec les données du transporteur
+                        // Mettre à jour le shipment
                         $shipment->update([
                             'status' => 'validated',
                             'pos_barcode' => $result['tracking_number'],
-                            'pos_reference' => $result['carrier_id'] ?? $result['tracking_number'],
-                            'carrier_response' => $result['carrier_response'] ?? null,
+                            'pos_reference' => $result['tracking_number'],
+                            'carrier_response' => $result['response'] ?? null,
                             'carrier_last_status_update' => now(),
                         ]);
 
@@ -384,10 +394,9 @@ class Pickup extends Model
                         Log::info('✅ [PICKUP VALIDATE] Shipment envoyé avec succès', [
                             'shipment_id' => $shipment->id,
                             'tracking_number' => $result['tracking_number'],
-                            'carrier' => $this->carrier_slug
                         ]);
 
-                        // 🆕 CHANGER LE STATUT DE LA COMMANDE
+                        // Mettre à jour la commande
                         if ($shipment->order) {
                             $shipment->order->update([
                                 'status' => 'expédiée',
@@ -396,141 +405,93 @@ class Pickup extends Model
                                 'carrier_name' => $this->carrier_name,
                             ]);
 
-                            // Enregistrer dans l'historique de la commande
+                            // Historique de la commande
                             $shipment->order->recordHistory(
                                 'shipment_validated',
                                 "Commande expédiée via {$this->carrier_name} dans le pickup #{$this->id}",
                                 [
                                     'pickup_id' => $this->id,
-                                    'shipment_id' => $shipment->id,
                                     'tracking_number' => $result['tracking_number'],
-                                    'carrier_slug' => $this->carrier_slug,
-                                    'validated_at' => now()->toISOString(),
                                 ],
-                                'confirmée', // Status avant
-                                'expédiée',  // Status après
+                                'confirmée',
+                                'expédiée',
                                 null,
                                 'Expédié via pickup',
                                 $result['tracking_number'],
                                 $this->carrier_name
                             );
-
-                            Log::info('📋 [PICKUP VALIDATE] Statut commande mis à jour', [
-                                'order_id' => $shipment->order->id,
-                                'old_status' => 'confirmée',
-                                'new_status' => 'expédiée',
-                                'tracking_number' => $result['tracking_number']
-                            ]);
                         }
 
                     } else {
-                        $errorMsg = "Erreur création shipment #{$shipment->id}: " . 
-                                   implode(', ', $result['errors'] ?? ['Erreur inconnue']);
+                        $errorMsg = "Erreur shipment #{$shipment->id}: Réponse API invalide";
                         $errors[] = $errorMsg;
-                        
-                        Log::error('❌ [PICKUP VALIDATE] Erreur envoi shipment', [
-                            'shipment_id' => $shipment->id,
-                            'error' => $errorMsg,
-                            'carrier_response' => $result
-                        ]);
+                        Log::error('❌ [PICKUP VALIDATE] ' . $errorMsg, ['result' => $result]);
                     }
 
-                } catch (CarrierValidationException $e) {
-                    $errorMsg = "Validation échouée shipment #{$shipment->id}: {$e->getMessage()}";
-                    $errors[] = $errorMsg;
-                    
-                    Log::error('❌ [PICKUP VALIDATE] Erreur validation shipment', [
-                        'shipment_id' => $shipment->id,
-                        'error' => $e->getMessage(),
-                        'validation_errors' => $e->getValidationErrors()
-                    ]);
-
-                } catch (CarrierServiceException $e) {
-                    $errorMsg = "Erreur API transporteur shipment #{$shipment->id}: {$e->getMessage()}";
-                    $errors[] = $errorMsg;
-                    
-                    Log::error('❌ [PICKUP VALIDATE] Erreur API transporteur', [
-                        'shipment_id' => $shipment->id,
-                        'error' => $e->getMessage(),
-                        'carrier_response' => $e->getCarrierResponse()
-                    ]);
-
                 } catch (\Exception $e) {
-                    $errorMsg = "Erreur générale shipment #{$shipment->id}: {$e->getMessage()}";
+                    $errorMsg = "Erreur shipment #{$shipment->id}: {$e->getMessage()}";
                     $errors[] = $errorMsg;
-                    
-                    Log::error('❌ [PICKUP VALIDATE] Erreur générale shipment', [
+                    Log::error('❌ [PICKUP VALIDATE] ' . $errorMsg, [
                         'shipment_id' => $shipment->id,
-                        'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString()
                     ]);
                 }
             }
 
-            // Étape 2: Créer le pickup/enlèvement chez le transporteur (si supporté)
+            // Créer le pickup chez le transporteur (si des shipments ont réussi)
             $pickupResult = null;
             if (!empty($trackingNumbers)) {
                 try {
-                    Log::info('🚛 [PICKUP VALIDATE] Création pickup chez transporteur', [
-                        'pickup_id' => $this->id,
-                        'tracking_numbers' => $trackingNumbers,
-                        'carrier' => $this->carrier_slug
-                    ]);
-
+                    Log::info('🚛 [PICKUP VALIDATE] Création pickup chez transporteur');
+                    
                     $pickupData = [
                         'tracking_numbers' => $trackingNumbers,
-                        'shipments_count' => count($trackingNumbers),
-                        'pickup_date' => $this->pickup_date->toDateString(),
-                        'address' => 'Adresse de collecte', // À personnaliser selon vos besoins
+                        'address' => 'Adresse de collecte',
                     ];
 
                     $pickupResult = $carrierService->createPickup($pickupData);
-
+                    
                     if ($pickupResult['success']) {
                         Log::info('✅ [PICKUP VALIDATE] Pickup créé chez transporteur', [
-                            'pickup_id' => $this->id,
                             'carrier_pickup_id' => $pickupResult['pickup_id'],
-                            'carrier' => $this->carrier_slug
                         ]);
                     }
 
                 } catch (\Exception $e) {
-                    // Ne pas faire échouer toute la validation si le pickup API échoue
-                    Log::warning('⚠️ [PICKUP VALIDATE] Erreur création pickup API (non bloquant)', [
-                        'pickup_id' => $this->id,
-                        'error' => $e->getMessage(),
-                        'carrier' => $this->carrier_slug
+                    Log::warning('⚠️ [PICKUP VALIDATE] Erreur création pickup (non bloquant)', [
+                        'error' => $e->getMessage()
                     ]);
                 }
             }
 
-            // Étape 3: Mettre à jour le statut du pickup
+            // Mettre à jour le statut du pickup
             if ($successfulShipments > 0) {
                 $this->update([
                     'status' => self::STATUS_VALIDATED,
                     'validated_at' => now(),
                 ]);
 
+                DB::commit();
+
                 Log::info('🎉 [PICKUP VALIDATE] Pickup validé avec succès', [
                     'pickup_id' => $this->id,
                     'successful_shipments' => $successfulShipments,
                     'total_shipments' => $this->shipments->count(),
-                    'errors_count' => count($errors),
-                    'carrier' => $this->carrier_slug
                 ]);
+
+                return [
+                    'success' => true,
+                    'successful_shipments' => $successfulShipments,
+                    'total_shipments' => $this->shipments->count(),
+                    'errors' => $errors,
+                    'tracking_numbers' => $trackingNumbers,
+                    'pickup_result' => $pickupResult,
+                ];
 
             } else {
-                // Aucun shipment n'a réussi - marquer comme problème
                 $this->update(['status' => self::STATUS_PROBLEM]);
-                
-                Log::error('❌ [PICKUP VALIDATE] Aucun shipment envoyé - pickup marqué en problème', [
-                    'pickup_id' => $this->id,
-                    'errors' => $errors,
-                    'carrier' => $this->carrier_slug
-                ]);
-
                 DB::rollBack();
-                
+
                 return [
                     'success' => false,
                     'errors' => $errors,
@@ -539,30 +500,16 @@ class Pickup extends Model
                 ];
             }
 
-            DB::commit();
-
-            return [
-                'success' => true,
-                'successful_shipments' => $successfulShipments,
-                'total_shipments' => $this->shipments->count(),
-                'errors' => $errors,
-                'tracking_numbers' => $trackingNumbers,
-                'pickup_result' => $pickupResult,
-            ];
-
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('❌ [PICKUP VALIDATE] Erreur fatale validation pickup', [
+            Log::error('❌ [PICKUP VALIDATE] Erreur fatale', [
                 'pickup_id' => $this->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'carrier' => $this->carrier_slug
+                'trace' => $e->getTraceAsString()
             ]);
             
-            // Marquer le pickup comme ayant un problème
             $this->update(['status' => self::STATUS_PROBLEM]);
-            
             throw $e;
         }
     }
@@ -763,38 +710,39 @@ class Pickup extends Model
 
     /**
      * Test de connexion avec le transporteur configuré
-     */
-    public function testCarrierConnection()
-    {
-        if (!$this->deliveryConfiguration || !$this->deliveryConfiguration->is_active) {
-            return [
-                'success' => false,
-                'error' => 'Configuration transporteur inactive ou manquante',
-            ];
-        }
+     
+    *public function testCarrierConnection()
+    *{
+    *    if (!$this->deliveryConfiguration || !$this->deliveryConfiguration->is_active) {
+    *        return [
+    *            'success' => false,
+    *            'error' => 'Configuration transporteur inactive ou manquante',
+    *        ];
+    *    }
 
-        try {
-            $shippingFactory = app(ShippingServiceFactory::class);
-            $carrierService = $shippingFactory->create(
-                $this->carrier_slug, 
-                $this->deliveryConfiguration->getDecryptedConfig()
-            );
+    *    try {
+    *        $shippingFactory = app(ShippingServiceFactory::class);
+    *        $carrierService = $shippingFactory->create(
+    *            $this->carrier_slug, 
+    *            $this->deliveryConfiguration->getDecryptedConfig()
+    *        );
 
-            return $carrierService->testConnection();
+    *        return $carrierService->testConnection();
 
-        } catch (\Exception $e) {
-            Log::error('❌ [PICKUP TEST CONNECTION] Erreur test connexion', [
-                'pickup_id' => $this->id,
-                'carrier' => $this->carrier_slug,
-                'error' => $e->getMessage()
-            ]);
+    *    } catch (\Exception $e) {
+    *        Log::error('❌ [PICKUP TEST CONNECTION] Erreur test connexion', [
+    *            'pickup_id' => $this->id,
+    *            'carrier' => $this->carrier_slug,
+    *            'error' => $e->getMessage()
+    *        ]);
 
-            return [
-                'success' => false,
-                'error' => 'Erreur test connexion: ' . $e->getMessage(),
-            ];
-        }
-    }
+    *        return [
+    *            'success' => false,
+    *            'error' => 'Erreur test connexion: ' . $e->getMessage(),
+    *        ];
+    *    }
+    *}
+        */
 
     // ========================================
     // MÉTHODES STATIQUES
