@@ -296,6 +296,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             
             // ROUTES AVEC PARAMÈTRES (DOIVENT ÊTRE APRÈS TOUTES LES ROUTES API)
             Route::get('pickups/{pickup}/details', [DeliveryController::class, 'showPickup'])->name('pickups.show');
+            Route::get('pickups/{pickup}/diagnostic', [DeliveryController::class, 'diagnosticPickup'])->name('pickups.diagnostic');
             Route::post('pickups/{pickup}/validate', [DeliveryController::class, 'validatePickup'])->name('pickups.validate');
             Route::post('pickups/{pickup}/mark-picked-up', [DeliveryController::class, 'markPickupAsPickedUp'])->name('pickups.mark-picked-up');
             Route::post('pickups/{pickup}/refresh', [DeliveryController::class, 'refreshPickupStatus'])->name('pickups.refresh');
@@ -361,6 +362,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // ========================================
+        // 🆕 ROUTES DE TEST POUR LES TRANSPORTEURS - NOUVELLES ROUTES CRITIQUES
+        // ========================================
+
+        // Route de test factory transporteur (manquante dans le diagnostic)
+        Route::get('test-carrier-factory', [DeliveryController::class, 'testCarrierFactory'])->name('test-carrier-factory');
+
+        // Route pour créer une configuration de test
+        Route::post('create-test-delivery-config', [DeliveryController::class, 'createTestDeliveryConfig'])->name('create-test-delivery-config');
+
+        // Route pour créer un pickup de test avec configuration valide
+        Route::post('create-complete-test-pickup', [DeliveryController::class, 'createCompleteTestPickup'])->name('create-complete-test-pickup');
+
+        // Route pour réparer un pickup existant
+        Route::post('repair-pickup/{pickup}', [DeliveryController::class, 'repairPickup'])->name('repair-pickup');
+
+        // Route pour test complet du système de livraison
+        Route::get('test-delivery-system-complete', [DeliveryController::class, 'testDeliverySystemComplete'])->name('test-delivery-system-complete');
+
+        // ========================================
         // DEBUG ET DIAGNOSTICS - SECTION ÉTENDUE ET AMÉLIORÉE
         // ========================================
         Route::get('debug-auth', function () {
@@ -392,6 +412,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'delivery_shipments_list' => route('admin.delivery.shipments.list'),
                     'delivery_api_general_stats' => route('admin.delivery.api.general-stats'),
                     'delivery_test_system' => route('admin.delivery.test-system'),
+                    'test_carrier_factory' => route('admin.test-carrier-factory'),
+                    'create_test_config' => route('admin.create-test-delivery-config'),
+                    'create_complete_pickup' => route('admin.create-complete-test-pickup'),
                 ]
             ];
         })->name('debug-auth');
@@ -452,6 +475,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'pickups_list_exists' => \Route::has('admin.delivery.pickups.list'),
                         'shipments_exists' => \Route::has('admin.delivery.shipments'),
                         'shipments_list_exists' => \Route::has('admin.delivery.shipments.list'),
+                        'test_carrier_factory_exists' => \Route::has('admin.test-carrier-factory'),
                     ],
                     'config_carriers' => config('carriers') ? array_keys(config('carriers')) : [],
                     'timestamp' => now()->toISOString(),
@@ -468,6 +492,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'pickups_list_exists' => \Route::has('admin.delivery.pickups.list'),
                         'shipments_exists' => \Route::has('admin.delivery.shipments'),
                         'shipments_list_exists' => \Route::has('admin.delivery.shipments.list'),
+                        'test_carrier_factory_exists' => \Route::has('admin.test-carrier-factory'),
                     ]
                 ];
             }
@@ -493,9 +518,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'shipments_list' => route('admin.delivery.shipments.list'),
                     'stats' => route('admin.delivery.stats'),
                     'api_general_stats' => route('admin.delivery.api.general-stats'),
-                    'api_stats' => route('admin.delivery.api.stats'),
                     'test_system' => route('admin.delivery.test-system'),
                     'test_create_pickup' => route('admin.delivery.test-create-pickup'),
+                    'test_carrier_factory' => route('admin.test-carrier-factory'),
                 ],
                 'available_views' => [
                     'admin.delivery.index',
@@ -516,27 +541,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
             $admin = auth('admin')->user();
             
             try {
-                // Test direct de la méthode si elle existe
-                if (method_exists(DeliveryController::class, 'getGeneralStats')) {
-                    $controller = new DeliveryController(app(\App\Services\Delivery\ShippingServiceFactory::class));
-                    $response = $controller->getGeneralStats();
-                    
-                    return [
-                        'success' => true,
-                        'message' => 'API de statistiques fonctionnelle',
-                        'response' => $response->getData(),
-                        'admin_id' => $admin->id,
-                        'test_time' => now()->toISOString(),
-                    ];
-                } else {
-                    return [
-                        'success' => false,
-                        'error' => 'Méthode getGeneralStats non trouvée dans DeliveryController',
-                        'admin_id' => $admin->id,
-                        'controller_methods' => get_class_methods(DeliveryController::class),
-                        'test_time' => now()->toISOString(),
-                    ];
-                }
+                // Test direct de la méthode getGeneralStats
+                $controller = app(DeliveryController::class);
+                $response = $controller->getGeneralStats();
+                
+                return [
+                    'success' => true,
+                    'message' => 'API de statistiques fonctionnelle',
+                    'response' => $response->getData(),
+                    'admin_id' => $admin->id,
+                    'test_time' => now()->toISOString(),
+                ];
             } catch (\Exception $e) {
                 return [
                     'success' => false,
@@ -595,6 +610,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'delivery.shipments.list',
                 'delivery.test-system',
                 'delivery.api.general-stats',
+                'test-carrier-factory',
+                'create-test-delivery-config',
             ];
             
             $results['routes_test'] = [];
@@ -654,6 +671,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'shipments' => route('admin.delivery.shipments'),
                     'shipments_list' => route('admin.delivery.shipments.list'),
                     'preparation' => route('admin.delivery.preparation'),
+                    'test_carrier_factory' => route('admin.test-carrier-factory'),
                 ];
                 
                 return response()->json([
@@ -704,8 +722,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'carrier_slug' => 'jax_delivery',
                     'integration_name' => 'Configuration Test Automatique'
                 ], [
-                    'username' => 'test_user_' . time(),
-                    'password' => 'test_token_' . time(),
+                    'username' => '2304',
+                    'password' => 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.test.token',
                     'environment' => 'test',
                     'is_active' => true,
                 ]);
