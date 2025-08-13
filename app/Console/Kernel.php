@@ -12,6 +12,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        // ========================================
+        // SYNCHRONISATION WOOCOMMERCE
+        // ========================================
+        
         // Synchronisation WooCommerce toutes les 3 minutes
         $schedule->command('woocommerce:sync')
             ->everyThreeMinutes()
@@ -24,24 +28,142 @@ class Kernel extends ConsoleKernel
                 \Log::error('WooCommerce sync failed via scheduler');
             });
         
+        // ========================================
+        // 🆕 GESTION DES LIVRAISONS MULTI-TRANSPORTEURS
+        // ========================================
+        
+        // Suivi automatique des statuts toutes les heures (principal)
+        $schedule->command('delivery:track-statuses')
+            ->hourly()
+            ->withoutOverlapping(30) // Éviter les doublons, timeout 30min
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/delivery-track.log'))
+            ->onSuccess(function () {
+                \Log::info('🚚 Suivi automatique des livraisons terminé avec succès');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Échec du suivi automatique des livraisons');
+            });
+        
+        // Suivi plus fréquent en heures de bureau (9h-18h) - toutes les 30 minutes
+        $schedule->command('delivery:track-statuses --limit=100')
+            ->cron('*/30 9-18 * * 1-6') // Lun-Sam 9h-18h toutes les 30min
+            ->withoutOverlapping(15)
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/delivery-track-business.log'))
+            ->name('delivery-track-business-hours')
+            ->description('Suivi fréquent des livraisons en heures de bureau');
+        
+        // Suivi spécifique JAX en heures de pointe
+        $schedule->command('delivery:track-statuses --carrier=jax_delivery --limit=200')
+            ->cron('0 10,14,16 * * 1-6') // 10h, 14h, 16h en semaine
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->name('delivery-track-jax')
+            ->description('Suivi spécialisé JAX Delivery');
+        
+        // Suivi spécifique Mes Colis
+        $schedule->command('delivery:track-statuses --carrier=mes_colis --limit=150')
+            ->cron('30 10,14,16 * * 1-6') // 10h30, 14h30, 16h30 en semaine
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->name('delivery-track-mes-colis')
+            ->description('Suivi spécialisé Mes Colis Express');
+        
+        // Nettoyage des pickups vides anciens (tous les jours à 3h)
+        $schedule->call(function () {
+            $deleted = \App\Models\Pickup::cleanupEmpty(7);
+            \Log::info("🧹 Nettoyage des pickups vides : {$deleted} pickup(s) supprimé(s)");
+        })
+            ->dailyAt('03:00')
+            ->name('cleanup-empty-pickups')
+            ->description('Nettoyage des pickups vides de plus de 7 jours');
+        
+        // Nettoyage des anciens logs de livraison (hebdomadaire)
+        $schedule->call(function () {
+            $logFiles = [
+                'delivery-track.log',
+                'delivery-track-business.log',
+                'delivery-track-*.log'
+            ];
+            
+            $deleted = 0;
+            foreach ($logFiles as $pattern) {
+                $files = glob(storage_path('logs/' . $pattern));
+                foreach ($files as $file) {
+                    if (filemtime($file) < now()->subDays(14)->timestamp) {
+                        unlink($file);
+                        $deleted++;
+                    }
+                }
+            }
+            
+            \Log::info("🧹 Nettoyage des logs de livraison : {$deleted} fichier(s) supprimé(s)");
+        })
+            ->weekly()
+            ->sundays()
+            ->at('04:00')
+            ->name('cleanup-delivery-logs')
+            ->description('Nettoyage des anciens logs de livraison');
+        
+        // Génération de rapports de livraison quotidiens (optionnel)
+        $schedule->call(function () {
+            if (config('app.env') === 'production') {
+                // Générer des statistiques quotidiennes de livraison
+                $stats = [
+                    'date' => today()->toDateString(),
+                    'shipments_tracked' => \App\Models\Shipment::whereDate('carrier_last_status_update', today())->count(),
+                    'shipments_delivered' => \App\Models\Shipment::whereDate('delivered_at', today())->count(),
+                    'active_shipments' => \App\Models\Shipment::whereIn('status', [
+                        'validated', 'picked_up_by_carrier', 'in_transit'
+                    ])->count(),
+                ];
+                
+                \Log::info('📊 Statistiques quotidiennes de livraison', $stats);
+                
+                // Sauvegarder dans un fichier de stats si nécessaire
+                $statsFile = storage_path('app/delivery-stats/' . today()->format('Y-m') . '.json');
+                if (!file_exists(dirname($statsFile))) {
+                    mkdir(dirname($statsFile), 0755, true);
+                }
+                
+                $existingStats = [];
+                if (file_exists($statsFile)) {
+                    $existingStats = json_decode(file_get_contents($statsFile), true) ?: [];
+                }
+                
+                $existingStats[today()->toDateString()] = $stats;
+                file_put_contents($statsFile, json_encode($existingStats, JSON_PRETTY_PRINT));
+            }
+        })
+            ->dailyAt('23:30')
+            ->name('delivery-daily-stats')
+            ->description('Génération des statistiques quotidiennes de livraison');
+        
+        // ========================================
+        // MAINTENANCE GÉNÉRALE DU SYSTÈME
+        // ========================================
+        
         // Réinitialisation des tentatives journalières à minuit
         $schedule->call(function () {
             \App\Models\Order::query()->update(['daily_attempts_count' => 0]);
             \Log::info('Daily attempts count reset completed');
         })->dailyAt('00:00')->name('reset-daily-attempts');
         
-        // Nettoyage des anciens logs WooCommerce (optionnel, hebdomadaire)
+        // Nettoyage des anciens logs système (hebdomadaire)
         $schedule->call(function () {
             $logPath = storage_path('logs');
             $files = glob($logPath . '/laravel-*.log');
             
+            $deleted = 0;
             foreach ($files as $file) {
                 if (filemtime($file) < strtotime('-30 days')) {
                     unlink($file);
+                    $deleted++;
                 }
             }
             
-            \Log::info('Old log files cleaned up');
+            \Log::info("Old log files cleaned up: {$deleted} files deleted");
         })->weekly()->sundays()->at('02:00')->name('cleanup-logs');
 
         // ========================================
@@ -111,6 +233,26 @@ class Kernel extends ConsoleKernel
             ->everySixHours()
             ->name('notification-performance-check')
             ->description('Vérification des performances système');
+
+        // ========================================
+        // 🆕 SURVEILLANCE ET MAINTENANCE AVANCÉE DU SYSTÈME DE LIVRAISON
+        // ========================================
+        
+        // Vérification de la santé des configurations de transporteurs (toutes les 6h)
+        $schedule->call(function () {
+            $this->checkCarrierConfigsHealth();
+        })
+            ->everySixHours()
+            ->name('carrier-configs-health-check')
+            ->description('Vérification de la santé des configurations transporteurs');
+            
+        // Alertes pour les expéditions en retard (tous les jours à 10h)
+        $schedule->call(function () {
+            $this->checkOverdueShipments();
+        })
+            ->dailyAt('10:00')
+            ->name('check-overdue-shipments')
+            ->description('Vérification des expéditions en retard');
     }
 
     /**
@@ -124,13 +266,21 @@ class Kernel extends ConsoleKernel
     }
 
     protected $commands = [
+        // Commandes de notifications existantes
         \App\Console\Commands\CheckExpiringAdmins::class,
         \App\Console\Commands\CleanupNotifications::class,
         \App\Console\Commands\NotificationStats::class,
         \App\Console\Commands\CreateTestNotifications::class,
         \App\Console\Commands\SendNotificationReport::class,
         \App\Console\Commands\NotificationSchedulerStatus::class,
+        
+        // 🆕 Nouvelle commande de suivi des livraisons
+        \App\Console\Commands\TrackDeliveryStatuses::class,
     ];
+
+    // ========================================
+    // MÉTHODES EXISTANTES POUR LES NOTIFICATIONS
+    // ========================================
 
     /**
      * Vérifier la santé du système de notifications
@@ -315,6 +465,127 @@ class Kernel extends ConsoleKernel
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la vérification des performances', [
                 'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    // ========================================
+    // 🆕 NOUVELLES MÉTHODES POUR LE SYSTÈME DE LIVRAISON
+    // ========================================
+
+    /**
+     * 🆕 Vérifier la santé des configurations transporteurs
+     */
+    private function checkCarrierConfigsHealth(): void
+    {
+        try {
+            $configs = \App\Models\DeliveryConfiguration::where('is_active', true)->get();
+            $issues = [];
+            
+            foreach ($configs as $config) {
+                try {
+                    // Test de connexion basique
+                    $testResult = $config->testConnection();
+                    
+                    if (!$testResult['success']) {
+                        $issues[] = [
+                            'config_id' => $config->id,
+                            'carrier' => $config->carrier_slug,
+                            'integration_name' => $config->integration_name,
+                            'error' => $testResult['message'],
+                        ];
+                    }
+                    
+                } catch (\Exception $e) {
+                    $issues[] = [
+                        'config_id' => $config->id,
+                        'carrier' => $config->carrier_slug,
+                        'integration_name' => $config->integration_name,
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+            
+            if (!empty($issues)) {
+                \Log::warning('🚨 Problèmes détectés avec les configurations transporteurs', [
+                    'issues_count' => count($issues),
+                    'issues' => $issues,
+                ]);
+                
+                // Créer une notification si système de notifications disponible
+                if (class_exists('\App\Models\SuperAdminNotification')) {
+                    \App\Models\SuperAdminNotification::create([
+                        'type' => 'delivery',
+                        'title' => 'Problèmes configurations transporteurs',
+                        'message' => count($issues) . ' configuration(s) transporteur(s) rencontrent des problèmes de connexion.',
+                        'priority' => 'high',
+                        'data' => ['issues' => $issues],
+                    ]);
+                }
+            } else {
+                \Log::info('✅ Toutes les configurations transporteurs sont opérationnelles', [
+                    'configs_checked' => $configs->count(),
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('❌ Erreur lors de la vérification des configurations transporteurs', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * 🆕 Vérifier les expéditions en retard
+     */
+    private function checkOverdueShipments(): void
+    {
+        try {
+            // Expéditions actives créées il y a plus de 3 jours
+            $overdueShipments = \App\Models\Shipment::whereIn('status', [
+                'validated', 'picked_up_by_carrier', 'in_transit'
+            ])
+            ->where('created_at', '<', now()->subDays(3))
+            ->with(['order', 'pickup.deliveryConfiguration'])
+            ->get();
+            
+            if ($overdueShipments->count() > 0) {
+                $groupedByCarrier = $overdueShipments->groupBy('carrier_slug');
+                
+                $summary = [];
+                foreach ($groupedByCarrier as $carrier => $shipments) {
+                    $summary[$carrier] = [
+                        'count' => $shipments->count(),
+                        'oldest' => $shipments->min('created_at'),
+                        'shipment_ids' => $shipments->pluck('id')->toArray(),
+                    ];
+                }
+                
+                \Log::warning('📦 Expéditions en retard détectées', [
+                    'total_overdue' => $overdueShipments->count(),
+                    'by_carrier' => $summary,
+                ]);
+                
+                // Créer une notification si système disponible
+                if (class_exists('\App\Models\SuperAdminNotification')) {
+                    \App\Models\SuperAdminNotification::create([
+                        'type' => 'delivery',
+                        'title' => 'Expéditions en retard',
+                        'message' => $overdueShipments->count() . ' expédition(s) sont en cours depuis plus de 3 jours.',
+                        'priority' => 'medium',
+                        'data' => [
+                            'total_overdue' => $overdueShipments->count(),
+                            'by_carrier' => $summary,
+                        ],
+                    ]);
+                }
+            } else {
+                \Log::info('✅ Aucune expédition en retard détectée');
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('❌ Erreur lors de la vérification des expéditions en retard', [
+                'error' => $e->getMessage(),
             ]);
         }
     }

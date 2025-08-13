@@ -3,7 +3,7 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Configuration des Transporteurs SIMPLIFIÉE
+    | Configuration des Transporteurs CORRIGÉE ET STANDARDISÉE
     |--------------------------------------------------------------------------
     */
 
@@ -12,21 +12,21 @@ return [
         'slug' => 'jax_delivery',
         'description' => 'Service de livraison JAX Delivery en Tunisie',
         
-        // Configuration pour l'interface de création
+        // 🔧 CORRECTION : Configuration clarifiée pour JAX
         'config_fields' => [
             [
                 'name' => 'username',
                 'type' => 'text',
-                'label' => 'Numéro de Compte JAX',
+                'label' => 'Numéro de Compte JAX', // 🔧 CORRECTION : Libellé clarifié
                 'required' => true,
-                'help' => 'Votre numéro de compte JAX Delivery',
+                'help' => 'Votre numéro de compte JAX Delivery (ex: 2304)',
             ],
             [
                 'name' => 'password',
                 'type' => 'password',
-                'label' => 'Token API',
+                'label' => 'Token JWT JAX', // 🔧 CORRECTION : Libellé clarifié
                 'required' => true,
-                'help' => 'Token d\'authentification fourni par JAX Delivery',
+                'help' => 'Token d\'authentification JWT fourni par JAX Delivery',
             ],
             [
                 'name' => 'environment',
@@ -65,12 +65,12 @@ return [
         'slug' => 'mes_colis',
         'description' => 'Service de livraison Mes Colis Express en Tunisie',
         
-        // Configuration pour l'interface de création
+        // 🆕 CORRECTION : Configuration corrigée pour Mes Colis
         'config_fields' => [
             [
-                'name' => 'username',
-                'type' => 'text',
-                'label' => 'Token d\'accès (x-access-token)',
+                'name' => 'password', // 🔧 CORRECTION : Changé de 'username' à 'password'
+                'type' => 'password',
+                'label' => 'Token d\'Accès Mes Colis', // 🔧 CORRECTION : Libellé modifié
                 'required' => true,
                 'help' => 'Token d\'authentification fourni par Mes Colis Express',
             ],
@@ -107,12 +107,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Configuration système simplifiée
+    | Configuration système
     |--------------------------------------------------------------------------
     */
     'system' => [
         'default_carrier' => 'jax_delivery',
         'default_timeout' => 30,
         'debug_mode' => env('CARRIERS_DEBUG_MODE', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Actions d'historique pour les commandes
+    |--------------------------------------------------------------------------
+    */
+    'history_actions' => [
+        'shipment_created' => 'Expédition créée',
+        'shipment_validated' => 'Expédition validée',
+        'picked_up_by_carrier' => 'Récupéré par transporteur',
+        'in_transit' => 'En transit',
+        'delivery_attempted' => 'Tentative de livraison',
+        'delivery_failed' => 'Échec de livraison',
+        'livraison' => 'Livré',
+        'in_return' => 'En retour',
+        'delivery_anomaly' => 'Anomalie de livraison',
+        'tracking_updated' => 'Suivi mis à jour',
+        'pickup_created' => 'Pickup créé',
+        'pickup_validated' => 'Pickup validé',
+        'pickup_cancelled' => 'Pickup annulé',
     ],
 ];

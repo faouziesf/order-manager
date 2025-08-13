@@ -62,11 +62,11 @@ class Pickup extends Model
     }
 
     // ========================================
-    // ACCESSORS CORRIGÉS
+    // 🔧 ACCESSORS CORRIGÉS
     // ========================================
 
     /**
-     * 🔧 CORRECTION : Vérifier si le pickup peut être validé - VERSION CORRIGÉE
+     * 🔧 CORRECTION : Vérifier si le pickup peut être validé - VERSION SIMPLIFIÉE
      */
     public function getCanBeValidatedAttribute()
     {
@@ -88,7 +88,7 @@ class Pickup extends Model
             return false;
         }
 
-        // 🆕 CORRECTION : Charger la relation si pas déjà fait et vérifier proprement
+        // Charger la relation si pas déjà fait et vérifier proprement
         if (!$this->relationLoaded('deliveryConfiguration')) {
             $this->load('deliveryConfiguration');
         }
@@ -102,20 +102,13 @@ class Pickup extends Model
             return false;
         }
 
-        // Vérifier que la configuration est active
-        if (!$this->deliveryConfiguration->is_active) {
-            Log::warning("❌ [PICKUP CAN_BE_VALIDATED] Configuration inactive", [
+        // Vérifier que la configuration est active et valide
+        if (!$this->deliveryConfiguration->is_active || !$this->deliveryConfiguration->is_valid) {
+            Log::warning("❌ [PICKUP CAN_BE_VALIDATED] Configuration inactive ou invalide", [
                 'pickup_id' => $this->id,
-                'config_id' => $this->deliveryConfiguration->id
-            ]);
-            return false;
-        }
-
-        // 🆕 CORRECTION : Utiliser une méthode simplifiée pour vérifier la validité
-        if (!$this->isConfigurationValidForApi()) {
-            Log::warning("❌ [PICKUP CAN_BE_VALIDATED] Configuration invalide pour API", [
-                'pickup_id' => $this->id,
-                'config_id' => $this->deliveryConfiguration->id
+                'config_id' => $this->deliveryConfiguration->id,
+                'is_active' => $this->deliveryConfiguration->is_active,
+                'is_valid' => $this->deliveryConfiguration->is_valid,
             ]);
             return false;
         }
@@ -126,49 +119,6 @@ class Pickup extends Model
         ]);
 
         return true;
-    }
-
-    /**
-     * 🆕 NOUVELLE MÉTHODE : Vérifier si la configuration est valide pour les appels API
-     */
-    private function isConfigurationValidForApi(): bool
-    {
-        $config = $this->deliveryConfiguration;
-        
-        if (!$config) {
-            return false;
-        }
-
-        // Pour JAX Delivery : username (numéro de compte) + password (token) requis
-        if ($config->carrier_slug === 'jax_delivery') {
-            $valid = !empty($config->username) && !empty($config->password);
-            Log::debug('🔍 [PICKUP CONFIG CHECK] JAX Delivery', [
-                'has_username' => !empty($config->username),
-                'has_password' => !empty($config->password),
-                'valid' => $valid,
-            ]);
-            return $valid;
-        }
-
-        // Pour Mes Colis : seulement username (token) requis
-        if ($config->carrier_slug === 'mes_colis') {
-            $valid = !empty($config->username);
-            Log::debug('🔍 [PICKUP CONFIG CHECK] Mes Colis', [
-                'has_username' => !empty($config->username),
-                'valid' => $valid,
-            ]);
-            return $valid;
-        }
-
-        // Pour d'autres transporteurs futurs
-        $valid = !empty($config->password) || !empty($config->username);
-        Log::debug('🔍 [PICKUP CONFIG CHECK] Générique', [
-            'has_username' => !empty($config->username),
-            'has_password' => !empty($config->password),
-            'valid' => $valid,
-        ]);
-        
-        return $valid;
     }
 
     /**
@@ -259,11 +209,11 @@ class Pickup extends Model
     }
 
     // ========================================
-    // MÉTHODE VALIDATE CORRIGÉE ET SIMPLIFIÉE
+    // 🔧 MÉTHODE VALIDATE COMPLÈTEMENT REÉCRITE ET AMÉLIORÉE
     // ========================================
 
     /**
-     * 🔧 CORRECTION COMPLÈTE : Valider le pickup et créer les colis dans le compte transporteur
+     * 🔧 CORRECTION COMPLÈTE : Valider le pickup - TRAITE TOUS LES COLIS MÊME EN CAS D'ÉCHEC PARTIEL
      */
     public function validate()
     {
@@ -302,8 +252,8 @@ class Pickup extends Model
             $errors = [];
             $trackingNumbers = [];
 
-            // 🆕 CORRECTION : Préparer la configuration API selon le transporteur
-            $apiConfig = $this->prepareCarrierApiConfig();
+            // 🔧 CORRECTION : Utiliser la méthode simplifiée getApiConfig()
+            $apiConfig = $this->deliveryConfiguration->getApiConfig();
             
             Log::info('✅ [PICKUP VALIDATE] Configuration API préparée', [
                 'carrier' => $this->carrier_slug,
@@ -315,7 +265,7 @@ class Pickup extends Model
             // Créer le service transporteur
             $carrierService = SimpleCarrierFactory::create($this->carrier_slug, $apiConfig);
 
-            // Traiter chaque shipment
+            // 🆕 CORRECTION MAJEURE : Traiter chaque shipment individuellement sans arrêter en cas d'échec
             foreach ($this->shipments as $shipment) {
                 try {
                     Log::info('📦 [PICKUP VALIDATE] Traitement shipment', [
@@ -323,7 +273,7 @@ class Pickup extends Model
                         'order_id' => $shipment->order_id,
                     ]);
 
-                    // 🆕 CORRECTION : Préparer les données selon le format API requis
+                    // Préparer les données selon le format API requis
                     $shipmentData = $this->prepareShipmentDataForApi($shipment);
 
                     Log::info('📤 [PICKUP VALIDATE] Données shipment préparées', [
@@ -371,6 +321,9 @@ class Pickup extends Model
                             'shipment_id' => $shipment->id,
                             'carrier_response' => $result,
                         ]);
+                        
+                        // 🆕 CORRECTION : Marquer le shipment comme problématique mais continuer
+                        $shipment->update(['status' => 'problem']);
                     }
 
                 } catch (CarrierServiceException $e) {
@@ -380,43 +333,57 @@ class Pickup extends Model
                         'shipment_id' => $shipment->id,
                         'carrier_response' => $e->getCarrierResponse(),
                     ]);
+                    
+                    // 🆕 CORRECTION : Marquer comme problématique et continuer
+                    $shipment->update(['status' => 'carrier_error']);
+                    
                 } catch (\Exception $e) {
                     $errorMsg = "Erreur technique shipment #{$shipment->id}: {$e->getMessage()}";
                     $errors[] = $errorMsg;
                     Log::error('❌ [PICKUP VALIDATE] ' . $errorMsg, [
                         'shipment_id' => $shipment->id,
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
                     ]);
+                    
+                    // 🆕 CORRECTION : Marquer comme problématique et continuer
+                    $shipment->update(['status' => 'technical_error']);
                 }
             }
 
-            // Mettre à jour le statut du pickup
+            // 🆕 CORRECTION MAJEURE : Déterminer le statut du pickup selon les résultats
+            $totalShipments = $this->shipments->count();
+            
             if ($successfulShipments > 0) {
+                // Au moins un shipment a réussi - pickup validé
+                $status = ($successfulShipments == $totalShipments) ? self::STATUS_VALIDATED : self::STATUS_PROBLEM;
+                
                 $this->update([
-                    'status' => self::STATUS_VALIDATED,
+                    'status' => $status,
                     'validated_at' => now(),
                 ]);
 
                 DB::commit();
 
-                Log::info('🎉 [PICKUP VALIDATE] Pickup validé avec succès', [
+                Log::info('🎉 [PICKUP VALIDATE] Pickup traité avec succès', [
                     'pickup_id' => $this->id,
                     'successful_shipments' => $successfulShipments,
-                    'total_shipments' => $this->shipments->count(),
+                    'total_shipments' => $totalShipments,
                     'tracking_numbers' => $trackingNumbers,
                     'errors_count' => count($errors),
+                    'final_status' => $status,
                 ]);
 
                 return [
                     'success' => true,
                     'successful_shipments' => $successfulShipments,
-                    'total_shipments' => $this->shipments->count(),
+                    'total_shipments' => $totalShipments,
                     'errors' => $errors,
                     'tracking_numbers' => $trackingNumbers,
+                    'partial_success' => $successfulShipments < $totalShipments,
                 ];
 
             } else {
+                // Aucun shipment n'a réussi
                 $this->update(['status' => self::STATUS_PROBLEM]);
                 DB::rollBack();
 
@@ -429,7 +396,7 @@ class Pickup extends Model
                     'success' => false,
                     'errors' => $errors,
                     'successful_shipments' => 0,
-                    'total_shipments' => $this->shipments->count(),
+                    'total_shipments' => $totalShipments,
                 ];
             }
 
@@ -448,47 +415,7 @@ class Pickup extends Model
     }
 
     /**
-     * 🆕 NOUVELLE MÉTHODE : Préparer la configuration API selon le transporteur
-     */
-    private function prepareCarrierApiConfig(): array
-    {
-        $config = $this->deliveryConfiguration;
-
-        Log::info('🔧 [PICKUP] Préparation config API', [
-            'carrier' => $config->carrier_slug,
-            'has_username' => !empty($config->username),
-            'has_password' => !empty($config->password),
-            'environment' => $config->environment,
-        ]);
-
-        if ($config->carrier_slug === 'jax_delivery') {
-            // JAX : username = numéro de compte, password = token JWT
-            return [
-                'api_token' => $config->password,     // Token JWT
-                'username' => $config->username,      // Numéro de compte (ex: 2304)
-                'account_number' => $config->username, // Alias pour clarté
-                'environment' => $config->environment ?? 'test',
-            ];
-        }
-
-        if ($config->carrier_slug === 'mes_colis') {
-            // Mes Colis : username = token API
-            return [
-                'api_token' => $config->username,     // Token API
-                'environment' => $config->environment ?? 'test',
-            ];
-        }
-
-        // Configuration générique pour futurs transporteurs
-        return [
-            'api_token' => $config->password ?? $config->username,
-            'username' => $config->username,
-            'environment' => $config->environment ?? 'test',
-        ];
-    }
-
-    /**
-     * 🆕 NOUVELLE MÉTHODE : Préparer les données shipment pour l'API transporteur
+     * 🆕 CORRECTION : Préparer les données shipment pour l'API transporteur
      */
     private function prepareShipmentDataForApi($shipment): array
     {
@@ -521,7 +448,7 @@ class Pickup extends Model
     }
 
     // ========================================
-    // AUTRES MÉTHODES MÉTIER
+    // AUTRES MÉTHODES MÉTIER (INCHANGÉES)
     // ========================================
 
     /**

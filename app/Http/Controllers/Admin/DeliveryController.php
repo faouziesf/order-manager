@@ -2325,67 +2325,6 @@ class DeliveryController extends Controller
         }
     }
 
-    /**
-     * Suivre le statut d'un shipment
-     */
-    public function trackShipmentStatus(Shipment $shipment)
-    {
-        if ($shipment->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            if (empty($shipment->pos_barcode)) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Aucun numéro de suivi disponible'
-                ], 400);
-            }
-            
-            // Ici vous pourriez implémenter le tracking réel
-            // Pour l'instant, retourner un statut fictif
-            
-            return response()->json([
-                'success' => true,
-                'tracking_number' => $shipment->pos_barcode,
-                'status' => $shipment->status,
-                'message' => 'Tracking récupéré avec succès'
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur tracking: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Marquer un shipment comme livré
-     */
-    public function markShipmentAsDelivered(Shipment $shipment)
-    {
-        if ($shipment->admin_id !== auth('admin')->id()) {
-            abort(403, 'Accès non autorisé');
-        }
-        
-        try {
-            $shipment->markAsDelivered();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Shipment marqué comme livré',
-                'shipment' => $shipment->fresh()
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
     // ========================================
     // MÉTHODES UTILITAIRES MANQUANTES
     // ========================================
@@ -2469,5 +2408,839 @@ class DeliveryController extends Controller
             'success' => false,
             'message' => 'Preuve de livraison en développement'
         ]);
+    }
+    
+    // ========================================
+    // 🆕 MÉTHODES DE SUIVI DE STATUT - NOUVELLE FONCTIONNALITÉ COMPLÈTE
+    // ========================================
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Suivi manuel d'un shipment spécifique
+     */
+    public function trackShipmentStatus(Shipment $shipment)
+    {
+        if ($shipment->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
+        
+        Log::info('🔍 [MANUAL TRACK] Début suivi manuel', [
+            'shipment_id' => $shipment->id,
+            'tracking_number' => $shipment->pos_barcode,
+            'carrier' => $shipment->carrier_slug,
+            'current_status' => $shipment->status,
+        ]);
+        
+        try {
+            if (empty($shipment->pos_barcode)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Aucun numéro de suivi disponible pour cette expédition'
+                ], 400);
+            }
+            
+            // Vérifier que nous avons une configuration valide
+            if (!$shipment->pickup || !$shipment->pickup->deliveryConfiguration) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Configuration transporteur manquante'
+                ], 400);
+            }
+            
+            $config = $shipment->pickup->deliveryConfiguration;
+            
+            if (!$config->is_active || !$config->is_valid) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Configuration transporteur inactive ou invalide'
+                ], 400);
+            }
+            
+            // Créer le service transporteur et récupérer le statut
+            $apiConfig = $config->getApiConfig();
+            $carrierService = SimpleCarrierFactory::create($shipment->carrier_slug, $apiConfig);
+            
+            $result = $carrierService->getShipmentStatus($shipment->pos_barcode);
+            
+            if (!$result['success']) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Impossible de récupérer le statut depuis l\'API du transporteur'
+                ], 422);
+            }
+            
+            $oldStatus = $shipment->status;
+            $newStatus = $result['status'];
+            $statusChanged = ($newStatus !== $oldStatus && $newStatus !== 'unknown');
+            
+            // Mettre à jour le statut si il a changé
+            if ($statusChanged) {
+                $shipment->updateStatus(
+                    $newStatus,
+                    $result['response']['carrier_code'] ?? null,
+                    $result['response']['carrier_label'] ?? null,
+                    "Statut mis à jour manuellement par " . auth('admin')->user()->name
+                );
+                
+                Log::info('✅ [MANUAL TRACK] Statut mis à jour', [
+                    'shipment_id' => $shipment->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                    'updated_by' => auth('admin')->user()->name,
+                ]);
+            } else {
+                // Mettre à jour la date de dernière vérification même si pas de changement
+                $shipment->update(['carrier_last_status_update' => now()]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'tracking_number' => $shipment->pos_barcode,
+                'status_changed' => $statusChanged,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'carrier_response' => $result['response'],
+                'last_update' => $shipment->fresh()->carrier_last_status_update->toISOString(),
+                'message' => $statusChanged 
+                    ? "Statut mis à jour : {$oldStatus} → {$newStatus}"
+                    : "Statut inchangé : {$newStatus}",
+                'shipment' => $shipment->fresh()->load(['order', 'pickup.deliveryConfiguration'])
+            ]);
+            
+        } catch (CarrierServiceException $e) {
+            Log::error('❌ [MANUAL TRACK] Erreur transporteur', [
+                'shipment_id' => $shipment->id,
+                'error' => $e->getMessage(),
+                'carrier_response' => $e->getCarrierResponse(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => "Erreur transporteur : " . $e->getMessage(),
+            ], 422);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [MANUAL TRACK] Erreur générale', [
+                'shipment_id' => $shipment->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors du suivi : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Suivi en lot de plusieurs shipments
+     */
+    public function bulkTrackShipments(Request $request)
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            $validator = Validator::make($request->all(), [
+                'shipment_ids' => 'required|array|min:1|max:20',
+                'shipment_ids.*' => 'integer|exists:shipments,id',
+            ]);
+            
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données invalides',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
+            $shipmentIds = $request->shipment_ids;
+            $shipments = Shipment::where('admin_id', $admin->id)
+                ->whereIn('id', $shipmentIds)
+                ->with(['pickup.deliveryConfiguration', 'order'])
+                ->get();
+            
+            if ($shipments->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune expédition trouvée'
+                ], 404);
+            }
+            
+            Log::info('🔍 [BULK TRACK] Début suivi en lot', [
+                'admin_id' => $admin->id,
+                'shipment_count' => $shipments->count(),
+                'shipment_ids' => $shipmentIds,
+            ]);
+            
+            $results = [];
+            $stats = [
+                'processed' => 0,
+                'updated' => 0,
+                'errors' => 0,
+            ];
+            
+            foreach ($shipments as $shipment) {
+                try {
+                    $result = $this->trackSingleShipmentForBulk($shipment);
+                    
+                    $results[] = [
+                        'shipment_id' => $shipment->id,
+                        'tracking_number' => $shipment->pos_barcode,
+                        'success' => $result['success'],
+                        'status_changed' => $result['status_changed'] ?? false,
+                        'old_status' => $result['old_status'] ?? null,
+                        'new_status' => $result['new_status'] ?? null,
+                        'message' => $result['message'],
+                        'error' => $result['error'] ?? null,
+                    ];
+                    
+                    $stats['processed']++;
+                    if ($result['status_changed'] ?? false) {
+                        $stats['updated']++;
+                    }
+                    
+                } catch (\Exception $e) {
+                    $results[] = [
+                        'shipment_id' => $shipment->id,
+                        'tracking_number' => $shipment->pos_barcode,
+                        'success' => false,
+                        'status_changed' => false,
+                        'message' => 'Erreur : ' . $e->getMessage(),
+                        'error' => $e->getMessage(),
+                    ];
+                    
+                    $stats['processed']++;
+                    $stats['errors']++;
+                }
+            }
+            
+            Log::info('✅ [BULK TRACK] Suivi en lot terminé', [
+                'admin_id' => $admin->id,
+                'stats' => $stats,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Suivi en lot terminé : {$stats['processed']} expéditions traitées, {$stats['updated']} mises à jour",
+                'stats' => $stats,
+                'results' => $results,
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [BULK TRACK] Erreur', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur suivi en lot : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 MÉTHODE HELPER : Suivre un shipment pour le suivi en lot
+     */
+    private function trackSingleShipmentForBulk(Shipment $shipment): array
+    {
+        try {
+            if (empty($shipment->pos_barcode)) {
+                return [
+                    'success' => false,
+                    'message' => 'Aucun numéro de suivi',
+                    'error' => 'Aucun numéro de suivi disponible',
+                ];
+            }
+            
+            if (!$shipment->pickup || !$shipment->pickup->deliveryConfiguration) {
+                return [
+                    'success' => false,
+                    'message' => 'Configuration manquante',
+                    'error' => 'Configuration transporteur manquante',
+                ];
+            }
+            
+            $config = $shipment->pickup->deliveryConfiguration;
+            
+            if (!$config->is_active || !$config->is_valid) {
+                return [
+                    'success' => false,
+                    'message' => 'Configuration inactive',
+                    'error' => 'Configuration transporteur inactive ou invalide',
+                ];
+            }
+            
+            // Récupérer le statut via l'API
+            $apiConfig = $config->getApiConfig();
+            $carrierService = SimpleCarrierFactory::create($shipment->carrier_slug, $apiConfig);
+            $result = $carrierService->getShipmentStatus($shipment->pos_barcode);
+            
+            if (!$result['success']) {
+                return [
+                    'success' => false,
+                    'message' => 'Erreur API transporteur',
+                    'error' => 'Impossible de récupérer le statut',
+                ];
+            }
+            
+            $oldStatus = $shipment->status;
+            $newStatus = $result['status'];
+            $statusChanged = ($newStatus !== $oldStatus && $newStatus !== 'unknown');
+            
+            // Mettre à jour si nécessaire
+            if ($statusChanged) {
+                $shipment->updateStatus(
+                    $newStatus,
+                    $result['response']['carrier_code'] ?? null,
+                    $result['response']['carrier_label'] ?? null,
+                    "Statut mis à jour via suivi en lot"
+                );
+                
+                return [
+                    'success' => true,
+                    'status_changed' => true,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                    'message' => "Statut mis à jour : {$oldStatus} → {$newStatus}",
+                ];
+            } else {
+                $shipment->update(['carrier_last_status_update' => now()]);
+                
+                return [
+                    'success' => true,
+                    'status_changed' => false,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                    'message' => "Statut inchangé : {$newStatus}",
+                ];
+            }
+            
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erreur : ' . $e->getMessage(),
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Suivre toutes les expéditions actives d'un admin
+     */
+    public function trackAllShipments()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            // Récupérer toutes les expéditions trackables de l'admin
+            $shipments = Shipment::where('admin_id', $admin->id)
+                ->whereNotNull('pos_barcode')
+                ->whereIn('status', [
+                    'validated',
+                    'picked_up_by_carrier', 
+                    'in_transit',
+                    'delivery_attempted'
+                ])
+                ->with(['pickup.deliveryConfiguration', 'order'])
+                ->get();
+            
+            if ($shipments->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Aucune expédition active à suivre',
+                    'stats' => [
+                        'processed' => 0,
+                        'updated' => 0,
+                        'errors' => 0,
+                    ]
+                ]);
+            }
+            
+            Log::info('🔍 [TRACK ALL] Début suivi de toutes les expéditions', [
+                'admin_id' => $admin->id,
+                'shipment_count' => $shipments->count(),
+            ]);
+            
+            $stats = [
+                'processed' => 0,
+                'updated' => 0,
+                'errors' => 0,
+                'by_carrier' => [],
+            ];
+            
+            foreach ($shipments as $shipment) {
+                $carrier = $shipment->carrier_slug;
+                
+                if (!isset($stats['by_carrier'][$carrier])) {
+                    $stats['by_carrier'][$carrier] = [
+                        'processed' => 0,
+                        'updated' => 0,
+                        'errors' => 0,
+                    ];
+                }
+                
+                try {
+                    $result = $this->trackSingleShipmentForBulk($shipment);
+                    
+                    $stats['processed']++;
+                    $stats['by_carrier'][$carrier]['processed']++;
+                    
+                    if ($result['status_changed'] ?? false) {
+                        $stats['updated']++;
+                        $stats['by_carrier'][$carrier]['updated']++;
+                    }
+                    
+                } catch (\Exception $e) {
+                    $stats['errors']++;
+                    $stats['by_carrier'][$carrier]['errors']++;
+                    
+                    Log::error('❌ [TRACK ALL] Erreur shipment', [
+                        'shipment_id' => $shipment->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+            
+            Log::info('✅ [TRACK ALL] Suivi général terminé', [
+                'admin_id' => $admin->id,
+                'stats' => $stats,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Suivi terminé : {$stats['processed']} expéditions traitées, {$stats['updated']} mises à jour, {$stats['errors']} erreurs",
+                'stats' => $stats,
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [TRACK ALL] Erreur', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur suivi général : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Marquer manuellement un shipment comme livré
+     */
+    public function markShipmentAsDelivered(Shipment $shipment)
+    {
+        if ($shipment->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
+        
+        try {
+            if ($shipment->status === 'delivered') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cette expédition est déjà marquée comme livrée'
+                ], 400);
+            }
+            
+            $oldStatus = $shipment->status;
+            $shipment->markAsDelivered("Marqué manuellement comme livré par " . auth('admin')->user()->name);
+            
+            Log::info('✅ [MANUAL DELIVERY] Shipment marqué comme livré', [
+                'shipment_id' => $shipment->id,
+                'old_status' => $oldStatus,
+                'marked_by' => auth('admin')->user()->name,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Expédition marquée comme livrée avec succès',
+                'old_status' => $oldStatus,
+                'new_status' => 'delivered',
+                'delivered_at' => $shipment->fresh()->delivered_at->toISOString(),
+                'shipment' => $shipment->fresh()->load(['order', 'pickup.deliveryConfiguration'])
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [MANUAL DELIVERY] Erreur', [
+                'shipment_id' => $shipment->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur : ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Obtenir l'historique de suivi d'un shipment
+     */
+    public function getShipmentTrackingHistory(Shipment $shipment)
+    {
+        if ($shipment->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
+        
+        try {
+            // Récupérer l'historique via la commande associée
+            $history = $shipment->order 
+                ? $shipment->order->getDeliveryHistory()->get()
+                : collect();
+            
+            return response()->json([
+                'success' => true,
+                'shipment_id' => $shipment->id,
+                'tracking_number' => $shipment->pos_barcode,
+                'current_status' => $shipment->status,
+                'last_update' => $shipment->carrier_last_status_update?->toISOString(),
+                'history' => $history->map(function($entry) {
+                    return [
+                        'id' => $entry->id,
+                        'action' => $entry->action,
+                        'status_before' => $entry->status_before,
+                        'status_after' => $entry->status_after,
+                        'carrier_status_code' => $entry->carrier_status_code,
+                        'carrier_status_label' => $entry->carrier_status_label,
+                        'notes' => $entry->notes,
+                        'user_type' => $entry->user_type,
+                        'created_at' => $entry->created_at->toISOString(),
+                    ];
+                }),
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur récupération historique : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ========================================
+    // 🆕 MÉTHODES DE CORRECTION DES CONFIGURATIONS
+    // ========================================
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Réparer toutes les configurations problématiques
+     */
+    public function fixAllConfigurations()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            Log::info('🔧 [CONFIG FIX] Début réparation configurations', [
+                'admin_id' => $admin->id,
+            ]);
+            
+            $results = [
+                'total_configs' => 0,
+                'valid_configs' => 0,
+                'invalid_configs' => 0,
+                'migrated_configs' => 0,
+                'connection_tests' => [],
+                'recommendations' => [],
+            ];
+            
+            // Récupérer toutes les configurations de l'admin
+            $configurations = DeliveryConfiguration::where('admin_id', $admin->id)->get();
+            $results['total_configs'] = $configurations->count();
+            
+            foreach ($configurations as $config) {
+                if ($config->is_valid) {
+                    $results['valid_configs']++;
+                } else {
+                    $results['invalid_configs']++;
+                    
+                    // Essayer de migrer si c'est Mes Colis en ancien format
+                    if ($config->carrier_slug === 'mes_colis') {
+                        $migrated = $config->migrateToNewFormat();
+                        if ($migrated) {
+                            $results['migrated_configs']++;
+                            $results['recommendations'][] = [
+                                'type' => 'success',
+                                'config_id' => $config->id,
+                                'message' => "Configuration '{$config->integration_name}' migrée vers le nouveau format",
+                            ];
+                        }
+                    }
+                }
+                
+                // Tester la connexion pour chaque config active
+                if ($config->is_active && $config->fresh()->is_valid) {
+                    try {
+                        $connectionTest = $config->testConnection();
+                        $results['connection_tests'][] = [
+                            'config_id' => $config->id,
+                            'integration_name' => $config->integration_name,
+                            'carrier' => $config->carrier_slug,
+                            'success' => $connectionTest['success'],
+                            'message' => $connectionTest['message'],
+                            'format' => $config->getConfigFormat(),
+                        ];
+                        
+                        if (!$connectionTest['success']) {
+                            $results['recommendations'][] = [
+                                'type' => 'error',
+                                'config_id' => $config->id,
+                                'message' => "Connexion échouée pour '{$config->integration_name}': {$connectionTest['message']}",
+                                'action' => 'Vérifiez le token dans l\'interface de configuration',
+                            ];
+                        }
+                    } catch (\Exception $e) {
+                        $results['connection_tests'][] = [
+                            'config_id' => $config->id,
+                            'integration_name' => $config->integration_name,
+                            'carrier' => $config->carrier_slug,
+                            'success' => false,
+                            'message' => $e->getMessage(),
+                            'format' => $config->getConfigFormat(),
+                        ];
+                    }
+                }
+            }
+            
+            Log::info('✅ [CONFIG FIX] Réparation terminée', [
+                'admin_id' => $admin->id,
+                'results' => $results,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Analyse terminée : {$results['valid_configs']}/{$results['total_configs']} configurations valides",
+                'results' => $results,
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [CONFIG FIX] Erreur réparation', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur réparation configurations: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Tester une configuration spécifique et proposer corrections
+     */
+    public function testAndFixConfiguration(DeliveryConfiguration $config)
+    {
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
+        
+        try {
+            $analysis = [
+                'config_info' => [
+                    'id' => $config->id,
+                    'integration_name' => $config->integration_name,
+                    'carrier_slug' => $config->carrier_slug,
+                    'is_active' => $config->is_active,
+                    'is_valid' => $config->is_valid,
+                    'format' => $config->getConfigFormat(),
+                ],
+                'credentials_analysis' => [
+                    'has_username' => !empty($config->username),
+                    'has_password' => !empty($config->password),
+                    'username_length' => $config->username ? strlen($config->username) : 0,
+                    'password_length' => $config->password ? strlen($config->password) : 0,
+                ],
+                'validation_results' => $config->validateCredentials(),
+                'connection_test' => null,
+                'migration_available' => false,
+                'recommendations' => [],
+            ];
+            
+            // Test de migration pour Mes Colis ancien format
+            if ($config->carrier_slug === 'mes_colis' && $config->getConfigFormat() === 'ancien') {
+                $analysis['migration_available'] = true;
+                $analysis['recommendations'][] = [
+                    'type' => 'info',
+                    'message' => 'Cette configuration utilise l\'ancien format (token dans username)',
+                    'action' => 'Migration automatique vers le nouveau format disponible',
+                ];
+            }
+            
+            // Test de connexion si configuration valide
+            if ($config->is_valid && $config->is_active) {
+                try {
+                    $connectionTest = $config->testConnection();
+                    $analysis['connection_test'] = $connectionTest;
+                    
+                    if (!$connectionTest['success']) {
+                        $analysis['recommendations'][] = [
+                            'type' => 'error',
+                            'message' => 'Test de connexion échoué',
+                            'action' => 'Vérifiez que le token est correct et valide',
+                            'details' => $connectionTest['message'],
+                        ];
+                    } else {
+                        $analysis['recommendations'][] = [
+                            'type' => 'success',
+                            'message' => 'Configuration fonctionnelle',
+                            'action' => 'Prête pour utilisation',
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    $analysis['connection_test'] = [
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            } elseif (!$config->is_valid) {
+                $analysis['recommendations'][] = [
+                    'type' => 'error',
+                    'message' => 'Configuration invalide',
+                    'action' => 'Remplissez tous les champs requis',
+                ];
+            } elseif (!$config->is_active) {
+                $analysis['recommendations'][] = [
+                    'type' => 'warning',
+                    'message' => 'Configuration inactive',
+                    'action' => 'Activez la configuration pour l\'utiliser',
+                ];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'config_id' => $config->id,
+                'analysis' => $analysis,
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur analyse configuration: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Migrer une configuration Mes Colis vers le nouveau format
+     */
+    public function migrateConfiguration(DeliveryConfiguration $config)
+    {
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
+        
+        try {
+            if ($config->carrier_slug !== 'mes_colis') {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Migration disponible seulement pour Mes Colis'
+                ], 400);
+            }
+            
+            $oldFormat = $config->getConfigFormat();
+            
+            if ($oldFormat !== 'ancien') {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Cette configuration n\'a pas besoin de migration'
+                ], 400);
+            }
+            
+            $migrated = $config->migrateToNewFormat();
+            
+            if ($migrated) {
+                Log::info('✅ [CONFIG MIGRATE] Configuration migrée', [
+                    'config_id' => $config->id,
+                    'integration_name' => $config->integration_name,
+                    'from_format' => $oldFormat,
+                    'to_format' => $config->fresh()->getConfigFormat(),
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "Configuration '{$config->integration_name}' migrée vers le nouveau format",
+                    'old_format' => $oldFormat,
+                    'new_format' => $config->fresh()->getConfigFormat(),
+                    'config' => $config->fresh(),
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Migration échouée'
+                ], 500);
+            }
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur migration: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Corriger les tokens invalides (utilitaire de diagnostic)
+     */
+    public function fixInvalidTokens()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            $invalidConfigs = DeliveryConfiguration::where('admin_id', $admin->id)
+                ->where('is_active', true)
+                ->get()
+                ->filter(function($config) {
+                    return !$config->is_valid;
+                });
+            
+            $fixes = [];
+            
+            foreach ($invalidConfigs as $config) {
+                $fix = [
+                    'config_id' => $config->id,
+                    'integration_name' => $config->integration_name,
+                    'carrier' => $config->carrier_slug,
+                    'current_format' => $config->getConfigFormat(),
+                    'issues' => [],
+                    'recommendations' => [],
+                ];
+                
+                $validation = $config->validateCredentials();
+                $fix['issues'] = $validation['errors'];
+                
+                if ($config->carrier_slug === 'jax_delivery') {
+                    if (empty($config->username)) {
+                        $fix['recommendations'][] = 'Ajoutez votre numéro de compte JAX dans le champ "Numéro de Compte"';
+                    }
+                    if (empty($config->password)) {
+                        $fix['recommendations'][] = 'Ajoutez votre token JWT JAX dans le champ "Token API"';
+                    }
+                    if (!empty($config->password) && substr_count($config->password, '.') !== 2) {
+                        $fix['recommendations'][] = 'Vérifiez que le token JWT est correct (doit contenir 3 parties séparées par des points)';
+                    }
+                } elseif ($config->carrier_slug === 'mes_colis') {
+                    if (empty($config->username) && empty($config->password)) {
+                        $fix['recommendations'][] = 'Ajoutez votre token Mes Colis dans le champ "Token d\'Accès"';
+                    }
+                    if ($config->getConfigFormat() === 'ancien') {
+                        $fix['recommendations'][] = 'Migration vers le nouveau format recommandée';
+                    }
+                }
+                
+                $fixes[] = $fix;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => count($fixes) . ' configuration(s) avec problèmes détectée(s)',
+                'invalid_configs_count' => count($fixes),
+                'fixes' => $fixes,
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur diagnostic tokens: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

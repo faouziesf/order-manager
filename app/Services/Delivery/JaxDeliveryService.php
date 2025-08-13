@@ -37,7 +37,7 @@ class JaxDeliveryService implements CarrierServiceInterface
         try {
             $token = $this->getApiToken();
             
-            // 🆕 CORRECTION : Préparer les données selon la structure exacte de l'API JAX
+            // 🔧 CORRECTION : Préparer les données selon la structure exacte de l'API JAX
             $jaxData = [
                 'referenceExterne' => $data['external_reference'] ?? '',
                 'nomContact' => $data['recipient_name'] ?? '',
@@ -47,7 +47,7 @@ class JaxDeliveryService implements CarrierServiceInterface
                 'governorat' => $this->mapGovernorateToJaxCode($data['recipient_governorate'] ?? 'Tunis'),
                 'delegation' => $data['recipient_city'] ?? '',
                 'description' => substr($data['content_description'] ?? 'Colis e-commerce', 0, 100),
-                'cod' => (string)($data['cod_amount'] ?? 0),
+                'cod' => (string)($data['cod_amount'] ?? 0), // 🔧 CORRECTION : COD doit être string
                 'echange' => 0, // Pas d'échange
             ];
 
@@ -92,7 +92,7 @@ class JaxDeliveryService implements CarrierServiceInterface
 
             $responseData = $response->json();
             
-            // 🆕 CORRECTION : Gérer différents formats de réponse JAX
+            // 🔧 CORRECTION : Gérer différents formats de réponse JAX
             $trackingNumber = $this->extractTrackingNumber($responseData);
 
             if (!$trackingNumber) {
@@ -252,7 +252,7 @@ class JaxDeliveryService implements CarrierServiceInterface
     }
 
     /**
-     * 🆕 CORRECTION : Obtenir le token d'authentification
+     * Obtenir le token d'authentification
      */
     protected function getApiToken(): string
     {
@@ -275,7 +275,7 @@ class JaxDeliveryService implements CarrierServiceInterface
     }
 
     /**
-     * 🆕 NOUVELLE MÉTHODE : Extraire le numéro de suivi de la réponse JAX
+     * Extraire le numéro de suivi de la réponse JAX
      */
     protected function extractTrackingNumber($responseData): ?string
     {
@@ -297,34 +297,85 @@ class JaxDeliveryService implements CarrierServiceInterface
     }
 
     /**
-     * 🆕 NOUVELLE MÉTHODE : Nettoyer les numéros de téléphone
+     * 🔧 CORRECTION : Nettoyer les numéros de téléphone pour format tunisien 8 chiffres
      */
     protected function cleanPhoneNumber(string $phone): string
     {
-        // Supprimer les espaces et caractères spéciaux
-        $cleaned = preg_replace('/[^0-9+]/', '', $phone);
+        if (empty($phone)) {
+            return '';
+        }
         
-        // S'assurer que le numéro tunisien est au bon format
-        if (strlen($cleaned) === 8 && !str_starts_with($cleaned, '+')) {
-            $cleaned = '+216' . $cleaned;
+        // Supprimer tous les caractères non numériques
+        $cleaned = preg_replace('/[^0-9]/', '', $phone);
+        
+        Log::debug('🧹 [JAX] Nettoyage numéro téléphone', [
+            'original' => $phone,
+            'cleaned' => $cleaned,
+            'length' => strlen($cleaned),
+        ]);
+        
+        // Si le numéro commence par +216, enlever le préfixe
+        if (str_starts_with($cleaned, '216') && strlen($cleaned) > 8) {
+            $cleaned = substr($cleaned, 3);
+        }
+        
+        // Si le numéro a exactement 8 chiffres et commence par 2, 3, 4, 5, 7, 9 (numéros valides en Tunisie)
+        if (strlen($cleaned) === 8 && in_array($cleaned[0], ['2', '3', '4', '5', '7', '9'])) {
+            Log::debug('✅ [JAX] Numéro tunisien valide à 8 chiffres', [
+                'phone' => $cleaned,
+                'first_digit' => $cleaned[0],
+            ]);
+            return $cleaned;
+        }
+        
+        // Si le numéro est trop long, prendre les 8 derniers chiffres
+        if (strlen($cleaned) > 8) {
+            $cleaned = substr($cleaned, -8);
+            Log::debug('✂️ [JAX] Numéro tronqué aux 8 derniers chiffres', [
+                'phone' => $cleaned,
+            ]);
+        }
+        
+        // Si le numéro est trop court, le laisser tel quel (l'API pourrait le refuser)
+        if (strlen($cleaned) < 8) {
+            Log::warning('⚠️ [JAX] Numéro trop court', [
+                'phone' => $cleaned,
+                'length' => strlen($cleaned),
+            ]);
         }
         
         return $cleaned;
     }
 
     /**
-     * 🆕 CORRECTION : Mapper les gouvernorats vers codes JAX (corrigé)
+     * 🔧 CORRECTION : Mapper les gouvernorats vers codes JAX (mapping complet et corrigé)
      */
     protected function mapGovernorateToJaxCode($governorate): string
     {
         $mapping = [
-            'Tunis' => '11', 'Ariana' => '12', 'Ben Arous' => '13', 'Manouba' => '14',
-            'La Mannouba' => '14', // Alias
+            // Grand Tunis
+            'Tunis' => '11', 'Ariana' => '12', 'Ben Arous' => '13', 
+            'Manouba' => '14', 'La Mannouba' => '14',
+            
+            // Nord-Est
             'Nabeul' => '21', 'Zaghouan' => '22', 'Bizerte' => '23',
+            
+            // Nord-Ouest
             'Béja' => '31', 'Jendouba' => '32', 'Le Kef' => '33', 'Siliana' => '34',
+            
+            // Centre-Ouest
             'Kairouan' => '41', 'Kasserine' => '42', 'Sidi Bouzid' => '43',
+            
+            // Centre-Est
             'Sousse' => '51', 'Monastir' => '52', 'Mahdia' => '53',
-            'Sfax' => '61', 'Gafsa' => '71', 'Tozeur' => '72', 'Kebili' => '73', 'Kébili' => '73',
+            
+            // Sud-Est
+            'Sfax' => '61',
+            
+            // Sud-Ouest
+            'Gafsa' => '71', 'Tozeur' => '72', 'Kebili' => '73', 'Kébili' => '73',
+            
+            // Sud
             'Gabès' => '81', 'Medenine' => '82', 'Médenine' => '82', 'Tataouine' => '83',
         ];
 
@@ -333,27 +384,41 @@ class JaxDeliveryService implements CarrierServiceInterface
         Log::debug('🗺️ [JAX] Mapping gouvernorat', [
             'input' => $governorate,
             'output' => $code,
+            'found_in_mapping' => isset($mapping[$governorate]),
         ]);
 
         return $code;
     }
 
     /**
-     * 🆕 CORRECTION : Mapper les statuts JAX vers statuts internes
+     * 🔧 CORRECTION : Mapper les statuts JAX vers statuts internes
      */
     protected function mapJaxStatusToInternal($jaxStatus): string
     {
         $mapping = [
+            // Statuts numériques
             '1' => 'created', '2' => 'validated', '3' => 'picked_up_by_carrier',
             '4' => 'in_transit', '5' => 'delivered', '6' => 'delivery_failed',
             '7' => 'in_return', '8' => 'returned', '9' => 'anomaly', '10' => 'created',
+            
+            // Statuts textuels
             'En attente' => 'created',
             'En cours' => 'validated',
             'En transit' => 'in_transit',
             'Livré' => 'delivered',
             'Échec' => 'delivery_failed',
+            'Retour' => 'in_return',
+            'Problème' => 'anomaly',
         ];
 
-        return $mapping[(string)$jaxStatus] ?? 'unknown';
+        $internalStatus = $mapping[(string)$jaxStatus] ?? 'unknown';
+        
+        Log::debug('🔄 [JAX] Mapping statut', [
+            'jax_status' => $jaxStatus,
+            'internal_status' => $internalStatus,
+            'found_in_mapping' => isset($mapping[(string)$jaxStatus]),
+        ]);
+
+        return $internalStatus;
     }
 }

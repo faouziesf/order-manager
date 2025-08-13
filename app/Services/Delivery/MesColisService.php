@@ -35,7 +35,7 @@ class MesColisService implements CarrierServiceInterface
         try {
             $token = $this->getApiToken();
             
-            // 🆕 CORRECTION : Préparer les données selon la structure exacte de l'API Mes Colis
+            // 🔧 CORRECTION : Préparer les données selon la structure exacte de l'API Mes Colis
             $mesColisData = [
                 'product_name' => substr($data['content_description'] ?? 'Produits e-commerce', 0, 100),
                 'client_name' => $data['recipient_name'] ?? '',
@@ -45,7 +45,7 @@ class MesColisService implements CarrierServiceInterface
                 'location' => $data['recipient_address'] ?? '', // Point de repère
                 'Tel1' => $this->cleanPhoneNumber($data['recipient_phone'] ?? ''),
                 'Tel2' => $this->cleanPhoneNumber($data['recipient_phone_2'] ?? ''),
-                'price' => (string)($data['cod_amount'] ?? 0),
+                'price' => (string)($data['cod_amount'] ?? 0), // 🔧 CORRECTION : Price doit être string
                 'exchange' => '0', // Pas d'échange
                 'open_ordre' => '0', // Pas d'ouverture autorisée
                 'note' => substr($data['notes'] ?? 'Commande e-commerce', 0, 200),
@@ -92,7 +92,7 @@ class MesColisService implements CarrierServiceInterface
 
             $responseData = $response->json();
             
-            // 🆕 CORRECTION : Gérer différents formats de réponse Mes Colis
+            // 🔧 CORRECTION : Gérer différents formats de réponse Mes Colis
             $trackingNumber = $this->extractTrackingNumber($responseData);
 
             if (!$trackingNumber) {
@@ -228,7 +228,7 @@ class MesColisService implements CarrierServiceInterface
     }
 
     /**
-     * 🆕 CORRECTION : Obtenir le token d'authentification
+     * Obtenir le token d'authentification
      */
     protected function getApiToken(): string
     {
@@ -250,7 +250,7 @@ class MesColisService implements CarrierServiceInterface
     }
 
     /**
-     * 🆕 NOUVELLE MÉTHODE : Extraire le numéro de suivi de la réponse Mes Colis
+     * Extraire le numéro de suivi de la réponse Mes Colis
      */
     protected function extractTrackingNumber($responseData): ?string
     {
@@ -272,41 +272,104 @@ class MesColisService implements CarrierServiceInterface
     }
 
     /**
-     * 🆕 NOUVELLE MÉTHODE : Nettoyer les numéros de téléphone
+     * 🔧 CORRECTION : Nettoyer les numéros de téléphone pour format tunisien 8 chiffres
      */
     protected function cleanPhoneNumber(string $phone): string
     {
-        // Supprimer les espaces et caractères spéciaux
-        $cleaned = preg_replace('/[^0-9+]/', '', $phone);
-        
-        // Format tunisien
-        if (strlen($cleaned) === 8 && !str_starts_with($cleaned, '+')) {
-            return $cleaned; // Garder format local pour Mes Colis
+        if (empty($phone)) {
+            return '';
         }
         
-        // Enlever +216 si présent pour format local
-        if (str_starts_with($cleaned, '+216')) {
-            return substr($cleaned, 4);
+        // Supprimer tous les caractères non numériques
+        $cleaned = preg_replace('/[^0-9]/', '', $phone);
+        
+        Log::debug('🧹 [MES COLIS] Nettoyage numéro téléphone', [
+            'original' => $phone,
+            'cleaned' => $cleaned,
+            'length' => strlen($cleaned),
+        ]);
+        
+        // Si le numéro commence par +216, enlever le préfixe
+        if (str_starts_with($cleaned, '216') && strlen($cleaned) > 8) {
+            $cleaned = substr($cleaned, 3);
+        }
+        
+        // Si le numéro a exactement 8 chiffres et commence par 2, 3, 4, 5, 7, 9 (numéros valides en Tunisie)
+        if (strlen($cleaned) === 8 && in_array($cleaned[0], ['2', '3', '4', '5', '7', '9'])) {
+            Log::debug('✅ [MES COLIS] Numéro tunisien valide à 8 chiffres', [
+                'phone' => $cleaned,
+                'first_digit' => $cleaned[0],
+            ]);
+            return $cleaned;
+        }
+        
+        // Si le numéro est trop long, prendre les 8 derniers chiffres
+        if (strlen($cleaned) > 8) {
+            $cleaned = substr($cleaned, -8);
+            Log::debug('✂️ [MES COLIS] Numéro tronqué aux 8 derniers chiffres', [
+                'phone' => $cleaned,
+            ]);
+        }
+        
+        // Si le numéro est trop court, le laisser tel quel (l'API pourrait le refuser)
+        if (strlen($cleaned) < 8) {
+            Log::warning('⚠️ [MES COLIS] Numéro trop court', [
+                'phone' => $cleaned,
+                'length' => strlen($cleaned),
+            ]);
         }
         
         return $cleaned;
     }
 
     /**
-     * 🆕 CORRECTION : Mapper les gouvernorats vers noms Mes Colis (corrigé)
+     * 🔧 CORRECTION : Mapper les gouvernorats vers noms Mes Colis (mapping complet et vérifié)
      */
     protected function mapGovernorateToMesColisName($governorate): string
     {
         $mapping = [
-            'Tunis' => 'Tunis', 'Ariana' => 'Ariana', 'Ben Arous' => 'Ben Arous', 
-            'Manouba' => 'La Mannouba', 'La Mannouba' => 'La Mannouba',
-            'Nabeul' => 'Nabeul', 'Zaghouan' => 'Zaghouan', 'Bizerte' => 'Bizerte',
-            'Béja' => 'Béja', 'Jendouba' => 'Jendouba', 'Le Kef' => 'Le Kef', 
-            'Siliana' => 'Siliana', 'Kairouan' => 'Kairouan', 'Kasserine' => 'Kasserine', 
-            'Sidi Bouzid' => 'Sidi Bouzid', 'Sousse' => 'Sousse', 'Monastir' => 'Monastir', 
-            'Mahdia' => 'Mahdia', 'Sfax' => 'Sfax', 'Gafsa' => 'Gafsa', 'Tozeur' => 'Tozeur',
-            'Kebili' => 'Kébili', 'Kébili' => 'Kébili', 'Gabès' => 'Gabès', 
-            'Medenine' => 'Médenine', 'Médenine' => 'Médenine', 'Tataouine' => 'Tataouine',
+            // Grand Tunis
+            'Tunis' => 'Tunis', 
+            'Ariana' => 'Ariana', 
+            'Ben Arous' => 'Ben Arous', 
+            'Manouba' => 'La Mannouba', 
+            'La Mannouba' => 'La Mannouba',
+            
+            // Nord-Est
+            'Nabeul' => 'Nabeul', 
+            'Zaghouan' => 'Zaghouan', 
+            'Bizerte' => 'Bizerte',
+            
+            // Nord-Ouest
+            'Béja' => 'Béja', 
+            'Jendouba' => 'Jendouba', 
+            'Le Kef' => 'Le Kef', 
+            'Siliana' => 'Siliana',
+            
+            // Centre-Ouest 
+            'Kairouan' => 'Kairouan', 
+            'Kasserine' => 'Kasserine', 
+            'Sidi Bouzid' => 'Sidi Bouzid',
+            
+            // Centre-Est
+            'Sousse' => 'Sousse', 
+            'Monastir' => 'Monastir', 
+            'Mahdia' => 'Mahdia',
+            
+            // Sud-Est
+            'Sfax' => 'Sfax',
+            
+            // Sud-Ouest
+            'Gafsa' => 'Gafsa', 
+            'Tozeur' => 'Tozeur',
+            'Kebili' => 'Kébili', 
+            'Kébili' => 'Kébili',
+            
+            // Sud
+            'Gabès' => 'Gabès', 
+            'Medenine' => 'Médenine', 
+            'Médenine' => 'Médenine', 
+            'Tataouine' => 'Tataouine',
         ];
 
         $mapped = $mapping[$governorate] ?? 'Tunis'; // Par défaut Tunis
@@ -314,27 +377,33 @@ class MesColisService implements CarrierServiceInterface
         Log::debug('🗺️ [MES COLIS] Mapping gouvernorat', [
             'input' => $governorate,
             'output' => $mapped,
+            'found_in_mapping' => isset($mapping[$governorate]),
         ]);
 
         return $mapped;
     }
 
     /**
-     * 🆕 CORRECTION : Mapper les statuts Mes Colis vers statuts internes
+     * 🔧 CORRECTION : Mapper les statuts Mes Colis vers statuts internes (mapping complet)
      */
     protected function mapMesColisStatusToInternal($mesColisStatus): string
     {
         $mapping = [
+            // Statuts principaux
             'En attente' => 'created',
             'En cours' => 'validated',
             'Au magasin' => 'picked_up_by_carrier',
             'Retour au dépôt' => 'in_return',
             'Livré' => 'delivered',
+            
+            // Statuts de retour
             'Retour client/agence' => 'in_return',
             'Retour définitif' => 'returned',
             'Retour reçu' => 'returned',
             'Retour payé' => 'returned',
             'Retour expéditeur' => 'returned',
+            
+            // Statuts spéciaux
             'À vérifier' => 'anomaly',
             'Échange' => 'delivery_attempted',
             'À enlever' => 'created',
@@ -344,6 +413,14 @@ class MesColisService implements CarrierServiceInterface
             'Inconnu' => 'unknown',
         ];
 
-        return $mapping[$mesColisStatus] ?? 'unknown';
+        $internalStatus = $mapping[$mesColisStatus] ?? 'unknown';
+        
+        Log::debug('🔄 [MES COLIS] Mapping statut', [
+            'mes_colis_status' => $mesColisStatus,
+            'internal_status' => $internalStatus,
+            'found_in_mapping' => isset($mapping[$mesColisStatus]),
+        ]);
+
+        return $internalStatus;
     }
 }

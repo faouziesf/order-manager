@@ -57,7 +57,7 @@ class DeliveryConfiguration extends Model
     }
 
     // ========================================
-    // ACCESSORS MÉTIER
+    // 🔧 ACCESSORS COMPATIBLES ANCIEN/NOUVEAU FORMAT
     // ========================================
 
     /**
@@ -70,46 +70,51 @@ class DeliveryConfiguration extends Model
     }
 
     /**
-     * 🆕 CORRECTION : Vérifier si la configuration est valide - LOGIQUE CORRIGÉE
+     * 🔧 CORRECTION COMPATIBLE : Vérifier si la configuration est valide - GÈRE ANCIEN ET NOUVEAU FORMAT
      */
     public function getIsValidAttribute()
     {
-        Log::debug('🔍 [CONFIG] Vérification validité', [
+        Log::debug('🔍 [CONFIG] Vérification validité format compatible', [
             'config_id' => $this->id,
             'carrier' => $this->carrier_slug,
             'has_username' => !empty($this->username),
             'has_password' => !empty($this->password),
         ]);
 
-        // Pour JAX Delivery : username (numéro compte) + password (token JWT) requis
         if ($this->carrier_slug === 'jax_delivery') {
+            // JAX : toujours username (numéro compte) + password (token) requis
             $valid = !empty($this->username) && !empty($this->password);
             Log::debug('🔍 [CONFIG] Validation JAX', [
                 'valid' => $valid,
-                'username_length' => strlen($this->username ?? ''),
-                'password_length' => strlen($this->password ?? ''),
+                'has_account_number' => !empty($this->username),
+                'has_jwt_token' => !empty($this->password),
             ]);
             return $valid;
         }
 
-        // Pour Mes Colis : username (token) requis  
         if ($this->carrier_slug === 'mes_colis') {
-            $valid = !empty($this->username);
-            Log::debug('🔍 [CONFIG] Validation Mes Colis', [
+            // 🆕 COMPATIBILITÉ : Mes Colis accepte ANCIEN format (username) OU NOUVEAU format (password)
+            $hasTokenInUsername = !empty($this->username); // Ancien format
+            $hasTokenInPassword = !empty($this->password); // Nouveau format
+            $valid = $hasTokenInUsername || $hasTokenInPassword;
+            
+            Log::debug('🔍 [CONFIG] Validation Mes Colis compatible', [
                 'valid' => $valid,
-                'username_length' => strlen($this->username ?? ''),
+                'has_token_in_username' => $hasTokenInUsername,
+                'has_token_in_password' => $hasTokenInPassword,
+                'format_detected' => $hasTokenInPassword ? 'nouveau' : ($hasTokenInUsername ? 'ancien' : 'aucun'),
             ]);
             return $valid;
         }
 
-        // Pour autres transporteurs futurs
-        $valid = !empty($this->password) || !empty($this->username);
+        // Pour autres transporteurs futurs : au moins password requis
+        $valid = !empty($this->password);
         Log::debug('🔍 [CONFIG] Validation générique', ['valid' => $valid]);
         return $valid;
     }
 
     /**
-     * 🆕 MÉTHODE CORRIGÉE : Vérifier si valide pour appels API
+     * 🔧 CORRECTION : Vérifier si valide pour appels API
      */
     public function isValidForApiCalls(): bool
     {
@@ -169,21 +174,22 @@ class DeliveryConfiguration extends Model
     }
 
     // ========================================
-    // 🆕 MÉTHODES CORRIGÉES POUR L'INTÉGRATION API
+    // 🔧 MÉTHODES COMPATIBLES ANCIEN/NOUVEAU FORMAT
     // ========================================
 
     /**
-     * 🆕 CORRECTION : Obtenir la configuration pour les services transporteurs
+     * 🔧 CORRECTION COMPATIBLE : Obtenir la configuration pour les services transporteurs
      */
     public function getApiConfig(): array
     {
-        Log::info('🔧 [CONFIG] Préparation config API', [
+        Log::info('🔧 [CONFIG] Préparation config API format compatible', [
             'config_id' => $this->id,
             'carrier' => $this->carrier_slug,
             'integration_name' => $this->integration_name,
         ]);
 
         if ($this->carrier_slug === 'jax_delivery') {
+            // JAX : toujours username + password
             $config = [
                 'api_token' => $this->password,      // Token JWT
                 'username' => $this->username,       // Numéro de compte
@@ -191,10 +197,30 @@ class DeliveryConfiguration extends Model
                 'environment' => $this->environment ?? 'test',
             ];
         } elseif ($this->carrier_slug === 'mes_colis') {
+            // 🆕 COMPATIBILITÉ : Mes Colis détecte automatiquement le format
+            $token = null;
+            $format = 'inconnu';
+            
+            if (!empty($this->password)) {
+                // Nouveau format : token dans password
+                $token = $this->password;
+                $format = 'nouveau';
+            } elseif (!empty($this->username)) {
+                // Ancien format : token dans username
+                $token = $this->username;
+                $format = 'ancien';
+            }
+            
             $config = [
-                'api_token' => $this->username,      // Token API
+                'api_token' => $token,
                 'environment' => $this->environment ?? 'test',
             ];
+            
+            Log::info('🔄 [CONFIG] Format Mes Colis détecté', [
+                'format' => $format,
+                'has_token' => !empty($token),
+                'token_preview' => $token ? substr($token, 0, 8) . '...' : 'vide',
+            ]);
         } else {
             // Configuration générique pour futurs transporteurs
             $config = [
@@ -204,10 +230,11 @@ class DeliveryConfiguration extends Model
             ];
         }
 
-        Log::debug('✅ [CONFIG] Config API préparée', [
+        Log::debug('✅ [CONFIG] Config API préparée format compatible', [
             'carrier' => $this->carrier_slug,
             'has_api_token' => !empty($config['api_token']),
             'token_preview' => !empty($config['api_token']) ? substr($config['api_token'], 0, 10) . '...' : 'vide',
+            'has_username' => !empty($config['username'] ?? null),
             'environment' => $config['environment'],
         ]);
 
@@ -215,7 +242,7 @@ class DeliveryConfiguration extends Model
     }
 
     /**
-     * 🆕 CORRECTION : Test de connexion avec le transporteur
+     * 🔧 CORRECTION : Test de connexion avec le transporteur
      */
     public function testConnection(): array
     {
@@ -284,7 +311,7 @@ class DeliveryConfiguration extends Model
     }
 
     /**
-     * 🆕 NOUVELLE MÉTHODE : Valider les credentials selon le transporteur
+     * 🆕 MÉTHODE : Valider les credentials selon le transporteur - VERSION COMPATIBLE
      */
     public function validateCredentials(): array
     {
@@ -300,10 +327,17 @@ class DeliveryConfiguration extends Model
                 $errors[] = 'Token JWT JAX invalide (format incorrect)';
             }
         } elseif ($this->carrier_slug === 'mes_colis') {
-            if (empty($this->username)) {
-                $errors[] = 'Token Mes Colis manquant';
-            } elseif (strlen($this->username) < 10) {
-                $errors[] = 'Token Mes Colis trop court';
+            // 🆕 COMPATIBILITÉ : Mes Colis accepte ancien OU nouveau format
+            $hasTokenInUsername = !empty($this->username);
+            $hasTokenInPassword = !empty($this->password);
+            
+            if (!$hasTokenInUsername && !$hasTokenInPassword) {
+                $errors[] = 'Token Mes Colis manquant (requis dans username ou password)';
+            } else {
+                $token = $hasTokenInPassword ? $this->password : $this->username;
+                if (strlen($token) < 10) {
+                    $errors[] = 'Token Mes Colis trop court (minimum 10 caractères)';
+                }
             }
         }
         
@@ -313,8 +347,58 @@ class DeliveryConfiguration extends Model
         ];
     }
 
+    /**
+     * 🆕 MÉTHODE : Migrer vers le nouveau format
+     */
+    public function migrateToNewFormat(): bool
+    {
+        if ($this->carrier_slug === 'mes_colis') {
+            // Si token dans username et password vide, migrer vers nouveau format
+            if (!empty($this->username) && empty($this->password)) {
+                $oldToken = $this->username;
+                
+                $this->update([
+                    'password' => $oldToken,  // Déplacer token vers password
+                    'username' => null,       // Vider username
+                ]);
+                
+                Log::info('🔄 [CONFIG] Migration vers nouveau format effectuée', [
+                    'config_id' => $this->id,
+                    'carrier' => $this->carrier_slug,
+                    'token_moved' => 'username → password',
+                ]);
+                
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * 🆕 MÉTHODE : Détecter le format utilisé
+     */
+    public function getConfigFormat(): string
+    {
+        if ($this->carrier_slug === 'jax_delivery') {
+            return 'standard'; // Toujours username + password
+        }
+        
+        if ($this->carrier_slug === 'mes_colis') {
+            if (!empty($this->password)) {
+                return 'nouveau'; // Token dans password
+            } elseif (!empty($this->username)) {
+                return 'ancien';  // Token dans username
+            } else {
+                return 'invalide'; // Aucun token
+            }
+        }
+        
+        return 'inconnu';
+    }
+
     // ========================================
-    // SCOPES
+    // SCOPES CORRIGÉS POUR COMPATIBILITÉ
     // ========================================
 
     public function scopeActive($query)
@@ -338,7 +422,7 @@ class DeliveryConfiguration extends Model
     }
 
     /**
-     * 🆕 CORRECTION : Scope pour les configurations valides
+     * 🔧 CORRECTION : Scope pour les configurations valides - VERSION COMPATIBLE
      */
     public function scopeValid($query)
     {
@@ -351,20 +435,24 @@ class DeliveryConfiguration extends Model
                      ->whereNotNull('password')
                      ->where('password', '!=', '');
             })->orWhere(function($subQ) {
-                // Mes Colis : seulement username requis
+                // 🆕 COMPATIBILITÉ : Mes Colis accepte token dans username OU password
                 $subQ->where('carrier_slug', 'mes_colis')
-                     ->whereNotNull('username')
-                     ->where('username', '!=', '');
-            })->orWhere(function($subQ) {
-                // Autres transporteurs : au moins un des deux
-                $subQ->whereNotIn('carrier_slug', ['jax_delivery', 'mes_colis'])
-                     ->where(function($subSubQ) {
-                         $subSubQ->where(function($q1) {
-                             $q1->whereNotNull('username')->where('username', '!=', '');
-                         })->orWhere(function($q2) {
-                             $q2->whereNotNull('password')->where('password', '!=', '');
+                     ->where(function($mesColisQ) {
+                         $mesColisQ->where(function($oldFormat) {
+                             // Ancien format : token dans username
+                             $oldFormat->whereNotNull('username')
+                                      ->where('username', '!=', '');
+                         })->orWhere(function($newFormat) {
+                             // Nouveau format : token dans password
+                             $newFormat->whereNotNull('password')
+                                      ->where('password', '!=', '');
                          });
                      });
+            })->orWhere(function($subQ) {
+                // Autres transporteurs : au moins password requis
+                $subQ->whereNotIn('carrier_slug', ['jax_delivery', 'mes_colis'])
+                     ->whereNotNull('password')
+                     ->where('password', '!=', '');
             });
         });
     }
@@ -397,34 +485,29 @@ class DeliveryConfiguration extends Model
     }
 
     /**
-     * 🆕 NOUVELLE MÉTHODE : Créer une configuration de test
+     * 🆕 MÉTHODE : Migrer toutes les configurations Mes Colis vers le nouveau format
      */
-    public static function createTestConfig($adminId, $carrierSlug, $testCredentials = []): self
+    public static function migrateAllMesColisToNewFormat(): int
     {
-        $defaultCredentials = [
-            'jax_delivery' => [
-                'username' => '2304',
-                'password' => 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.test.token',
-            ],
-            'mes_colis' => [
-                'username' => 'TEST_TOKEN_MESCOLIS',
-                'password' => null,
-            ],
-        ];
-
-        $credentials = array_merge(
-            $defaultCredentials[$carrierSlug] ?? [],
-            $testCredentials
-        );
-
-        return static::create([
-            'admin_id' => $adminId,
-            'carrier_slug' => $carrierSlug,
-            'integration_name' => "Test {$carrierSlug} " . now()->format('Y-m-d H:i'),
-            'username' => $credentials['username'] ?? null,
-            'password' => $credentials['password'] ?? null,
-            'environment' => 'test',
-            'is_active' => true,
+        $migratedCount = 0;
+        
+        $oldFormatConfigs = static::where('carrier_slug', 'mes_colis')
+            ->whereNotNull('username')
+            ->where('username', '!=', '')
+            ->whereNull('password')
+            ->get();
+        
+        foreach ($oldFormatConfigs as $config) {
+            if ($config->migrateToNewFormat()) {
+                $migratedCount++;
+            }
+        }
+        
+        Log::info('🔄 [CONFIG] Migration globale terminée', [
+            'migrated_count' => $migratedCount,
+            'total_found' => $oldFormatConfigs->count(),
         ]);
+        
+        return $migratedCount;
     }
 }

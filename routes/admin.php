@@ -258,6 +258,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('test-system', [DeliveryController::class, 'testSystem'])->name('test-system');
             Route::post('test-create-pickup', [DeliveryController::class, 'testCreatePickup'])->name('test-create-pickup');
             
+            // Routes de test avec vrais tokens
+            Route::post('test-create-pickup-real-tokens', [DeliveryController::class, 'createTestPickupDataWithRealTokens'])->name('test-create-pickup-real-tokens');
+            Route::get('test-complete-validation-flow', [DeliveryController::class, 'testCompleteValidationFlow'])->name('test-complete-validation-flow');
+            
             // ================================
             // PAGE PRINCIPALE MULTI-TRANSPORTEURS
             // ================================
@@ -274,6 +278,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('configuration/{config}', [DeliveryController::class, 'deleteConfiguration'])->name('configuration.delete');
             Route::post('configuration/{config}/test', [DeliveryController::class, 'testConnection'])->name('configuration.test');
             Route::post('configuration/{config}/toggle', [DeliveryController::class, 'toggleConfiguration'])->name('configuration.toggle');
+            Route::get('configuration/{config}/diagnostic', [DeliveryController::class, 'diagnosticConfiguration'])->name('configuration.diagnostic');
+            
+            // ================================
+            // 🆕 ROUTES DE CORRECTION DES CONFIGURATIONS
+            // ================================
+            
+            // Réparer toutes les configurations
+            Route::post('fix-all-configurations', [DeliveryController::class, 'fixAllConfigurations'])->name('fix-all-configurations');
+            
+            // Tester et analyser une configuration spécifique
+            Route::get('configuration/{config}/test-and-fix', [DeliveryController::class, 'testAndFixConfiguration'])->name('configuration.test-and-fix');
+            
+            // Migrer une configuration Mes Colis vers le nouveau format
+            Route::post('configuration/{config}/migrate', [DeliveryController::class, 'migrateConfiguration'])->name('configuration.migrate');
+            
+            // Diagnostiquer les tokens invalides
+            Route::get('fix-invalid-tokens', [DeliveryController::class, 'fixInvalidTokens'])->name('fix-invalid-tokens');
             
             // ================================
             // PRÉPARATION D'ENLÈVEMENT
@@ -323,10 +344,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
             // Page principale des expéditions (AVANT les routes avec paramètres)
             Route::get('shipments', [DeliveryController::class, 'shipments'])->name('shipments');
             
-            // ROUTES AVEC PARAMÈTRES (DOIVENT ÊTRE APRÈS TOUTES LES ROUTES API)
-            Route::get('shipments/{shipment}', [DeliveryController::class, 'showShipment'])->name('shipments.show');
+            // ================================
+            // 🆕 ROUTES DE SUIVI DE STATUT - NOUVELLES FONCTIONNALITÉS
+            // ================================
+            
+            // Suivi manuel individuel (AVANT les routes avec paramètres)
             Route::post('shipments/{shipment}/track', [DeliveryController::class, 'trackShipmentStatus'])->name('shipments.track');
             Route::post('shipments/{shipment}/mark-delivered', [DeliveryController::class, 'markShipmentAsDelivered'])->name('shipments.mark-delivered');
+            Route::get('shipments/{shipment}/tracking-history', [DeliveryController::class, 'getShipmentTrackingHistory'])->name('shipments.tracking-history');
+            
+            // ROUTES AVEC PARAMÈTRES (DOIVENT ÊTRE APRÈS TOUTES LES ROUTES API)
+            Route::get('shipments/{shipment}', [DeliveryController::class, 'showShipment'])->name('shipments.show');
             
             // Génération de documents pour les expéditions
             Route::get('shipments/{shipment}/label', [DeliveryController::class, 'generateShippingLabel'])->name('shipments.label');
@@ -365,7 +393,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // 🆕 ROUTES DE TEST POUR LES TRANSPORTEURS - NOUVELLES ROUTES CRITIQUES
         // ========================================
 
-        // Route de test factory transporteur (manquante dans le diagnostic)
+        // Route de test factory transporteur
         Route::get('test-carrier-factory', [DeliveryController::class, 'testCarrierFactory'])->name('test-carrier-factory');
 
         // Route pour créer une configuration de test
@@ -415,6 +443,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'test_carrier_factory' => route('admin.test-carrier-factory'),
                     'create_test_config' => route('admin.create-test-delivery-config'),
                     'create_complete_pickup' => route('admin.create-complete-test-pickup'),
+                    'track_all_shipments' => route('admin.delivery.api.track-all'),
+                    'bulk_track_shipments' => route('admin.delivery.shipments.bulk-track'),
+                    'fix_all_configurations' => route('admin.delivery.fix-all-configurations'),
+                    'fix_invalid_tokens' => route('admin.delivery.fix-invalid-tokens'),
                 ]
             ];
         })->name('debug-auth');
@@ -476,6 +508,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'shipments_exists' => \Route::has('admin.delivery.shipments'),
                         'shipments_list_exists' => \Route::has('admin.delivery.shipments.list'),
                         'test_carrier_factory_exists' => \Route::has('admin.test-carrier-factory'),
+                        'track_all_exists' => \Route::has('admin.delivery.api.track-all'),
+                        'bulk_track_exists' => \Route::has('admin.delivery.shipments.bulk-track'),
                     ],
                     'config_carriers' => config('carriers') ? array_keys(config('carriers')) : [],
                     'timestamp' => now()->toISOString(),
@@ -485,15 +519,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'error' => 'Erreur lors de la récupération des données',
                     'message' => $e->getMessage(),
                     'admin_id' => $admin->id,
-                    'routes_check' => [
-                        'general_stats_route_exists' => \Route::has('admin.delivery.api.general-stats'),
-                        'delivery_index_exists' => \Route::has('admin.delivery.index'),
-                        'test_system_exists' => \Route::has('admin.delivery.test-system'),
-                        'pickups_list_exists' => \Route::has('admin.delivery.pickups.list'),
-                        'shipments_exists' => \Route::has('admin.delivery.shipments'),
-                        'shipments_list_exists' => \Route::has('admin.delivery.shipments.list'),
-                        'test_carrier_factory_exists' => \Route::has('admin.test-carrier-factory'),
-                    ]
                 ];
             }
         })->name('delivery-debug-stats');
@@ -521,16 +546,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'test_system' => route('admin.delivery.test-system'),
                     'test_create_pickup' => route('admin.delivery.test-create-pickup'),
                     'test_carrier_factory' => route('admin.test-carrier-factory'),
+                    'track_all' => route('admin.delivery.api.track-all'),
+                    'bulk_track' => route('admin.delivery.shipments.bulk-track'),
+                    'fix_all_configurations' => route('admin.delivery.fix-all-configurations'),
+                    'fix_invalid_tokens' => route('admin.delivery.fix-invalid-tokens'),
                 ],
-                'available_views' => [
-                    'admin.delivery.index',
-                    'admin.delivery.configuration',
-                    'admin.delivery.configuration-create',
-                    'admin.delivery.configuration-edit',
-                    'admin.delivery.preparation',
-                    'admin.delivery.pickups',
-                    'admin.delivery.shipments',
-                    'admin.delivery.stats',
+                'tracking_routes' => [
+                    'track_shipment' => 'POST /admin/delivery/shipments/{shipment}/track',
+                    'mark_delivered' => 'POST /admin/delivery/shipments/{shipment}/mark-delivered',
+                    'tracking_history' => 'GET /admin/delivery/shipments/{shipment}/tracking-history',
+                    'bulk_track' => 'POST /admin/delivery/shipments/bulk-track',
+                    'track_all' => 'POST /admin/delivery/api/track-all',
                 ],
                 'timestamp' => now()->toISOString()
             ];
@@ -599,7 +625,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'app_env' => config('app.env'),
             ];
             
-            // Test 4: Routes
+            // Test 4: Routes critiques
             $routeTests = [
                 'delivery.index',
                 'delivery.preparation',
@@ -608,8 +634,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 'delivery.pickups.list',
                 'delivery.shipments',
                 'delivery.shipments.list',
+                'delivery.shipments.track',
+                'delivery.shipments.bulk-track',
                 'delivery.test-system',
                 'delivery.api.general-stats',
+                'delivery.api.track-all',
+                'delivery.fix-all-configurations',
+                'delivery.fix-invalid-tokens',
+                'delivery.configuration.test-and-fix',
+                'delivery.configuration.migrate',
                 'test-carrier-factory',
                 'create-test-delivery-config',
             ];
@@ -672,6 +705,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'shipments_list' => route('admin.delivery.shipments.list'),
                     'preparation' => route('admin.delivery.preparation'),
                     'test_carrier_factory' => route('admin.test-carrier-factory'),
+                    'track_all' => route('admin.delivery.api.track-all'),
+                    'bulk_track' => route('admin.delivery.shipments.bulk-track'),
                 ];
                 
                 return response()->json([
@@ -751,6 +786,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                         'pickup_id' => $pickups[($i - 1) % count($pickups)],
                         'carrier_slug' => 'jax_delivery',
                         'status' => ['created', 'validated', 'in_transit', 'delivered'][($i - 1) % 4],
+                        'pos_barcode' => 'TEST_' . time() . '_' . $i,
                         'weight' => rand(5, 50) / 10,
                         'cod_amount' => rand(20, 200),
                         'nb_pieces' => rand(1, 5),
@@ -768,7 +804,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Données de test créées',
+                    'message' => 'Données test créées',
                     'config_id' => $config->id,
                     'pickup_ids' => $pickups,
                     'shipment_ids' => $shipments,
@@ -799,12 +835,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 $activeShipmentsCount = \App\Models\Shipment::where('admin_id', $admin->id)
                     ->whereIn('status', ['created', 'validated', 'picked_up_by_carrier', 'in_transit'])
                     ->count();
+                $trackableShipmentsCount = \App\Models\Shipment::where('admin_id', $admin->id)
+                    ->whereNotNull('pos_barcode')
+                    ->count();
                 
                 // Test des routes spécifiques aux expéditions
                 $shipmentRoutes = [
                     'shipments' => route('admin.delivery.shipments'),
                     'shipments_list' => route('admin.delivery.shipments.list'),
                     'shipments_stats' => route('admin.delivery.shipments.stats'),
+                    'bulk_track' => route('admin.delivery.shipments.bulk-track'),
                     'api_track_all' => route('admin.delivery.api.track-all'),
                 ];
                 
@@ -818,8 +858,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     'shipments_data' => [
                         'total' => $shipmentsCount,
                         'active' => $activeShipmentsCount,
+                        'trackable' => $trackableShipmentsCount,
                     ],
                     'shipment_routes' => $shipmentRoutes,
+                    'tracking_features' => [
+                        'manual_tracking' => true,
+                        'bulk_tracking' => true,
+                        'automatic_tracking' => true,
+                        'status_history' => true,
+                    ],
                     'timestamp' => now()->toISOString(),
                 ]);
                 
