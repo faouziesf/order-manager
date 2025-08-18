@@ -2,222 +2,170 @@
 
 @section('title', 'Configuration des Transporteurs')
 
+@push('head')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+@endpush
+
 @section('css')
 <style>
-    :root {
-        --primary: #1d4ed8;
-        --primary-dark: #1e3a8a;
-        --primary-light: #3b82f6;
-        --success: #059669;
-        --warning: #d97706;
-        --danger: #dc2626;
-        --info: #0891b2;
-        --light: #f8fafc;
-        --dark: #1f2937;
-        --border: #e5e7eb;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
-        --radius: 6px;
-        --transition: all 0.15s ease;
-    }
-
     body {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        font-size: 14px;
+        background: #f8fafc;
+        font-family: 'Inter', sans-serif;
     }
 
-    /* ===== CONTAINER PRINCIPAL ===== */
     .config-container {
         max-width: 1200px;
         margin: 0 auto;
         padding: 1rem;
     }
 
-    /* ===== HEADER MODERNE ===== */
+    /* ===== HEADER ===== */
     .page-header {
         background: white;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1rem;
+        margin-bottom: 1rem;
     }
 
-    .header-top {
+    .header-title {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1rem;
+        align-items: center;
         flex-wrap: wrap;
-        gap: 1rem;
+        gap: 0.75rem;
     }
 
-    .header-info h1 {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--dark);
-        margin: 0 0 0.3rem 0;
+    .title-section h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
     }
 
-    .header-info .subtitle {
+    .title-section p {
         color: #6b7280;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .breadcrumb {
-        background: none;
-        padding: 0;
-        margin: 0;
+        margin: 0.25rem 0 0 0;
         font-size: 0.8rem;
-    }
-
-    .breadcrumb-item a {
-        color: #6b7280;
-        text-decoration: none;
-    }
-
-    .breadcrumb-item a:hover {
-        color: var(--primary);
     }
 
     .header-actions {
         display: flex;
         gap: 0.5rem;
-        flex-wrap: wrap;
     }
 
     .btn {
-        padding: 0.5rem 1rem;
+        padding: 0.375rem 0.75rem;
         border-radius: 4px;
-        font-weight: 600;
+        font-weight: 500;
         font-size: 0.8rem;
         text-decoration: none;
-        text-align: center;
-        transition: var(--transition);
         border: none;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.3rem;
+        transition: all 0.2s;
     }
 
-    .btn:hover {
+    .btn:hover:not(:disabled) {
         transform: translateY(-1px);
         text-decoration: none;
     }
 
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
     .btn-primary {
-        background: var(--primary);
+        background: #1d4ed8;
         color: white;
     }
 
-    .btn-primary:hover {
-        background: var(--primary-dark);
+    .btn-primary:hover:not(:disabled) {
+        background: #1e3a8a;
         color: white;
     }
 
     .btn-outline {
-        background: transparent;
-        color: var(--dark);
-        border: 1px solid var(--border);
+        background: white;
+        color: #374151;
+        border: 1px solid #d1d5db;
     }
 
-    .btn-outline:hover {
-        background: var(--light);
-        color: var(--dark);
+    .btn-outline:hover:not(:disabled) {
+        background: #f3f4f6;
+        color: #374151;
     }
 
     .btn-success {
-        background: var(--success);
+        background: #059669;
         color: white;
     }
 
-    .btn-success:hover {
+    .btn-success:hover:not(:disabled) {
         background: #047857;
+        color: white;
     }
 
-    .dropdown-menu {
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-lg);
-        border-radius: var(--radius);
-    }
-
-    .dropdown-item {
-        padding: 0.5rem 1rem;
-        font-size: 0.8rem;
-    }
-
-    .dropdown-item:hover {
-        background: var(--light);
-    }
-
-    /* ===== FILTRES ===== */
-    .filters-card {
-        background: white;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .filters-grid {
+    /* ===== STATISTIQUES ===== */
+    .stats-row {
         display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr;
-        gap: 1rem;
-        align-items: center;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
     }
 
-    .form-control, .form-select {
-        padding: 0.5rem 0.75rem;
-        border: 1px solid var(--border);
-        border-radius: 4px;
-        font-size: 0.8rem;
-        transition: var(--transition);
-    }
-
-    .form-control:focus, .form-select:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 0.2rem rgba(29, 78, 216, 0.25);
-        outline: none;
-    }
-
-    .input-group {
-        position: relative;
-    }
-
-    .input-group .input-icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #6b7280;
-        z-index: 10;
-    }
-
-    .input-group .form-control {
-        padding-left: 2.5rem;
-    }
-
-    /* ===== CARTES TRANSPORTEURS ===== */
-    .carrier-section {
+    .stat-card {
         background: white;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        margin-bottom: 1.5rem;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 0.75rem;
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1d4ed8;
+        margin: 0;
+    }
+
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.75rem;
+        margin: 0.2rem 0 0 0;
+    }
+
+    /* ===== TRANSPORTEURS ===== */
+    .carrier-card {
+        background: white;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
         overflow: hidden;
     }
 
     .carrier-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-        padding: 1rem;
-        color: white;
+        padding: 0.75rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
+    }
+
+    .carrier-header.jax_delivery {
+        background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+        color: white;
+    }
+
+    .carrier-header.mes_colis {
+        background: linear-gradient(135deg, #059669, #047857);
+        color: white;
     }
 
     .carrier-info {
@@ -226,142 +174,144 @@
         gap: 0.75rem;
     }
 
-    .carrier-icon {
+    .carrier-logo {
         width: 40px;
         height: 40px;
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 50%;
+        background: rgba(255,255,255,0.15);
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 1.2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .carrier-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border-radius: 4px;
+    }
+
+    .carrier-logo .fallback-icon {
+        color: rgba(255,255,255,0.9);
     }
 
     .carrier-details h3 {
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin: 0 0 0.2rem 0;
-    }
-
-    .carrier-details .subtitle {
-        font-size: 0.8rem;
-        opacity: 0.9;
+        font-size: 1rem;
+        font-weight: 600;
         margin: 0;
     }
 
-    .btn-add {
-        background: rgba(255, 255, 255, 0.15);
+    .carrier-details .count {
+        font-size: 0.75rem;
+        opacity: 0.9;
+        margin: 0.1rem 0 0 0;
+    }
+
+    .btn-add-config {
+        background: rgba(255,255,255,0.15);
         color: white;
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        padding: 0.4rem 0.8rem;
+        border: 1px solid rgba(255,255,255,0.3);
+        padding: 0.3rem 0.6rem;
         border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        font-size: 0.75rem;
+        font-weight: 500;
     }
 
-    .btn-add:hover {
-        background: rgba(255, 255, 255, 0.25);
+    .btn-add-config:hover:not(:disabled) {
+        background: rgba(255,255,255,0.25);
         color: white;
     }
 
-    /* ===== TABLEAU CONFIGURATIONS ===== */
+    /* ===== TABLEAU ===== */
     .configs-table {
         width: 100%;
         border-collapse: collapse;
+        background: white;
+        font-size: 0.8rem;
     }
 
     .configs-table th {
-        background: #f8fafc;
-        padding: 0.75rem;
+        background: #f9fafb;
+        padding: 0.5rem;
         font-weight: 600;
-        font-size: 0.8rem;
-        color: var(--dark);
+        font-size: 0.75rem;
+        color: #374151;
         text-align: left;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid #e5e7eb;
     }
 
     .configs-table td {
-        padding: 1rem 0.75rem;
-        border-bottom: 1px solid #f1f5f9;
+        padding: 0.75rem 0.5rem;
+        border-bottom: 1px solid #f3f4f6;
         vertical-align: middle;
     }
 
-    .configs-table tbody tr {
-        transition: var(--transition);
-    }
-
     .configs-table tbody tr:hover {
-        background: #f8fafc;
+        background: #f9fafb;
     }
 
-    .config-name {
+    .config-info {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
     }
 
-    .status-indicator {
-        width: 8px;
-        height: 8px;
+    .status-dot {
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
         flex-shrink: 0;
     }
 
-    .status-indicator.active {
-        background: var(--success);
-        box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
+    .status-dot.active {
+        background: #10b981;
     }
 
-    .status-indicator.inactive {
+    .status-dot.inactive {
         background: #9ca3af;
     }
 
-    .config-details h4 {
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin: 0 0 0.2rem 0;
-        color: var(--dark);
+    .status-dot.invalid {
+        background: #ef4444;
     }
 
-    .config-details .meta {
-        font-size: 0.75rem;
+    .config-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+        font-size: 0.8rem;
+    }
+
+    .config-date {
+        font-size: 0.7rem;
         color: #6b7280;
         margin: 0;
     }
 
-    .credentials {
-        display: flex;
-        flex-direction: column;
-        gap: 0.3rem;
-    }
-
-    .credential-item {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
+    .credential-info {
         font-size: 0.75rem;
-    }
-
-    .credential-item i {
         color: #6b7280;
-        width: 12px;
     }
 
-    .credential-value {
-        background: rgba(29, 78, 216, 0.1);
-        color: var(--primary);
-        padding: 0.2rem 0.4rem;
+    .credential-preview {
+        background: #f3f4f6;
+        padding: 0.15rem 0.3rem;
         border-radius: 3px;
-        font-family: 'Monaco', 'Consolas', monospace;
+        font-family: monospace;
         font-size: 0.7rem;
+        display: inline-block;
+        margin-top: 0.15rem;
     }
 
     .status-badge {
         display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
-        padding: 0.3rem 0.6rem;
-        border-radius: 12px;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 10px;
         font-size: 0.7rem;
         font-weight: 600;
     }
@@ -376,32 +326,48 @@
         color: #6b7280;
     }
 
+    .status-badge.invalid {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
     .actions {
         display: flex;
-        gap: 0.3rem;
+        gap: 0.25rem;
     }
 
     .btn-action {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         padding: 0;
         border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         border: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    .btn-test {
+        background: #dbeafe;
+        color: #1d4ed8;
+        border-color: #bfdbfe;
+    }
+
+    .btn-test:hover:not(:disabled) {
+        background: #bfdbfe;
     }
 
     .btn-toggle.active {
         background: #fef3c7;
-        color: #92400e;
+        color: #d97706;
         border-color: #fed7aa;
     }
 
     .btn-toggle.inactive {
         background: #dcfce7;
-        color: #166534;
+        color: #059669;
         border-color: #bbf7d0;
     }
 
@@ -411,52 +377,71 @@
         border-color: #e5e7eb;
     }
 
-    .btn-edit:hover {
+    .btn-edit:hover:not(:disabled) {
         background: #e5e7eb;
-        color: #374151;
     }
 
     .btn-delete {
         background: #fee2e2;
-        color: #991b1b;
+        color: #dc2626;
         border-color: #fecaca;
     }
 
-    .btn-delete:hover {
+    .btn-delete:hover:not(:disabled) {
         background: #fecaca;
-        color: #7f1d1d;
     }
 
     /* ===== ÉTAT VIDE ===== */
     .empty-state {
         text-align: center;
-        padding: 3rem 1rem;
+        padding: 2rem 1rem;
+        background: white;
     }
 
     .empty-icon {
-        width: 80px;
-        height: 80px;
-        background: rgba(29, 78, 216, 0.1);
+        width: 50px;
+        height: 50px;
+        background: #f3f4f6;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 1rem;
-        font-size: 2rem;
-        color: var(--primary);
+        margin: 0 auto 0.75rem;
+        font-size: 1.2rem;
+        color: #6b7280;
     }
 
     .empty-state h3 {
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 600;
-        color: var(--dark);
-        margin-bottom: 0.5rem;
+        color: #1f2937;
+        margin-bottom: 0.4rem;
     }
 
     .empty-state p {
         color: #6b7280;
-        margin-bottom: 1.5rem;
-        font-size: 0.9rem;
+        margin-bottom: 1rem;
+        font-size: 0.8rem;
+    }
+
+    /* ===== LOADING ===== */
+    .loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid transparent;
+        border-top: 2px solid currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 
     /* ===== RESPONSIVE ===== */
@@ -465,7 +450,7 @@
             padding: 0.5rem;
         }
 
-        .header-top {
+        .header-title {
             flex-direction: column;
             align-items: stretch;
         }
@@ -479,11 +464,6 @@
             justify-content: center;
         }
 
-        .filters-grid {
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-        }
-
         .carrier-header {
             flex-direction: column;
             gap: 1rem;
@@ -491,7 +471,7 @@
         }
 
         .configs-table {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
         }
 
         .configs-table th,
@@ -504,31 +484,6 @@
         }
     }
 
-    @media (max-width: 480px) {
-        .page-header {
-            padding: 1rem;
-        }
-
-        .filters-card {
-            padding: 0.75rem;
-        }
-
-        .carrier-header {
-            padding: 0.75rem;
-        }
-
-        .configs-table th,
-        .configs-table td {
-            padding: 0.4rem;
-        }
-
-        .btn-action {
-            width: 28px;
-            height: 28px;
-            font-size: 0.7rem;
-        }
-    }
-
     /* ===== ANIMATIONS ===== */
     .fade-in {
         animation: fadeIn 0.3s ease-out;
@@ -538,11 +493,6 @@
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
-
-    .loading {
-        opacity: 0.6;
-        pointer-events: none;
-    }
 </style>
 @endsection
 
@@ -550,20 +500,13 @@
 <div class="config-container fade-in" x-data="configurationManager">
     <!-- Header -->
     <div class="page-header">
-        <div class="header-top">
-            <div class="header-info">
+        <div class="header-title">
+            <div class="title-section">
                 <h1>
-                    <i class="fas fa-cog text-primary"></i>
+                    <i class="fas fa-cogs text-primary"></i>
                     Configuration Transporteurs
                 </h1>
-                <p class="subtitle">Gérez vos liaisons JAX Delivery et Mes Colis Express</p>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('admin.delivery.index') }}">Livraisons</a></li>
-                        <li class="breadcrumb-item active">Configuration</li>
-                    </ol>
-                </nav>
+                <p>Gérez vos liaisons JAX Delivery et Mes Colis Express</p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('admin.delivery.index') }}" class="btn btn-outline">
@@ -594,44 +537,35 @@
         </div>
     </div>
 
-    <!-- Filtres -->
-    <div class="filters-card">
-        <div class="filters-grid">
-            <div class="input-group">
-                <i class="fas fa-search input-icon"></i>
-                <input type="text" 
-                       class="form-control" 
-                       placeholder="Rechercher une configuration..."
-                       x-model="search"
-                       @input.debounce.300ms="filterConfigs()">
-            </div>
-            <select class="form-select" x-model="carrierFilter" @change="filterConfigs()">
-                <option value="">Tous transporteurs</option>
-                <option value="jax_delivery">JAX Delivery</option>
-                <option value="mes_colis">Mes Colis Express</option>
-            </select>
-            <select class="form-select" x-model="statusFilter" @change="filterConfigs()">
-                <option value="">Tous statuts</option>
-                <option value="active">Actives</option>
-                <option value="inactive">Inactives</option>
-            </select>
-            <div class="text-center">
-                <span class="text-muted" style="font-size: 0.8rem;">
-                    <span x-text="filteredConfigs.length"></span> configuration(s)
-                </span>
-            </div>
+    <!-- Statistiques -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <h2 class="stat-number">{{ $generalStats['total_configurations'] ?? 0 }}</h2>
+            <p class="stat-label">Configurations totales</p>
+        </div>
+        <div class="stat-card">
+            <h2 class="stat-number">{{ $generalStats['active_configurations'] ?? 0 }}</h2>
+            <p class="stat-label">Configurations actives</p>
+        </div>
+        <div class="stat-card">
+            <h2 class="stat-number">{{ $generalStats['total_pickups'] ?? 0 }}</h2>
+            <p class="stat-label">Pickups créés</p>
+        </div>
+        <div class="stat-card">
+            <h2 class="stat-number">{{ $generalStats['total_shipments'] ?? 0 }}</h2>
+            <p class="stat-label">Expéditions</p>
         </div>
     </div>
 
-    <!-- Configurations par transporteur -->
-    @if($configurations->isEmpty())
-        <div class="carrier-section">
+    <!-- Transporteurs -->
+    @if(empty($carriersData))
+        <div class="carrier-card">
             <div class="empty-state">
                 <div class="empty-icon">
-                    <i class="fas fa-cog"></i>
+                    <i class="fas fa-cogs"></i>
                 </div>
                 <h3>Aucune configuration</h3>
-                <p>Créez votre première configuration de transporteur pour commencer à expédier vos commandes</p>
+                <p>Créez votre première configuration de transporteur pour commencer</p>
                 <a href="{{ route('admin.delivery.configuration.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Première configuration
@@ -639,101 +573,140 @@
             </div>
         </div>
     @else
-        @foreach($configsByCarrier as $carrierSlug => $carrierConfigs)
-            <div class="carrier-section" 
-                 x-show="isCarrierVisible('{{ $carrierSlug }}')"
-                 style="display: none;">
-                <div class="carrier-header">
+        @foreach($carriersData as $carrierSlug => $carrierData)
+            <div class="carrier-card">
+                <!-- Header transporteur -->
+                <div class="carrier-header {{ $carrierSlug }}">
                     <div class="carrier-info">
-                        <div class="carrier-icon">
-                            <i class="fas fa-{{ $carrierSlug === 'jax_delivery' ? 'truck' : 'shipping-fast' }}"></i>
+                        <div class="carrier-logo">
+                            @if($carrierSlug === 'jax_delivery')
+                                <img src="https://jax-delivery.com/images/logo-jax.png" 
+                                     alt="JAX Delivery" 
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                <i class="fas fa-truck fallback-icon" style="display: none;"></i>
+                            @else
+                                <img src="https://mescolis.tn/assets/img/logo-mescolis.png" 
+                                     alt="Mes Colis" 
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                <i class="fas fa-shipping-fast fallback-icon" style="display: none;"></i>
+                            @endif
                         </div>
                         <div class="carrier-details">
-                            <h3>{{ $carrierSlug === 'jax_delivery' ? 'JAX Delivery' : 'Mes Colis Express' }}</h3>
-                            <p class="subtitle">{{ $carrierConfigs->count() }} configuration(s)</p>
+                            <h3>{{ $carrierData['config']['name'] ?? ($carrierSlug === 'jax_delivery' ? 'JAX Delivery' : 'Mes Colis Express') }}</h3>
+                            <p class="count">{{ $carrierData['configurations']->count() }} configuration(s) • {{ $carrierData['active_configurations']->count() }} active(s)</p>
                         </div>
                     </div>
                     <a href="{{ route('admin.delivery.configuration.create') }}?carrier={{ $carrierSlug }}" 
-                       class="btn-add">
+                       class="btn-add-config">
                         <i class="fas fa-plus"></i>
                         Ajouter
                     </a>
                 </div>
-                
-                <table class="configs-table">
-                    <thead>
-                        <tr>
-                            <th>Configuration</th>
-                            <th>Identifiants</th>
-                            <th>Statut</th>
-                            <th>Dernière activité</th>
-                            <th style="text-align: center;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($carrierConfigs as $config)
-                            <tr x-show="isConfigVisible({{ $config->id }})"
-                                style="display: none;">
-                                <td>
-                                    <div class="config-name">
-                                        <div class="status-indicator {{ $config->is_active ? 'active' : 'inactive' }}"></div>
-                                        <div class="config-details">
-                                            <h4>{{ $config->integration_name }}</h4>
-                                            <p class="meta">Créé le {{ $config->created_at->format('d/m/Y') }}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="credentials">
-                                        <div class="credential-item">
-                                            <i class="fas fa-user"></i>
-                                            <span class="credential-value">{{ Str::limit($config->username, 15) }}</span>
-                                        </div>
-                                        <div class="credential-item">
-                                            <i class="fas fa-server"></i>
-                                            <span style="font-size: 0.7rem; color: #6b7280;">{{ ucfirst($config->environment) }}</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="status-badge {{ $config->is_active ? 'active' : 'inactive' }}">
-                                        <i class="fas fa-{{ $config->is_active ? 'check' : 'pause' }}"></i>
-                                        {{ $config->is_active ? 'Active' : 'Inactive' }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span style="font-size: 0.75rem; color: #6b7280;">
-                                        <i class="fas fa-clock"></i>
-                                        {{ $config->updated_at->diffForHumans() }}
-                                    </span>
-                                </td>
-                                <td style="text-align: center;">
-                                    <div class="actions">
-                                        <button class="btn-action btn-toggle {{ $config->is_active ? 'active' : 'inactive' }}" 
-                                                @click="toggleConfig({{ $config->id }})"
-                                                :disabled="loading"
-                                                title="{{ $config->is_active ? 'Désactiver' : 'Activer' }}">
-                                            <i class="fas fa-{{ $config->is_active ? 'pause' : 'play' }}"></i>
-                                        </button>
-                                        
-                                        <a href="{{ route('admin.delivery.configuration.edit', $config) }}" 
-                                           class="btn-action btn-edit"
-                                           title="Modifier">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        
-                                        <button class="btn-action btn-delete" 
-                                                @click="deleteConfig({{ $config->id }})"
-                                                :disabled="loading"
-                                                title="Supprimer">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
+
+                <!-- Tableau des configurations -->
+                @if($carrierData['configurations']->isNotEmpty())
+                    <table class="configs-table">
+                        <thead>
+                            <tr>
+                                <th>Configuration</th>
+                                <th>Identifiants</th>
+                                <th>Statut</th>
+                                <th>Dernière activité</th>
+                                <th style="text-align: center;">Actions</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach($carrierData['configurations'] as $config)
+                                <tr>
+                                    <td>
+                                        <div class="config-info">
+                                            <div class="status-dot {{ $config->is_active ? ($config->is_valid ? 'active' : 'invalid') : 'inactive' }}"></div>
+                                            <div>
+                                                <h4 class="config-name">{{ $config->integration_name }}</h4>
+                                                <p class="config-date">Créé le {{ $config->created_at->format('d/m/Y') }}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="credential-info">
+                                            @if($carrierSlug === 'jax_delivery')
+                                                <div>Compte: {{ $config->username ?? 'Non défini' }}</div>
+                                                <div class="credential-preview">Token: {{ !empty($config->password) ? '••••••••' : 'Non défini' }}</div>
+                                            @else
+                                                <div>Token d'accès</div>
+                                                <div class="credential-preview">
+                                                    @if(!empty($config->password))
+                                                        {{ Str::limit($config->password, 8) }}•••
+                                                    @elseif(!empty($config->username))
+                                                        {{ Str::limit($config->username, 8) }}••• (ancien)
+                                                    @else
+                                                        Non défini
+                                                    @endif
+                                                </div>
+                                            @endif
+                                            <div style="font-size: 0.75rem; margin-top: 0.2rem;">
+                                                Env: {{ ucfirst($config->environment) }}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge {{ $config->is_active ? ($config->is_valid ? 'active' : 'invalid') : 'inactive' }}">
+                                            <i class="fas fa-{{ $config->is_active ? ($config->is_valid ? 'check' : 'exclamation-triangle') : 'pause' }}"></i>
+                                            {{ $config->is_active ? ($config->is_valid ? 'Active' : 'Invalide') : 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style="font-size: 0.8rem; color: #6b7280;">
+                                            {{ $config->updated_at->diffForHumans() }}
+                                        </span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <div class="actions">
+                                            <button class="btn-action btn-test" 
+                                                    @click="testConnection({{ $config->id }})"
+                                                    :disabled="loading"
+                                                    title="Tester la connexion">
+                                                <i class="fas fa-plug"></i>
+                                            </button>
+                                            
+                                            <button class="btn-action btn-toggle {{ $config->is_active ? 'active' : 'inactive' }}" 
+                                                    @click="toggleConfig({{ $config->id }})"
+                                                    :disabled="loading"
+                                                    title="{{ $config->is_active ? 'Désactiver' : 'Activer' }}">
+                                                <i class="fas fa-{{ $config->is_active ? 'pause' : 'play' }}"></i>
+                                            </button>
+                                            
+                                            <a href="{{ route('admin.delivery.configuration.edit', $config) }}" 
+                                               class="btn-action btn-edit"
+                                               title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            
+                                            <button class="btn-action btn-delete" 
+                                                    @click="deleteConfig({{ $config->id }}, '{{ addslashes($config->integration_name) }}')"
+                                                    :disabled="loading"
+                                                    title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-{{ $carrierSlug === 'jax_delivery' ? 'truck' : 'shipping-fast' }}"></i>
+                        </div>
+                        <h3>Aucune configuration {{ $carrierData['config']['name'] ?? 'pour ce transporteur' }}</h3>
+                        <p>Créez votre première configuration pour ce transporteur</p>
+                        <a href="{{ route('admin.delivery.configuration.create') }}?carrier={{ $carrierSlug }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Créer une configuration
+                        </a>
+                    </div>
+                @endif
             </div>
         @endforeach
     @endif
@@ -745,50 +718,49 @@
 <script>
 document.addEventListener('alpine:init', () => {
     Alpine.data('configurationManager', () => ({
-        search: '',
-        carrierFilter: '',
-        statusFilter: '',
         loading: false,
-        configurations: @json($configurations),
-        filteredConfigs: @json($configurations),
 
         init() {
-            const urlParams = new URLSearchParams(window.location.search);
-            this.carrierFilter = urlParams.get('filter') || '';
-            this.filterConfigs();
+            // Vérifier que le token CSRF est disponible
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrfToken) {
+                console.error('Token CSRF non trouvé. Assurez-vous que <meta name="csrf-token" content="{{ csrf_token() }}"> est présent dans le <head>');
+            }
         },
 
-        filterConfigs() {
-            this.filteredConfigs = this.configurations.filter(config => {
-                // Filtre par recherche
-                if (this.search) {
-                    const searchLower = this.search.toLowerCase();
-                    const matchName = config.integration_name.toLowerCase().includes(searchLower);
-                    const matchUsername = config.username.toLowerCase().includes(searchLower);
-                    if (!matchName && !matchUsername) return false;
+        async testConnection(configId) {
+            if (this.loading) return;
+            
+            this.loading = true;
+            
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                if (!csrfToken) {
+                    throw new Error('Token CSRF non trouvé');
                 }
 
-                // Filtre par transporteur
-                if (this.carrierFilter && config.carrier_slug !== this.carrierFilter) {
-                    return false;
+                const response = await fetch(`{{ url('/admin/delivery/configuration') }}/${configId}/test`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.showToast('success', 'Test de connexion réussi');
+                } else {
+                    this.showToast('error', data.message || 'Test de connexion échoué');
                 }
-
-                // Filtre par statut
-                if (this.statusFilter) {
-                    if (this.statusFilter === 'active' && !config.is_active) return false;
-                    if (this.statusFilter === 'inactive' && config.is_active) return false;
-                }
-
-                return true;
-            });
-        },
-
-        isCarrierVisible(carrierSlug) {
-            return this.filteredConfigs.some(config => config.carrier_slug === carrierSlug);
-        },
-
-        isConfigVisible(configId) {
-            return this.filteredConfigs.some(config => config.id === configId);
+            } catch (error) {
+                console.error('Erreur:', error);
+                this.showToast('error', 'Erreur lors du test de connexion');
+            } finally {
+                this.loading = false;
+            }
         },
 
         async toggleConfig(configId) {
@@ -797,11 +769,17 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             
             try {
-                const response = await fetch(`/admin/delivery/configuration/${configId}/toggle`, {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                if (!csrfToken) {
+                    throw new Error('Token CSRF non trouvé');
+                }
+
+                const response = await fetch(`{{ url('/admin/delivery/configuration') }}/${configId}/toggle`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
 
@@ -809,73 +787,96 @@ document.addEventListener('alpine:init', () => {
 
                 if (data.success) {
                     this.showToast('success', data.message);
-                    setTimeout(() => window.location.reload(), 1000);
+                    setTimeout(() => window.location.reload(), 1200);
                 } else {
-                    this.showToast('error', 'Erreur lors du changement de statut');
+                    this.showToast('error', data.message || 'Erreur lors du changement de statut');
                 }
             } catch (error) {
+                console.error('Erreur:', error);
                 this.showToast('error', 'Erreur de communication');
             } finally {
                 this.loading = false;
             }
         },
 
-        async deleteConfig(configId) {
+        async deleteConfig(configId, configName) {
             if (this.loading) return;
             
-            if (!confirm('Êtes-vous sûr de vouloir supprimer cette configuration ?')) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer la configuration "${configName}" ?\n\nCette action est irréversible.`)) {
                 return;
             }
 
             this.loading = true;
 
             try {
-                const response = await fetch(`/admin/delivery/configuration/${configId}`, {
+                // Récupérer le token CSRF
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                if (!csrfToken) {
+                    throw new Error('Token CSRF non trouvé');
+                }
+
+                const response = await fetch(`{{ url('/admin/delivery/configuration') }}/${configId}`, {
                     method: 'DELETE',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
 
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error('Réponse invalide du serveur');
+                }
 
-                if (data.success) {
-                    this.showToast('success', data.message);
-                    setTimeout(() => window.location.reload(), 1000);
+                if (response.ok && data.success) {
+                    this.showToast('success', data.message || 'Configuration supprimée avec succès');
+                    setTimeout(() => window.location.reload(), 1200);
+                } else if (data.message) {
+                    this.showToast('error', data.message);
                 } else {
-                    this.showToast('error', data.error || 'Erreur lors de la suppression');
+                    throw new Error(`Erreur HTTP ${response.status}`);
                 }
             } catch (error) {
-                this.showToast('error', 'Erreur de communication');
+                console.error('Erreur suppression:', error);
+                this.showToast('error', `Erreur lors de la suppression: ${error.message}`);
             } finally {
                 this.loading = false;
             }
         },
 
         showToast(type, message) {
+            // Supprimer les anciens toasts
+            const existingToasts = document.querySelectorAll('.toast-notification');
+            existingToasts.forEach(toast => toast.remove());
+
             const toast = document.createElement('div');
-            toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'}`;
+            toast.className = 'toast-notification';
             toast.style.cssText = `
                 position: fixed;
                 top: 20px;
                 right: 20px;
                 z-index: 10000;
                 min-width: 300px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                animation: slideInRight 0.3s ease;
-                padding: 0.75rem 1rem;
-                border-radius: 6px;
-                border: none;
-                background: ${type === 'success' ? '#dcfce7' : '#fee2e2'};
-                color: ${type === 'success' ? '#166534' : '#991b1b'};
-                font-size: 0.8rem;
+                max-width: 450px;
+                padding: 1rem;
+                border-radius: 8px;
+                font-size: 0.9rem;
                 font-weight: 600;
+                color: white;
+                background: ${type === 'success' ? '#059669' : '#dc2626'};
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                animation: slideInRight 0.3s ease;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
             `;
             
             toast.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-                ${message}
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                <span>${message}</span>
             `;
             
             document.body.appendChild(toast);
@@ -883,7 +884,7 @@ document.addEventListener('alpine:init', () => {
             setTimeout(() => {
                 toast.style.animation = 'slideOutRight 0.3s ease';
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, 3500);
         }
     }));
 });
@@ -898,18 +899,6 @@ document.addEventListener('alpine:init', () => {
 @keyframes slideOutRight {
     from { transform: translateX(0); opacity: 1; }
     to { transform: translateX(100%); opacity: 0; }
-}
-
-.alert-success {
-    background: #dcfce7 !important;
-    color: #166534 !important;
-    border: 1px solid #bbf7d0 !important;
-}
-
-.alert-danger {
-    background: #fee2e2 !important;
-    color: #991b1b !important;
-    border: 1px solid #fecaca !important;
 }
 </style>
 @endsection

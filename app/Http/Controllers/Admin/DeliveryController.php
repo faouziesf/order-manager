@@ -3243,4 +3243,204 @@ class DeliveryController extends Controller
             ], 500);
         }
     }
+
+    
+    /**
+     * 🔧 MÉTHODE CORRIGÉE : Validation en masse des pickups avec gestion détaillée des erreurs
+     */
+    public function bulkValidatePickups(Request $request)
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            $validator = Validator::make($request->all(), [
+                'pickup_ids' => 'required|array|min:1|max:50',
+                'pickup_ids.*' => 'integer|exists:pickups,id',
+            ]);
+            
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données invalides',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
+            $pickupIds = $request->pickup_ids;
+            $pickups = Pickup::where('admin_id', $admin->id)
+                ->whereIn('id', $pickupIds)
+                ->with(['deliveryConfiguration', 'shipments.order'])
+                ->get();
+            
+            if ($pickups->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucun pickup trouvé pour cet admin'
+                ], 404);
+            }
+            
+            Log::info('🚀 [BULK VALIDATE] Début validation en masse', [
+                'admin_id' => $admin->id,
+                'pickup_count' => $pickups->count(),
+                'pickup_ids' => $pickupIds,
+            ]);
+            
+            $results = [];
+            $globalStats = [
+                'total_pickups' => $pickups->count(),
+                'validated_pickups' => 0,
+                'failed_pickups' => 0,
+                'total_shipments' => 0,
+                'validated_shipments' => 0,
+                'failed_shipments' => 0,
+                'tracking_numbers' => [],
+            ];
+            
+            foreach ($pickups as $pickup) {
+                $pickupResult = [
+                    'pickup_id' => $pickup->id,
+                    'pickup_status' => $pickup->status,
+                    'can_be_validated' => $pickup->can_be_validated,
+                    'success' => false,
+                    'shipments_total' => $pickup->shipments->count(),
+                    'shipments_validated' => 0,
+                    'tracking_numbers' => [],
+                    'errors' => [],
+                    'partial_success' => false,
+                ];
+                
+                $globalStats['total_shipments'] += $pickup->shipments->count();
+                
+                try {
+                    // Vérification détaillée du pickup
+                    if (!$pickup->can_be_validated) {
+                        $reasons = [];
+                        if ($pickup->status !== 'draft') {
+                            $reasons[] = "Statut incorrect: {$pickup->status} (doit être 'draft')";
+                        }
+                        if ($pickup->shipments->isEmpty()) {
+                            $reasons[] = "Aucune expédition dans le pickup";
+                        }
+                        if (!$pickup->deliveryConfiguration) {
+                            $reasons[] = "Configuration transporteur manquante";
+                        } elseif (!$pickup->deliveryConfiguration->is_active) {
+                            $reasons[] = "Configuration transporteur inactive";
+                        } elseif (!$pickup->deliveryConfiguration->is_valid) {
+                            $reasons[] = "Configuration transporteur invalide";
+                        }
+                        
+                        $pickupResult['errors'] = $reasons;
+                        $results[] = $pickupResult;
+                        $globalStats['failed_pickups']++;
+                        continue;
+                    }
+                    
+                    Log::info("🔄 [BULK VALIDATE] Validation pickup #{$pickup->id}", [
+                        'shipments_count' => $pickup->shipments->count(),
+                        'carrier' => $pickup->carrier_slug,
+                    ]);
+                    
+                    // Appeler la méthode validate du pickup
+                    $validationResult = $pickup->validate();
+                    
+                    if ($validationResult['success']) {
+                        $pickupResult['success'] = true;
+                        $pickupResult['shipments_validated'] = $validationResult['successful_shipments'];
+                        $pickupResult['tracking_numbers'] = $validationResult['tracking_numbers'] ?? [];
+                        
+                        // Vérifier si c'est un succès partiel
+                        if ($validationResult['successful_shipments'] < $validationResult['total_shipments']) {
+                            $pickupResult['partial_success'] = true;
+                            $pickupResult['errors'] = $validationResult['errors'] ?? [];
+                        }
+                        
+                        $globalStats['validated_pickups']++;
+                        $globalStats['validated_shipments'] += $validationResult['successful_shipments'];
+                        $globalStats['failed_shipments'] += ($validationResult['total_shipments'] - $validationResult['successful_shipments']);
+                        $globalStats['tracking_numbers'] = array_merge(
+                            $globalStats['tracking_numbers'], 
+                            $validationResult['tracking_numbers'] ?? []
+                        );
+                        
+                        Log::info("✅ [BULK VALIDATE] Pickup #{$pickup->id} validé", [
+                            'successful_shipments' => $validationResult['successful_shipments'],
+                            'total_shipments' => $validationResult['total_shipments'],
+                            'tracking_numbers_count' => count($validationResult['tracking_numbers'] ?? []),
+                        ]);
+                        
+                    } else {
+                        $pickupResult['errors'] = $validationResult['errors'] ?? ['Erreur de validation inconnue'];
+                        $globalStats['failed_pickups']++;
+                        $globalStats['failed_shipments'] += $pickup->shipments->count();
+                        
+                        Log::error("❌ [BULK VALIDATE] Échec pickup #{$pickup->id}", [
+                            'errors' => $validationResult['errors'] ?? [],
+                        ]);
+                    }
+                    
+                } catch (\Exception $e) {
+                    $pickupResult['errors'] = ['Erreur technique : ' . $e->getMessage()];
+                    $globalStats['failed_pickups']++;
+                    $globalStats['failed_shipments'] += $pickup->shipments->count();
+                    
+                    Log::error("❌ [BULK VALIDATE] Exception pickup #{$pickup->id}", [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
+                
+                $results[] = $pickupResult;
+            }
+            
+            // Générer le message de résumé
+            $message = "Validation terminée : ";
+            $message .= "{$globalStats['validated_pickups']}/{$globalStats['total_pickups']} pickups validés";
+            
+            if ($globalStats['validated_shipments'] > 0) {
+                $message .= ", {$globalStats['validated_shipments']} expéditions créées";
+            }
+            
+            if ($globalStats['failed_pickups'] > 0) {
+                $message .= ", {$globalStats['failed_pickups']} échecs";
+            }
+            
+            Log::info('🎉 [BULK VALIDATE] Validation en masse terminée', [
+                'admin_id' => $admin->id,
+                'stats' => $globalStats,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'stats' => $globalStats,
+                    'results' => $results,
+                    'summary' => [
+                        'total_pickups' => $globalStats['total_pickups'],
+                        'validated_pickups' => $globalStats['validated_pickups'],
+                        'failed_pickups' => $globalStats['failed_pickups'],
+                        'total_tracking_numbers' => count($globalStats['tracking_numbers']),
+                        'has_partial_success' => collect($results)->contains('partial_success', true),
+                        'has_failures' => $globalStats['failed_pickups'] > 0,
+                    ]
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [BULK VALIDATE] Erreur critique', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur critique lors de la validation en masse',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    
+
 }
