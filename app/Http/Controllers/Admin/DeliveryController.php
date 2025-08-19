@@ -1759,10 +1759,10 @@ class DeliveryController extends Controller
         
         try {
             $validator = Validator::make($request->all(), [
-                'carrier_slug' => 'required|string|max:255',
-                'integration_name' => 'required|string|max:255',
-                'username' => 'nullable|string|max:255',
-                'password' => 'nullable|string|max:255',
+                'carrier_slug' => 'required|string|max:500',
+                'integration_name' => 'required|string|max:500',
+                'username' => 'nullable|string|max:500',
+                'password' => 'nullable|string|max:500',
                 'environment' => 'required|in:test,production',
                 'is_active' => 'boolean',
             ]);
@@ -1887,9 +1887,9 @@ class DeliveryController extends Controller
         
         try {
             $validator = Validator::make($request->all(), [
-                'integration_name' => 'required|string|max:255',
-                'username' => 'nullable|string|max:255',
-                'password' => 'nullable|string|max:255',
+                'integration_name' => 'required|string|max:500',
+                'username' => 'nullable|string|max:500',
+                'password' => 'nullable|string|max:500',
                 'environment' => 'required|in:test,production',
                 'is_active' => 'boolean',
             ]);
@@ -3603,4 +3603,513 @@ class DeliveryController extends Controller
             ], 500);
         }
     }
+
+    // ========================================
+    // 🆕 NOUVELLES MÉTHODES DE DIAGNOSTIC JAX - À AJOUTER DANS DeliveryController.php
+    // ========================================
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Diagnostic complet JAX avec test réel
+     */
+    public function diagnosticJaxComplete()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            Log::info('🔍 [JAX DIAGNOSTIC] Début diagnostic complet', [
+                'admin_id' => $admin->id,
+                'timestamp' => now()->toISOString(),
+            ]);
+            
+            $diagnostic = [
+                'admin_info' => [
+                    'id' => $admin->id,
+                    'name' => $admin->name,
+                    'email' => $admin->email,
+                ],
+                'configurations_jax' => [],
+                'api_tests' => [],
+                'pickup_tests' => [],
+                'recommendations' => [],
+                'critical_errors' => [],
+            ];
+            
+            // 1. Analyser toutes les configurations JAX
+            $jaxConfigs = DeliveryConfiguration::where('admin_id', $admin->id)
+                ->where('carrier_slug', 'jax_delivery')
+                ->get();
+            
+            if ($jaxConfigs->isEmpty()) {
+                $diagnostic['critical_errors'][] = 'Aucune configuration JAX trouvée';
+                $diagnostic['recommendations'][] = [
+                    'type' => 'error',
+                    'message' => 'Créez d\'abord une configuration JAX dans la section Configuration',
+                    'action' => 'Aller à Configuration > Créer une configuration JAX',
+                ];
+            }
+            
+            foreach ($jaxConfigs as $config) {
+                $configDiag = [
+                    'id' => $config->id,
+                    'integration_name' => $config->integration_name,
+                    'is_active' => $config->is_active,
+                    'is_valid' => $config->is_valid,
+                    'username' => $config->username,
+                    'has_password' => !empty($config->password),
+                    'password_length' => $config->password ? strlen($config->password) : 0,
+                    'environment' => $config->environment,
+                    'validation_errors' => [],
+                    'api_test_result' => null,
+                    'create_test_result' => null,
+                ];
+                
+                // Test de validation
+                $validation = $config->validateCredentials();
+                $configDiag['validation_errors'] = $validation['errors'] ?? [];
+                
+                // Test de connexion si configuration valide
+                if ($config->is_valid && $config->is_active) {
+                    try {
+                        $apiConfig = $config->getApiConfig();
+                        $jaxService = SimpleCarrierFactory::create('jax_delivery', $apiConfig);
+                        
+                        // Test de connexion
+                        $connectionTest = $jaxService->testConnection();
+                        $configDiag['api_test_result'] = $connectionTest;
+                        
+                        // NOTE: Test de création désactivé pour éviter frais
+                        $configDiag['create_test_result'] = [
+                            'success' => 'test_skipped',
+                            'message' => 'Test de création réel désactivé pour éviter les frais',
+                            'note' => 'Utilisez testJaxCreationWithRealData() pour test réel',
+                        ];
+                        
+                    } catch (\Exception $apiError) {
+                        $configDiag['api_test_result'] = [
+                            'success' => false,
+                            'error' => $apiError->getMessage(),
+                        ];
+                    }
+                } else {
+                    $configDiag['api_test_result'] = [
+                        'success' => false,
+                        'message' => 'Configuration inactive ou invalide',
+                    ];
+                }
+                
+                $diagnostic['configurations_jax'][] = $configDiag;
+            }
+            
+            // 2. Analyser les pickups JAX existants
+            $jaxPickups = Pickup::where('admin_id', $admin->id)
+                ->where('carrier_slug', 'jax_delivery')
+                ->with(['deliveryConfiguration', 'shipments'])
+                ->get();
+            
+            foreach ($jaxPickups as $pickup) {
+                $pickupDiag = [
+                    'id' => $pickup->id,
+                    'status' => $pickup->status,
+                    'can_be_validated' => $pickup->can_be_validated,
+                    'config_id' => $pickup->delivery_configuration_id,
+                    'config_exists' => !!$pickup->deliveryConfiguration,
+                    'config_active' => $pickup->deliveryConfiguration?->is_active ?? false,
+                    'shipments_count' => $pickup->shipments->count(),
+                    'shipments_with_tracking' => $pickup->shipments->whereNotNull('pos_barcode')->count(),
+                    'validation_issues' => [],
+                ];
+                
+                // Analyser les problèmes potentiels
+                if (!$pickup->can_be_validated) {
+                    if ($pickup->status !== 'draft') {
+                        $pickupDiag['validation_issues'][] = "Statut incorrect: {$pickup->status}";
+                    }
+                    if (!$pickup->deliveryConfiguration) {
+                        $pickupDiag['validation_issues'][] = 'Configuration manquante';
+                    }
+                    if ($pickup->deliveryConfiguration && !$pickup->deliveryConfiguration->is_active) {
+                        $pickupDiag['validation_issues'][] = 'Configuration inactive';
+                    }
+                    if ($pickup->shipments->isEmpty()) {
+                        $pickupDiag['validation_issues'][] = 'Aucune expédition';
+                    }
+                }
+                
+                $diagnostic['pickup_tests'][] = $pickupDiag;
+            }
+            
+            // 3. Générer les recommandations
+            $activeConfigs = collect($diagnostic['configurations_jax'])->where('is_active', true);
+            $validConfigs = $activeConfigs->where('is_valid', true);
+            $workingConfigs = $validConfigs->where('api_test_result.success', true);
+            
+            if ($activeConfigs->isEmpty()) {
+                $diagnostic['recommendations'][] = [
+                    'type' => 'error',
+                    'message' => 'Aucune configuration JAX active',
+                    'action' => 'Activez au moins une configuration JAX',
+                ];
+            } elseif ($validConfigs->isEmpty()) {
+                $diagnostic['recommendations'][] = [
+                    'type' => 'error',
+                    'message' => 'Configurations JAX invalides',
+                    'action' => 'Vérifiez le numéro de compte et le token JWT',
+                ];
+            } elseif ($workingConfigs->isEmpty()) {
+                $diagnostic['recommendations'][] = [
+                    'type' => 'error',
+                    'message' => 'Aucune configuration JAX fonctionnelle',
+                    'action' => 'Testez la connexion et vérifiez les tokens',
+                ];
+            } else {
+                $diagnostic['recommendations'][] = [
+                    'type' => 'success',
+                    'message' => 'Configuration JAX fonctionnelle trouvée',
+                    'action' => 'Vous pouvez créer des pickups JAX',
+                ];
+            }
+            
+            Log::info('✅ [JAX DIAGNOSTIC] Diagnostic terminé', [
+                'admin_id' => $admin->id,
+                'configs_count' => count($diagnostic['configurations_jax']),
+                'pickups_count' => count($diagnostic['pickup_tests']),
+                'recommendations_count' => count($diagnostic['recommendations']),
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'diagnostic' => $diagnostic,
+                'summary' => [
+                    'total_jax_configs' => count($diagnostic['configurations_jax']),
+                    'active_configs' => $activeConfigs->count(),
+                    'valid_configs' => $validConfigs->count(),
+                    'working_configs' => $workingConfigs->count(),
+                    'total_pickups' => count($diagnostic['pickup_tests']),
+                    'critical_errors' => count($diagnostic['critical_errors']),
+                    'recommendations' => count($diagnostic['recommendations']),
+                ],
+            ], 200, [], JSON_PRETTY_PRINT);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [JAX DIAGNOSTIC] Erreur', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors du diagnostic JAX: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🔧 MÉTHODE CORRIGÉE : Test de création JAX avec données réelles
+     */
+    public function testJaxCreationWithRealData()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            // 🔧 CORRECTION : Recherche moins stricte des configurations
+            $config = DeliveryConfiguration::where('admin_id', $admin->id)
+                ->where('carrier_slug', 'jax_delivery')
+                ->where('is_active', true)
+                ->first();
+            
+            // 🔧 CORRECTION : Si pas de config avec is_valid, prendre n'importe quelle config active
+            if (!$config) {
+                $config = DeliveryConfiguration::where('admin_id', $admin->id)
+                    ->where('carrier_slug', 'jax_delivery')
+                    ->first();
+            }
+            
+            if (!$config) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Aucune configuration JAX trouvée',
+                    'debug' => [
+                        'total_configs' => DeliveryConfiguration::where('admin_id', $admin->id)->count(),
+                        'jax_configs' => DeliveryConfiguration::where('admin_id', $admin->id)
+                            ->where('carrier_slug', 'jax_delivery')
+                            ->get(['id', 'integration_name', 'is_active', 'is_valid']),
+                    ],
+                ], 400);
+            }
+            
+            // 🔧 CORRECTION : Test des credentials avant utilisation
+            $validation = $config->validateCredentials();
+            if (!empty($validation['errors'])) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Configuration JAX invalide: ' . implode(', ', $validation['errors']),
+                    'config_id' => $config->id,
+                    'config_name' => $config->integration_name,
+                ], 400);
+            }
+            
+            Log::info('🧪 [JAX TEST CREATION] Test avec configuration', [
+                'config_id' => $config->id,
+                'integration_name' => $config->integration_name,
+                'username' => $config->username,
+                'has_password' => !empty($config->password),
+                'is_active' => $config->is_active,
+                'is_valid' => $config->is_valid,
+            ]);
+            
+            // Préparer des données de test réalistes
+            $testData = [
+                'external_reference' => 'TEST_REAL_' . time(),
+                'recipient_name' => 'Client Test Réel',
+                'recipient_phone' => '98765432',
+                'recipient_phone_2' => '12345678',
+                'recipient_address' => 'Avenue Habib Bourguiba, Immeuble Test, Appartement 5',
+                'recipient_governorate' => 'Tunis',
+                'recipient_city' => 'Centre Ville',
+                'cod_amount' => 25,
+                'content_description' => 'Produit test e-commerce - Diagnostic',
+                'weight' => 1.5,
+                'notes' => 'Test diagnostic automatique - Admin: ' . $admin->name,
+            ];
+            
+            // Créer le service JAX
+            $apiConfig = $config->getApiConfig();
+            $jaxService = SimpleCarrierFactory::create('jax_delivery', $apiConfig);
+            
+            // Test de connexion d'abord
+            $connectionTest = $jaxService->testConnection();
+            
+            if (!$connectionTest['success']) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Test de connexion JAX échoué: ' . $connectionTest['message'],
+                    'config_id' => $config->id,
+                ], 422);
+            }
+            
+            // Test de création de colis
+            Log::info('🚀 [JAX TEST CREATION] Envoi vers API JAX', [
+                'test_data' => $testData,
+                'config_id' => $config->id,
+            ]);
+            
+            $result = $jaxService->createShipment($testData);
+            
+            if ($result['success']) {
+                Log::info('✅ [JAX TEST CREATION] Succès', [
+                    'tracking_number' => $result['tracking_number'],
+                    'config_id' => $config->id,
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Test de création JAX réussi !',
+                    'tracking_number' => $result['tracking_number'],
+                    'config_used' => [
+                        'id' => $config->id,
+                        'integration_name' => $config->integration_name,
+                    ],
+                    'test_data' => $testData,
+                    'jax_response' => $result['response'],
+                    'next_step' => 'Vous pouvez maintenant valider vos pickups JAX normalement',
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Échec création colis JAX',
+                    'details' => $result,
+                    'config_id' => $config->id,
+                ], 422);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('❌ [JAX TEST CREATION] Erreur', [
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur test création JAX: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Test rapide JAX
+     */
+    public function quickTestJax()
+    {
+        $admin = auth('admin')->user();
+        
+        try {
+            // Trouver une config JAX
+            $config = DeliveryConfiguration::where('admin_id', $admin->id)
+                ->where('carrier_slug', 'jax_delivery')
+                ->where('is_active', true)
+                ->first();
+            
+            if (!$config) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Aucune configuration JAX active',
+                    'available_configs' => DeliveryConfiguration::where('admin_id', $admin->id)
+                        ->where('carrier_slug', 'jax_delivery')
+                        ->get(['id', 'integration_name', 'is_active', 'is_valid']),
+                ]);
+            }
+            
+            // Tester la config
+            $apiConfig = $config->getApiConfig();
+            $jaxService = SimpleCarrierFactory::create('jax_delivery', $apiConfig);
+            $testResult = $jaxService->testConnection();
+            
+            return response()->json([
+                'success' => true,
+                'config_test' => $testResult,
+                'config_info' => [
+                    'id' => $config->id,
+                    'integration_name' => $config->integration_name,
+                    'username' => $config->username,
+                    'has_password' => !empty($config->password),
+                    'is_valid' => $config->is_valid,
+                ],
+                'api_config_preview' => [
+                    'has_api_token' => !empty($apiConfig['api_token']),
+                    'token_length' => !empty($apiConfig['api_token']) ? strlen($apiConfig['api_token']) : 0,
+                    'username' => $apiConfig['username'] ?? null,
+                ],
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'admin_id' => $admin->id,
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Réparer une configuration JAX
+     */
+    public function repairJaxConfig(DeliveryConfiguration $config)
+    {
+        if ($config->admin_id !== auth('admin')->id()) {
+            abort(403, 'Accès non autorisé');
+        }
+        
+        if ($config->carrier_slug !== 'jax_delivery') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Cette méthode est spécifique à JAX Delivery',
+            ], 400);
+        }
+        
+        try {
+            $issues = [];
+            $fixes = [];
+            
+            // Vérifier et corriger les problèmes courants
+            if (empty($config->username)) {
+                $issues[] = 'Numéro de compte manquant';
+            }
+            
+            if (empty($config->password)) {
+                $issues[] = 'Token JWT manquant';
+            } elseif (substr_count($config->password, '.') !== 2) {
+                $issues[] = 'Token JWT invalide (doit contenir 3 parties séparées par des points)';
+            }
+            
+            if (!$config->is_active) {
+                $issues[] = 'Configuration inactive';
+                $config->update(['is_active' => true]);
+                $fixes[] = 'Configuration activée automatiquement';
+            }
+            
+            if ($config->environment === 'test') {
+                $issues[] = 'Environnement en mode test';
+                $fixes[] = 'Considérez passer en mode production pour l\'utilisation réelle';
+            }
+            
+            // Test de connexion après corrections
+            $testResult = null;
+            if ($config->is_valid) {
+                try {
+                    $apiConfig = $config->getApiConfig();
+                    $jaxService = SimpleCarrierFactory::create('jax_delivery', $apiConfig);
+                    $testResult = $jaxService->testConnection();
+                    
+                    if ($testResult['success']) {
+                        $fixes[] = 'Test de connexion réussi';
+                    } else {
+                        $issues[] = 'Test de connexion échoué: ' . $testResult['message'];
+                    }
+                } catch (\Exception $e) {
+                    $issues[] = 'Erreur test de connexion: ' . $e->getMessage();
+                }
+            }
+            
+            return response()->json([
+                'success' => count($issues) === 0 || count($fixes) > 0,
+                'config_id' => $config->id,
+                'issues_found' => $issues,
+                'fixes_applied' => $fixes,
+                'connection_test' => $testResult,
+                'recommendations' => $this->getJaxConfigRecommendations($config, $issues),
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur réparation config: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 🆕 MÉTHODE HELPER : Recommandations pour config JAX
+     */
+    private function getJaxConfigRecommendations($config, $issues): array
+    {
+        $recommendations = [];
+        
+        foreach ($issues as $issue) {
+            if (strpos($issue, 'compte manquant') !== false) {
+                $recommendations[] = [
+                    'type' => 'error',
+                    'message' => 'Ajoutez votre numéro de compte JAX dans le champ "Numéro de Compte"',
+                    'action' => 'Contactez JAX Delivery pour obtenir votre numéro de compte',
+                ];
+            }
+            
+            if (strpos($issue, 'Token JWT') !== false) {
+                $recommendations[] = [
+                    'type' => 'error',
+                    'message' => 'Ajoutez un token JWT valide dans le champ "Token API"',
+                    'action' => 'Connectez-vous à votre espace JAX et générez un nouveau token',
+                ];
+            }
+            
+            if (strpos($issue, 'connexion échoué') !== false) {
+                $recommendations[] = [
+                    'type' => 'warning',
+                    'message' => 'Vérifiez que vos identifiants JAX sont corrects',
+                    'action' => 'Testez avec Postman ou contactez le support JAX',
+                ];
+            }
+        }
+        
+        if (empty($recommendations)) {
+            $recommendations[] = [
+                'type' => 'success',
+                'message' => 'Configuration JAX correctement configurée',
+                'action' => 'Vous pouvez créer et valider des pickups',
+            ];
+        }
+        
+        return $recommendations;
+    }
+
 }

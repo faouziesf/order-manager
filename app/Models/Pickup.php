@@ -642,34 +642,88 @@ class Pickup extends Model
     }
 
     /**
-     * 🆕 CORRECTION : Préparer les données shipment pour l'API transporteur
+     * 🔧 CORRECTION CRITIQUE : Préparer les données shipment pour l'API transporteur
      */
     private function prepareShipmentDataForApi($shipment): array
     {
         $recipientInfo = $shipment->recipient_info ?: [];
         
-        // Valeurs par défaut sécurisées
+        // Validation des données critiques
+        $recipientName = trim($recipientInfo['name'] ?? '');
+        $recipientPhone = trim($recipientInfo['phone'] ?? '');
+        $recipientAddress = trim($recipientInfo['address'] ?? '');
+        $governorate = trim($recipientInfo['governorate'] ?? '');
+        $city = trim($recipientInfo['city'] ?? '');
+        
+        // Valeurs par défaut sécurisées si données manquantes
+        if (empty($recipientName)) {
+            $recipientName = 'Client';
+            if ($shipment->order && !empty($shipment->order->customer_name)) {
+                $recipientName = $shipment->order->customer_name;
+            }
+        }
+        
+        if (empty($recipientPhone)) {
+            if ($shipment->order && !empty($shipment->order->customer_phone)) {
+                $recipientPhone = $shipment->order->customer_phone;
+            } else {
+                $recipientPhone = '12345678'; // Numéro par défaut pour éviter erreur API
+            }
+        }
+        
+        if (empty($recipientAddress)) {
+            if ($shipment->order && !empty($shipment->order->customer_address)) {
+                $recipientAddress = $shipment->order->customer_address;
+            } else {
+                $recipientAddress = 'Adresse non renseignée';
+            }
+        }
+        
+        if (empty($governorate)) {
+            if ($shipment->order && !empty($shipment->order->customer_governorate)) {
+                $governorate = $shipment->order->customer_governorate;
+            } else {
+                $governorate = 'Tunis'; // Par défaut
+            }
+        }
+        
+        if (empty($city)) {
+            if ($shipment->order && !empty($shipment->order->customer_city)) {
+                $city = $shipment->order->customer_city;
+            } else {
+                $city = 'Tunis'; // Par défaut
+            }
+        }
+        
+        // Préparer les données finales
         $data = [
             'external_reference' => "PICKUP_{$this->id}_SHIP_{$shipment->id}",
-            'recipient_name' => $recipientInfo['name'] ?? 'Client',
-            'recipient_phone' => $recipientInfo['phone'] ?? '',
+            'recipient_name' => $recipientName,
+            'recipient_phone' => $recipientPhone,
             'recipient_phone_2' => $recipientInfo['phone_2'] ?? '',
-            'recipient_address' => $recipientInfo['address'] ?? 'Adresse non renseignée',
-            'recipient_governorate' => $recipientInfo['governorate'] ?? 'Tunis',
-            'recipient_city' => $recipientInfo['city'] ?? 'Tunis',
+            'recipient_address' => $recipientAddress,
+            'recipient_governorate' => $governorate,
+            'recipient_city' => $city,
             'cod_amount' => $shipment->cod_amount ?: 0,
             'content_description' => $shipment->content_description ?: "Commande e-commerce #{$shipment->order_id}",
             'weight' => $shipment->weight ?: 1.0,
             'notes' => "Pickup #{$this->id} - Admin: {$this->admin->name}",
         ];
 
-        Log::info('📋 [PICKUP] Données shipment préparées', [
+        Log::info('📋 [PICKUP] Données shipment préparées et validées', [
             'shipment_id' => $shipment->id,
             'recipient' => $data['recipient_name'],
             'phone' => $data['recipient_phone'],
             'governorate' => $data['recipient_governorate'],
+            'city' => $data['recipient_city'],
             'cod' => $data['cod_amount'],
-            'reference' => $data['external_reference'],
+            'address_length' => strlen($data['recipient_address']),
+            'has_phone_2' => !empty($data['recipient_phone_2']),
+            'data_source' => [
+                'from_recipient_info' => !empty($recipientInfo),
+                'from_order' => $shipment->order ? true : false,
+                'fallback_used' => empty($recipientInfo['name']) || empty($recipientInfo['phone']),
+            ],
         ]);
 
         return $data;

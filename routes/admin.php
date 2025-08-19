@@ -249,6 +249,156 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // 🚀 GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION COMPLÈTE ET CORRIGÉE
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
+
+            // ================================
+        // 🆕 ROUTES DE DIAGNOSTIC JAX - À AJOUTER DANS routes/admin.php
+        // Dans la section Route::prefix('delivery')->name('delivery.')->group(function () {
+        // ================================
+        
+            // ... autres routes existantes ...
+            
+            // ================================
+            // 🆕 ROUTES DE DIAGNOSTIC JAX SPÉCIFIQUES - DOIVENT ÊTRE AVANT LES ROUTES AVEC PARAMÈTRES
+            // ================================
+            
+            // Test rapide JAX
+            Route::get('quick-test-jax', [DeliveryController::class, 'quickTestJax'])
+                ->name('quick-test-jax');
+            
+            // Diagnostic complet JAX
+            Route::get('diagnostic-jax-complete', [DeliveryController::class, 'diagnosticJaxComplete'])
+                ->name('diagnostic-jax-complete');
+            
+            // Test de création JAX avec données réelles
+            Route::post('test-jax-creation-real', [DeliveryController::class, 'testJaxCreationWithRealData'])
+                ->name('test-jax-creation-real');
+            
+            // Réparer une configuration JAX spécifique
+            Route::post('configuration/{config}/repair-jax', [DeliveryController::class, 'repairJaxConfig'])
+                ->name('configuration.repair-jax');
+            
+            // Page de test JAX
+            Route::get('test-jax', function () {
+                return view('admin.delivery.test-jax');
+            })->name('test-jax');
+            
+            // ================================
+            // Test de validation spécifique pickup JAX
+            // ================================
+            Route::post('pickups/{pickup}/test-validate-jax', function (Pickup $pickup) {
+                $admin = auth('admin')->user();
+                
+                if ($pickup->admin_id !== $admin->id) {
+                    abort(403, 'Accès non autorisé');
+                }
+                
+                if ($pickup->carrier_slug !== 'jax_delivery') {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Ce pickup n\'est pas JAX Delivery',
+                    ], 400);
+                }
+                
+                try {
+                    Log::info('🧪 [TEST VALIDATE JAX] Test validation pickup', [
+                        'pickup_id' => $pickup->id,
+                        'admin_id' => $admin->id,
+                        'can_be_validated' => $pickup->can_be_validated,
+                        'shipments_count' => $pickup->shipments()->count(),
+                    ]);
+                    
+                    if (!$pickup->can_be_validated) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Ce pickup ne peut pas être validé',
+                            'diagnostic' => [
+                                'status' => $pickup->status,
+                                'has_config' => !!$pickup->deliveryConfiguration,
+                                'config_active' => $pickup->deliveryConfiguration?->is_active ?? false,
+                                'has_shipments' => $pickup->shipments()->exists(),
+                            ],
+                        ], 400);
+                    }
+                    
+                    // Appeler la méthode de validation
+                    $result = $pickup->validate();
+                    
+                    if ($result['success']) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => "Test validation réussi ! {$result['successful_shipments']}/{$result['total_shipments']} expéditions validées",
+                            'tracking_numbers' => $result['tracking_numbers'],
+                            'pickup_status' => $pickup->fresh()->status,
+                        ]);
+                    } else {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Validation échouée',
+                            'details' => $result,
+                        ], 422);
+                    }
+                    
+                } catch (\Exception $e) {
+                    Log::error('❌ [TEST VALIDATE JAX] Erreur', [
+                        'pickup_id' => $pickup->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Erreur test validation: ' . $e->getMessage(),
+                    ], 500);
+                }
+            })->name('pickups.test-validate-jax');
+            
+            // ================================
+            // Logs de validation JAX
+            // ================================
+            Route::get('logs-validation-jax', function () {
+                try {
+                    $logPath = storage_path('logs/laravel.log');
+                    
+                    if (!file_exists($logPath)) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Fichier de logs non trouvé',
+                        ], 404);
+                    }
+                    
+                    // Lire les dernières 200 lignes
+                    $lines = [];
+                    $handle = fopen($logPath, 'r');
+                    if ($handle) {
+                        $lineCount = 0;
+                        while (($line = fgets($handle)) !== false) {
+                            if (strpos($line, '[JAX]') !== false || strpos($line, '[PICKUP]') !== false) {
+                                $lines[] = trim($line);
+                                $lineCount++;
+                                if ($lineCount >= 200) {
+                                    break;
+                                }
+                            }
+                        }
+                        fclose($handle);
+                    }
+                    
+                    return response()->json([
+                        'success' => true,
+                        'logs' => array_slice(array_reverse($lines), 0, 50), // 50 dernières lignes
+                        'total_lines' => count($lines),
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Erreur lecture logs: ' . $e->getMessage(),
+                    ], 500);
+                }
+            })->name('logs-validation-jax');
+            
+            // ... autres routes existantes ...
+        
+
             
             // ================================
             // 🆕 ROUTES DE TEST ET DIAGNOSTIC - PRIORITÉ 1 (DOIVENT ÊTRE EN PREMIER)
