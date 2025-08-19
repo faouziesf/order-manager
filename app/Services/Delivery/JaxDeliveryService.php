@@ -32,6 +32,7 @@ class JaxDeliveryService implements CarrierServiceInterface
             'phone' => $data['recipient_phone'] ?? 'Non défini',
             'cod_amount' => $data['cod_amount'] ?? 0,
             'governorate' => $data['recipient_governorate'] ?? 'Non défini',
+            'external_reference' => $data['external_reference'] ?? 'Non défini',
         ]);
 
         try {
@@ -47,60 +48,112 @@ class JaxDeliveryService implements CarrierServiceInterface
                 'governorat' => $this->mapGovernorateToJaxCode($data['recipient_governorate'] ?? 'Tunis'),
                 'delegation' => $data['recipient_city'] ?? '',
                 'description' => substr($data['content_description'] ?? 'Colis e-commerce', 0, 100),
-                'cod' => (string)($data['cod_amount'] ?? 0), // 🔧 CORRECTION : COD doit être string
-                'echange' => 0, // Pas d'échange
+                'cod' => (string)($data['cod_amount'] ?? 0),
+                'echange' => 0,
             ];
+
+            // 🆕 VALIDATION DES DONNÉES AVANT ENVOI
+            $validationErrors = [];
+            if (empty($jaxData['nomContact'])) {
+                $validationErrors[] = 'Nom du contact manquant';
+            }
+            if (empty($jaxData['tel']) || strlen($jaxData['tel']) < 8) {
+                $validationErrors[] = 'Numéro de téléphone invalide: ' . $jaxData['tel'];
+            }
+            if (empty($jaxData['adresseLivraison'])) {
+                $validationErrors[] = 'Adresse de livraison manquante';
+            }
+
+            if (!empty($validationErrors)) {
+                Log::error('❌ [JAX] Données invalides', [
+                    'errors' => $validationErrors,
+                    'data' => $jaxData,
+                ]);
+                throw new CarrierServiceException('Données invalides: ' . implode(', ', $validationErrors));
+            }
 
             Log::info('📤 [JAX] Envoi vers API JAX', [
                 'url' => $this->baseUrl . '/user/colis/add',
-                'data' => [
+                'data_preview' => [
                     'nomContact' => $jaxData['nomContact'],
                     'tel' => $jaxData['tel'],
                     'governorat' => $jaxData['governorat'],
                     'cod' => $jaxData['cod'],
+                    'referenceExterne' => $jaxData['referenceExterne'],
                 ],
                 'token_preview' => substr($token, 0, 20) . '...',
             ]);
 
-            // 🔥 APPEL CRITIQUE API JAX
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $token,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->timeout(30)->post($this->baseUrl . '/user/colis/add', $jaxData);
+            // 🔥 APPEL CRITIQUE API JAX AVEC RETRY
+            $maxRetries = 3;
+            $response = null;
+            $lastError = null;
 
-            Log::info('📥 [JAX] Réponse API reçue', [
-                'status' => $response->status(),
-                'successful' => $response->successful(),
-                'body_preview' => substr($response->body(), 0, 300),
-            ]);
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    $response = Http::withHeaders([
+                        'Authorization' => 'Bearer ' . $token,
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json',
+                    ])->timeout(30)->post($this->baseUrl . '/user/colis/add', $jaxData);
 
-            if ($response->failed()) {
-                $errorBody = $response->body();
-                Log::error('❌ [JAX] Échec API', [
-                    'status' => $response->status(),
-                    'error_body' => $errorBody,
+                    if ($response->successful()) {
+                        break; // Succès, sortir de la boucle
+                    }
+
+                    $lastError = "HTTP {$response->status()}: " . $response->body();
+                    Log::warning("⚠️ [JAX] Tentative {$attempt}/{$maxRetries} échouée", [
+                        'status' => $response->status(),
+                        'error' => $lastError,
+                    ]);
+
+                    if ($attempt < $maxRetries) {
+                        sleep(1); // Attendre 1 seconde avant de réessayer
+                    }
+
+                } catch (\Exception $e) {
+                    $lastError = $e->getMessage();
+                    Log::warning("⚠️ [JAX] Exception tentative {$attempt}/{$maxRetries}", [
+                        'error' => $lastError,
+                    ]);
+
+                    if ($attempt < $maxRetries) {
+                        sleep(1);
+                    }
+                }
+            }
+
+            if (!$response || $response->failed()) {
+                Log::error('❌ [JAX] Échec API après tous les essais', [
+                    'final_error' => $lastError,
                     'request_data' => $jaxData,
+                    'attempts' => $maxRetries,
                 ]);
                 
                 throw new CarrierServiceException(
-                    "Erreur JAX API (HTTP {$response->status()}): " . $errorBody,
-                    $response->status(),
-                    $response->json()
+                    "Erreur JAX API après {$maxRetries} tentatives: " . $lastError,
+                    $response ? $response->status() : 500,
+                    $response ? $response->json() : null
                 );
             }
 
             $responseData = $response->json();
             
-            // 🔧 CORRECTION : Gérer différents formats de réponse JAX
+            Log::info('📥 [JAX] Réponse API reçue avec succès', [
+                'status' => $response->status(),
+                'response_keys' => array_keys($responseData ?? []),
+                'response_preview' => is_array($responseData) ? array_slice($responseData, 0, 5, true) : $responseData,
+            ]);
+            
+            // 🔧 AMÉLIORATION : Extraction du numéro de suivi avec multiple fallbacks
             $trackingNumber = $this->extractTrackingNumber($responseData);
 
             if (!$trackingNumber) {
-                Log::warning('⚠️ [JAX] Pas de numéro de suivi dans la réponse', [
-                    'response_data' => $responseData,
-                    'response_keys' => array_keys($responseData),
+                Log::error('⚠️ [JAX] Pas de numéro de suivi dans la réponse', [
+                    'full_response' => $responseData,
+                    'response_structure' => $this->analyzeResponseStructure($responseData),
                 ]);
-                throw new CarrierServiceException('JAX API: Pas de numéro de suivi retourné');
+                throw new CarrierServiceException('JAX API: Réponse valide mais pas de numéro de suivi retourné');
             }
 
             Log::info('✅ [JAX] Colis créé avec succès dans le compte JAX', [
@@ -108,6 +161,7 @@ class JaxDeliveryService implements CarrierServiceInterface
                 'response_structure' => array_keys($responseData),
                 'cod_amount' => $jaxData['cod'],
                 'recipient' => $jaxData['nomContact'],
+                'reference_externe' => $jaxData['referenceExterne'],
             ]);
 
             return [
@@ -124,6 +178,7 @@ class JaxDeliveryService implements CarrierServiceInterface
                 'config_check' => [
                     'has_token' => !empty($this->config['api_token']),
                     'has_username' => !empty($this->config['username']),
+                    'token_length' => !empty($this->config['api_token']) ? strlen($this->config['api_token']) : 0,
                 ],
             ]);
             throw $e;
@@ -131,10 +186,7 @@ class JaxDeliveryService implements CarrierServiceInterface
             Log::error('❌ [JAX] Erreur générale', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'config_check' => [
-                    'has_token' => !empty($this->config['api_token']),
-                    'has_username' => !empty($this->config['username']),
-                ],
+                'request_data' => $jaxData ?? null,
             ]);
             throw new CarrierServiceException('Erreur JAX: ' . $e->getMessage(), 500, null, $e);
         }
@@ -186,6 +238,10 @@ class JaxDeliveryService implements CarrierServiceInterface
 
     public function getShipmentStatus(string $trackingNumber): array
     {
+        Log::info('🔍 [JAX] Récupération statut colis', [
+            'tracking_number' => $trackingNumber,
+        ]);
+
         try {
             $token = $this->getApiToken();
             
@@ -194,11 +250,26 @@ class JaxDeliveryService implements CarrierServiceInterface
                 'Accept' => 'application/json',
             ])->timeout(15)->get($this->baseUrl . "/user/colis/getstatubyean/{$trackingNumber}");
 
+            Log::info('📥 [JAX] Réponse statut reçue', [
+                'tracking_number' => $trackingNumber,
+                'status' => $response->status(),
+                'successful' => $response->successful(),
+            ]);
+
             if ($response->failed()) {
-                throw new CarrierServiceException("Erreur JAX statut: " . $response->body());
+                throw new CarrierServiceException(
+                    "Erreur JAX statut (HTTP {$response->status()}): " . $response->body(),
+                    $response->status()
+                );
             }
 
             $responseData = $response->json();
+
+            Log::info('✅ [JAX] Statut récupéré avec succès', [
+                'tracking_number' => $trackingNumber,
+                'raw_status' => $responseData['status'] ?? 'unknown',
+                'response_keys' => array_keys($responseData ?? []),
+            ]);
 
             return [
                 'success' => true,
@@ -207,7 +278,10 @@ class JaxDeliveryService implements CarrierServiceInterface
             ];
 
         } catch (\Exception $e) {
-            Log::error('❌ [JAX] Erreur statut', ['tracking' => $trackingNumber, 'error' => $e->getMessage()]);
+            Log::error('❌ [JAX] Erreur récupération statut', [
+                'tracking_number' => $trackingNumber, 
+                'error' => $e->getMessage()
+            ]);
             throw new CarrierServiceException('Erreur JAX statut: ' . $e->getMessage(), 500, null, $e);
         }
     }
@@ -225,25 +299,38 @@ class JaxDeliveryService implements CarrierServiceInterface
                 'Accept' => 'application/json',
             ])->timeout(10)->get($this->baseUrl . '/gouvernorats');
 
-            Log::info('🧪 [JAX] Réponse test', [
+            Log::info('🧪 [JAX] Réponse test connexion', [
                 'status' => $response->status(),
                 'successful' => $response->successful(),
+                'response_size' => strlen($response->body()),
             ]);
 
             if ($response->successful()) {
+                $responseData = $response->json();
                 return [
                     'success' => true,
                     'message' => 'Connexion JAX réussie - Token valide',
+                    'data' => [
+                        'gouvernorats_count' => is_array($responseData) ? count($responseData) : 0,
+                        'response_keys' => is_array($responseData) ? array_keys($responseData) : [],
+                    ],
                 ];
             }
 
             return [
                 'success' => false,
                 'message' => "Échec connexion JAX (HTTP {$response->status()}) - Vérifiez le token",
+                'details' => $response->body(),
             ];
 
         } catch (\Exception $e) {
-            Log::error('❌ [JAX] Erreur test connexion', ['error' => $e->getMessage()]);
+            Log::error('❌ [JAX] Erreur test connexion', [
+                'error' => $e->getMessage(),
+                'config_check' => [
+                    'has_token' => !empty($this->config['api_token']),
+                    'token_length' => !empty($this->config['api_token']) ? strlen($this->config['api_token']) : 0,
+                ],
+            ]);
             return [
                 'success' => false,
                 'message' => 'Erreur connexion JAX: ' . $e->getMessage(),
@@ -275,23 +362,96 @@ class JaxDeliveryService implements CarrierServiceInterface
     }
 
     /**
-     * Extraire le numéro de suivi de la réponse JAX
+     * 🆕 NOUVELLE MÉTHODE : Analyser la structure de la réponse pour debug
+     */
+    protected function analyzeResponseStructure($data): array
+    {
+        if (!is_array($data)) {
+            return ['type' => gettype($data), 'value' => $data];
+        }
+
+        $analysis = [];
+        foreach ($data as $key => $value) {
+            $analysis[$key] = [
+                'type' => gettype($value),
+                'empty' => empty($value),
+            ];
+            
+            if (is_array($value)) {
+                $analysis[$key]['keys'] = array_keys($value);
+            } elseif (is_string($value)) {
+                $analysis[$key]['length'] = strlen($value);
+                $analysis[$key]['preview'] = substr($value, 0, 20);
+            }
+        }
+
+        return $analysis;
+    }
+
+    /**
+     * 🔧 AMÉLIORATION : Extraction du numéro de suivi avec plus de fallbacks
      */
     protected function extractTrackingNumber($responseData): ?string
     {
+        if (!is_array($responseData)) {
+            Log::warning('[JAX] Réponse n\'est pas un array', ['response' => $responseData]);
+            return null;
+        }
+
         // Tenter différents champs possibles dans la réponse JAX
-        $possibleFields = ['ean', 'id', 'barcode', 'tracking_number', 'reference'];
+        $possibleFields = [
+            'ean', 'id', 'barcode', 'tracking_number', 'reference', 
+            'colis_id', 'numero_suivi', 'tracking', 'code_barre',
+            'numero', 'num_suivi', 'order_id'
+        ];
         
         foreach ($possibleFields as $field) {
+            // Niveau principal
             if (isset($responseData[$field]) && !empty($responseData[$field])) {
-                return (string) $responseData[$field];
+                $value = (string) $responseData[$field];
+                Log::info('[JAX] Tracking trouvé dans champ principal', [
+                    'field' => $field,
+                    'value' => $value,
+                ]);
+                return $value;
             }
             
-            // Vérifier aussi dans data si présent
+            // Dans 'data' si présent
             if (isset($responseData['data'][$field]) && !empty($responseData['data'][$field])) {
-                return (string) $responseData['data'][$field];
+                $value = (string) $responseData['data'][$field];
+                Log::info('[JAX] Tracking trouvé dans data', [
+                    'field' => $field,
+                    'value' => $value,
+                ]);
+                return $value;
+            }
+            
+            // Dans 'result' si présent
+            if (isset($responseData['result'][$field]) && !empty($responseData['result'][$field])) {
+                $value = (string) $responseData['result'][$field];
+                Log::info('[JAX] Tracking trouvé dans result', [
+                    'field' => $field,
+                    'value' => $value,
+                ]);
+                return $value;
             }
         }
+        
+        // Si aucun champ standard trouvé, chercher des valeurs numériques
+        foreach ($responseData as $key => $value) {
+            if (is_numeric($value) && strlen((string)$value) >= 5) {
+                Log::info('[JAX] Tracking possible trouvé (valeur numérique)', [
+                    'field' => $key,
+                    'value' => $value,
+                ]);
+                return (string) $value;
+            }
+        }
+        
+        Log::warning('[JAX] Aucun numéro de suivi trouvé', [
+            'available_fields' => array_keys($responseData),
+            'response_sample' => array_slice($responseData, 0, 3, true),
+        ]);
         
         return null;
     }
@@ -409,6 +569,13 @@ class JaxDeliveryService implements CarrierServiceInterface
             'Échec' => 'delivery_failed',
             'Retour' => 'in_return',
             'Problème' => 'anomaly',
+            'Validé' => 'validated',
+            'Récupéré' => 'picked_up_by_carrier',
+            'En livraison' => 'in_transit',
+            'Livraison échouée' => 'delivery_failed',
+            'En retour' => 'in_return',
+            'Retourné' => 'returned',
+            'Anomalie' => 'anomaly',
         ];
 
         $internalStatus = $mapping[(string)$jaxStatus] ?? 'unknown';
@@ -420,5 +587,83 @@ class JaxDeliveryService implements CarrierServiceInterface
         ]);
 
         return $internalStatus;
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Valider les données avant envoi
+     */
+    protected function validateShipmentData(array $data): array
+    {
+        $errors = [];
+        
+        // Validation des champs obligatoires
+        $requiredFields = [
+            'recipient_name' => 'Nom du destinataire',
+            'recipient_phone' => 'Téléphone du destinataire',
+            'recipient_address' => 'Adresse de livraison',
+            'recipient_governorate' => 'Gouvernorat',
+        ];
+        
+        foreach ($requiredFields as $field => $label) {
+            if (empty($data[$field])) {
+                $errors[] = "{$label} manquant";
+            }
+        }
+        
+        // Validation du téléphone
+        if (!empty($data['recipient_phone'])) {
+            $cleanPhone = $this->cleanPhoneNumber($data['recipient_phone']);
+            if (strlen($cleanPhone) < 8) {
+                $errors[] = "Numéro de téléphone invalide: {$data['recipient_phone']}";
+            }
+        }
+        
+        // Validation du COD
+        if (isset($data['cod_amount']) && $data['cod_amount'] < 0) {
+            $errors[] = "Montant COD ne peut pas être négatif";
+        }
+        
+        return $errors;
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Obtenir les informations de configuration
+     */
+    public function getConfigInfo(): array
+    {
+        return [
+            'carrier' => 'JAX Delivery',
+            'base_url' => $this->baseUrl,
+            'has_token' => !empty($this->config['api_token']),
+            'has_username' => !empty($this->config['username']),
+            'token_length' => !empty($this->config['api_token']) ? strlen($this->config['api_token']) : 0,
+            'environment' => $this->config['environment'] ?? 'test',
+        ];
+    }
+
+    /**
+     * 🆕 NOUVELLE MÉTHODE : Test spécifique pour créer un colis de test
+     */
+    public function createTestShipment(): array
+    {
+        $testData = [
+            'external_reference' => 'TEST_JAX_' . time(),
+            'recipient_name' => 'Client Test JAX',
+            'recipient_phone' => '12345678',
+            'recipient_phone_2' => '87654321',
+            'recipient_address' => 'Adresse Test JAX, Rue de Test',
+            'recipient_governorate' => 'Tunis',
+            'recipient_city' => 'Tunis',
+            'cod_amount' => 50,
+            'content_description' => 'Colis de test JAX - NE PAS LIVRER',
+            'weight' => 1.0,
+            'notes' => 'COLIS DE TEST - IGNORER',
+        ];
+
+        Log::info('🧪 [JAX] Création colis de test', [
+            'test_data' => $testData,
+        ]);
+
+        return $this->createShipment($testData);
     }
 }

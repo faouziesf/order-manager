@@ -209,6 +209,188 @@ class Pickup extends Model
     }
 
     // ========================================
+    // 🆕 MÉTHODES DE DIAGNOSTIC - NOUVELLES FONCTIONNALITÉS
+    // ========================================
+
+    /**
+     * 🆕 MÉTHODE DE DIAGNOSTIC : Analyser pourquoi la validation échoue
+     */
+    public function diagnoseValidationIssues(): array
+    {
+        $issues = [];
+        $recommendations = [];
+
+        Log::info('🔍 [PICKUP DIAGNOSTIC] Début diagnostic', [
+            'pickup_id' => $this->id,
+            'status' => $this->status,
+            'carrier' => $this->carrier_slug,
+        ]);
+
+        // 1. Vérifier le statut
+        if ($this->status !== self::STATUS_DRAFT) {
+            $issues[] = "❌ Statut incorrect: {$this->status} (requis: draft)";
+            $recommendations[] = "Remettre le pickup en statut 'draft'";
+        } else {
+            $issues[] = "✅ Statut correct: draft";
+        }
+
+        // 2. Vérifier les shipments
+        $shipmentsCount = $this->shipments()->count();
+        if ($shipmentsCount === 0) {
+            $issues[] = "❌ Aucune expédition dans ce pickup";
+            $recommendations[] = "Ajouter des commandes au pickup";
+        } else {
+            $issues[] = "✅ {$shipmentsCount} expédition(s) trouvée(s)";
+        }
+
+        // 3. Vérifier la configuration
+        if (!$this->deliveryConfiguration) {
+            $issues[] = "❌ Configuration transporteur manquante";
+            $recommendations[] = "Associer une configuration valide";
+        } else {
+            $config = $this->deliveryConfiguration;
+            
+            if (!$config->is_active) {
+                $issues[] = "❌ Configuration inactive";
+                $recommendations[] = "Activer la configuration transporteur";
+            } else {
+                $issues[] = "✅ Configuration active";
+            }
+
+            if (!$config->is_valid) {
+                $issues[] = "❌ Configuration invalide";
+                $recommendations[] = "Vérifier les credentials de la configuration";
+            } else {
+                $issues[] = "✅ Configuration valide";
+            }
+
+            // Test de connexion
+            try {
+                $connectionTest = $config->testConnection();
+                if ($connectionTest['success']) {
+                    $issues[] = "✅ Test de connexion réussi";
+                } else {
+                    $issues[] = "❌ Test de connexion échoué: " . $connectionTest['message'];
+                    $recommendations[] = "Vérifier le token/credentials dans la configuration";
+                }
+            } catch (\Exception $e) {
+                $issues[] = "❌ Erreur test connexion: " . $e->getMessage();
+                $recommendations[] = "Vérifier la configuration réseau et les tokens";
+            }
+
+            // Vérifier les détails de configuration
+            $configDetails = [];
+            if (empty($config->username)) {
+                $configDetails[] = "Username/compte manquant";
+            }
+            if (empty($config->password)) {
+                $configDetails[] = "Token/mot de passe manquant";
+            }
+            if (!empty($configDetails)) {
+                $issues[] = "⚠️ Configuration incomplète: " . implode(', ', $configDetails);
+                $recommendations[] = "Compléter tous les champs requis dans la configuration";
+            }
+        }
+
+        // 4. Vérifier chaque shipment en détail
+        $shipmentIssues = [];
+        foreach ($this->shipments as $index => $shipment) {
+            $shipmentData = [];
+            
+            $recipientInfo = $shipment->recipient_info ?: [];
+            if (empty($recipientInfo['name'])) {
+                $shipmentData[] = "Nom destinataire manquant";
+            }
+            if (empty($recipientInfo['phone']) || strlen($recipientInfo['phone']) < 8) {
+                $shipmentData[] = "Téléphone invalide/manquant";
+            }
+            if (empty($recipientInfo['address'])) {
+                $shipmentData[] = "Adresse manquante";
+            }
+            if (empty($recipientInfo['governorate'])) {
+                $shipmentData[] = "Gouvernorat manquant";
+            }
+            if (empty($recipientInfo['city'])) {
+                $shipmentData[] = "Ville manquante";
+            }
+            if ($shipment->cod_amount < 0) {
+                $shipmentData[] = "Montant COD invalide";
+            }
+
+            if (!empty($shipmentData)) {
+                $shipmentIssues["Shipment #{$shipment->id}"] = $shipmentData;
+            }
+        }
+
+        if (!empty($shipmentIssues)) {
+            $issues[] = "⚠️ Problèmes avec les expéditions:";
+            foreach ($shipmentIssues as $shipmentId => $problems) {
+                $issues[] = "  {$shipmentId}: " . implode(', ', $problems);
+            }
+            $recommendations[] = "Corriger les données des expéditions (voir détails ci-dessus)";
+        } else if ($shipmentsCount > 0) {
+            $issues[] = "✅ Toutes les expéditions ont des données valides";
+        }
+
+        // 5. Test de préparation des données API
+        if ($this->deliveryConfiguration && $shipmentsCount > 0) {
+            try {
+                $firstShipment = $this->shipments->first();
+                $testData = $this->prepareShipmentDataForApi($firstShipment);
+                $issues[] = "✅ Préparation données API réussie";
+            } catch (\Exception $e) {
+                $issues[] = "❌ Erreur préparation données API: " . $e->getMessage();
+                $recommendations[] = "Vérifier le format des données des expéditions";
+            }
+        }
+
+        $result = [
+            'can_be_validated' => $this->can_be_validated,
+            'issues' => $issues,
+            'recommendations' => $recommendations,
+            'shipments_count' => $shipmentsCount,
+            'config_summary' => $this->deliveryConfiguration ? [
+                'id' => $this->deliveryConfiguration->id,
+                'name' => $this->deliveryConfiguration->integration_name,
+                'carrier' => $this->deliveryConfiguration->carrier_slug,
+                'active' => $this->deliveryConfiguration->is_active,
+                'valid' => $this->deliveryConfiguration->is_valid,
+                'environment' => $this->deliveryConfiguration->environment,
+                'has_username' => !empty($this->deliveryConfiguration->username),
+                'has_password' => !empty($this->deliveryConfiguration->password),
+            ] : null,
+            'diagnostic_timestamp' => now()->toISOString(),
+        ];
+
+        Log::info('✅ [PICKUP DIAGNOSTIC] Diagnostic terminé', [
+            'pickup_id' => $this->id,
+            'can_be_validated' => $result['can_be_validated'],
+            'issues_count' => count($issues),
+            'recommendations_count' => count($recommendations),
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * 🆕 MÉTHODE DE VÉRIFICATION : Test rapide de validité
+     */
+    public function quickValidityCheck(): array
+    {
+        $checks = [
+            'status_ok' => $this->status === self::STATUS_DRAFT,
+            'has_shipments' => $this->shipments()->exists(),
+            'has_config' => !!$this->deliveryConfiguration,
+            'config_active' => $this->deliveryConfiguration?->is_active ?? false,
+            'config_valid' => $this->deliveryConfiguration?->is_valid ?? false,
+        ];
+
+        $checks['all_ok'] = collect($checks)->every(fn($check) => $check === true);
+
+        return $checks;
+    }
+
+    // ========================================
     // 🔧 MÉTHODE VALIDATE COMPLÈTEMENT REÉCRITE ET AMÉLIORÉE
     // ========================================
 
@@ -222,6 +404,7 @@ class Pickup extends Model
             'carrier' => $this->carrier_slug,
             'can_be_validated' => $this->can_be_validated,
             'shipments_count' => $this->shipments()->count(),
+            'admin_id' => $this->admin_id,
         ]);
 
         // Vérifications préliminaires
@@ -251,26 +434,40 @@ class Pickup extends Model
             $successfulShipments = 0;
             $errors = [];
             $trackingNumbers = [];
+            $detailedResults = [];
 
             // 🔧 CORRECTION : Utiliser la méthode simplifiée getApiConfig()
             $apiConfig = $this->deliveryConfiguration->getApiConfig();
             
             Log::info('✅ [PICKUP VALIDATE] Configuration API préparée', [
+                'pickup_id' => $this->id,
                 'carrier' => $this->carrier_slug,
                 'config_keys' => array_keys($apiConfig),
                 'has_token' => !empty($apiConfig['api_token']),
                 'has_username' => !empty($apiConfig['username']),
+                'environment' => $apiConfig['environment'] ?? 'unknown',
             ]);
 
             // Créer le service transporteur
             $carrierService = SimpleCarrierFactory::create($this->carrier_slug, $apiConfig);
 
             // 🆕 CORRECTION MAJEURE : Traiter chaque shipment individuellement sans arrêter en cas d'échec
-            foreach ($this->shipments as $shipment) {
+            foreach ($this->shipments as $index => $shipment) {
+                $shipmentResult = [
+                    'shipment_id' => $shipment->id,
+                    'order_id' => $shipment->order_id,
+                    'success' => false,
+                    'tracking_number' => null,
+                    'error' => null,
+                    'api_response' => null,
+                ];
+
                 try {
                     Log::info('📦 [PICKUP VALIDATE] Traitement shipment', [
                         'shipment_id' => $shipment->id,
                         'order_id' => $shipment->order_id,
+                        'index' => $index + 1,
+                        'total' => $this->shipments->count(),
                     ]);
 
                     // Préparer les données selon le format API requis
@@ -281,6 +478,8 @@ class Pickup extends Model
                         'recipient_name' => $shipmentData['recipient_name'],
                         'cod_amount' => $shipmentData['cod_amount'],
                         'governorate' => $shipmentData['recipient_governorate'],
+                        'phone' => $shipmentData['recipient_phone'],
+                        'external_reference' => $shipmentData['external_reference'],
                     ]);
 
                     // 🔥 APPEL CRITIQUE : Créer le colis dans le compte transporteur
@@ -299,10 +498,15 @@ class Pickup extends Model
                         $trackingNumbers[] = $result['tracking_number'];
                         $successfulShipments++;
 
+                        $shipmentResult['success'] = true;
+                        $shipmentResult['tracking_number'] = $result['tracking_number'];
+                        $shipmentResult['api_response'] = $result['response'];
+
                         Log::info('✅ [PICKUP VALIDATE] Colis créé avec succès dans le compte transporteur', [
                             'shipment_id' => $shipment->id,
                             'tracking_number' => $result['tracking_number'],
                             'carrier' => $this->carrier_slug,
+                            'cod_amount' => $shipmentData['cod_amount'],
                         ]);
 
                         // Mettre à jour la commande si elle existe
@@ -317,37 +521,56 @@ class Pickup extends Model
                     } else {
                         $errorMsg = "Erreur API pour shipment #{$shipment->id}: " . ($result['error'] ?? 'Réponse invalide du transporteur');
                         $errors[] = $errorMsg;
+                        $shipmentResult['error'] = $errorMsg;
+                        $shipmentResult['api_response'] = $result['response'] ?? null;
+                        
                         Log::error('❌ [PICKUP VALIDATE] ' . $errorMsg, [
                             'shipment_id' => $shipment->id,
                             'carrier_response' => $result,
+                            'shipment_data' => $shipmentData,
                         ]);
                         
                         // 🆕 CORRECTION : Marquer le shipment comme problématique mais continuer
-                        $shipment->update(['status' => 'problem']);
+                        $shipment->update([
+                            'status' => 'problem',
+                            'carrier_response' => $result['response'] ?? null,
+                        ]);
                     }
 
                 } catch (CarrierServiceException $e) {
                     $errorMsg = "Erreur transporteur shipment #{$shipment->id}: {$e->getMessage()}";
                     $errors[] = $errorMsg;
+                    $shipmentResult['error'] = $errorMsg;
+                    $shipmentResult['api_response'] = $e->getCarrierResponse();
+                    
                     Log::error('❌ [PICKUP VALIDATE] ' . $errorMsg, [
                         'shipment_id' => $shipment->id,
                         'carrier_response' => $e->getCarrierResponse(),
+                        'carrier_error_code' => $e->getCode(),
                     ]);
                     
                     // 🆕 CORRECTION : Marquer comme problématique et continuer
-                    $shipment->update(['status' => 'carrier_error']);
+                    $shipment->update([
+                        'status' => 'carrier_error',
+                        'carrier_response' => $e->getCarrierResponse(),
+                    ]);
                     
                 } catch (\Exception $e) {
                     $errorMsg = "Erreur technique shipment #{$shipment->id}: {$e->getMessage()}";
                     $errors[] = $errorMsg;
+                    $shipmentResult['error'] = $errorMsg;
+                    
                     Log::error('❌ [PICKUP VALIDATE] ' . $errorMsg, [
                         'shipment_id' => $shipment->id,
                         'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
                     ]);
                     
                     // 🆕 CORRECTION : Marquer comme problématique et continuer
                     $shipment->update(['status' => 'technical_error']);
                 }
+
+                $detailedResults[] = $shipmentResult;
             }
 
             // 🆕 CORRECTION MAJEURE : Déterminer le statut du pickup selon les résultats
@@ -380,6 +603,8 @@ class Pickup extends Model
                     'errors' => $errors,
                     'tracking_numbers' => $trackingNumbers,
                     'partial_success' => $successfulShipments < $totalShipments,
+                    'detailed_results' => $detailedResults,
+                    'final_status' => $status,
                 ];
 
             } else {
@@ -390,6 +615,7 @@ class Pickup extends Model
                 Log::error('❌ [PICKUP VALIDATE] Aucun shipment validé', [
                     'pickup_id' => $this->id,
                     'errors' => $errors,
+                    'detailed_results' => $detailedResults,
                 ]);
 
                 return [
@@ -397,6 +623,7 @@ class Pickup extends Model
                     'errors' => $errors,
                     'successful_shipments' => 0,
                     'total_shipments' => $totalShipments,
+                    'detailed_results' => $detailedResults,
                 ];
             }
 
@@ -442,6 +669,7 @@ class Pickup extends Model
             'phone' => $data['recipient_phone'],
             'governorate' => $data['recipient_governorate'],
             'cod' => $data['cod_amount'],
+            'reference' => $data['external_reference'],
         ]);
 
         return $data;
@@ -517,6 +745,100 @@ class Pickup extends Model
     }
 
     /**
+     * 🆕 MÉTHODE DE RÉPARATION : Réparer un pickup problématique
+     */
+    public function repair(): array
+    {
+        Log::info('🔧 [PICKUP REPAIR] Début réparation', [
+            'pickup_id' => $this->id,
+            'current_status' => $this->status,
+        ]);
+
+        $repairActions = [];
+        $issuesFixed = 0;
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Remettre en statut draft si problématique
+            if ($this->status === self::STATUS_PROBLEM) {
+                $this->update(['status' => self::STATUS_DRAFT]);
+                $repairActions[] = "Statut remis à 'draft'";
+                $issuesFixed++;
+            }
+
+            // 2. Réparer les shipments problématiques
+            $problemShipments = $this->shipments()->whereIn('status', ['problem', 'carrier_error', 'technical_error'])->get();
+            
+            foreach ($problemShipments as $shipment) {
+                $shipment->update(['status' => 'created']);
+                $repairActions[] = "Shipment #{$shipment->id} remis à 'created'";
+                $issuesFixed++;
+            }
+
+            // 3. Vérifier et réparer les données manquantes
+            foreach ($this->shipments as $shipment) {
+                $recipientInfo = $shipment->recipient_info ?: [];
+                $needsUpdate = false;
+                $updates = [];
+
+                if (empty($recipientInfo['name'])) {
+                    $recipientInfo['name'] = 'Client';
+                    $needsUpdate = true;
+                    $updates[] = 'nom ajouté';
+                }
+
+                if (empty($recipientInfo['governorate'])) {
+                    $recipientInfo['governorate'] = 'Tunis';
+                    $needsUpdate = true;
+                    $updates[] = 'gouvernorat par défaut';
+                }
+
+                if (empty($recipientInfo['city'])) {
+                    $recipientInfo['city'] = 'Tunis';
+                    $needsUpdate = true;
+                    $updates[] = 'ville par défaut';
+                }
+
+                if ($needsUpdate) {
+                    $shipment->update(['recipient_info' => $recipientInfo]);
+                    $repairActions[] = "Shipment #{$shipment->id}: " . implode(', ', $updates);
+                    $issuesFixed++;
+                }
+            }
+
+            DB::commit();
+
+            Log::info('✅ [PICKUP REPAIR] Réparation terminée', [
+                'pickup_id' => $this->id,
+                'issues_fixed' => $issuesFixed,
+                'actions' => $repairActions,
+            ]);
+
+            return [
+                'success' => true,
+                'issues_fixed' => $issuesFixed,
+                'actions' => $repairActions,
+                'can_be_validated_now' => $this->fresh()->can_be_validated,
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('❌ [PICKUP REPAIR] Erreur réparation', [
+                'pickup_id' => $this->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'actions' => $repairActions,
+            ];
+        }
+    }
+
+    /**
      * Obtenir un résumé du pickup
      */
     public function getSummary()
@@ -562,6 +884,38 @@ class Pickup extends Model
         $validatedShipments = $this->shipments()->where('status', 'validated')->count();
         
         return $totalShipments > 0 && $totalShipments === $validatedShipments;
+    }
+
+    /**
+     * 🆕 MÉTHODE UTILITAIRE : Obtenir les statistiques détaillées
+     */
+    public function getDetailedStats(): array
+    {
+        $shipments = $this->shipments;
+        
+        $stats = [
+            'total_shipments' => $shipments->count(),
+            'by_status' => $shipments->groupBy('status')->map->count(),
+            'total_weight' => $shipments->sum('weight'),
+            'total_cod' => $shipments->sum('cod_amount'),
+            'total_pieces' => $shipments->sum('nb_pieces'),
+            'with_tracking' => $shipments->whereNotNull('pos_barcode')->count(),
+            'data_complete' => 0,
+        ];
+
+        // Compter les shipments avec données complètes
+        foreach ($shipments as $shipment) {
+            $info = $shipment->recipient_info ?: [];
+            if (!empty($info['name']) && !empty($info['phone']) && !empty($info['address'])) {
+                $stats['data_complete']++;
+            }
+        }
+
+        $stats['completion_rate'] = $stats['total_shipments'] > 0 
+            ? round(($stats['data_complete'] / $stats['total_shipments']) * 100, 1)
+            : 0;
+
+        return $stats;
     }
 
     // ========================================
@@ -619,6 +973,15 @@ class Pickup extends Model
             ->whereNotIn('status', [self::STATUS_PICKED_UP]);
     }
 
+    public function scopeValidatable($query)
+    {
+        return $query->where('status', self::STATUS_DRAFT)
+            ->whereHas('shipments')
+            ->whereHas('deliveryConfiguration', function($q) {
+                $q->where('is_active', true)->where('is_valid', true);
+            });
+    }
+
     // ========================================
     // MÉTHODES STATIQUES
     // ========================================
@@ -642,11 +1005,7 @@ class Pickup extends Model
      */
     public static function getValidatable($adminId = null)
     {
-        $query = static::draft()
-            ->whereHas('shipments')
-            ->whereHas('deliveryConfiguration', function($q) {
-                $q->where('is_active', true);
-            });
+        $query = static::validatable();
             
         if ($adminId) {
             $query->where('admin_id', $adminId);
@@ -700,6 +1059,42 @@ class Pickup extends Model
             ->delete();
     }
 
+    /**
+     * 🆕 MÉTHODE STATIQUE : Diagnostic global des pickups problématiques
+     */
+    public static function diagnoseProblematicPickups($adminId = null): array
+    {
+        $query = static::where('status', self::STATUS_PROBLEM);
+        
+        if ($adminId) {
+            $query->where('admin_id', $adminId);
+        }
+
+        $problematicPickups = $query->with(['deliveryConfiguration', 'shipments'])->get();
+        
+        $diagnosis = [
+            'total_problematic' => $problematicPickups->count(),
+            'by_carrier' => [],
+            'common_issues' => [],
+            'repairable' => 0,
+        ];
+
+        foreach ($problematicPickups as $pickup) {
+            $carrier = $pickup->carrier_slug;
+            if (!isset($diagnosis['by_carrier'][$carrier])) {
+                $diagnosis['by_carrier'][$carrier] = 0;
+            }
+            $diagnosis['by_carrier'][$carrier]++;
+
+            // Vérifier si réparable
+            if ($pickup->shipments->isNotEmpty() && $pickup->deliveryConfiguration && $pickup->deliveryConfiguration->is_active) {
+                $diagnosis['repairable']++;
+            }
+        }
+
+        return $diagnosis;
+    }
+
     // ========================================
     // ÉVÉNEMENTS DU MODÈLE
     // ========================================
@@ -729,6 +1124,15 @@ class Pickup extends Model
                     'to' => $newStatus,
                 ]);
             }
+        });
+
+        static::created(function ($pickup) {
+            Log::info('✨ [PICKUP] Nouveau pickup créé', [
+                'pickup_id' => $pickup->id,
+                'admin_id' => $pickup->admin_id,
+                'carrier' => $pickup->carrier_slug,
+                'pickup_date' => $pickup->pickup_date,
+            ]);
         });
     }
 }
