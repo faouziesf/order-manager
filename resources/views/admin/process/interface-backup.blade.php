@@ -4,25 +4,24 @@
 @section('page-title', 'Interface de Traitement')
 
 @section('css')
-<link rel="stylesheet" href="{{ asset('css/responsive-system.css') }}">
 <style>
     :root {
-        --process-primary: #4f46e5;
-        --process-success: #10b981;
-        --process-warning: #f59e0b;
-        --process-danger: #ef4444;
-        --process-info: #0ea5e9;
-        --process-restock: #059669;
+        --process-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --process-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --process-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        --process-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        --process-info: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        --process-restock: linear-gradient(135deg, #10b981 0%, #059669 100%);
         --glass-bg: rgba(255, 255, 255, 0.95);
-        --glass-border: rgba(229, 231, 235, 0.8);
-        --shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-        --border-radius-xl: 16px;
-        --border-radius-2xl: 20px;
-        --transition-smooth: all 0.3s ease;
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --shadow-elevated: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        --border-radius-xl: 24px;
+        --border-radius-2xl: 32px;
+        --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     body {
-        background: #f1f5f9;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         font-family: 'Inter', sans-serif;
         overflow-x: hidden;
     }
@@ -195,7 +194,7 @@
     }
 
     .order-header {
-        background: #f8fafc;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         padding: 1rem 1.5rem;
         border-bottom: 1px solid #e5e7eb;
         display: flex;
@@ -221,10 +220,10 @@
         letter-spacing: 0.5px;
     }
 
-    .status-nouvelle { background: #e0e7ff; color: #4338ca; }
-    .status-datée { background: #fef3c7; color: #92400e; }
-    .status-confirmée { background: #d1fae5; color: #065f46; }
-    .status-ancienne { background: #fee2e2; color: #991b1b; }
+    .status-nouvelle { background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); color: #5b21b6; }
+    .status-datée { background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%); color: #92400e; }
+    .status-confirmée { background: linear-gradient(135deg, #dcfce7 0%, #86efac 100%); color: #166534; }
+    .status-ancienne { background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%); color: #9b2c2c; }
 
     .order-meta {
         display: flex;
@@ -271,39 +270,39 @@
     }
 
     .tag-priority-urgente {
-        background: #fee2e2;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
         color: #dc2626;
-        border: 1px solid #fca5a5;
+        border: 1px solid #f87171;
     }
 
     .tag-priority-vip {
-        background: #fef3c7;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
         color: #92400e;
-        border: 1px solid #fbbf24;
+        border: 1px solid #f59e0b;
     }
 
     .tag-priority-normale {
-        background: #e0e7ff;
-        color: #4338ca;
-        border: 1px solid #a5b4fc;
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        color: #3730a3;
+        border: 1px solid #6366f1;
     }
 
     .tag-assigned {
-        background: #d1fae5;
-        color: #065f46;
-        border: 1px solid #6ee7b7;
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        color: #166534;
+        border: 1px solid #22c55e;
     }
 
     .tag-suspended {
-        background: #fee2e2;
-        color: #991b1b;
-        border: 1px solid #fca5a5;
+        background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);
+        color: #9b2c2c;
+        border: 1px solid #ef4444;
     }
 
     .tag-scheduled {
-        background: #fef3c7;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
         color: #92400e;
-        border: 1px solid #fbbf24;
+        border: 1px solid #f59e0b;
     }
 
     /* Alertes spéciales */
@@ -315,13 +314,13 @@
     }
 
     .duplicate-alert {
-        background: #fef3c7;
-        border: 2px solid #fbbf24;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde047 100%);
+        border: 2px solid #f59e0b;
     }
 
     .restock-info {
-        background: #d1fae5;
-        border: 1px solid #6ee7b7;
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        border: 1px solid #86efac;
     }
 
     .duplicate-alert.show, .restock-info.show {
@@ -426,120 +425,6 @@
     .form-control.is-invalid {
         border-color: #ef4444;
         box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-    }
-
-    .phone-input-wrapper {
-        display: flex;
-        gap: 0.5rem;
-        align-items: stretch;
-    }
-
-    .phone-input-wrapper .form-control {
-        flex: 1;
-    }
-
-    .btn-call-direct {
-        background: var(--process-success);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0;
-        width: 48px;
-        min-width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: var(--transition-smooth);
-        font-size: 1.25rem;
-        flex-shrink: 0;
-    }
-
-    .btn-call-direct:hover {
-        background: #059669;
-        transform: scale(1.05);
-    }
-
-    .btn-call-direct:active {
-        transform: scale(0.95);
-    }
-
-    /* Queue selector dropdown pour mobile */
-    .queue-selector-mobile {
-        display: none;
-        width: 100%;
-    }
-
-    .queue-select {
-        width: 100%;
-        padding: 0.75rem 1rem;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.15);
-        color: white;
-        font-weight: 600;
-        font-size: 0.95rem;
-        cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 1rem center;
-        padding-right: 2.5rem;
-    }
-
-    .queue-select option {
-        background: #4f46e5;
-        color: white;
-        padding: 0.5rem;
-    }
-
-    /* Bouton historique dans le header */
-    .btn-history-header {
-        display: none;
-        background: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: white;
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 1.1rem;
-        transition: var(--transition-smooth);
-        flex-shrink: 0;
-    }
-
-    .btn-history-header:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: scale(1.05);
-    }
-
-    .btn-history-header:active {
-        transform: scale(0.95);
-    }
-
-    /* Panier collapsible */
-    .cart-toggle {
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .cart-toggle i.fa-chevron-down {
-        transition: transform 0.3s ease;
-    }
-
-    .cart-card.collapsed .cart-toggle i.fa-chevron-down {
-        transform: rotate(-180deg);
-    }
-
-    .cart-card.collapsed .cart-body {
-        display: none;
-    }
-
-    .cart-card.collapsed {
-        max-height: auto;
     }
 
     /* Zone panier */
@@ -908,7 +793,7 @@
     .btn-confirm { background: var(--process-success); color: white; }
     .btn-cancel { background: var(--process-danger); color: white; }
     .btn-schedule { background: var(--process-info); color: white; }
-    .btn-history { background: #6b7280; color: white; }
+    .btn-history { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; }
     .btn-reactivate { background: var(--process-restock); color: white; }
 
     .no-order {
@@ -930,581 +815,43 @@
         color: #374151;
     }
 
-    /* ============================================
-       RESPONSIVE MOBILE COMPLET
-       ============================================ */
-
-    /* Tablets et petits écrans */
+    /* Responsive */
     @media (max-width: 1200px) {
         .process-content {
             grid-template-columns: 1fr;
         }
-
+        
         .cart-card {
-            max-height: 450px;
-        }
-
-        .cart-items {
-            max-height: 280px;
+            max-height: 350px;
         }
     }
 
-    /* Tablettes en mode portrait */
-    @media (max-width: 1024px) {
-        .process-container {
-            margin: 0.75rem;
-        }
-
-        .queue-tabs {
-            gap: 0.75rem;
-        }
-
-        .queue-tab {
-            min-width: 120px;
-            font-size: 0.9rem;
-        }
-    }
-
-    /* Smartphones en mode paysage et petites tablettes */
     @media (max-width: 768px) {
-        body {
-            font-size: 14px;
-        }
-
-        .process-container {
-            margin: 0.5rem;
-            border-radius: 20px;
-            min-height: calc(100vh - 100px);
-        }
-
         .process-header {
-            flex-direction: row;
+            flex-direction: column;
             gap: 0.75rem;
-            align-items: center;
-            padding: 1rem;
-            flex-wrap: wrap;
+            text-align: center;
+            padding: 0.75rem 1rem;
         }
 
-        .process-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 1.5rem;
-        }
-
-        /* Masquer les onglets, afficher le dropdown */
         .queue-tabs {
-            display: none !important;
-        }
-
-        .queue-selector-mobile {
-            display: block;
-            flex: 1;
-            min-width: 200px;
-        }
-
-        /* Afficher le bouton historique dans le header */
-        .btn-history-header {
-            display: flex;
-        }
-
-        /* Masquer le bouton historique dans les actions */
-        #btn-history {
-            display: none !important;
-        }
-
-        /* Organiser les boutons d'action en grille 2x2 */
-        .action-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            flex-direction: column;
             gap: 0.5rem;
             width: 100%;
         }
-
-        .action-btn {
-            min-height: 48px;
-            padding: 0.75rem 0.5rem;
-            font-size: 0.85rem;
-        }
-
-        /* Bouton réactiver prend toute la largeur si visible */
-        #btn-reactivate {
-            grid-column: 1 / -1;
-        }
-
-        .process-content {
-            padding: 0.5rem;
-        }
-
-        .order-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.5rem;
-            padding: 0.75rem;
-        }
-
-        .order-id {
-            font-size: 1.25rem;
-        }
-
-        .order-meta {
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-
-        .meta-item {
-            font-size: 0.85rem;
-        }
-
-        .customer-form {
-            padding: 0.75rem;
-        }
-
+        
         .form-grid {
             grid-template-columns: 1fr;
-            gap: 0.75rem;
         }
-
-        .form-label {
-            font-size: 0.85rem;
-            margin-bottom: 0.375rem;
-        }
-
-        .form-control {
-            padding: 0.625rem 0.875rem;
-            font-size: 0.9rem;
-            min-height: 44px; /* Zone tactile optimisée */
-        }
-
-        textarea.form-control {
-            min-height: 100px;
-            padding: 0.75rem;
-        }
-
-        .btn-call-direct {
-            width: 44px;
-            min-width: 44px;
-            height: 44px;
-            font-size: 1.1rem;
-        }
-
-        .phone-input-wrapper {
-            gap: 0.375rem;
-        }
-
-        .cart-card {
-            max-height: 450px;
-        }
-
-        .cart-header {
-            padding: 0.875rem 1rem;
-        }
-
-        .cart-title {
-            font-size: 1rem;
-        }
-
-        .product-search {
-            padding: 0.75rem;
-        }
-
-        .search-input {
-            padding: 0.625rem 0.875rem 0.625rem 2.5rem;
-            font-size: 0.9rem;
-            min-height: 44px;
-        }
-
-        .cart-items {
-            padding: 0.75rem;
-            max-height: 220px;
-        }
-
-        .cart-item {
-            padding: 0.625rem;
-            gap: 0.375rem;
-            margin-bottom: 0.375rem;
-        }
-
-        .item-name {
-            font-size: 0.875rem;
-        }
-
-        .qty-btn {
-            width: 36px;
-            height: 36px;
-        }
-
-        .qty-input {
-            width: 50px;
-            font-size: 0.95rem;
-        }
-
-        .remove-btn {
-            width: 36px;
-            height: 36px;
-        }
-
-        .cart-summary {
-            padding: 0.75rem;
-        }
-
-        .actions-zone {
-            padding: 0.75rem;
-            margin-top: 0.5rem;
-        }
-
-        /* Pas de changement pour les boutons - déjà en grille 2x2 depuis 768px */
-        .action-btn {
-            padding: 0.75rem 0.5rem;
-            font-size: 0.85rem;
-            min-height: 44px;
-        }
-
-        .action-btn span {
-            font-size: 0.8rem;
-        }
-
-        .action-btn i {
-            font-size: 1rem;
-        }
-
-        .no-order {
-            padding: 2rem 1rem;
-        }
-
-        .no-order i {
-            font-size: 3rem;
-        }
-
-        .no-order h3 {
-            font-size: 1.25rem;
-        }
-
-        .no-order p {
-            font-size: 0.9rem;
-        }
-    }
-
-    /* Smartphones standard (iPhone 12/13, Galaxy S21, etc.) */
-    @media (max-width: 430px) {
-        .process-container {
-            margin: 0.375rem;
-            border-radius: 16px;
-        }
-
-        .process-header {
-            padding: 0.875rem 0.75rem;
-        }
-
-        .process-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 1.5rem;
-        }
-
-        .queue-tab {
-            padding: 0.75rem 0.875rem;
-            font-size: 0.875rem;
-        }
-
-        .queue-icon {
-            width: 26px;
-            height: 26px;
-            font-size: 1rem;
-        }
-
-        .queue-badge {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-        }
-
-        .process-content {
-            padding: 0.625rem;
-        }
-
-        .order-header {
-            padding: 0.875rem;
-        }
-
-        .order-id {
-            font-size: 1.125rem;
+        
+        .action-buttons {
             gap: 0.5rem;
         }
 
-        .order-id i {
-            font-size: 1.25rem;
-        }
-
-        .order-status {
-            padding: 5px 12px;
-            font-size: 0.75rem;
-        }
-
-        .meta-item {
-            font-size: 0.8rem;
-        }
-
-        .meta-icon {
-            width: 16px;
-            height: 16px;
-        }
-
-        .order-tag {
-            font-size: 0.7rem;
-            padding: 3px 8px;
-        }
-
-        .customer-form {
-            padding: 0.75rem;
-        }
-
-        .form-label {
-            font-size: 0.8rem;
-            margin-bottom: 0.375rem;
-        }
-
-        .form-control {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-            min-height: 42px;
-        }
-
-        .btn-call-direct {
-            width: 42px;
-            min-width: 42px;
-            height: 42px;
-            font-size: 1rem;
-        }
-
-        .form-grid {
-            gap: 0.625rem;
-        }
-
-        .cart-items {
-            max-height: 200px;
-        }
-
-        .cart-item {
-            padding: 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        .item-info {
-            flex: 1 1 100%;
-            margin-bottom: 0.5rem;
-        }
-
-        .quantity-controls {
-            flex: 1;
-        }
-
         .action-btn {
-            padding: 0.875rem;
-            min-height: 48px;
-            font-size: 0.875rem;
-        }
-    }
-
-    /* Petits smartphones (iPhone SE, petits Android) */
-    @media (max-width: 374px) {
-        html {
-            font-size: 14px;
-        }
-
-        .process-container {
-            margin: 0.25rem;
-            border-radius: 14px;
-        }
-
-        .process-header {
-            padding: 0.75rem;
-        }
-
-        .process-icon {
-            width: 44px;
-            height: 44px;
-            font-size: 1.35rem;
-        }
-
-        .queue-tab {
-            padding: 0.625rem 0.75rem;
-            font-size: 0.8rem;
-        }
-
-        .order-id {
-            font-size: 1rem;
-        }
-
-        .customer-form,
-        .order-header {
-            padding: 0.625rem;
-        }
-
-        .form-grid {
-            gap: 0.5rem;
-        }
-
-        .form-control {
-            padding: 0.5rem 0.625rem;
-            font-size: 0.8rem;
-            min-height: 40px;
-        }
-
-        .btn-call-direct {
-            width: 40px;
-            min-width: 40px;
-            height: 40px;
-            font-size: 0.9rem;
-            border-radius: 8px;
-        }
-
-        .phone-input-wrapper {
-            gap: 0.25rem;
-        }
-
-        .form-label {
-            font-size: 0.75rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .cart-header {
-            padding: 0.75rem;
-        }
-
-        .cart-items {
-            padding: 0.75rem;
-            max-height: 180px;
-        }
-
-        .cart-item {
-            padding: 0.625rem;
-        }
-
-        .qty-btn {
-            width: 32px;
-            height: 32px;
-        }
-
-        .qty-input {
-            width: 42px;
+            min-width: 100px;
+            padding: 8px 14px;
             font-size: 0.85rem;
-        }
-
-        .remove-btn {
-            width: 32px;
-            height: 32px;
-        }
-
-        .action-btn {
-            padding: 0.625rem 0.375rem;
-            font-size: 0.75rem;
-            min-height: 42px;
-        }
-
-        .action-btn span {
-            font-size: 0.75rem;
-        }
-
-        .action-btn i {
-            font-size: 0.9rem;
-        }
-
-        .btn-history-header {
-            width: 40px;
-            height: 40px;
-            font-size: 1rem;
-        }
-
-        .queue-select {
-            padding: 0.625rem 0.875rem;
-            font-size: 0.875rem;
-        }
-
-        .no-order {
-            padding: 1.5rem 0.75rem;
-        }
-
-        .no-order i {
-            font-size: 2.5rem;
-        }
-
-        .no-order h3 {
-            font-size: 1.1rem;
-        }
-
-        .no-order p {
-            font-size: 0.85rem;
-        }
-    }
-
-    /* Mode paysage mobile */
-    @media (max-height: 500px) and (orientation: landscape) {
-        .process-container {
-            min-height: auto;
-        }
-
-        .process-header {
-            padding: 0.5rem 1rem;
-        }
-
-        .process-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 1.25rem;
-        }
-
-        .queue-tabs {
-            flex-direction: row;
-            flex-wrap: wrap;
-        }
-
-        .queue-tab {
-            flex: 1;
-            min-width: 120px;
-            padding: 0.5rem 0.75rem;
-        }
-
-        .cart-items {
-            max-height: 150px;
-        }
-
-        .no-order {
-            padding: 1rem;
-        }
-
-        .no-order i {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-    }
-
-    /* Optimisations tactiles */
-    @media (hover: none) and (pointer: coarse) {
-        /* Augmenter les zones tactiles sur appareilstactiles */
-        .queue-tab,
-        .action-btn,
-        .form-control,
-        .qty-btn,
-        .remove-btn,
-        .suggestion-item {
-            min-height: 44px;
-            min-width: 44px;
-        }
-
-        /* Améliorer le feedback tactile */
-        .queue-tab:active,
-        .action-btn:active,
-        .qty-btn:active,
-        .remove-btn:active {
-            opacity: 0.7;
-            transform: scale(0.98);
-        }
-
-        /* Désactiver les effets hover sur tactile */
-        .queue-tab:hover,
-        .action-btn:hover,
-        .order-card:hover,
-        .cart-item:hover {
-            transform: none;
         }
     }
 
@@ -1544,7 +891,7 @@
     }
 
     .cart-items::-webkit-scrollbar-thumb {
-        background: #10b981;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         border-radius: 3px;
     }
 </style>
@@ -1557,8 +904,7 @@
         <div class="process-icon">
             <i class="fas fa-headset"></i>
         </div>
-
-        <!-- Onglets pour desktop -->
+        
         <div class="queue-tabs">
             <div class="queue-tab active" data-queue="standard">
                 <div class="queue-icon">
@@ -1567,7 +913,7 @@
                 <div>File Standard</div>
                 <div class="queue-badge" id="standard-count">0</div>
             </div>
-
+            
             <div class="queue-tab" data-queue="dated">
                 <div class="queue-icon">
                     <i class="fas fa-calendar-alt"></i>
@@ -1575,7 +921,7 @@
                 <div>File Datée</div>
                 <div class="queue-badge" id="dated-count">0</div>
             </div>
-
+            
             <div class="queue-tab" data-queue="old">
                 <div class="queue-icon">
                     <i class="fas fa-history"></i>
@@ -1583,7 +929,7 @@
                 <div>File Ancienne</div>
                 <div class="queue-badge" id="old-count">0</div>
             </div>
-
+            
             <div class="queue-tab" data-queue="restock">
                 <div class="queue-icon">
                     <i class="fas fa-box-open"></i>
@@ -1592,21 +938,6 @@
                 <div class="queue-badge" id="restock-count">0</div>
             </div>
         </div>
-
-        <!-- Dropdown pour mobile -->
-        <div class="queue-selector-mobile">
-            <select class="queue-select" id="queue-select-mobile">
-                <option value="standard">📞 File Standard (<span id="standard-count-mobile">0</span>)</option>
-                <option value="dated">📅 File Datée (<span id="dated-count-mobile">0</span>)</option>
-                <option value="old">⏰ File Ancienne (<span id="old-count-mobile">0</span>)</option>
-                <option value="restock">📦 Retour en Stock (<span id="restock-count-mobile">0</span>)</option>
-            </select>
-        </div>
-
-        <!-- Bouton historique (mobile seulement) -->
-        <button type="button" class="btn-history-header" id="btn-history-mobile" title="Historique">
-            <i class="fas fa-history"></i>
-        </button>
     </div>
 
     <!-- Contenu principal -->
@@ -1702,12 +1033,7 @@
                                         <i class="fas fa-phone"></i>
                                         Téléphone principal <span class="required">*</span>
                                     </label>
-                                    <div class="phone-input-wrapper">
-                                        <input type="tel" class="form-control" id="customer_phone" placeholder="12345678" maxlength="8">
-                                        <button type="button" class="btn-call-direct" id="btn-call-customer" title="Appeler le client">
-                                            <i class="fas fa-phone"></i>
-                                        </button>
-                                    </div>
+                                    <input type="tel" class="form-control" id="customer_phone" placeholder="+216 XX XXX XXX" disabled>
                                 </div>
                                 
                                 <div class="form-group">
@@ -1752,16 +1078,13 @@
 
                 <!-- Zone panier (droite) -->
                 <div class="cart-zone">
-                    <div class="cart-card slide-up" id="cart-card">
-                        <div class="cart-header cart-toggle" id="cart-toggle">
+                    <div class="cart-card slide-up">
+                        <div class="cart-header">
                             <div class="cart-title">
                                 <i class="fas fa-shopping-cart"></i>
                                 Panier
                             </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <div class="cart-count" id="cart-item-count">0 article(s)</div>
-                                <i class="fas fa-chevron-down"></i>
-                            </div>
+                            <div class="cart-count" id="cart-item-count">0 article(s)</div>
                         </div>
 
                         <div class="cart-body">
@@ -1877,30 +1200,12 @@ $(document).ready(function() {
     }
     
     function setupEventListeners() {
-        // Onglets de files (desktop)
+        // Onglets de files
         $('.queue-tab').on('click', function() {
             const queue = $(this).data('queue');
             if (queue !== currentQueue) {
                 switchQueue(queue);
             }
-        });
-
-        // Dropdown mobile pour sélection de file
-        $('#queue-select-mobile').on('change', function() {
-            const queue = $(this).val();
-            if (queue !== currentQueue) {
-                switchQueue(queue);
-            }
-        });
-
-        // Toggle panier (mobile)
-        $('#cart-toggle').on('click', function() {
-            $('#cart-card').toggleClass('collapsed');
-        });
-
-        // Bouton historique mobile
-        $('#btn-history-mobile').on('click', function() {
-            showHistoryModal();
         });
         
         // Recherche de produits
@@ -1940,38 +1245,15 @@ $(document).ready(function() {
         $('#customer_name, #customer_governorate, #customer_city, #customer_address').on('input change', function() {
             validateField($(this));
         });
-
-        // Validation du téléphone (8 chiffres exactement, pas d'espaces)
-        $('#customer_phone').on('input', function() {
-            let value = $(this).val();
-            // Supprimer tous les caractères non numériques
-            value = value.replace(/\D/g, '');
-            // Limiter à 8 chiffres
-            if (value.length > 8) {
-                value = value.substring(0, 8);
-            }
-            $(this).val(value);
-            validatePhoneField($(this));
-        });
-
-        // Bouton pour appeler directement le client
-        $('#btn-call-customer').on('click', function() {
-            const phone = $('#customer_phone').val().trim();
-            if (phone && phone.length === 8) {
-                window.location.href = 'tel:+216' + phone;
-            } else {
-                showNotification('Numéro de téléphone invalide (8 chiffres requis)', 'error');
-            }
-        });
     }
     
     // Fonction de validation d'un champ
     function validateField($field) {
         const value = $field.val().trim();
         const fieldId = $field.attr('id');
-
+        
         let isValid = true;
-
+        
         switch (fieldId) {
             case 'customer_name':
                 isValid = value.length >= 2;
@@ -1984,27 +1266,13 @@ $(document).ready(function() {
                 isValid = value.length >= 5;
                 break;
         }
-
+        
         if (isValid) {
             $field.removeClass('is-invalid');
         } else {
             $field.addClass('is-invalid');
         }
-
-        return isValid;
-    }
-
-    // Fonction de validation du téléphone (8 chiffres exactement)
-    function validatePhoneField($field) {
-        const value = $field.val().trim();
-        const isValid = /^\d{8}$/.test(value);
-
-        if (isValid) {
-            $field.removeClass('is-invalid');
-        } else if (value.length > 0) {
-            $field.addClass('is-invalid');
-        }
-
+        
         return isValid;
     }
 
@@ -2015,25 +1283,16 @@ $(document).ready(function() {
         
         // Validation des champs client obligatoires
         const customerName = $('#customer_name').val().trim();
-        const customerPhone = $('#customer_phone').val().trim();
         const customerGovernorate = $('#customer_governorate').val();
         const customerCity = $('#customer_city').val();
         const customerAddress = $('#customer_address').val().trim();
-
+        
         if (!customerName || customerName.length < 2) {
             errors.push('Le nom du client est obligatoire (minimum 2 caractères)');
             $('#customer_name').addClass('is-invalid');
             hasFieldErrors = true;
         } else {
             $('#customer_name').removeClass('is-invalid');
-        }
-
-        if (!customerPhone || !/^\d{8}$/.test(customerPhone)) {
-            errors.push('Le téléphone doit contenir exactement 8 chiffres (pas d\'espaces)');
-            $('#customer_phone').addClass('is-invalid');
-            hasFieldErrors = true;
-        } else {
-            $('#customer_phone').removeClass('is-invalid');
         }
         
         if (!customerGovernorate) {
@@ -2106,19 +1365,15 @@ $(document).ready(function() {
     // Gestion des files
     function loadQueueCounts() {
         if (isLoadingCounts) return;
-
+        
         isLoadingCounts = true;
-
+        
         $.get('/admin/process/counts')
             .done(function(data) {
-                // Mise à jour des badges desktop
                 $('#standard-count').text(data.standard || 0);
                 $('#dated-count').text(data.dated || 0);
                 $('#old-count').text(data.old || 0);
                 $('#restock-count').text(data.restock || 0);
-
-                // Mise à jour du dropdown mobile
-                updateMobileQueueOptions(data);
             })
             .fail(function(xhr, status, error) {
                 console.error('Erreur compteurs:', error);
@@ -2128,30 +1383,16 @@ $(document).ready(function() {
                 isLoadingCounts = false;
             });
     }
-
-    function updateMobileQueueOptions(counts) {
-        const select = $('#queue-select-mobile');
-        select.html(`
-            <option value="standard" ${currentQueue === 'standard' ? 'selected' : ''}>📞 File Standard (${counts.standard || 0})</option>
-            <option value="dated" ${currentQueue === 'dated' ? 'selected' : ''}>📅 File Datée (${counts.dated || 0})</option>
-            <option value="old" ${currentQueue === 'old' ? 'selected' : ''}>⏰ File Ancienne (${counts.old || 0})</option>
-            <option value="restock" ${currentQueue === 'restock' ? 'selected' : ''}>📦 Retour en Stock (${counts.restock || 0})</option>
-        `);
-    }
     
     function switchQueue(queue) {
         if (isLoadingQueue) return;
-
-        // Mettre à jour les onglets desktop
+        
         $('.queue-tab').removeClass('active');
         $(`.queue-tab[data-queue="${queue}"]`).addClass('active');
-
-        // Mettre à jour le dropdown mobile
-        $('#queue-select-mobile').val(queue);
-
+        
         currentQueue = queue;
         currentOrder = null;
-
+        
         showLoading();
         setTimeout(() => loadCurrentQueue(), 100);
     }
@@ -2312,18 +1553,7 @@ $(document).ready(function() {
     
     function updateCustomerForm(order) {
         $('#customer_name').val(order.customer_name || '');
-
-        // Nettoyer le numéro de téléphone (enlever espaces, +216, etc.)
-        let phone = order.customer_phone || '';
-        phone = phone.replace(/\D/g, ''); // Enlever tous les caractères non numériques
-        if (phone.startsWith('216')) {
-            phone = phone.substring(3); // Enlever le préfixe +216
-        }
-        if (phone.length > 8) {
-            phone = phone.substring(0, 8); // Limiter à 8 chiffres
-        }
-        $('#customer_phone').val(phone);
-
+        $('#customer_phone').val(order.customer_phone || '');
         $('#customer_phone_2').val(order.customer_phone_2 || '');
         $('#customer_address').val(order.customer_address || '');
         

@@ -857,6 +857,11 @@
             z-index: 1;
         }
 
+        /* S'assurer que le footer ne bloque jamais les modales */
+        body.modal-open .footer {
+            z-index: -1 !important;
+        }
+
         .footer-content {
             display: flex;
             justify-content: space-between;
