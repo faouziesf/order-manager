@@ -21,10 +21,6 @@ class CheckAccountValidity
             // Détecter automatiquement le garde actif
             if (Auth::guard('admin')->check()) {
                 $guard = 'admin';
-            } elseif (Auth::guard('manager')->check()) {
-                $guard = 'manager';
-            } elseif (Auth::guard('employee')->check()) {
-                $guard = 'employee';
             }
         }
 
@@ -59,10 +55,6 @@ class CheckAccountValidity
         switch ($guard) {
             case 'admin':
                 return $this->isAdminValid($user);
-            case 'manager':
-                return $this->isManagerValid($user);
-            case 'employee':
-                return $this->isEmployeeValid($user);
             default:
                 return false;
         }
@@ -129,15 +121,6 @@ class CheckAccountValidity
             case 'admin':
                 if (!$user->is_active) return 'inactive';
                 if ($user->expiry_date && $user->expiry_date->isPast()) return 'expired';
-                break;
-                
-            case 'manager':
-            case 'employee':
-                if (!$user->is_active) return 'inactive';
-                
-                $admin = $user->admin;
-                if (!$admin || !$admin->is_active) return 'admin_inactive';
-                if ($admin->expiry_date && $admin->expiry_date->isPast()) return 'admin_expired';
                 break;
         }
 

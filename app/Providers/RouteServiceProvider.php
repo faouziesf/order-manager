@@ -36,17 +36,9 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
-            // Routes pour l'admin
+            // Routes pour l'admin (utilisées par tous: admin, manager, employee)
             Route::middleware('web')
                 ->group(base_path('routes/admin.php'));
-
-            // Routes pour les managers
-            Route::middleware('web')
-                ->group(base_path('routes/manager.php'));
-
-            // Routes pour les employés
-            Route::middleware('web')
-                ->group(base_path('routes/employee.php'));
 
             // Routes pour le super admin
             Route::middleware('web')

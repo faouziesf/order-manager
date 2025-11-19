@@ -22,7 +22,21 @@ class ProcessController extends Controller
 
     public function __construct()
     {
-        $this->middleware('auth:admin');
+        // Support admin guard only
+        $this->middleware(function ($request, $next) {
+            if (!auth('admin')->check()) {
+                abort(401, 'Non authentifié');
+            }
+            return $next($request);
+        });
+    }
+
+    /**
+     * Get current authenticated user (admin only)
+     */
+    private function getCurrentUser()
+    {
+        return auth('admin')->user();
     }
 
     /**
@@ -30,6 +44,7 @@ class ProcessController extends Controller
      */
     public function interface()
     {
+        // Return admin view
         return view('admin.process.interface');
     }
 
@@ -39,8 +54,8 @@ class ProcessController extends Controller
     public function getQueueApi($queue)
     {
         try {
-            $admin = Auth::guard('admin')->user();
-            
+            $admin = $this->getCurrentUser();
+
             if (!$admin) {
                 return response()->json([
                     'error' => 'Non authentifié',
@@ -129,7 +144,19 @@ class ProcessController extends Controller
         $maxDailyAttempts = $this->getSetting('standard_max_daily_attempts', 3);
         $delayHours = $this->getSetting('standard_delay_hours', 2.5);
 
-        $orders = Order::where('admin_id', $admin->id)
+        // Pour les employés : uniquement les commandes qui leur sont assignées
+        // Pour les managers et admins : toutes les commandes
+        $query = Order::query();
+
+        if ($admin->isEmployee()) {
+            $query->where('employee_id', $admin->id);
+        } elseif ($admin->isManager() && $admin->created_by) {
+            $query->where('admin_id', $admin->created_by);
+        } else {
+            $query->where('admin_id', $admin->id);
+        }
+
+        $orders = $query
             ->with(['items.product' => function($query) {
                 $query->where('is_active', true);
             }])
@@ -164,7 +191,17 @@ class ProcessController extends Controller
         $maxDailyAttempts = $this->getSetting('dated_max_daily_attempts', 2);
         $delayHours = $this->getSetting('dated_delay_hours', 3.5);
 
-        $orders = Order::where('admin_id', $admin->id)
+        $query = Order::query();
+
+        if ($admin->isEmployee()) {
+            $query->where('employee_id', $admin->id);
+        } elseif ($admin->isManager() && $admin->created_by) {
+            $query->where('admin_id', $admin->created_by);
+        } else {
+            $query->where('admin_id', $admin->id);
+        }
+
+        $orders = $query
             ->with(['items.product' => function($query) {
                 $query->where('is_active', true);
             }])
@@ -199,7 +236,17 @@ class ProcessController extends Controller
         $delayHours = $this->getSetting('old_delay_hours', 6);
         $maxTotalAttempts = $this->getSetting('old_max_total_attempts', 0);
 
-        $query = Order::where('admin_id', $admin->id)
+        $query = Order::query();
+
+        if ($admin->isEmployee()) {
+            $query->where('employee_id', $admin->id);
+        } elseif ($admin->isManager() && $admin->created_by) {
+            $query->where('admin_id', $admin->created_by);
+        } else {
+            $query->where('admin_id', $admin->id);
+        }
+
+        $query = $query
             ->with(['items.product' => function($query) {
                 $query->where('is_active', true);
             }])
@@ -235,7 +282,17 @@ class ProcessController extends Controller
         $maxDailyAttempts = $this->getSetting('restock_max_daily_attempts', 2);
         $delayHours = $this->getSetting('restock_delay_hours', 1);
 
-        $orders = Order::where('admin_id', $admin->id)
+        $query = Order::query();
+
+        if ($admin->isEmployee()) {
+            $query->where('employee_id', $admin->id);
+        } elseif ($admin->isManager() && $admin->created_by) {
+            $query->where('admin_id', $admin->created_by);
+        } else {
+            $query->where('admin_id', $admin->id);
+        }
+
+        $orders = $query
             ->with(['items.product' => function($query) {
                 $query->where('is_active', true);
             }])
@@ -313,8 +370,8 @@ class ProcessController extends Controller
                 return response()->json($cachedResponse);
             }
 
-            $admin = Auth::guard('admin')->user();
-            
+            $admin = $this->getCurrentUser();
+
             if (!$admin) {
                 return response()->json(['error' => 'Non authentifié'], 401);
             }
@@ -541,7 +598,7 @@ class ProcessController extends Controller
     public function processAction(Request $request, Order $order)
     {
         try {
-            $admin = Auth::guard('admin')->user();
+            $admin = $this->getCurrentUser();
             
             if ($order->admin_id !== $admin->id) {
                 return response()->json([
@@ -819,7 +876,7 @@ class ProcessController extends Controller
     public function test()
     {
         try {
-            $admin = Auth::guard('admin')->user();
+            $admin = $this->getCurrentUser();
             $dbConnected = false;
             
             try {

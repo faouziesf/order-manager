@@ -609,6 +609,7 @@ class ExaminationController extends Controller
         Log::info("Recherche des commandes pour l'interface examination");
         
         // Étape 1: Récupérer toutes les commandes candidates (NON suspendues)
+        // Note: Les commandes confirmées sont exclues car le stock est déjà décrémenté à la confirmation
         $candidateOrders = $admin->orders()
             ->with(['items.product' => function($query) {
                 // Précharger tous les produits (actifs et inactifs) pour l'analyse
@@ -617,7 +618,7 @@ class ExaminationController extends Controller
             ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
             })
-            ->whereIn('status', ['nouvelle', 'confirmée', 'datée']) // Seulement les statuts actifs
+            ->whereIn('status', ['nouvelle', 'datée']) // Exclure 'confirmée' car stock déjà décrémenté
             ->orderBy('priority', 'desc')
             ->orderBy('created_at', 'asc')
             ->get();

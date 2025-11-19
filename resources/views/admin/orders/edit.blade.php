@@ -988,12 +988,12 @@
                             <label for="customer_governorate" class="form-label">
                                 <i class="fas fa-map-marked-alt"></i> Gouvernorat
                             </label>
-                            <select class="form-control @error('customer_governorate') is-invalid @enderror" 
+                            <select class="form-control @error('customer_governorate') is-invalid @enderror"
                                     id="customer_governorate" name="customer_governorate">
                                 <option value="">Choisir un gouvernorat</option>
                                 @if (isset($regions))
                                     @foreach ($regions as $region)
-                                        <option value="{{ $region->id }}" 
+                                        <option value="{{ $region->id }}"
                                                 {{ old('customer_governorate', $order->customer_governorate) == $region->id ? 'selected' : '' }}>
                                             {{ $region->name }}
                                         </option>
@@ -1001,6 +1001,19 @@
                                 @endif
                             </select>
                             @error('customer_governorate') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="customer_city" class="form-label">
+                                <i class="fas fa-city"></i> Ville <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control @error('customer_city') is-invalid @enderror"
+                                   id="customer_city" name="customer_city"
+                                   value="{{ old('customer_city', $order->customer_city) }}"
+                                   placeholder="Nom de la ville" required>
+                            @error('customer_city') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
 

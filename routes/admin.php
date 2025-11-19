@@ -31,17 +31,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('expired', [AdminAuthController::class, 'showExpiredPage'])->name('expired');
 
     // ========================================
-    // ROUTES PROTÉGÉES ADMIN
+    // ROUTES PROTÉGÉES (pour admin, manager, employee)
     // ========================================
-    Route::middleware('auth:admin')->group(function () {
+    Route::middleware(['auth:admin', 'check_user_active'])->group(function () {
         // Dashboard
-        Route::get('dashboard', function () {
-            $admin = auth('admin')->user();
-            if (!$admin->is_active || ($admin->expiry_date && $admin->expiry_date->isPast())) {
-                return redirect()->route('admin.expired');
-            }
-            return view('admin.dashboard');
-        })->name('dashboard');
+        Route::get('dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])
+            ->name('dashboard');
 
         // ========================================
         // GESTION DES PRODUITS
@@ -210,6 +205,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/stats', [WooCommerceController::class, 'syncStats'])->name('stats');
             Route::post('/toggle/{id}', [WooCommerceController::class, 'toggleIntegration'])->name('toggle');
             Route::get('/delete/{id}', [WooCommerceController::class, 'deleteIntegration'])->name('delete');
+        });
+
+        // Routes Shopify
+        Route::prefix('shopify')->name('shopify.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\ShopifyController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\ShopifyController::class, 'store'])->name('store');
+            Route::get('/sync', [\App\Http\Controllers\Admin\ShopifyController::class, 'sync'])->name('sync');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\ShopifyController::class, 'testConnection'])->name('test-connection');
+            Route::get('/stats', [\App\Http\Controllers\Admin\ShopifyController::class, 'syncStats'])->name('stats');
+            Route::post('/toggle/{id}', [\App\Http\Controllers\Admin\ShopifyController::class, 'toggleIntegration'])->name('toggle');
+            Route::delete('/delete/{id}', [\App\Http\Controllers\Admin\ShopifyController::class, 'deleteIntegration'])->name('delete');
+        });
+
+        // Routes PrestaShop
+        Route::prefix('prestashop')->name('prestashop.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\PrestashopController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\PrestashopController::class, 'store'])->name('store');
+            Route::get('/sync', [\App\Http\Controllers\Admin\PrestashopController::class, 'sync'])->name('sync');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\PrestashopController::class, 'testConnection'])->name('test-connection');
+            Route::get('/stats', [\App\Http\Controllers\Admin\PrestashopController::class, 'syncStats'])->name('stats');
+            Route::post('/toggle/{id}', [\App\Http\Controllers\Admin\PrestashopController::class, 'toggleIntegration'])->name('toggle');
+            Route::delete('/delete/{id}', [\App\Http\Controllers\Admin\PrestashopController::class, 'deleteIntegration'])->name('delete');
         });
 
         Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');

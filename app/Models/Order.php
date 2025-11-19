@@ -69,12 +69,12 @@ class Order extends Model
 
     public function manager()
     {
-        return $this->belongsTo(Manager::class);
+        return $this->belongsTo(Admin::class, 'manager_id')->where('role', Admin::ROLE_MANAGER);
     }
 
     public function employee()
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Admin::class, 'employee_id')->where('role', Admin::ROLE_EMPLOYEE);
     }
 
     public function items()
@@ -416,12 +416,6 @@ class Order extends Model
         if (auth()->guard('admin')->check()) {
             $userId = auth()->guard('admin')->id();
             $userType = 'Admin';
-        } elseif (auth()->guard('manager')->check()) {
-            $userId = auth()->guard('manager')->id();
-            $userType = 'Manager';
-        } elseif (auth()->guard('employee')->check()) {
-            $userId = auth()->guard('employee')->id();
-            $userType = 'Employee';
         }
 
         return $this->history()->create([

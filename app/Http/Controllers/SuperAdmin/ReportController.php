@@ -4,8 +4,6 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
-use App\Models\Manager;
-use App\Models\Employee;
 use App\Models\Order;
 use App\Models\Report;
 use Carbon\Carbon;
@@ -170,8 +168,8 @@ class ReportController extends Controller
 
     private function getAdminActivityData($dateFrom, $dateTo)
     {
-        $admins = Admin::whereBetween('created_at', [$dateFrom, $dateTo])
-            ->with(['managers', 'employees'])
+        $admins = Admin::where('role', Admin::ROLE_ADMIN)
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->get();
 
         $loginStats = Admin::whereBetween('last_login_at', [$dateFrom, $dateTo])

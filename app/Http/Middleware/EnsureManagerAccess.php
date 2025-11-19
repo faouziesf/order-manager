@@ -14,10 +14,10 @@ class EnsureManagerAccess
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!Auth::guard('manager')->check()) {
+        if (!Auth::guard('admin')->check()) {
             return redirect()->route('login');
         }
-        
+
         return $next($request);
     }
 }

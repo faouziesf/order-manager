@@ -4,8 +4,6 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
-use App\Models\Manager;
-use App\Models\Employee;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -175,8 +173,8 @@ class DashboardController extends Controller
                     : 0;
 
                 // Statistiques des managers et employés
-                $totalManagers = $this->safeCount(Manager::class);
-                $totalEmployees = $this->safeCount(Employee::class);
+                $totalManagers = Admin::where('role', Admin::ROLE_MANAGER)->count();
+                $totalEmployees = Admin::where('role', Admin::ROLE_EMPLOYEE)->count();
                 
                 // Activité des commandes
                 $totalOrders = Admin::sum('total_orders') ?? 0;

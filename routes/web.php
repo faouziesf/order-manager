@@ -18,16 +18,6 @@ require __DIR__.'/auth.php';
 require __DIR__.'/superadmin.php';
 
 // ========================================
-// ROUTES ADMIN
+// ROUTES ADMIN (Utilisées par tous: admin, manager, employee)
 // ========================================
 require __DIR__.'/admin.php';
-
-// ========================================
-// ROUTES MANAGER
-// ========================================
-require __DIR__.'/manager.php';
-
-// ========================================
-// ROUTES EMPLOYEE
-// ========================================
-require __DIR__.'/employee.php';

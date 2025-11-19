@@ -73,7 +73,8 @@ class Kernel extends HttpKernel
         'manager' => \App\Http\Middleware\EnsureManagerAccess::class,
         'employee' => \App\Http\Middleware\EnsureEmployeeAccess::class,
         'check-admin-expiry' => \App\Http\Middleware\CheckAdminExpiry::class,
-        
+        'check_user_active' => \App\Http\Middleware\CheckUserActive::class,
+
         // Nouveau middleware pour vérifier si le super admin est actif
         'super-admin.active' => \App\Http\Middleware\SuperAdminActive::class,
     ];

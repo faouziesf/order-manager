@@ -7,7 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Region;
 use App\Models\City;
-use App\Models\Employee;
+use App\Models\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -121,8 +121,18 @@ class OrderController extends Controller
     public function create()
     {
         try {
+            $admin = Auth::guard('admin')->user();
             $regions = Region::orderBy('name')->get();
-            $employees = Auth::guard('admin')->user()->employees()->where('is_active', true)->get();
+
+            // Si c'est un manager, récupérer les employés de son créateur (l'admin parent)
+            $searchAdminId = ($admin->role === Admin::ROLE_MANAGER && $admin->created_by)
+                ? $admin->created_by
+                : $admin->id;
+
+            $employees = Admin::where('role', Admin::ROLE_EMPLOYEE)
+                ->where('created_by', $searchAdminId)
+                ->where('is_active', true)
+                ->get();
             return view('admin.orders.create', compact('regions', 'employees'));
         } catch (\Exception $e) {
             Log::error('Erreur dans OrderController@create: ' . $e->getMessage());
@@ -144,7 +154,7 @@ class OrderController extends Controller
                 'products.*.quantity' => 'required|integer|min:1',
                 'status' => 'required|in:nouvelle,confirmée',
                 'priority' => 'required|in:normale,urgente,vip',
-                'employee_id' => 'nullable|exists:employees,id',
+                'employee_id' => 'nullable|exists:admins,id',
             ];
 
             // Si statut confirmée, tous les champs sont obligatoires (Y COMPRIS PRIX TOTAL)
@@ -244,11 +254,17 @@ class OrderController extends Controller
             
             // Assigner à un employé si spécifié
             if (!empty($validated['employee_id'])) {
-                $employee = Employee::where('id', $validated['employee_id'])
-                    ->where('admin_id', $admin->id)
+                // Si c'est un manager, chercher les employés de son créateur (l'admin parent)
+                $searchAdminId = ($admin->role === Admin::ROLE_MANAGER && $admin->created_by)
+                    ? $admin->created_by
+                    : $admin->id;
+
+                $employee = Admin::where('id', $validated['employee_id'])
+                    ->where('role', Admin::ROLE_EMPLOYEE)
+                    ->where('created_by', $searchAdminId)
                     ->where('is_active', true)
                     ->first();
-                
+
                 if ($employee) {
                     $order->employee_id = $employee->id;
                     $order->is_assigned = true;
@@ -322,9 +338,19 @@ class OrderController extends Controller
             $this->authorize('update', $order);
             
             $order->load(['items.product']);
+            $admin = Auth::guard('admin')->user();
             $regions = Region::orderBy('name')->get();
             $cities = [];
-            $employees = Auth::guard('admin')->user()->employees()->where('is_active', true)->get();
+
+            // Si c'est un manager, récupérer les employés de son créateur (l'admin parent)
+            $searchAdminId = ($admin->role === Admin::ROLE_MANAGER && $admin->created_by)
+                ? $admin->created_by
+                : $admin->id;
+
+            $employees = Admin::where('role', Admin::ROLE_EMPLOYEE)
+                ->where('created_by', $searchAdminId)
+                ->where('is_active', true)
+                ->get();
             
             if ($order->customer_governorate) {
                 $cities = City::where('region_id', $order->customer_governorate)->orderBy('name')->get();
@@ -352,7 +378,7 @@ class OrderController extends Controller
                 'notes' => 'nullable|string|max:1000',
                 'status' => 'required|in:nouvelle,confirmée,annulée,datée,ancienne,en_route,livrée',
                 'priority' => 'required|in:normale,urgente,vip',
-                'employee_id' => 'nullable|exists:employees,id',
+                'employee_id' => 'nullable|exists:admins,id',
                 'scheduled_date' => 'nullable|date|after:today',
                 'products' => 'required|array|min:1',
                 'products.*.id' => 'required|exists:products,id',
@@ -457,11 +483,18 @@ class OrderController extends Controller
             
             // Gestion de l'assignation
             if (!empty($validated['employee_id'])) {
-                $employee = Employee::where('id', $validated['employee_id'])
-                    ->where('admin_id', $order->admin_id)
+                // Pour un manager, chercher les employés de son créateur
+                $currentUser = Auth::guard('admin')->user();
+                $searchAdminId = ($currentUser->role === Admin::ROLE_MANAGER && $currentUser->created_by)
+                    ? $currentUser->created_by
+                    : $order->admin_id;
+
+                $employee = Admin::where('id', $validated['employee_id'])
+                    ->where('role', Admin::ROLE_EMPLOYEE)
+                    ->where('created_by', $searchAdminId)
                     ->where('is_active', true)
                     ->first();
-                
+
                 if ($employee) {
                     $order->employee_id = $employee->id;
                     $order->is_assigned = true;
@@ -858,12 +891,19 @@ class OrderController extends Controller
             $validated = $request->validate([
                 'order_ids' => 'required|array',
                 'order_ids.*' => 'exists:orders,id',
-                'employee_id' => 'required|exists:employees,id'
+                'employee_id' => 'required|exists:admins,id'
             ]);
 
             $admin = Auth::guard('admin')->user();
-            $employee = Employee::where('id', $validated['employee_id'])
-                ->where('admin_id', $admin->id)
+
+            // Si c'est un manager, il doit chercher les employés de son créateur (l'admin parent)
+            $searchAdminId = ($admin->role === Admin::ROLE_MANAGER && $admin->created_by)
+                ? $admin->created_by
+                : $admin->id;
+
+            $employee = Admin::where('id', $validated['employee_id'])
+                ->where('role', Admin::ROLE_EMPLOYEE)
+                ->where('created_by', $searchAdminId)
                 ->where('is_active', true)
                 ->first();
 

@@ -94,15 +94,15 @@ class OrderHistory extends Model
 
     public function manager()
     {
-        return $this->user_type === 'Manager' 
-            ? $this->belongsTo(Manager::class, 'user_id') 
+        return $this->user_type === 'Manager'
+            ? $this->belongsTo(Admin::class, 'user_id')->where('role', Admin::ROLE_MANAGER)
             : null;
     }
 
     public function employee()
     {
-        return $this->user_type === 'Employee' 
-            ? $this->belongsTo(Employee::class, 'user_id') 
+        return $this->user_type === 'Employee'
+            ? $this->belongsTo(Admin::class, 'user_id')->where('role', Admin::ROLE_EMPLOYEE)
             : null;
     }
 
@@ -333,12 +333,6 @@ class OrderHistory extends Model
         if (auth()->guard('admin')->check()) {
             $userId = auth()->guard('admin')->id();
             $userType = 'Admin';
-        } elseif (auth()->guard('manager')->check()) {
-            $userId = auth()->guard('manager')->id();
-            $userType = 'Manager';
-        } elseif (auth()->guard('employee')->check()) {
-            $userId = auth()->guard('employee')->id();
-            $userType = 'Employee';
         }
 
         return self::create([

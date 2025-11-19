@@ -8,10 +8,6 @@ use App\Models\Product;
 use App\Policies\ProductPolicy;
 use App\Models\Order;
 use App\Policies\OrderPolicy;
-use App\Models\Manager;
-use App\Policies\ManagerPolicy;
-use App\Models\Employee;
-use App\Policies\EmployeePolicy;
 use App\Models\Admin;
 use App\Policies\AdminPolicy;
 
@@ -23,13 +19,9 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         Product::class => ProductPolicy::class,
         Order::class => OrderPolicy::class,
-        Manager::class => ManagerPolicy::class,
-        Employee::class => EmployeePolicy::class,
         Admin::class => AdminPolicy::class,
         // Policies pour la livraison
         \App\Models\DeliveryConfiguration::class => \App\Policies\DeliveryConfigurationPolicy::class,
-        Pickup::class => PickupPolicy::class,
-        Shipment::class => ShipmentPolicy::class,
     ];
 
     /**

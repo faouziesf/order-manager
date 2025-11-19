@@ -4,8 +4,6 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
-use App\Models\Manager;
-use App\Models\Employee;
 use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Http\Request;

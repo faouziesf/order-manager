@@ -17,8 +17,17 @@ trait ProcessTrait
      */
     protected function getSetting($key, $default = null)
     {
-        $admin = Auth::guard('admin')->user();
-        return AdminSetting::getForAdmin($admin->id, $key, $default);
+        // Support admin guard only
+        $user = Auth::guard('admin')->user();
+
+        if (!$user) {
+            Log::warning("getSetting appelé sans utilisateur authentifié pour la clé: {$key}");
+            return $default;
+        }
+
+        $adminId = $user->id;
+
+        return AdminSetting::getForAdmin($adminId, $key, $default);
     }
 
     /**
@@ -26,13 +35,15 @@ trait ProcessTrait
      */
     protected function resetDailyCountersIfNeeded($admin)
     {
-        $lastReset = AdminSetting::getForAdmin($admin->id, 'last_daily_reset');
+        $adminId = $admin->id;
+
+        $lastReset = AdminSetting::getForAdmin($adminId, 'last_daily_reset');
         $today = now()->format('Y-m-d');
-        
+
         if (!$lastReset || $lastReset !== $today) {
-            Order::where('admin_id', $admin->id)->update(['daily_attempts_count' => 0]);
-            AdminSetting::setForAdmin($admin->id, 'last_daily_reset', $today);
-            Log::info("Compteurs quotidiens réinitialisés pour admin {$admin->id}");
+            Order::where('admin_id', $adminId)->update(['daily_attempts_count' => 0]);
+            AdminSetting::setForAdmin($adminId, 'last_daily_reset', $today);
+            Log::info("Compteurs quotidiens réinitialisés pour admin {$adminId}");
         }
     }
 

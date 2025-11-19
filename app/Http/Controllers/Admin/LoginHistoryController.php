@@ -19,23 +19,6 @@ class LoginHistoryController extends Controller
                 $q->where('user_type', 'App\Models\Admin')
                   ->where('user_id', $admin->id);
                 
-                // Historique des managers
-                $managerIds = $admin->managers()->pluck('id');
-                if ($managerIds->isNotEmpty()) {
-                    $q->orWhere(function($subQ) use ($managerIds) {
-                        $subQ->where('user_type', 'App\Models\Manager')
-                             ->whereIn('user_id', $managerIds);
-                    });
-                }
-                
-                // Historique des employés
-                $employeeIds = $admin->employees()->pluck('id');
-                if ($employeeIds->isNotEmpty()) {
-                    $q->orWhere(function($subQ) use ($employeeIds) {
-                        $subQ->where('user_type', 'App\Models\Employee')
-                             ->whereIn('user_id', $employeeIds);
-                    });
-                }
             })
             ->with('user')
             ->latest('login_at');
@@ -64,22 +47,6 @@ class LoginHistoryController extends Controller
             ->where(function($q) use ($admin) {
                 $q->where('user_type', 'App\Models\Admin')
                   ->where('user_id', $admin->id);
-                
-                $managerIds = $admin->managers()->pluck('id');
-                if ($managerIds->isNotEmpty()) {
-                    $q->orWhere(function($subQ) use ($managerIds) {
-                        $subQ->where('user_type', 'App\Models\Manager')
-                             ->whereIn('user_id', $managerIds);
-                    });
-                }
-                
-                $employeeIds = $admin->employees()->pluck('id');
-                if ($employeeIds->isNotEmpty()) {
-                    $q->orWhere(function($subQ) use ($employeeIds) {
-                        $subQ->where('user_type', 'App\Models\Employee')
-                             ->whereIn('user_id', $employeeIds);
-                    });
-                }
             });
 
         $stats = [
@@ -105,12 +72,6 @@ class LoginHistoryController extends Controller
             case 'App\Models\Admin':
                 $hasAccess = $admin->id == $userId;
                 break;
-            case 'App\Models\Manager':
-                $hasAccess = $admin->managers()->where('id', $userId)->exists();
-                break;
-            case 'App\Models\Employee':
-                $hasAccess = $admin->employees()->where('id', $userId)->exists();
-                break;
         }
 
         if (!$hasAccess) {
@@ -122,12 +83,6 @@ class LoginHistoryController extends Controller
         switch($fullUserType) {
             case 'App\Models\Admin':
                 $user = \App\Models\Admin::find($userId);
-                break;
-            case 'App\Models\Manager':
-                $user = \App\Models\Manager::find($userId);
-                break;
-            case 'App\Models\Employee':
-                $user = \App\Models\Employee::find($userId);
                 break;
         }
 

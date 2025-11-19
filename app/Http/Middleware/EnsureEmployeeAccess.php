@@ -14,10 +14,10 @@ class EnsureEmployeeAccess
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!Auth::guard('employee')->check()) {
+        if (!Auth::guard('admin')->check()) {
             return redirect()->route('login');
         }
-        
+
         return $next($request);
     }
 }

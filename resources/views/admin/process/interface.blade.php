@@ -44,21 +44,10 @@
         background: var(--process-primary);
         padding: 1rem 1.5rem;
         position: relative;
-        overflow: hidden;
+        overflow: visible;
         display: flex;
         align-items: center;
         gap: 2rem;
-    }
-
-    .process-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 100%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-        transform: rotate(15deg);
     }
 
     .process-icon {
@@ -985,11 +974,6 @@
             flex-wrap: wrap;
         }
 
-        .process-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 1.5rem;
-        }
 
         /* Masquer les onglets, afficher le dropdown */
         .queue-tabs {
@@ -1195,11 +1179,6 @@
             padding: 0.875rem 0.75rem;
         }
 
-        .process-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 1.5rem;
-        }
 
         .queue-tab {
             padding: 0.75rem 0.875rem;
@@ -1554,10 +1533,6 @@
 <div class="process-container">
     <!-- Header avec onglets des files -->
     <div class="process-header">
-        <div class="process-icon">
-            <i class="fas fa-headset"></i>
-        </div>
-
         <!-- Onglets pour desktop -->
         <div class="queue-tabs">
             <div class="queue-tab active" data-queue="standard">

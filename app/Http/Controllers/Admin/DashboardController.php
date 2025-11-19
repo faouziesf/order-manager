@@ -5,8 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
-use App\Models\Manager;
-use App\Models\Employee;
+use App\Models\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +19,7 @@ class DashboardController extends Controller
     public function index()
     {
         $admin = Auth::guard('admin')->user();
-        
+
         // Statistiques principales
         $stats = [
             'total_orders' => $admin->orders()->count(),
@@ -30,28 +29,38 @@ class DashboardController extends Controller
                 Carbon::now()->endOfWeek()
             ])->count(),
             'orders_this_month' => $admin->orders()->whereMonth('created_at', Carbon::now()->month)->count(),
-            
+
             'total_products' => $admin->products()->count(),
             'active_products' => $admin->products()->where('is_active', true)->count(),
             'low_stock_products' => $admin->products()->where('stock', '<=', 10)->where('stock', '>', 0)->count(),
             'out_of_stock_products' => $admin->products()->where('stock', '<=', 0)->count(),
-            
-            'total_managers' => $admin->managers()->count(),
-            'active_managers' => $admin->managers()->where('is_active', true)->count(),
-            'total_employees' => $admin->employees()->count(),
-            'active_employees' => $admin->employees()->where('is_active', true)->count(),
-            
+
+            'total_managers' => Admin::where('role', Admin::ROLE_MANAGER)
+                ->where('created_by', $admin->id)
+                ->count(),
+            'active_managers' => Admin::where('role', Admin::ROLE_MANAGER)
+                ->where('created_by', $admin->id)
+                ->where('is_active', true)
+                ->count(),
+            'total_employees' => Admin::where('role', Admin::ROLE_EMPLOYEE)
+                ->where('created_by', $admin->id)
+                ->count(),
+            'active_employees' => Admin::where('role', Admin::ROLE_EMPLOYEE)
+                ->where('created_by', $admin->id)
+                ->where('is_active', true)
+                ->count(),
+
             'products_to_review' => $admin->products()->where('needs_review', true)->count(),
             'unassigned_orders' => $admin->orders()->where('is_assigned', false)->whereIn('status', ['nouvelle', 'confirmée'])->count(),
         ];
-        
+
         // Commandes par statut
         $ordersByStatus = $admin->orders()
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();
-        
+
         // Évolution des commandes sur les 7 derniers jours
         $ordersChart = [];
         for ($i = 6; $i >= 0; $i--) {
@@ -62,14 +71,14 @@ class DashboardController extends Controller
                 'count' => $admin->orders()->whereDate('created_at', $date)->count()
             ];
         }
-        
+
         // Commandes récentes
         $recentOrders = $admin->orders()
             ->with(['items.product'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
-        
+
         // Produits à faible stock
         $lowStockProducts = $admin->products()
             ->where('stock', '<=', 10)
@@ -77,33 +86,34 @@ class DashboardController extends Controller
             ->orderBy('stock', 'asc')
             ->limit(10)
             ->get();
-        
+
         // Employés les plus actifs (basé sur les commandes assignées)
-        $activeEmployees = $admin->employees()
+        $activeEmployees = Admin::where('role', Admin::ROLE_EMPLOYEE)
+            ->where('created_by', $admin->id)
             ->withCount(['orders' => function($query) {
                 $query->whereDate('updated_at', '>=', Carbon::now()->subDays(7));
             }])
             ->orderBy('orders_count', 'desc')
             ->limit(5)
             ->get();
-        
+
         return view('admin.dashboard', compact(
             'stats',
-            'ordersByStatus', 
+            'ordersByStatus',
             'ordersChart',
             'recentOrders',
             'lowStockProducts',
             'activeEmployees'
         ));
     }
-    
+
     /**
      * API pour les statistiques en temps réel
      */
     public function getStats()
     {
         $admin = Auth::guard('admin')->user();
-        
+
         $stats = [
             'orders_today' => $admin->orders()->whereDate('created_at', today())->count(),
             'new_orders' => $admin->orders()->where('status', 'nouvelle')->count(),
@@ -113,13 +123,13 @@ class DashboardController extends Controller
             'out_of_stock_alerts' => $admin->products()->where('stock', '<=', 0)->count(),
             'unassigned_orders' => $admin->orders()->where('is_assigned', false)->whereIn('status', ['nouvelle', 'confirmée'])->count(),
         ];
-        
+
         return response()->json([
             'stats' => $stats,
             'timestamp' => now()->toISOString()
         ]);
     }
-    
+
     /**
      * Données pour les graphiques du tableau de bord
      */
@@ -128,7 +138,7 @@ class DashboardController extends Controller
         $admin = Auth::guard('admin')->user();
         $type = $request->get('type', 'orders');
         $period = $request->get('period', '7d');
-        
+
         switch ($period) {
             case '24h':
                 $data = $this->getHourlyData($admin, $type);
@@ -145,22 +155,22 @@ class DashboardController extends Controller
             default:
                 $data = $this->getDailyData($admin, $type, 7);
         }
-        
+
         return response()->json($data);
     }
-    
+
     /**
      * Données horaires (dernières 24h)
      */
     private function getHourlyData($admin, $type)
     {
         $data = [];
-        
+
         for ($i = 23; $i >= 0; $i--) {
             $hour = Carbon::now()->subHours($i);
             $startHour = $hour->copy()->startOfHour();
             $endHour = $hour->copy()->endOfHour();
-            
+
             switch ($type) {
                 case 'orders':
                     $count = $admin->orders()->whereBetween('created_at', [$startHour, $endHour])->count();
@@ -171,26 +181,26 @@ class DashboardController extends Controller
                 default:
                     $count = 0;
             }
-            
+
             $data[] = [
                 'label' => $hour->format('H:i'),
                 'value' => $count
             ];
         }
-        
+
         return $data;
     }
-    
+
     /**
      * Données quotidiennes
      */
     private function getDailyData($admin, $type, $days)
     {
         $data = [];
-        
+
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
-            
+
             switch ($type) {
                 case 'orders':
                     $count = $admin->orders()->whereDate('created_at', $date)->count();
@@ -201,26 +211,26 @@ class DashboardController extends Controller
                 default:
                     $count = 0;
             }
-            
+
             $data[] = [
                 'label' => $date->format('d/m'),
                 'value' => $count
             ];
         }
-        
+
         return $data;
     }
-    
+
     /**
      * Données mensuelles (derniers 12 mois)
      */
     private function getMonthlyData($admin, $type)
     {
         $data = [];
-        
+
         for ($i = 11; $i >= 0; $i--) {
             $month = Carbon::now()->subMonths($i);
-            
+
             switch ($type) {
                 case 'orders':
                     $count = $admin->orders()->whereMonth('created_at', $month->month)
@@ -235,13 +245,13 @@ class DashboardController extends Controller
                 default:
                     $count = 0;
             }
-            
+
             $data[] = [
                 'label' => $month->format('M Y'),
                 'value' => $count
             ];
         }
-        
+
         return $data;
     }
 }

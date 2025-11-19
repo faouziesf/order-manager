@@ -1,1164 +1,971 @@
 @extends('layouts.admin')
 
 @section('title', 'Créer une Commande')
-@section('page-title', 'Créer une Nouvelle Commande')
+@section('page-title', 'Nouvelle Commande')
 
 @section('css')
 <style>
-    :root {
-        --royal-blue: #1e3a8a;
-        --royal-blue-light: #3b82f6;
-        --royal-blue-dark: #1e40af;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --glass-bg: rgba(255, 255, 255, 0.98);
-        --shadow: 0 4px 20px rgba(30, 58, 138, 0.12);
-        --border-radius: 12px;
-        --transition: all 0.3s ease;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: #f8f9fa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    line-height: 1.6;
+}
+
+.create-order-container {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 0 15px;
+}
+
+.page-title {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+    padding: 25px 30px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+}
+
+.page-title h1 {
+    font-size: 28px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* LAYOUT GRID */
+.order-grid {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 25px;
+}
+
+/* FORMULAIRE CLIENT */
+.client-section {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.section-header {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 3px solid #e5e7eb;
+    position: relative;
+}
+
+.section-header::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 80px;
+    height: 3px;
+    background: #3b82f6;
+}
+
+.form-row {
+    margin-bottom: 20px;
+}
+
+.form-row.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-label .req {
+    color: #ef4444;
+    display: none;
+}
+
+.form-label .req.show {
+    display: inline;
+}
+
+.form-control {
+    padding: 12px 15px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.2s;
+    background: #fafbfc;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-control.error {
+    border-color: #ef4444;
+    background: #fef2f2;
+}
+
+.phone-wrapper {
+    position: relative;
+}
+
+.phone-status {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    font-size: 18px;
+}
+
+.phone-status.checking {
+    display: block;
+    color: #9ca3af;
+}
+
+.phone-status.duplicate {
+    display: block;
+    color: #f59e0b;
+}
+
+.phone-status.clean {
+    display: block;
+    color: #10b981;
+}
+
+.alert-box {
+    margin-top: 15px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    display: none;
+    font-size: 14px;
+}
+
+.alert-box.show {
+    display: block;
+}
+
+.alert-box.warning {
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+    color: #92400e;
+}
+
+.alert-box.success {
+    background: #d1fae5;
+    border: 2px solid #10b981;
+    color: #065f46;
+}
+
+.alert-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-outline {
+    background: white;
+    color: #374151;
+    border: 2px solid #d1d5db;
+}
+
+.btn-sm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* CART PANEL */
+.cart-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+}
+
+.cart-header {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 20px 25px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cart-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cart-badge {
+    background: rgba(255,255,255,0.3);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.search-box {
+    padding: 20px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.search-wrapper {
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 15px 12px 45px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.suggestions-list.show {
+    display: block;
+}
+
+.suggestion-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.15s;
+}
+
+.suggestion-item:hover {
+    background: #f9fafb;
+}
+
+.suggestion-item .name {
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 4px;
+}
+
+.suggestion-item .ref {
+    font-size: 12px;
+    color: #3b82f6;
+    background: #eff6ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.suggestion-item .details {
+    font-size: 13px;
+    color: #6b7280;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+}
+
+.cart-items {
+    padding: 20px;
+    min-height: 200px;
+    max-height: 350px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.cart-empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: #9ca3af;
+}
+
+.cart-empty i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.cart-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.cart-item:hover {
+    border-color: #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-name {
+    font-weight: 700;
+    color: #111827;
+    font-size: 14px;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item-price {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.qty-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    padding: 4px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.qty-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.qty-btn:hover {
+    background: #3b82f6;
+    color: white;
+}
+
+.qty-value {
+    width: 40px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.remove-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #fee2e2;
+    color: #ef4444;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.remove-btn:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.cart-summary {
+    padding: 20px 25px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 15px;
+}
+
+.summary-row.total {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e3a8a;
+    padding-top: 12px;
+    border-top: 2px solid #e5e7eb;
+}
+
+.cart-controls {
+    padding: 20px 25px;
+    background: white;
+}
+
+.control-group {
+    margin-bottom: 20px;
+}
+
+.control-label {
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.status-selector {
+    display: flex;
+    gap: 10px;
+}
+
+.status-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.status-btn:hover {
+    border-color: #3b82f6;
+}
+
+.status-btn.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.status-btn.confirmee.active {
+    background: #10b981;
+    border-color: #10b981;
+}
+
+.price-override {
+    margin-top: 15px;
+    padding: 15px;
+    background: #eff6ff;
+    border: 2px solid #3b82f6;
+    border-radius: 8px;
+    display: none;
+}
+
+.price-override.show {
+    display: block;
+}
+
+.employee-select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+}
+
+.employee-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-cancel {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.priority-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #fbbf24;
+    color: #78350f;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 10px;
+}
+
+/* MODAL */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    background: #1e3a8a;
+    color: white;
+    padding: 20px 25px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.history-item {
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border-left: 4px solid #3b82f6;
+}
+
+.history-item strong {
+    color: #1e3a8a;
+}
+
+/* TOAST NOTIFICATION */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    background: #10b981;
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    z-index: 10000;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 10px;
+}
+
+.toast.show {
+    display: flex;
+    animation: slideIn 0.3s ease;
+}
+
+.toast.error {
+    background: #ef4444;
+}
+
+.toast.warning {
+    background: #f59e0b;
+}
+
+.toast.info {
+    background: #3b82f6;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(400px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .order-grid {
+        grid-template-columns: 1fr;
     }
 
-    body {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-        font-family: 'Inter', sans-serif;
-        min-height: 100vh;
-    }
-
-    .container-fluid {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 1.5rem;
-    }
-
-    /* Header moderne */
-    .page-header {
-        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: var(--border-radius);
-        margin-bottom: 2rem;
-        box-shadow: var(--shadow);
+    .cart-section {
         position: relative;
-        overflow: hidden;
-    }
-
-    .page-header::before {
-        content: '';
-        position: absolute;
         top: 0;
-        right: 0;
-        width: 200px;
-        height: 200px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        transform: translate(50%, -50%);
+        max-height: none;
     }
+}
 
-    .page-header h1 {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        position: relative;
-        z-index: 2;
-    }
-
-    /* Layout moderne */
-    .main-layout {
-        display: grid;
-        grid-template-columns: 1fr 380px;
-        gap: 2rem;
-        align-items: start;
-    }
-
-    @media (max-width: 1200px) {
-        .main-layout {
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-    }
-
-    /* Formulaire client moderne */
-    .client-form {
-        background: var(--glass-bg);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
-        padding: 2rem;
-        border: 1px solid rgba(30, 58, 138, 0.08);
-        backdrop-filter: blur(20px);
-    }
-
-    .form-section-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--royal-blue-dark);
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding-bottom: 1rem;
-        border-bottom: 3px solid #f1f5f9;
-        position: relative;
-    }
-
-    .form-section-title::after {
-        content: '';
-        position: absolute;
-        bottom: -3px;
-        left: 0;
-        width: 60px;
-        height: 3px;
-        background: linear-gradient(90deg, var(--royal-blue), var(--royal-blue-light));
-        border-radius: 2px;
-    }
-
-    .form-grid {
-        display: grid;
-        gap: 1.25rem;
-    }
-
-    .form-grid.two-cols {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    @media (max-width: 768px) {
-        .form-grid.two-cols {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .form-field {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .form-label {
-        font-weight: 600;
-        color: var(--royal-blue-dark);
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .form-label .required {
-        color: var(--danger);
-        font-size: 0.75rem;
-    }
-
-    .form-input {
-        border: 2px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 0.875rem;
-        font-size: 0.9rem;
-        background: #fafbfc;
-        transition: var(--transition);
-        font-family: inherit;
-    }
-
-    .form-input:focus {
-        border-color: var(--royal-blue-light);
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-        background: white;
-        outline: none;
-        transform: translateY(-1px);
-    }
-
-    .form-input.has-duplicates {
-        border-color: var(--warning);
-        background: rgba(245, 158, 11, 0.05);
-        animation: shake 0.5s ease-in-out;
-    }
-
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-2px); }
-        75% { transform: translateX(2px); }
-    }
-
-    /* Indicateur de téléphone amélioré */
-    .phone-field {
-        position: relative;
-    }
-
-    .phone-indicator {
-        position: absolute;
-        right: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 1rem;
-        display: none;
-        z-index: 10;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .phone-indicator.checking {
-        display: flex;
-        background: #f3f4f6;
-        color: #6b7280;
-        animation: pulse 1.5s infinite;
-    }
-
-    .phone-indicator.has-duplicates {
-        display: flex;
-        background: rgba(245, 158, 11, 0.2);
-        color: var(--warning);
-        animation: bounce 0.5s ease;
-    }
-
-    .phone-indicator.clean {
-        display: flex;
-        background: rgba(16, 185, 129, 0.2);
-        color: var(--success);
-    }
-
-    @keyframes bounce {
-        0%, 100% { transform: translateY(-50%) scale(1); }
-        50% { transform: translateY(-50%) scale(1.1); }
-    }
-
-    /* Alert de doublons moderne */
-    .duplicate-alert {
-        margin-top: 1rem;
-        padding: 1.25rem;
-        border-radius: 10px;
-        border: 2px solid var(--warning);
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.03) 100%);
-        display: none;
-        animation: slideDown 0.4s ease;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .duplicate-alert::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, var(--warning), #f59e0b);
-    }
-
-    .duplicate-alert.show {
-        display: block;
-    }
-
-    .duplicate-alert-content {
-        font-size: 0.9rem;
-        color: #92400e;
-        margin-bottom: 1rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .duplicate-actions {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    .btn-small {
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: var(--transition);
-        border: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        text-decoration: none;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .btn-small:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    }
-
-    .btn-royal {
-        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-light) 100%);
-        color: white;
-    }
-
-    .btn-success {
-        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-        color: white;
-    }
-
-    .btn-outline {
-        background: white;
-        color: var(--royal-blue);
-        border: 2px solid var(--royal-blue);
-    }
-
-    .btn-outline:hover {
-        background: var(--royal-blue);
-        color: white;
-    }
-
-    /* Panier moderne */
-    .cart-panel {
-        background: var(--glass-bg);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
-        border: 1px solid rgba(30, 58, 138, 0.08);
-        position: sticky;
-        top: 1.5rem;
-        height: fit-content;
-        backdrop-filter: blur(20px);
-        overflow: hidden;
-    }
-
-    .cart-header {
-        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-        color: white;
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        position: relative;
-    }
-
-    .cart-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        transform: translate(30%, -30%);
-    }
-
-    .cart-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        position: relative;
-        z-index: 2;
-    }
-
-    .cart-count {
-        background: rgba(255, 255, 255, 0.25);
-        padding: 0.25rem 0.6rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        min-width: 24px;
-        text-align: center;
-    }
-
-    /* Recherche produits moderne */
-    .product-search {
-        padding: 1.25rem;
-        border-bottom: 1px solid rgba(241, 245, 249, 0.8);
-    }
-
-    .search-group {
-        position: relative;
-    }
-
-    .search-icon {
-        position: absolute;
-        left: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #6b7280;
-        font-size: 0.9rem;
-        z-index: 5;
-    }
-
-    .search-input {
-        width: 100%;
-        padding: 0.875rem 1rem 0.875rem 2.75rem;
-        border: 2px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        background: white;
-        transition: var(--transition);
-    }
-
-    .search-input:focus {
-        border-color: var(--royal-blue-light);
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-        outline: none;
-    }
-
-    .suggestions {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 2px solid #e2e8f0;
-        border-top: none;
-        border-radius: 0 0 8px 8px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        z-index: 1000;
-        max-height: 250px;
-        overflow-y: auto;
-        display: none;
-    }
-
-    .suggestion {
-        padding: 1rem;
-        cursor: pointer;
-        border-bottom: 1px solid #f9fafb;
-        transition: var(--transition);
-        font-size: 0.9rem;
-    }
-
-    .suggestion:hover {
-        background: #f8fafc;
-        transform: translateX(4px);
-    }
-
-    .suggestion:last-child {
-        border-bottom: none;
-    }
-
-    .product-ref {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.75rem;
-        color: var(--royal-blue);
-        background: rgba(30, 58, 138, 0.1);
-        padding: 0.2rem 0.5rem;
-        border-radius: 4px;
-        margin-left: 0.5rem;
-        font-weight: 600;
-    }
-
-    /* Items du panier améliorés */
-    .cart-items {
-        padding: 1.25rem;
-        min-height: 140px;
-        max-height: 320px;
-        overflow-y: auto;
-    }
-
-    .cart-empty {
-        text-align: center;
-        padding: 2.5rem 1rem;
-        color: #6b7280;
-    }
-
-    .cart-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        background: #f8fafc;
-        border-radius: 10px;
-        margin-bottom: 0.75rem;
-        border: 1px solid #f1f5f9;
-        transition: var(--transition);
-    }
-
-    .cart-item:hover {
-        border-color: var(--royal-blue-light);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        transform: translateY(-1px);
-    }
-
-    .item-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .item-name {
-        font-weight: 700;
-        color: var(--royal-blue-dark);
-        font-size: 0.9rem;
-        margin-bottom: 0.25rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .item-price {
-        color: #6b7280;
-        font-size: 0.8rem;
-        font-family: 'JetBrains Mono', monospace;
-    }
-
-    .quantity-control {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: white;
-        border-radius: 6px;
-        padding: 0.25rem;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .qty-btn {
-        width: 28px;
-        height: 28px;
-        border: none;
-        background: #f3f4f6;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 0.75rem;
-        color: #6b7280;
-        transition: var(--transition);
-    }
-
-    .qty-btn:hover {
-        background: var(--royal-blue-light);
-        color: white;
-        transform: scale(1.05);
-    }
-
-    .qty-input {
-        width: 40px;
-        text-align: center;
-        border: none;
-        background: transparent;
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: var(--royal-blue-dark);
-    }
-
-    .remove-btn {
-        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-        color: var(--danger);
-        border: none;
-        border-radius: 6px;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 0.75rem;
-        transition: var(--transition);
-    }
-
-    .remove-btn:hover {
-        background: var(--danger);
-        color: white;
-        transform: scale(1.05);
-    }
-
-    /* Contrôles améliorés */
-    .cart-summary {
-        padding: 1.25rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-top: 1px solid rgba(241, 245, 249, 0.8);
-    }
-
-    .summary-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.75rem;
-        font-size: 0.9rem;
-    }
-
-    .summary-row:last-child {
-        margin-bottom: 0;
-        font-weight: 800;
-        font-size: 1rem;
-        padding-top: 0.75rem;
-        border-top: 2px solid #e2e8f0;
-        color: var(--royal-blue-dark);
-    }
-
-    .summary-value {
-        font-family: 'JetBrains Mono', monospace;
-        font-weight: 700;
-    }
-
-    .order-controls {
-        padding: 1.25rem;
-        background: white;
-        border-top: 1px solid rgba(241, 245, 249, 0.8);
-    }
-
-    .control-section {
-        margin-bottom: 1.25rem;
-    }
-
-    .control-label {
-        font-weight: 700;
-        color: var(--royal-blue-dark);
-        margin-bottom: 0.75rem;
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .status-options {
-        display: flex;
-        gap: 0.75rem;
-    }
-
-    .status-option {
-        flex: 1;
-        padding: 0.75rem;
-        border: 2px solid transparent;
-        border-radius: 8px;
-        cursor: pointer;
-        text-align: center;
-        font-size: 0.85rem;
-        font-weight: 700;
-        transition: var(--transition);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .status-option::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-        transition: left 0.5s ease;
-    }
-
-    .status-option:hover::before {
-        left: 100%;
-    }
-
-    .status-option.nouvelle {
-        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-        color: #6b7280;
-    }
-
-    .status-option.nouvelle.active {
-        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
-        color: white;
-        border-color: var(--royal-blue-dark);
-        box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
-    }
-
-    .status-option.confirmée {
-        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-        color: #059669;
-    }
-
-    .status-option.confirmée.active {
-        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-        color: white;
-        border-color: #059669;
-        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-    }
-
-    /* Champ prix total conditionnel amélioré */
-    .total-price-field {
-        margin-top: 1rem;
-        padding: 1.25rem;
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 2px solid #0ea5e9;
-        border-radius: 10px;
-        display: none;
-        animation: slideDown 0.4s ease;
-        position: relative;
-    }
-
-    .total-price-field::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, #0ea5e9, #0284c7);
-        border-radius: 10px 10px 0 0;
-    }
-
-    .total-price-field.show {
-        display: block;
-    }
-
-    .employee-select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 2px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        background: white;
-        transition: var(--transition);
-    }
-
-    .employee-select:focus {
-        border-color: var(--royal-blue-light);
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-        outline: none;
+@media (max-width: 768px) {
+    .form-row.two-col {
+        grid-template-columns: 1fr;
     }
 
     .action-buttons {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1.5rem;
+        flex-direction: column;
     }
 
-    .btn-cancel {
-        flex: 1;
-        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-        color: #6b7280;
-        border: none;
-        border-radius: 8px;
-        padding: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        transition: var(--transition);
+    .status-selector {
+        flex-direction: column;
     }
 
-    .btn-cancel:hover {
-        background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    .form-control, .search-input, .employee-select {
+        font-size: 16px; /* Prevent iOS zoom */
     }
 
-    .btn-save {
-        flex: 2;
-        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        transition: var(--transition);
-        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+    .btn {
+        padding: 18px; /* Touch-friendly */
     }
-
-    .btn-save:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
-    }
-
-    .btn-save:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
-    }
-
-    /* Priority badge automatique amélioré */
-    .auto-priority {
-        background: linear-gradient(135deg, #d4a147 0%, #b8941f 100%);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        margin-top: 0.75rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        animation: slideIn 0.4s ease;
-        box-shadow: 0 4px 16px rgba(212, 161, 71, 0.3);
-    }
-
-    /* Modal amélioré */
-    .modal-content {
-        border: none;
-        border-radius: var(--border-radius);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        backdrop-filter: blur(20px);
-    }
-
-    .modal-header {
-        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
-        color: white;
-        border: none;
-        border-radius: var(--border-radius) var(--border-radius) 0 0;
-        padding: 1.5rem;
-    }
-
-    .history-item {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-        border-left: 4px solid var(--royal-blue-light);
-        transition: var(--transition);
-    }
-
-    .history-item:hover {
-        background: white;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        transform: translateY(-2px);
-    }
-
-    /* Animations */
-    @keyframes slideDown {
-        from { 
-            opacity: 0; 
-            transform: translateY(-20px); 
-            max-height: 0;
-        }
-        to { 
-            opacity: 1; 
-            transform: translateY(0); 
-            max-height: 500px;
-        }
-    }
-
-    @keyframes slideIn {
-        from { 
-            opacity: 0; 
-            transform: translateX(-20px); 
-        }
-        to { 
-            opacity: 1; 
-            transform: translateX(0); 
-        }
-    }
-
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
-    }
-
-    /* Responsive amélioré */
-    @media (max-width: 768px) {
-        .container-fluid {
-            padding: 1rem;
-        }
-        
-        .page-header {
-            padding: 1.5rem;
-        }
-        
-        .client-form, .cart-panel {
-            padding: 1.5rem;
-        }
-        
-        .action-buttons {
-            flex-direction: column;
-        }
-        
-        .duplicate-actions {
-            flex-direction: column;
-        }
-
-        .status-options {
-            flex-direction: column;
-        }
-    }
-
-    /* Effets visuels supplémentaires */
-    .form-input:valid {
-        border-color: var(--success);
-    }
-
-    .form-input:invalid:not(:placeholder-shown) {
-        border-color: var(--danger);
-    }
-
-    /* Messages d'erreur stylés */
-    .invalid-feedback {
-        color: var(--danger);
-        font-size: 0.8rem;
-        font-weight: 600;
-        margin-top: 0.25rem;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .invalid-feedback::before {
-        content: '⚠️';
-        font-size: 0.7rem;
-    }
+}
 </style>
 @endsection
 
 @section('content')
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="page-header">
+<div class="create-order-container">
+    <div class="page-title">
         <h1><i class="fas fa-plus-circle"></i> Créer une Nouvelle Commande</h1>
     </div>
 
-    <form id="orderForm" action="{{ route('admin.orders.store') }}" method="POST">
+    <form id="orderForm" method="POST" action="{{ route('admin.orders.store') }}">
         @csrf
-        <div class="main-layout">
-            <!-- Formulaire Client -->
-            <div class="client-form">
-                <div class="form-section-title">
-                    <i class="fas fa-user"></i> Informations Client
+        <div class="order-grid">
+            <!-- CLIENT FORM -->
+            <div class="client-section">
+                <h2 class="section-header"><i class="fas fa-user"></i> Informations Client</h2>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-user"></i> Nom Complet
+                            <span class="req" id="name-req">*</span>
+                        </label>
+                        <input type="text" name="customer_name" id="customer_name" class="form-control"
+                               value="{{ old('customer_name') }}" placeholder="Nom et prénom du client">
+                        @error('customer_name')<div style="color:#ef4444;font-size:13px;margin-top:5px;">{{ $message }}</div>@enderror
+                    </div>
                 </div>
-                
-                <div class="form-grid">
-                    <!-- Nom - Conditionnel selon statut -->
-                    <div class="form-field">
-                        <label for="customer_name" class="form-label">
-                            <i class="fas fa-user"></i> 
-                            Nom Complet 
-                            <span class="required" id="name-required" style="display: none;">*</span>
+
+                <div class="form-row two-col">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-phone"></i> Téléphone
+                            <span class="req show">*</span>
                         </label>
-                        <input type="text" class="form-input @error('customer_name') is-invalid @enderror" 
-                               id="customer_name" name="customer_name" value="{{ old('customer_name') }}" 
-                               placeholder="Nom et prénom du client">
-                        @error('customer_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-                    
-                    <!-- Téléphones -->
-                    <div class="form-grid two-cols">
-                        <div class="form-field">
-                            <label for="customer_phone" class="form-label">
-                                <i class="fas fa-phone"></i> Téléphone <span class="required">*</span>
-                            </label>
-                            <div class="phone-field">
-                                <input type="tel" class="form-input @error('customer_phone') is-invalid @enderror" 
-                                       id="customer_phone" name="customer_phone" value="{{ old('customer_phone') }}" 
-                                       placeholder="Ex: +216 XX XXX XXX" required>
-                                <div class="phone-indicator" id="phone-indicator">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </div>
-                            </div>
-                            @error('customer_phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            
-                            <!-- Alert de doublons TOUJOURS VISIBLE -->
-                            <div class="duplicate-alert" id="duplicate-alert">
-                                <div class="duplicate-alert-content" id="duplicate-alert-content">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    Vérification des doublons en cours...
-                                </div>
-                                <div class="duplicate-actions" id="duplicate-actions" style="display: none;">
-                                    <button type="button" class="btn-small btn-royal" id="view-history-btn">
-                                        <i class="fas fa-history"></i> Voir Historique
-                                    </button>
-                                    <button type="button" class="btn-small btn-success" id="fill-data-btn">
-                                        <i class="fas fa-fill-drip"></i> Pré-remplir
-                                    </button>
-                                    <button type="button" class="btn-small btn-outline" onclick="dismissAlert()">
-                                        <i class="fas fa-times"></i> Ignorer
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Priorité automatique -->
-                            <div class="auto-priority" id="auto-priority" style="display: none;">
-                                <i class="fas fa-copy"></i> Priorité Doublons Activée
-                            </div>
+                        <div class="phone-wrapper">
+                            <input type="tel" name="customer_phone" id="customer_phone" class="form-control"
+                                   value="{{ old('customer_phone') }}" placeholder="+216 XX XXX XXX" required>
+                            <span class="phone-status" id="phone-status">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
                         </div>
-                        
-                        <div class="form-field">
-                            <label for="customer_phone_2" class="form-label">
-                                <i class="fas fa-phone-alt"></i> Téléphone 2 (Optionnel)
-                            </label>
-                            <input type="tel" class="form-input @error('customer_phone_2') is-invalid @enderror" 
-                                   id="customer_phone_2" name="customer_phone_2" value="{{ old('customer_phone_2') }}" 
-                                   placeholder="Téléphone alternatif">
-                            @error('customer_phone_2') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        @error('customer_phone')<div style="color:#ef4444;font-size:13px;margin-top:5px;">{{ $message }}</div>@enderror
+
+                        <div class="alert-box" id="duplicate-alert">
+                            <div id="alert-message"></div>
+                            <div class="alert-actions" id="alert-actions"></div>
+                        </div>
+
+                        <div class="priority-badge" id="priority-badge" style="display:none;">
+                            <i class="fas fa-star"></i> Priorité Doublons
                         </div>
                     </div>
-                    
-                    <!-- Localisation - Conditionnel selon statut -->
-                    <div class="form-grid two-cols">
-                        <div class="form-field">
-                            <label for="customer_governorate" class="form-label">
-                                <i class="fas fa-map-marked-alt"></i> 
-                                Gouvernorat 
-                                <span class="required" id="gov-required" style="display: none;">*</span>
-                            </label>
-                            <select class="form-input @error('customer_governorate') is-invalid @enderror" 
-                                    id="customer_governorate" name="customer_governorate">
-                                <option value="">Choisir...</option>
-                                @if (isset($regions))
-                                    @foreach ($regions as $region)
-                                        <option value="{{ $region->id }}" {{ old('customer_governorate') == $region->id ? 'selected' : '' }}>
-                                            {{ $region->name }}
-                                        </option>
-                                    @endforeach
-                                @endif
-                            </select>
-                            @error('customer_governorate') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        
-                        <div class="form-field">
-                            <label for="customer_city" class="form-label">
-                                <i class="fas fa-city"></i> 
-                                Ville 
-                                <span class="required" id="city-required" style="display: none;">*</span>
-                            </label>
-                            <select class="form-input @error('customer_city') is-invalid @enderror" 
-                                    id="customer_city" name="customer_city">
-                                <option value="">Choisir...</option>
-                            </select>
-                            @error('customer_city') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                    </div>
-                    
-                    <!-- Adresse - Conditionnel selon statut -->
-                    <div class="form-field">
-                        <label for="customer_address" class="form-label">
-                            <i class="fas fa-map-marker-alt"></i> 
-                            Adresse 
-                            <span class="required" id="address-required" style="display: none;">*</span>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-phone-alt"></i> Téléphone 2 (Optionnel)
                         </label>
-                        <textarea class="form-input @error('customer_address') is-invalid @enderror" 
-                                  id="customer_address" name="customer_address" rows="2" 
-                                  placeholder="Adresse complète">{{ old('customer_address') }}</textarea>
-                        @error('customer_address') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <input type="tel" name="customer_phone_2" id="customer_phone_2" class="form-control"
+                               value="{{ old('customer_phone_2') }}" placeholder="Téléphone alternatif">
+                        @error('customer_phone_2')<div style="color:#ef4444;font-size:13px;margin-top:5px;">{{ $message }}</div>@enderror
                     </div>
-                    
-                    <!-- Notes -->
-                    <div class="form-field">
-                        <label for="notes" class="form-label">
+                </div>
+
+                <div class="form-row two-col">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-map-marked-alt"></i> Gouvernorat
+                            <span class="req" id="gov-req">*</span>
+                        </label>
+                        <select name="customer_governorate" id="customer_governorate" class="form-control">
+                            <option value="">Sélectionner...</option>
+                            @foreach($regions as $region)
+                                <option value="{{ $region->id }}" {{ old('customer_governorate') == $region->id ? 'selected' : '' }}>
+                                    {{ $region->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('customer_governorate')<div style="color:#ef4444;font-size:13px;margin-top:5px;">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-city"></i> Ville
+                            <span class="req" id="city-req">*</span>
+                        </label>
+                        <select name="customer_city" id="customer_city" class="form-control">
+                            <option value="">Sélectionner d'abord un gouvernorat...</option>
+                        </select>
+                        @error('customer_city')<div style="color:#ef4444;font-size:13px;margin-top:5px;">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-map-marker-alt"></i> Adresse
+                            <span class="req" id="address-req">*</span>
+                        </label>
+                        <textarea name="customer_address" id="customer_address" class="form-control" rows="3"
+                                  placeholder="Adresse complète de livraison">{{ old('customer_address') }}</textarea>
+                        @error('customer_address')<div style="color:#ef4444;font-size:13px;margin-top:5px;">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">
                             <i class="fas fa-sticky-note"></i> Notes (Optionnel)
                         </label>
-                        <textarea class="form-input @error('notes') is-invalid @enderror" 
-                                  id="notes" name="notes" rows="2" 
-                                  placeholder="Commentaires sur la commande">{{ old('notes') }}</textarea>
-                        @error('notes') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <textarea name="notes" id="notes" class="form-control" rows="2"
+                                  placeholder="Remarques ou commentaires">{{ old('notes') }}</textarea>
+                        @error('notes')<div style="color:#ef4444;font-size:13px;margin-top:5px;">{{ $message }}</div>@enderror
                     </div>
                 </div>
             </div>
 
-            <!-- Panier -->
-            <div class="cart-panel">
+            <!-- CART PANEL -->
+            <div class="cart-section">
                 <div class="cart-header">
-                    <div class="cart-title">
-                        <i class="fas fa-shopping-cart"></i> Panier
-                        <span class="cart-count" id="cart-count">0</span>
-                    </div>
+                    <h2><i class="fas fa-shopping-cart"></i> Panier</h2>
+                    <span class="cart-badge" id="cart-count">0</span>
                 </div>
-                
-                <!-- Recherche produits -->
-                <div class="product-search">
-                    <div class="search-group">
+
+                <div class="search-box">
+                    <div class="search-wrapper">
                         <i class="fas fa-search search-icon"></i>
-                        <input type="text" class="search-input" id="product-search" 
-                               placeholder="Rechercher par nom ou référence...">
-                        <div class="suggestions" id="suggestions"></div>
+                        <input type="text" class="search-input" id="product-search"
+                               placeholder="Rechercher un produit..." autocomplete="off">
+                        <div class="suggestions-list" id="suggestions"></div>
                     </div>
                 </div>
-                
-                <!-- Items -->
+
                 <div class="cart-items" id="cart-items">
                     <div class="cart-empty" id="cart-empty">
-                        <i class="fas fa-shopping-basket" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.5; color: var(--royal-blue);"></i>
-                        <div style="font-weight: 700; margin-bottom: 0.5rem; font-size: 1rem;">Panier vide</div>
-                        <div style="font-size: 0.85rem;">Recherchez des produits par nom ou référence</div>
+                        <i class="fas fa-shopping-basket"></i>
+                        <div style="font-weight:700;font-size:16px;margin-bottom:5px;">Panier vide</div>
+                        <div>Recherchez et ajoutez des produits</div>
                     </div>
                 </div>
-                
-                <!-- Résumé -->
-                <div class="cart-summary" id="cart-summary" style="display: none;">
+
+                <div class="cart-summary" id="cart-summary" style="display:none;">
                     <div class="summary-row">
-                        <span><i class="fas fa-calculator"></i> Sous-total:</span>
-                        <span class="summary-value" id="subtotal">0.000 TND</span>
+                        <span>Sous-total:</span>
+                        <span id="subtotal">0.000 TND</span>
                     </div>
-                    <div class="summary-row">
-                        <span><i class="fas fa-coins"></i> Total:</span>
-                        <span class="summary-value" id="total">0.000 TND</span>
+                    <div class="summary-row total">
+                        <span>Total:</span>
+                        <span id="total">0.000 TND</span>
                     </div>
                 </div>
-                
-                <!-- Contrôles -->
-                <div class="order-controls">
-                    <div class="control-section">
-                        <div class="control-label">
-                            <i class="fas fa-flag"></i> Statut de la Commande
-                        </div>
-                        <div class="status-options">
-                            <div class="status-option nouvelle active" data-status="nouvelle">
+
+                <div class="cart-controls">
+                    <div class="control-group">
+                        <div class="control-label"><i class="fas fa-flag"></i> Statut de la Commande</div>
+                        <div class="status-selector">
+                            <button type="button" class="status-btn active" data-status="nouvelle">
                                 <i class="fas fa-circle"></i> Nouvelle
-                            </div>
-                            <div class="status-option confirmée" data-status="confirmée">
+                            </button>
+                            <button type="button" class="status-btn confirmee" data-status="confirmée">
                                 <i class="fas fa-check-circle"></i> Confirmée
-                            </div>
+                            </button>
                         </div>
                         <input type="hidden" name="status" id="status" value="nouvelle">
                         <input type="hidden" name="priority" id="priority" value="normale">
-                        
-                        <!-- Champ prix total pour commandes confirmées -->
-                        <div class="total-price-field" id="total-price-field">
-                            <label for="total_price" class="control-label">
-                                <i class="fas fa-euro-sign"></i> Prix Total Personnalisé
+
+                        <div class="price-override" id="price-override">
+                            <label class="form-label" style="margin-bottom:8px;">
+                                <i class="fas fa-coins"></i> Prix Total Personnalisé
                             </label>
-                            <input type="number" class="form-input" id="total_price" name="total_price" 
-                                   step="0.001" min="0" placeholder="Laisser vide pour calcul automatique">
-                            <small style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem; display: block;">
-                                <i class="fas fa-info-circle"></i> 
+                            <input type="number" name="total_price" id="total_price" class="form-control"
+                                   step="0.001" min="0" placeholder="Laisser vide pour calcul auto">
+                            <small style="color:#6b7280;font-size:12px;margin-top:8px;display:block;">
                                 Laissez vide pour utiliser le total calculé automatiquement
                             </small>
                         </div>
                     </div>
-                    
-                    <div class="control-section">
-                        <label for="employee_id" class="control-label">
-                            <i class="fas fa-user-tie"></i> Assigner à un Employé
-                        </label>
-                        <select class="employee-select" id="employee_id" name="employee_id">
+
+                    @if(!Auth::guard('admin')->user()->isEmployee())
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-user-tie"></i> Assigner à un Employé</label>
+                        <select name="employee_id" id="employee_id" class="employee-select">
                             <option value="">Aucun employé</option>
-                            @if (isset($employees) && $employees->count() > 0)
-                                @foreach ($employees as $employee)
-                                    <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                                @endforeach
-                            @endif
+                            @foreach($employees as $employee)
+                                <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                            @endforeach
                         </select>
                     </div>
-                    
+                    @endif
+
                     <div class="action-buttons">
-                        <a href="{{ route('admin.orders.index') }}" class="btn-cancel">
+                        <a href="{{ route('admin.orders.index') }}" class="btn btn-cancel">
                             <i class="fas fa-times"></i> Annuler
                         </a>
-                        <button type="submit" class="btn-save" id="save-btn">
-                            <i class="fas fa-save"></i> Créer Commande
+                        <button type="submit" class="btn btn-submit" id="submit-btn">
+                            <i class="fas fa-save"></i> Créer la Commande
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <div id="cart-data" style="display: none;"></div>
+
+        <!-- Hidden products data -->
+        <div id="cart-data"></div>
     </form>
 </div>
 
-<!-- Modal Historique -->
-<div class="modal fade" id="historyModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-history me-2"></i>Historique du Client
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="history-content">
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary"></div>
-                    <p class="mt-2 text-muted">Chargement...</p>
-                </div>
+<!-- History Modal -->
+<div class="modal" id="historyModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-history"></i> Historique du Client</h3>
+            <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-body">
+            <div style="text-align:center;padding:40px 20px;color:#9ca3af;">
+                <i class="fas fa-spinner fa-spin" style="font-size:32px;margin-bottom:15px;"></i>
+                <div>Chargement...</div>
             </div>
         </div>
     </div>
@@ -1167,605 +974,459 @@
 
 @section('scripts')
 <script>
-$(document).ready(function() {
-    let cart = [];
-    let phoneTimeout;
-    let hasExistingOrders = false;
-    let latestClientData = null;
+// ==================== VARIABLES GLOBALES ====================
+let cart = [];
+let phoneCheckTimeout;
+let duplicatesFound = false;
+let latestClientData = null;
 
-    console.log('🚀 Initialisation de la création de commande');
+// ==================== PHONE DUPLICATE CHECK ====================
+$('#customer_phone').on('input', function() {
+    const phone = $(this).val().trim();
+    clearTimeout(phoneCheckTimeout);
 
-    // =========================
-    // VÉRIFICATION TÉLÉPHONE CORRIGÉE ET AMÉLIORÉE
-    // =========================
-    $('#customer_phone').on('input', function() {
-        const phone = $(this).val().trim();
-        clearTimeout(phoneTimeout);
-        
-        // Afficher l'alert dès qu'on tape
-        $('#duplicate-alert').addClass('show');
-        $('#duplicate-actions').hide();
-        
-        if (phone.length >= 8) {
-            phoneTimeout = setTimeout(() => checkPhone(phone), 800);
-        } else {
-            resetPhone();
+    if (phone.length >= 8) {
+        phoneCheckTimeout = setTimeout(() => checkPhone(phone), 600);
+        $('#phone-status').removeClass('duplicate clean').addClass('checking').show();
+    } else {
+        resetPhoneCheck();
+    }
+});
+
+function checkPhone(phone) {
+    $.ajax({
+        url: '/admin/orders/check-phone-duplicates',
+        data: { phone: phone },
+        success: function(response) {
+            $('#phone-status').removeClass('checking');
+
+            if (response.has_duplicates && response.total_orders > 0) {
+                $('#phone-status').addClass('duplicate').html('<i class="fas fa-exclamation-triangle"></i>');
+                showDuplicateAlert(response);
+                duplicatesFound = true;
+                setPriority('urgente');
+            } else {
+                $('#phone-status').addClass('clean').html('<i class="fas fa-check"></i>');
+                showCleanAlert();
+                duplicatesFound = false;
+                setPriority('normale');
+            }
+        },
+        error: function() {
+            resetPhoneCheck();
         }
     });
+}
 
-    function checkPhone(phone) {
-        console.log('🔍 Vérification du téléphone:', phone);
-        
-        $('#phone-indicator').removeClass('has-duplicates clean').addClass('checking').show();
-        $('#duplicate-alert-content').html(`
-            <i class="fas fa-spinner fa-spin"></i>
-            Vérification des doublons pour ${phone}...
-        `);
-        
-        $.get('/admin/orders/check-phone-duplicates', { phone })
-            .done(function(response) {
-                console.log('✅ Réponse reçue:', response);
-                $('#phone-indicator').removeClass('checking');
-                
-                if (response.has_duplicates && response.total_orders > 0) {
-                    $('#phone-indicator').addClass('has-duplicates').html('<i class="fas fa-exclamation-triangle"></i>');
-                    $('#customer_phone').addClass('has-duplicates');
-                    showDuplicateAlert(response);
-                    setAutoPriority(true);
-                } else {
-                    $('#phone-indicator').addClass('clean').html('<i class="fas fa-check"></i>');
-                    $('#customer_phone').removeClass('has-duplicates');
-                    showCleanAlert();
-                    setAutoPriority(false);
-                }
-            })
-            .fail(function(xhr) {
-                console.error('❌ Erreur vérification téléphone:', xhr);
-                $('#duplicate-alert-content').html(`
-                    <i class="fas fa-exclamation-circle"></i>
-                    Erreur lors de la vérification. Vérifiez votre connexion.
-                `);
-                resetPhone();
-            });
+function resetPhoneCheck() {
+    $('#phone-status').removeClass('checking duplicate clean').hide();
+    $('#duplicate-alert').removeClass('show');
+    duplicatesFound = false;
+    setPriority('normale');
+}
+
+function showDuplicateAlert(data) {
+    $('#alert-message').html(`<strong><i class="fas fa-exclamation-triangle"></i> ${data.total_orders} commande(s) trouvée(s) pour ce numéro!</strong>`);
+    $('#alert-actions').html(`
+        <button type="button" class="btn-sm btn-primary" onclick="viewHistory()">
+            <i class="fas fa-history"></i> Voir Historique
+        </button>
+        <button type="button" class="btn-sm btn-success" onclick="autoFill()">
+            <i class="fas fa-fill-drip"></i> Pré-remplir
+        </button>
+        <button type="button" class="btn-sm btn-outline" onclick="dismissAlert()">
+            <i class="fas fa-times"></i> Ignorer
+        </button>
+    `);
+    $('#duplicate-alert').addClass('show warning');
+
+    // Load latest order data for autofill
+    loadLatestClientData($('#customer_phone').val());
+}
+
+function showCleanAlert() {
+    $('#alert-message').html('<strong><i class="fas fa-check-circle"></i> Aucun doublon détecté</strong>');
+    $('#alert-actions').empty();
+    $('#duplicate-alert').addClass('show success');
+    setTimeout(() => $('#duplicate-alert').removeClass('show'), 3000);
+}
+
+function dismissAlert() {
+    $('#duplicate-alert').removeClass('show');
+    setPriority('normale');
+}
+
+function setPriority(priority) {
+    $('#priority').val(priority);
+    if (priority === 'urgente') {
+        $('#priority-badge').show();
+    } else {
+        $('#priority-badge').hide();
     }
+}
 
-    function resetPhone() {
-        $('#phone-indicator').removeClass('checking has-duplicates clean').hide();
-        $('#customer_phone').removeClass('has-duplicates');
-        $('#duplicate-alert').removeClass('show');
-        setAutoPriority(false);
-    }
-
-    function showDuplicateAlert(response) {
-        $('#duplicate-alert-content').html(`
-            <i class="fas fa-exclamation-triangle"></i>
-            <strong>${response.total_orders} commande(s)</strong> trouvée(s) pour ce numéro !
-        `);
-        $('#duplicate-actions').show();
-        $('#duplicate-alert').addClass('show');
-        hasExistingOrders = true;
-        
-        // Charger automatiquement les données du client
-        loadClientDataForAutofill(response.orders[0]?.customer_phone || $('#customer_phone').val());
-    }
-
-    function showCleanAlert() {
-        $('#duplicate-alert-content').html(`
-            <i class="fas fa-check-circle"></i>
-            Aucun doublon détecté pour ce numéro.
-        `);
-        $('#duplicate-actions').hide();
-        $('#duplicate-alert').addClass('show');
-        hasExistingOrders = false;
-    }
-
-    function setAutoPriority(isDuplicate) {
-        if (isDuplicate) {
-            $('#priority').val('urgente');
-            $('#auto-priority').show();
-        } else {
-            $('#priority').val('normale');
-            $('#auto-priority').hide();
-        }
-    }
-
-    window.dismissAlert = function() {
-        $('#duplicate-alert').removeClass('show');
-        setAutoPriority(false);
-    };
-
-    // =========================
-    // HISTORIQUE ET PRÉ-REMPLISSAGE FONCTIONNELS
-    // =========================
-    $('#view-history-btn').on('click', function() {
-        console.log('📋 Affichage de l\'historique');
-        const phone = $('#customer_phone').val().trim();
-        if (phone) {
-            loadHistory(phone);
-            $('#historyModal').modal('show');
+// ==================== CLIENT HISTORY ====================
+function loadLatestClientData(phone) {
+    $.ajax({
+        url: '/admin/orders/client-history',
+        data: { phone: phone },
+        success: function(response) {
+            if (response.latest_order) {
+                latestClientData = response.latest_order;
+            }
         }
     });
+}
 
-    $('#fill-data-btn').on('click', function() {
-        console.log('📝 Pré-remplissage des données');
-        if (latestClientData) {
-            fillData(latestClientData);
-            showNotification('success', '✅ Données pré-remplies avec succès !');
-        } else {
-            showNotification('warning', '⚠️ Aucune donnée disponible pour le pré-remplissage.');
-        }
-    });
+function viewHistory() {
+    const phone = $('#customer_phone').val().trim();
+    $('#historyModal').addClass('show');
+    $('#modal-body').html('<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:32px;"></i><div style="margin-top:15px;">Chargement...</div></div>');
 
-    function loadClientDataForAutofill(phone) {
-        if (!phone) return;
-        
-        $.get('/admin/orders/client-history', { phone })
-            .done(function(response) {
-                if (response.latest_order) {
-                    latestClientData = response.latest_order;
-                    console.log('💾 Données client chargées:', latestClientData);
-                }
-            })
-            .fail(function() {
-                console.warn('⚠️ Impossible de charger les données client');
-            });
-    }
+    $.ajax({
+        url: '/admin/orders/client-history',
+        data: { phone: phone },
+        success: function(response) {
+            let html = '';
+            if (response.orders && response.orders.length > 0) {
+                html = `<div style="margin-bottom:20px;padding:15px;background:#eff6ff;border-radius:8px;color:#1e3a8a;font-weight:700;">
+                    <i class="fas fa-info-circle"></i> ${response.orders.length} commande(s) trouvée(s)
+                </div>`;
 
-    function loadHistory(phone) {
-        $('#history-content').html(`
-            <div class="text-center py-4">
-                <div class="spinner-border text-primary"></div>
-                <p class="mt-2">Chargement de l'historique...</p>
-            </div>
-        `);
-        
-        $.get('/admin/orders/client-history', { phone })
-            .done(function(response) {
-                let content = '';
-                if (response.orders?.length) {
-                    content += `<div class="alert alert-info"><strong>Total:</strong> ${response.orders.length} commande(s) trouvée(s)</div>`;
-                    response.orders.forEach(order => {
-                        content += `
-                            <div class="history-item">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <strong>Commande #${order.id}</strong>
-                                    <span class="badge bg-${getStatusColor(order.status)}">${order.status}</span>
-                                </div>
-                                <div class="small text-muted">
-                                    <strong>Client:</strong> ${order.customer_name || 'N/A'}<br>
-                                    <strong>Montant:</strong> ${parseFloat(order.total_price).toFixed(3)} TND<br>
-                                    <strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString('fr-FR')}
-                                </div>
+                response.orders.forEach(order => {
+                    html += `
+                        <div class="history-item">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                                <strong>Commande #${order.id}</strong>
+                                <span style="padding:4px 10px;background:#10b981;color:white;border-radius:4px;font-size:12px;">${order.status}</span>
                             </div>
-                        `;
-                    });
-                } else {
-                    content = '<div class="text-center py-4 text-muted">Aucun historique trouvé</div>';
-                }
-                $('#history-content').html(content);
-            })
-            .fail(function() {
-                $('#history-content').html('<div class="alert alert-danger">Erreur de chargement</div>');
-            });
-    }
-
-    function fillData(order) {
-        if (!order) return;
-        
-        console.log('🔄 Remplissage des données:', order);
-        
-        $('#customer_name').val(order.customer_name || '');
-        $('#customer_phone_2').val(order.customer_phone_2 || '');
-        $('#customer_address').val(order.customer_address || '');
-        
-        if (order.customer_governorate) {
-            $('#customer_governorate').val(order.customer_governorate).trigger('change');
-            setTimeout(() => {
-                if (order.customer_city) {
-                    $('#customer_city').val(order.customer_city);
-                }
-            }, 1000);
-        }
-        
-        // Animation de confirmation
-        $('.form-input').addClass('border-success');
-        setTimeout(() => $('.form-input').removeClass('border-success'), 2000);
-    }
-
-    function getStatusColor(status) {
-        const colors = {
-            'nouvelle': 'secondary',
-            'confirmée': 'success',
-            'annulée': 'danger',
-            'datée': 'warning',
-            'livrée': 'primary'
-        };
-        return colors[status] || 'secondary';
-    }
-
-    // =========================
-    // RECHERCHE PRODUITS PAR NOM ET RÉFÉRENCE
-    // =========================
-    $('#product-search').on('input', function() {
-        const query = $(this).val().trim();
-        if (query.length >= 2) {
-            searchProducts(query);
-        } else {
-            $('#suggestions').hide();
-        }
-    });
-
-    function searchProducts(query) {
-        console.log('🔎 Recherche produits:', query);
-        
-        $.get('/admin/orders/search-products', { search: query })
-            .done(data => {
-                console.log('📦 Produits trouvés:', data.length);
-                showSuggestions(data);
-            })
-            .fail(error => {
-                console.error('❌ Erreur recherche produits:', error);
-                showSuggestions([]);
-            });
-    }
-
-    function showSuggestions(products) {
-        const suggestions = $('#suggestions').empty();
-        
-        if (products.length === 0) {
-            suggestions.html('<div class="suggestion">Aucun produit trouvé</div>');
-        } else {
-            products.forEach(product => {
-                const item = $(`
-                    <div class="suggestion d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>${product.name}</strong>
-                            ${product.reference ? `<span class="product-ref">Réf: ${product.reference}</span>` : ''}
-                            <br><small class="text-muted">Stock: ${product.stock} disponible(s)</small>
+                            <div style="font-size:13px;color:#6b7280;">
+                                <strong>Client:</strong> ${order.customer_name || 'N/A'}<br>
+                                <strong>Montant:</strong> ${parseFloat(order.total_price).toFixed(3)} TND<br>
+                                <strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString('fr-FR')}
+                            </div>
                         </div>
-                        <div class="fw-bold text-success">${parseFloat(product.price).toFixed(3)} TND</div>
-                    </div>
-                `).on('click', () => {
-                    addToCart(product);
-                    $('#product-search').val('');
-                    suggestions.hide();
+                    `;
                 });
-                suggestions.append(item);
-            });
-        }
-        
-        suggestions.show();
-    }
-
-    $(document).on('click', e => {
-        if (!$(e.target).closest('.search-group').length) {
-            $('#suggestions').hide();
+            } else {
+                html = '<div style="text-align:center;padding:40px;color:#9ca3af;">Aucun historique trouvé</div>';
+            }
+            $('#modal-body').html(html);
+        },
+        error: function() {
+            $('#modal-body').html('<div style="text-align:center;padding:40px;color:#ef4444;">Erreur de chargement</div>');
         }
     });
+}
 
-    // =========================
-    // GESTION PANIER AMÉLIORÉE
-    // =========================
-    function addToCart(product) {
-        console.log('🛒 Ajout au panier:', product.name);
-        
-        const existing = cart.find(item => item.id === product.id);
-        
-        if (existing) {
-            existing.quantity += 1;
-            showNotification('info', `➕ Quantité augmentée pour ${product.name}`);
-        } else {
-            cart.push({
-                id: product.id,
-                name: product.name,
-                reference: product.reference,
-                price: parseFloat(product.price),
-                quantity: 1,
-                stock: product.stock
-            });
-            showNotification('success', `✅ ${product.name} ajouté au panier`);
-        }
-        
-        updateCart();
+function autoFill() {
+    if (!latestClientData) {
+        showToast('warning', 'Aucune donnée disponible');
+        return;
     }
 
-    function updateCart() {
-        const items = $('#cart-items');
-        const empty = $('#cart-empty');
-        const summary = $('#cart-summary');
-        
-        const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-        $('#cart-count').text(totalItems);
-        
-        items.find('.cart-item').remove();
-        
-        if (cart.length === 0) {
-            empty.show();
-            summary.hide();
-        } else {
-            empty.hide();
-            summary.show();
-            
-            cart.forEach(item => {
-                items.append(createCartItem(item));
-            });
-            
-            updateSummary();
-        }
-        
-        updateFormData();
-    }
+    $('#customer_name').val(latestClientData.customer_name || '');
+    $('#customer_phone_2').val(latestClientData.customer_phone_2 || '');
+    $('#customer_address').val(latestClientData.customer_address || '');
 
-    function createCartItem(item) {
-        return $(`
-            <div class="cart-item">
-                <div class="item-info">
-                    <div class="item-name">${item.name}</div>
-                    <div class="item-price">
-                        ${item.reference ? `Réf: ${item.reference} • ` : ''}
-                        ${item.price.toFixed(3)} TND × ${item.quantity}
-                    </div>
-                </div>
-                <div class="quantity-control">
-                    <button type="button" class="qty-btn minus"><i class="fas fa-minus"></i></button>
-                    <input type="number" class="qty-input" value="${item.quantity}" min="1" max="${item.stock}">
-                    <button type="button" class="qty-btn plus"><i class="fas fa-plus"></i></button>
-                </div>
-                <button type="button" class="remove-btn"><i class="fas fa-trash"></i></button>
-            </div>
-        `).on('click', '.minus', () => updateQuantity(item.id, item.quantity - 1))
-          .on('click', '.plus', () => updateQuantity(item.id, item.quantity + 1))
-          .on('change', '.qty-input', function() { updateQuantity(item.id, parseInt($(this).val()) || 1); })
-          .on('click', '.remove-btn', () => removeFromCart(item.id));
-    }
-
-    function updateQuantity(id, newQty) {
-        const item = cart.find(i => i.id === id);
-        if (item) {
-            const oldQty = item.quantity;
-            item.quantity = Math.max(1, Math.min(newQty, item.stock));
-            
-            if (item.quantity !== oldQty) {
-                updateCart();
-                showNotification('info', `📊 Quantité mise à jour: ${item.name}`);
+    if (latestClientData.customer_governorate) {
+        $('#customer_governorate').val(latestClientData.customer_governorate).trigger('change');
+        setTimeout(() => {
+            if (latestClientData.customer_city) {
+                $('#customer_city').val(latestClientData.customer_city);
             }
-        }
+        }, 800);
     }
 
-    function removeFromCart(id) {
-        const item = cart.find(i => i.id === id);
-        if (item) {
-            cart = cart.filter(item => item.id !== id);
-            updateCart();
-            showNotification('warning', `🗑️ ${item.name} retiré du panier`);
-        }
-    }
+    showToast('success', 'Données pré-remplies avec succès');
+}
 
-    function updateSummary() {
-        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        $('#subtotal').text(`${subtotal.toFixed(3)} TND`);
-        $('#total').text(`${subtotal.toFixed(3)} TND`);
-    }
+function closeModal() {
+    $('#historyModal').removeClass('show');
+}
 
-    function updateFormData() {
-        const data = $('#cart-data').empty();
-        cart.forEach((item, index) => {
-            data.append(`<input type="hidden" name="products[${index}][id]" value="${item.id}">`);
-            data.append(`<input type="hidden" name="products[${index}][quantity]" value="${item.quantity}">`);
+// ==================== GOVERNORATE/CITY LOADING ====================
+$('#customer_governorate').on('change', function() {
+    const regionId = $(this).val();
+    const citySelect = $('#customer_city');
+
+    if (regionId) {
+        citySelect.html('<option value="">Chargement...</option>');
+
+        $.ajax({
+            url: '/admin/orders/get-cities',
+            data: { region_id: regionId },
+            success: function(cities) {
+                citySelect.html('<option value="">Sélectionner...</option>');
+                cities.forEach(city => {
+                    citySelect.append(`<option value="${city.id}">${city.name}</option>`);
+                });
+            },
+            error: function() {
+                citySelect.html('<option value="">Erreur</option>');
+            }
         });
+    } else {
+        citySelect.html('<option value="">Sélectionner d\'abord un gouvernorat...</option>');
     }
+});
 
-    // =========================
-    // GESTION STATUT ET VALIDATION CONDITIONNELLE
-    // =========================
-    $('.status-option').on('click', function() {
-        $('.status-option').removeClass('active');
-        $(this).addClass('active');
-        const status = $(this).data('status');
-        $('#status').val(status);
-        
-        console.log('📋 Changement de statut:', status);
-        
-        if (status === 'confirmée') {
-            $('#total-price-field').addClass('show');
-            makeFieldsRequired();
-            showNotification('info', '⚠️ Statut confirmé: tous les champs sont maintenant obligatoires');
-        } else {
-            $('#total-price-field').removeClass('show');
-            makeBasicFieldsRequired();
-            showNotification('info', '📝 Statut nouvelle: seuls le téléphone et les produits sont obligatoires');
-        }
-    });
-
-    function makeFieldsRequired() {
-        // Afficher les astérisques
-        $('#name-required, #gov-required, #city-required, #address-required').show();
-        // Marquer les champs comme requis
-        $('#customer_name, #customer_governorate, #customer_city, #customer_address').prop('required', true);
-        
-        // Animation visuelle
-        $('.form-label').addClass('text-primary');
-        setTimeout(() => $('.form-label').removeClass('text-primary'), 1000);
+// ==================== PRODUCT SEARCH ====================
+$('#product-search').on('input', function() {
+    const query = $(this).val().trim();
+    if (query.length >= 2) {
+        searchProducts(query);
+    } else {
+        $('#suggestions').removeClass('show').empty();
     }
+});
 
-    function makeBasicFieldsRequired() {
-        // Masquer les astérisques
-        $('#name-required, #gov-required, #city-required, #address-required').hide();
-        // Retirer le requis
-        $('#customer_name, #customer_governorate, #customer_city, #customer_address').prop('required', false);
-    }
-
-    // =========================
-    // CHARGEMENT DES VILLES
-    // =========================
-    $('#customer_governorate').on('change', function() {
-        const regionId = $(this).val();
-        const citySelect = $('#customer_city');
-        
-        if (regionId) {
-            console.log('🏙️ Chargement des villes pour la région:', regionId);
-            
-            citySelect.html('<option value="">Chargement...</option>');
-            
-            $.get('/admin/orders/get-cities', { region_id: regionId })
-                .done(cities => {
-                    citySelect.html('<option value="">Choisir...</option>');
-                    cities.forEach(city => {
-                        citySelect.append(`<option value="${city.id}">${city.name}</option>`);
-                    });
-                    console.log('✅ Villes chargées:', cities.length);
-                })
-                .fail(() => {
-                    citySelect.html('<option value="">Erreur de chargement</option>');
-                    showNotification('error', '❌ Impossible de charger les villes');
+function searchProducts(query) {
+    $.ajax({
+        url: '/admin/orders/search-products',
+        data: { search: query },
+        success: function(products) {
+            let html = '';
+            if (products.length === 0) {
+                html = '<div class="suggestion-item">Aucun produit trouvé</div>';
+            } else {
+                products.forEach(product => {
+                    html += `
+                        <div class="suggestion-item" onclick='addToCart(${JSON.stringify(product)})'>
+                            <div class="name">${product.name}</div>
+                            ${product.reference ? `<span class="ref">Réf: ${product.reference}</span>` : ''}
+                            <div class="details">
+                                <span>Stock: ${product.stock}</span>
+                                <span style="color:#10b981;font-weight:700;">${parseFloat(product.price).toFixed(3)} TND</span>
+                            </div>
+                        </div>
+                    `;
                 });
-        } else {
-            citySelect.html('<option value="">Choisir...</option>');
+            }
+            $('#suggestions').html(html).addClass('show');
         }
     });
+}
 
-    // =========================
-    // VALIDATION FINALE DU FORMULAIRE
-    // =========================
-    $('#orderForm').on('submit', function(e) {
-        console.log('📤 Soumission du formulaire');
-        
-        const errors = [];
-        const status = $('#status').val();
-        
-        // Validation téléphone (toujours obligatoire)
-        if (!$('#customer_phone').val().trim()) {
-            errors.push('❌ Le numéro de téléphone est obligatoire');
+$(document).on('click', function(e) {
+    if (!$(e.target).closest('.search-wrapper').length) {
+        $('#suggestions').removeClass('show');
+    }
+});
+
+// ==================== CART MANAGEMENT ====================
+function addToCart(product) {
+    const existing = cart.find(item => item.id === product.id);
+
+    if (existing) {
+        existing.quantity++;
+        showToast('info', `Quantité augmentée pour ${product.name}`);
+    } else {
+        cart.push({
+            id: product.id,
+            name: product.name,
+            reference: product.reference,
+            price: parseFloat(product.price),
+            quantity: 1,
+            stock: product.stock
+        });
+        showToast('success', `${product.name} ajouté au panier`);
+    }
+
+    updateCart();
+    $('#product-search').val('');
+    $('#suggestions').removeClass('show');
+}
+
+function updateCart() {
+    const itemsContainer = $('#cart-items');
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+    $('#cart-count').text(totalItems);
+
+    if (cart.length === 0) {
+        $('#cart-empty').show();
+        $('#cart-summary').hide();
+        itemsContainer.find('.cart-item').remove();
+    } else {
+        $('#cart-empty').hide();
+        $('#cart-summary').show();
+
+        itemsContainer.find('.cart-item').remove();
+        cart.forEach(item => {
+            const itemHtml = `
+                <div class="cart-item">
+                    <div class="item-info">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-price">
+                            ${item.reference ? `Réf: ${item.reference} • ` : ''}
+                            ${item.price.toFixed(3)} TND × ${item.quantity}
+                        </div>
+                    </div>
+                    <div class="qty-control">
+                        <button type="button" class="qty-btn" onclick="changeQty(${item.id}, -1)">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <div class="qty-value">${item.quantity}</div>
+                        <button type="button" class="qty-btn" onclick="changeQty(${item.id}, 1)">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="remove-btn" onclick="removeFromCart(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            $('#cart-empty').before(itemHtml);
+        });
+
+        updateSummary();
+    }
+
+    updateFormData();
+}
+
+function changeQty(id, delta) {
+    const item = cart.find(i => i.id === id);
+    if (item) {
+        const newQty = item.quantity + delta;
+        if (newQty >= 1 && newQty <= item.stock) {
+            item.quantity = newQty;
+            updateCart();
+        } else if (newQty > item.stock) {
+            showToast('warning', `Stock maximum: ${item.stock}`);
         }
-        
-        // Validation produits (toujours obligatoire)
-        if (cart.length === 0) {
-            errors.push('❌ Le panier est vide - Ajoutez au moins un produit');
+    }
+}
+
+function removeFromCart(id) {
+    const item = cart.find(i => i.id === id);
+    if (item) {
+        cart = cart.filter(i => i.id !== id);
+        updateCart();
+        showToast('info', `${item.name} retiré du panier`);
+    }
+}
+
+function updateSummary() {
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    $('#subtotal').text(subtotal.toFixed(3) + ' TND');
+    $('#total').text(subtotal.toFixed(3) + ' TND');
+}
+
+function updateFormData() {
+    const container = $('#cart-data').empty();
+    cart.forEach((item, index) => {
+        container.append(`<input type="hidden" name="products[${index}][id]" value="${item.id}">`);
+        container.append(`<input type="hidden" name="products[${index}][quantity]" value="${item.quantity}">`);
+    });
+}
+
+// ==================== STATUS MANAGEMENT ====================
+$('.status-btn').on('click', function() {
+    $('.status-btn').removeClass('active');
+    $(this).addClass('active');
+    const status = $(this).data('status');
+    $('#status').val(status);
+
+    if (status === 'confirmée') {
+        $('#price-override').addClass('show');
+        makeFieldsRequired();
+        showToast('info', 'Statut confirmé: tous les champs sont obligatoires');
+    } else {
+        $('#price-override').removeClass('show');
+        makeFieldsOptional();
+    }
+});
+
+function makeFieldsRequired() {
+    $('#name-req, #gov-req, #city-req, #address-req').addClass('show');
+    $('#customer_name, #customer_governorate, #customer_city, #customer_address').prop('required', true);
+}
+
+function makeFieldsOptional() {
+    $('#name-req, #gov-req, #city-req, #address-req').removeClass('show');
+    $('#customer_name, #customer_governorate, #customer_city, #customer_address').prop('required', false);
+}
+
+// ==================== FORM VALIDATION ====================
+$('#orderForm').on('submit', function(e) {
+    const errors = [];
+    const status = $('#status').val();
+
+    // Phone required
+    if (!$('#customer_phone').val().trim()) {
+        errors.push('Le numéro de téléphone est obligatoire');
+    }
+
+    // Cart not empty
+    if (cart.length === 0) {
+        errors.push('Le panier est vide - Ajoutez au moins un produit');
+    }
+
+    // Confirmed order validations
+    if (status === 'confirmée') {
+        if (!$('#customer_name').val().trim()) {
+            errors.push('Le nom complet est obligatoire pour une commande confirmée');
+        }
+        if (!$('#customer_governorate').val()) {
+            errors.push('Le gouvernorat est obligatoire pour une commande confirmée');
+        }
+        if (!$('#customer_city').val()) {
+            errors.push('La ville est obligatoire pour une commande confirmée');
+        }
+        if (!$('#customer_address').val().trim()) {
+            errors.push('L\'adresse est obligatoire pour une commande confirmée');
         }
 
-        // Validation conditionnelle selon le statut
-        if (status === 'confirmée') {
-            if (!$('#customer_name').val().trim()) {
-                errors.push('❌ Le nom complet est obligatoire pour une commande confirmée');
+        // Stock check
+        cart.forEach(item => {
+            if (item.quantity > item.stock) {
+                errors.push(`Stock insuffisant pour ${item.name}: ${item.quantity} demandée mais ${item.stock} disponible`);
             }
-            if (!$('#customer_governorate').val()) {
-                errors.push('❌ Le gouvernorat est obligatoire pour une commande confirmée');
-            }
-            if (!$('#customer_city').val()) {
-                errors.push('❌ La ville est obligatoire pour une commande confirmée');
-            }
-            if (!$('#customer_address').val().trim()) {
-                errors.push('❌ L\'adresse est obligatoire pour une commande confirmée');
-            }
-        }
+        });
 
-        // Validation du stock pour les commandes confirmées
-        if (status === 'confirmée') {
-            let stockErrors = [];
-            cart.forEach(item => {
-                if (item.quantity > item.stock) {
-                    stockErrors.push(`${item.name}: ${item.quantity} demandée mais seulement ${item.stock} en stock`);
-                }
-            });
-            
-            if (stockErrors.length > 0) {
-                errors.push('❌ Stock insuffisant pour certains produits:\n' + stockErrors.join('\n'));
-            }
-        }
-
-        if (errors.length > 0) {
-            e.preventDefault();
-            showNotification('error', errors.join('\n'));
-            return false;
-        }
-
-        // Confirmation pour commande confirmée
-        if (status === 'confirmée') {
-            if (!confirm('🔒 Confirmer cette commande ?\n\n⚠️ Le stock sera automatiquement déduit des produits.')) {
+        if (errors.length === 0) {
+            if (!confirm('Confirmer cette commande?\n\nLe stock sera automatiquement déduit.')) {
                 e.preventDefault();
                 return false;
             }
         }
-
-        // Désactiver le bouton et changer le texte
-        $('#save-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Création en cours...');
-        
-        showNotification('success', '🚀 Création de la commande en cours...');
-    });
-
-    // =========================
-    // SYSTÈME DE NOTIFICATIONS
-    // =========================
-    function showNotification(type, message) {
-        const colors = {
-            success: '#10b981',
-            error: '#ef4444',
-            warning: '#f59e0b',
-            info: '#3b82f6'
-        };
-        
-        const icons = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-circle',
-            warning: 'fa-exclamation-triangle',
-            info: 'fa-info-circle'
-        };
-        
-        const notification = $(`
-            <div style="
-                position: fixed; 
-                top: 20px; 
-                right: 20px; 
-                z-index: 9999; 
-                padding: 1rem 1.5rem; 
-                border-radius: 10px; 
-                color: white; 
-                font-weight: 600; 
-                background: ${colors[type]}; 
-                box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255,255,255,0.1);
-                max-width: 400px;
-                word-wrap: break-word;
-                white-space: pre-line;
-            ">
-                <i class="fas ${icons[type]}" style="margin-right: 0.5rem;"></i>
-                ${message}
-            </div>
-        `);
-        
-        $('body').append(notification);
-        
-        // Animation d'entrée
-        notification.css({
-            transform: 'translateX(100%)',
-            opacity: 0
-        }).animate({
-            transform: 'translateX(0)',
-            opacity: 1
-        }, 300);
-        
-        // Auto-suppression
-        setTimeout(() => {
-            notification.animate({
-                transform: 'translateX(100%)',
-                opacity: 0
-            }, 300, function() {
-                notification.remove();
-            });
-        }, type === 'error' ? 8000 : 4000);
     }
 
-    // =========================
-    // INITIALISATION
-    // =========================
-    console.log('✅ Initialisation terminée');
-    
-    // Focus sur le téléphone
+    if (errors.length > 0) {
+        e.preventDefault();
+        showToast('error', errors.join('\n'));
+        return false;
+    }
+
+    $('#submit-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Création en cours...');
+    showToast('success', 'Création de la commande en cours...');
+});
+
+// ==================== TOAST NOTIFICATION ====================
+function showToast(type, message) {
+    const toast = $(`
+        <div class="toast ${type}">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
+            <span>${message}</span>
+        </div>
+    `);
+
+    $('body').append(toast);
+    setTimeout(() => toast.addClass('show'), 10);
+
+    setTimeout(() => {
+        toast.removeClass('show');
+        setTimeout(() => toast.remove(), 300);
+    }, type === 'error' ? 6000 : 3000);
+}
+
+// ==================== INITIALIZATION ====================
+$(document).ready(function() {
+    console.log('Order creation page initialized');
     $('#customer_phone').focus();
-    
-    // Afficher l'aide utilisateur
-    showNotification('info', '💡 Saisissez un numéro de téléphone pour vérifier les doublons automatiquement');
+    showToast('info', 'Saisissez un téléphone pour vérifier les doublons');
 });
 </script>
 @endsection

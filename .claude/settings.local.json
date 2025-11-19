@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan view:clear:*)",
+      "Bash(test:*)",
+      "Bash(composer:*)",
+      "Bash(dir)",
+      "Bash(del bootstrapcachepackages.php)",
+      "Bash(del bootstrapcacheservices.php)",
+      "Bash(rm:*)",
+      "Bash(php:*)",
+      "Bash(sqlite3:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

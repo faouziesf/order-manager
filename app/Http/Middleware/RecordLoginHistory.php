@@ -30,7 +30,8 @@ class RecordLoginHistory
     private function recordLogin(Request $request)
     {
         // Déterminer quel guard est utilisé
-        $guards = ['admin', 'manager', 'employee', 'super-admin'];
+        // Note: manager et employee utilisent maintenant le guard 'admin'
+        $guards = ['admin', 'super-admin'];
         $user = null;
         $userType = null;
 
@@ -65,13 +66,12 @@ class RecordLoginHistory
 
     /**
      * Convertir le nom du guard en type de modèle
+     * Dans le nouveau système, tous les rôles (admin, manager, employee) utilisent le modèle Admin
      */
     private function getUserType($guard)
     {
         $mapping = [
             'admin' => 'App\Models\Admin',
-            'manager' => 'App\Models\Manager',
-            'employee' => 'App\Models\Employee',
             'super-admin' => 'App\Models\SuperAdmin',
         ];
 

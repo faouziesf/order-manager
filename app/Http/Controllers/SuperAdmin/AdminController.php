@@ -4,8 +4,6 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
-use App\Models\Manager;
-use App\Models\Employee;
 use App\Models\Order;
 use App\Exports\AdminsExport;
 use App\Http\Controllers\SuperAdmin\NotificationController;
@@ -23,8 +21,15 @@ class AdminController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Admin::with(['managers', 'employees'])
-            ->withCount(['managers', 'employees']);
+        $query = Admin::where('role', Admin::ROLE_ADMIN)
+            ->withCount([
+                'children as managers_count' => function($q) {
+                    $q->where('role', Admin::ROLE_MANAGER);
+                },
+                'children as employees_count' => function($q) {
+                    $q->where('role', Admin::ROLE_EMPLOYEE);
+                }
+            ]);
 
         // Filtres
         $this->applyFilters($query, $request);
@@ -113,10 +118,8 @@ class AdminController extends Controller
 
     public function show(Admin $admin)
     {
-        $admin->load(['managers', 'employees']);
-        
-        $totalManagers = $admin->managers()->count();
-        $totalEmployees = $admin->employees()->count();
+        $totalManagers = $admin->children()->where('role', Admin::ROLE_MANAGER)->count();
+        $totalEmployees = $admin->children()->where('role', Admin::ROLE_EMPLOYEE)->count();
         
         // Statistiques avancées
         $stats = [
@@ -214,9 +217,9 @@ class AdminController extends Controller
     {
         try {
             // Vérifier s'il y a des données liées
-            $hasManagers = $admin->managers()->count() > 0;
-            $hasEmployees = $admin->employees()->count() > 0;
-            
+            $hasManagers = $admin->children()->where('role', Admin::ROLE_MANAGER)->count() > 0;
+            $hasEmployees = $admin->children()->where('role', Admin::ROLE_EMPLOYEE)->count() > 0;
+
             if ($hasManagers || $hasEmployees) {
                 return redirect()->back()
                     ->with('error', 'Impossible de supprimer cet administrateur car il a des managers ou employés associés.');

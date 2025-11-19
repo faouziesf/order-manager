@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Models\Admin;
-use App\Models\Manager;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class ManagerPolicy
@@ -15,17 +14,21 @@ class ManagerPolicy
      */
     public function viewAny(Admin $admin)
     {
-        return $admin->is_active && (!$admin->expiry_date || !$admin->expiry_date->isPast());
+        return $admin->is_active &&
+               $admin->role === Admin::ROLE_ADMIN &&
+               (!$admin->expiry_date || !$admin->expiry_date->isPast());
     }
 
     /**
      * Déterminer si l'admin peut voir le manager
      */
-    public function view(Admin $admin, Manager $manager)
+    public function view(Admin $admin, Admin $manager)
     {
-        return $admin->is_active && 
+        return $admin->is_active &&
+               $admin->role === Admin::ROLE_ADMIN &&
                (!$admin->expiry_date || !$admin->expiry_date->isPast()) &&
-               $manager->admin_id === $admin->id;
+               $manager->role === Admin::ROLE_MANAGER &&
+               $manager->created_by === $admin->id;
     }
 
     /**
@@ -33,7 +36,8 @@ class ManagerPolicy
      */
     public function create(Admin $admin)
     {
-        return $admin->is_active && 
+        return $admin->is_active &&
+               $admin->role === Admin::ROLE_ADMIN &&
                (!$admin->expiry_date || !$admin->expiry_date->isPast()) &&
                $admin->managers()->count() < $admin->max_managers;
     }
@@ -41,20 +45,24 @@ class ManagerPolicy
     /**
      * Déterminer si l'admin peut mettre à jour le manager
      */
-    public function update(Admin $admin, Manager $manager)
+    public function update(Admin $admin, Admin $manager)
     {
-        return $admin->is_active && 
+        return $admin->is_active &&
+               $admin->role === Admin::ROLE_ADMIN &&
                (!$admin->expiry_date || !$admin->expiry_date->isPast()) &&
-               $manager->admin_id === $admin->id;
+               $manager->role === Admin::ROLE_MANAGER &&
+               $manager->created_by === $admin->id;
     }
 
     /**
      * Déterminer si l'admin peut supprimer le manager
      */
-    public function delete(Admin $admin, Manager $manager)
+    public function delete(Admin $admin, Admin $manager)
     {
-        return $admin->is_active && 
+        return $admin->is_active &&
+               $admin->role === Admin::ROLE_ADMIN &&
                (!$admin->expiry_date || !$admin->expiry_date->isPast()) &&
-               $manager->admin_id === $admin->id;
+               $manager->role === Admin::ROLE_MANAGER &&
+               $manager->created_by === $admin->id;
     }
 }

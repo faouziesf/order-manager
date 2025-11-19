@@ -21,16 +21,6 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
-
-        'manager' => [
-            'driver' => 'session',
-            'provider' => 'managers',
-        ],
-
-        'employee' => [
-            'driver' => 'session',
-            'provider' => 'employees',
-        ],
     ],
 
     'providers' => [
@@ -48,16 +38,6 @@ return [
             'driver' => 'eloquent',
             'model' => App\Models\Admin::class,
         ],
-
-        'managers' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\Manager::class,
-        ],
-
-        'employees' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\Employee::class,
-        ],
     ],
 
     'passwords' => [
@@ -67,35 +47,24 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
-        
+
         'super-admins' => [
             'provider' => 'super-admins',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],
-        
+
         'admins' => [
             'provider' => 'admins',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],
-        
-        'managers' => [
-            'provider' => 'managers',
-            'table' => 'password_reset_tokens',
-            'expire' => 60,
-            'throttle' => 60,
-        ],
-        
-        'employees' => [
-            'provider' => 'employees',
-            'table' => 'password_reset_tokens',
-            'expire' => 60,
-            'throttle' => 60,
-        ],
     ],
 
-    'password_timeout' => 10800,
+    'password_timeout' => 525600, // 1 an en minutes
+
+    // Durée du remember token (en minutes) - 1 an
+    'remember_token_lifetime' => 525600,
 ];

@@ -268,7 +268,7 @@
                                     {{ $employee->manager->is_active ? 'Actif' : 'Inactif' }}
                                 </span>
                                 <span class="badge bg-primary">
-                                    {{ $employee->manager->employees()->count() }} employé(s) supervisé(s)
+                                    {{ \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('manager_id', $employee->manager->id)->count() }} employé(s) supervisé(s)
                                 </span>
                             </div>
                         </div>
@@ -417,13 +417,17 @@
                                 <div class="col-md-6">
                                     <label class="form-label small fw-medium text-muted mb-1">Admin propriétaire</label>
                                     <div class="d-flex align-items-center">
-                                        <div class="bg-secondary rounded-3 p-2 me-2 text-white fw-bold text-center" style="width: 24px; height: 24px; line-height: 8px; font-size: 12px;">
-                                            {{ substr($employee->admin->name, 0, 1) }}
-                                        </div>
-                                        <div>
-                                            <div class="fw-semibold small">{{ $employee->admin->name }}</div>
-                                            <small class="text-muted">{{ $employee->admin->shop_name }}</small>
-                                        </div>
+                                        @if($employee->creator)
+                                            <div class="bg-secondary rounded-3 p-2 me-2 text-white fw-bold text-center" style="width: 24px; height: 24px; line-height: 8px; font-size: 12px;">
+                                                {{ substr($employee->creator->name, 0, 1) }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold small">{{ $employee->creator->name }}</div>
+                                                <small class="text-muted">{{ $employee->creator->email }}</small>
+                                            </div>
+                                        @else
+                                            <span class="badge bg-secondary">Aucun admin</span>
+                                        @endif
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -468,12 +472,12 @@
                             <label for="modal_manager_id" class="form-label fw-medium">
                                 Sélectionner un manager
                             </label>
-                            <select name="manager_id" 
-                                    id="modal_manager_id" 
+                            <select name="manager_id"
+                                    id="modal_manager_id"
                                     required
                                     class="form-select form-select-lg">
                                 <option value="">Choisir un manager...</option>
-                                @foreach($employee->admin->managers()->where('is_active', true)->get() as $manager)
+                                @foreach(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->where('admin_id', $employee->admin_id)->where('is_active', true)->get() as $manager)
                                     <option value="{{ $manager->id }}">
                                         {{ $manager->name }} - {{ $manager->email }}
                                     </option>

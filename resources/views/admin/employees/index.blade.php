@@ -11,8 +11,8 @@
             <p class="text-muted">Gérez vos employés et leurs affectations</p>
         </div>
         <div class="col-md-4 text-end">
-            @if($admin->employees()->count() < $admin->max_employees)
-                <a href="{{ route('admin.employees.create') }}" 
+            @if(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->count() < $admin->max_employees)
+                <a href="{{ route('admin.employees.create') }}"
                    class="btn btn-success btn-lg shadow">
                     <i class="fas fa-plus me-2"></i>
                     Nouvel Employé
@@ -32,7 +32,10 @@
     </div>
 
     <!-- Alertes de limite -->
-    @if($admin->employees()->count() >= $admin->max_employees * 0.8)
+    @php
+        $employeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->count();
+    @endphp
+    @if($employeeCount >= $admin->max_employees * 0.8)
         <div class="row mb-4">
             <div class="col-12">
                 <div class="alert alert-warning alert-dismissible fade show" x-data="{ show: true }" x-show="show">
@@ -44,18 +47,18 @@
                         </div>
                         <div class="flex-fill">
                             <h6 class="alert-heading">
-                                @if($admin->employees()->count() >= $admin->max_employees)
+                                @if($employeeCount >= $admin->max_employees)
                                     Limite d'employés atteinte
                                 @else
                                     Approche de la limite d'employés
                                 @endif
                             </h6>
                             <p class="mb-0">
-                                Vous avez <strong>{{ $admin->employees()->count() }}</strong> employé(s) sur un maximum de <strong>{{ $admin->max_employees }}</strong>.
-                                @if($admin->employees()->count() >= $admin->max_employees)
+                                Vous avez <strong>{{ $employeeCount }}</strong> employé(s) sur un maximum de <strong>{{ $admin->max_employees }}</strong>.
+                                @if($employeeCount >= $admin->max_employees)
                                     Contactez le support pour augmenter votre limite.
                                 @else
-                                    Il vous reste {{ $admin->max_employees - $admin->employees()->count() }} place(s).
+                                    Il vous reste {{ $admin->max_employees - $employeeCount }} place(s).
                                 @endif
                             </p>
                         </div>
@@ -101,9 +104,12 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="text-muted small fw-medium mb-1">Employés Actifs</p>
-                            <h3 class="fw-bold mb-0">{{ $admin->employees()->where('is_active', true)->count() }}</h3>
+                            @php
+                                $activeEmployeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->where('is_active', true)->count();
+                            @endphp
+                            <h3 class="fw-bold mb-0">{{ $activeEmployeeCount }}</h3>
                             <small class="text-success">
-                                {{ $employees->total() > 0 ? round($admin->employees()->where('is_active', true)->count() / $employees->total() * 100) : 0 }}% du total
+                                {{ $employees->total() > 0 ? round($activeEmployeeCount / $employees->total() * 100) : 0 }}% du total
                             </small>
                         </div>
                         <div class="bg-primary bg-opacity-10 rounded-3 p-3">
@@ -141,8 +147,11 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="text-muted small fw-medium mb-1">Sans Manager</p>
-                            <h3 class="fw-bold mb-0">{{ $admin->employees()->whereNull('manager_id')->count() }}</h3>
-                            @if($admin->employees()->whereNull('manager_id')->count() > 0)
+                            @php
+                                $noManagerCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->whereNull('manager_id')->count();
+                            @endphp
+                            <h3 class="fw-bold mb-0">{{ $noManagerCount }}</h3>
+                            @if($noManagerCount > 0)
                                 <small class="text-warning">
                                     <i class="fas fa-exclamation-triangle me-1"></i>
                                     À assigner
@@ -177,12 +186,12 @@
                     <div class="row g-2">
                         <!-- Filter by Manager -->
                         <div class="col-md-6">
-                            <select class="form-select form-select-sm" 
+                            <select class="form-select form-select-sm"
                                     onchange="filterByManager(this.value)"
                                     x-model="selectedManager">
                                 <option value="">Tous les managers</option>
                                 <option value="no-manager">Sans manager</option>
-                                @foreach($admin->managers as $manager)
+                                @foreach(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->where('admin_id', $admin->id)->get() as $manager)
                                     <option value="{{ $manager->id }}">{{ $manager->name }}</option>
                                 @endforeach
                             </select>
@@ -482,9 +491,9 @@
                             Commencez par créer votre premier employé pour développer votre équipe.
                         @endif
                     </p>
-                    @if($admin->employees()->count() < $admin->max_employees)
+                    @if(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->count() < $admin->max_employees)
                         <div class="d-flex flex-column align-items-center gap-3">
-                            <a href="{{ route('admin.employees.create') }}" 
+                            <a href="{{ route('admin.employees.create') }}"
                                class="btn btn-success btn-lg">
                                 <i class="fas fa-plus me-2"></i>
                                 Créer un Employé

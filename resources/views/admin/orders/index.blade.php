@@ -654,9 +654,18 @@
             <a href="{{ route('admin.orders.create') }}" class="btn btn-primary btn-sm"> <!-- OPTIMISÉ: btn-sm -->
                 <i class="fas fa-plus me-2"></i>Nouvelle Commande
             </a>
-            <button type="button" class="btn btn-success btn-sm" id="assignmentModeBtn"> <!-- OPTIMISÉ: btn-sm -->
-                <i class="fas fa-user-plus me-2"></i>Mode Assignation
-            </button>
+            @php
+                $isEmployee = auth('admin')->user()->isEmployee();
+            @endphp
+            @if($isEmployee)
+                <button type="button" class="btn btn-success btn-sm" id="selfAssignmentModeBtn"> <!-- OPTIMISÉ: btn-sm -->
+                    <i class="fas fa-user-check me-2"></i>Auto-Assignation
+                </button>
+            @else
+                <button type="button" class="btn btn-success btn-sm" id="assignmentModeBtn"> <!-- OPTIMISÉ: btn-sm -->
+                    <i class="fas fa-user-plus me-2"></i>Mode Assignation
+                </button>
+            @endif
             <button type="button" class="btn btn-secondary btn-sm" onclick="location.reload()"> <!-- OPTIMISÉ: btn-sm -->
                 <i class="fas fa-sync-alt me-2"></i>Actualiser
             </button>
@@ -683,7 +692,7 @@
         </div>
     </div>
 
-    <!-- Mode assignation -->
+    <!-- Mode assignation pour Admins/Managers -->
     <div class="assignment-mode" id="assignmentMode">
         <div class="d-flex justify-content-between align-items-center">
             <div>
@@ -693,7 +702,32 @@
             <div class="d-flex align-items-center gap-2"> <!-- OPTIMISÉ: gap-3 → gap-2 -->
                 <select class="form-select form-select-sm" id="assignEmployee" style="width: 180px;"> <!-- OPTIMISÉ: 200px → 180px + form-select-sm -->
                     <option value="">Choisir un employé</option>
-                    @foreach(Auth::guard('admin')->user()->employees()->where('is_active', true)->get() as $employee)
+                    @php
+                        $currentUser = Auth::guard('admin')->user();
+                        // Si c'est un manager, récupérer les employés de son créateur (l'admin parent)
+                        $searchAdminId = ($currentUser->role === \App\Models\Admin::ROLE_MANAGER && $currentUser->created_by)
+                            ? $currentUser->created_by
+                            : $currentUser->id;
+
+                        $availableEmployees = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)
+                            ->where('created_by', $searchAdminId)
+                            ->where('is_active', true)
+                            ->get();
+
+                        // Debug - À retirer après test
+                        \Log::info('Assignment mode debug', [
+                            'current_user_id' => $currentUser->id,
+                            'current_user_role' => $currentUser->role,
+                            'current_user_created_by' => $currentUser->created_by,
+                            'search_admin_id' => $searchAdminId,
+                            'employees_count' => $availableEmployees->count(),
+                            'employees' => $availableEmployees->pluck('name', 'id')->toArray()
+                        ]);
+                    @endphp
+                    @if($availableEmployees->count() === 0)
+                        <option value="" disabled>Aucun employé disponible (Admin ID: {{ $searchAdminId }})</option>
+                    @endif
+                    @foreach($availableEmployees as $employee)
                         <option value="{{ $employee->id }}">{{ $employee->name }}</option>
                     @endforeach
                 </select>
@@ -701,6 +735,24 @@
                     <i class="fas fa-check me-2"></i>Assigner (<span id="selectedCount">0</span>)
                 </button>
                 <button type="button" class="btn btn-outline-danger btn-sm" id="cancelAssignment"> <!-- OPTIMISÉ: btn-sm -->
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mode auto-assignation pour Employés -->
+    <div class="assignment-mode" id="selfAssignmentMode" style="display:none;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h6><i class="fas fa-user-check me-2"></i>Mode Auto-Assignation Activé</h6>
+                <p class="mb-0 text-muted" style="font-size: 0.8rem;">Sélectionnez les commandes non assignées pour vous les assigner</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-success btn-sm" id="performSelfAssignment" disabled>
+                    <i class="fas fa-check me-2"></i>M'assigner (<span id="selectedCountSelf">0</span>)
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" id="cancelSelfAssignment">
                     <i class="fas fa-times me-2"></i>Annuler
                 </button>
             </div>
@@ -1295,6 +1347,130 @@ $(document).ready(function() {
 
     $('#cancelAssignment').on('click', function() {
         exitAssignmentMode();
+    });
+
+    // ================================
+    // MODE AUTO-ASSIGNATION POUR EMPLOYÉS
+    // ================================
+    $('#selfAssignmentModeBtn').on('click', function() {
+        assignmentMode = !assignmentMode;
+
+        if (assignmentMode) {
+            enterSelfAssignmentMode();
+        } else {
+            exitSelfAssignmentMode();
+        }
+    });
+
+    function enterSelfAssignmentMode() {
+        // Changer le bouton
+        $('#selfAssignmentModeBtn').removeClass('btn-success').addClass('btn-danger')
+                              .html('<i class="fas fa-times me-2"></i>Quitter Auto-Assignation');
+
+        // Afficher le panel d'auto-assignation
+        $('#selfAssignmentMode').addClass('active');
+
+        // Afficher les colonnes de sélection
+        $('#selectAllColumn').show();
+        $('.select-column').show();
+
+        // Masquer les commandes déjà assignées
+        $('tr[data-order-id]').each(function() {
+            if (!$(this).hasClass('unassigned-order')) {
+                $(this).hide();
+            }
+        });
+
+        showNotification('Mode auto-assignation activé - Sélectionnez les commandes à vous assigner', 'info');
+    }
+
+    function exitSelfAssignmentMode() {
+        // Réinitialiser le bouton
+        $('#selfAssignmentModeBtn').removeClass('btn-danger').addClass('btn-success')
+                              .html('<i class="fas fa-user-check me-2"></i>Auto-Assignation');
+
+        // Masquer le panel
+        $('#selfAssignmentMode').removeClass('active');
+
+        // Masquer les colonnes de sélection
+        $('#selectAllColumn').hide();
+        $('.select-column').hide();
+
+        // Réafficher toutes les commandes
+        $('tr[data-order-id]').show();
+
+        // Déselectionner tout
+        $('.order-checkbox').prop('checked', false);
+        $('tr').removeClass('selected');
+        selectedOrders = [];
+        updateSelectedCountSelf();
+
+        showNotification('Mode auto-assignation désactivé', 'info');
+    }
+
+    function updateSelectedCountSelf() {
+        $('#selectedCountSelf').text(selectedOrders.length);
+        $('#performSelfAssignment').prop('disabled', selectedOrders.length === 0);
+    }
+
+    // Mettre à jour le compteur pour l'auto-assignation
+    $(document).on('change', '.order-checkbox', function() {
+        updateSelection();
+        updateSelectAllState();
+        updateSelectedCountSelf();
+    });
+
+    $('#performSelfAssignment').on('click', function() {
+        if (selectedOrders.length === 0) {
+            showNotification('Veuillez sélectionner au moins une commande', 'warning');
+            return;
+        }
+
+        if (confirm(`Vous assigner ${selectedOrders.length} commande(s) ?`)) {
+            performSelfAssignment(selectedOrders);
+        }
+    });
+
+    function performSelfAssignment(orderIds) {
+        $.ajax({
+            url: '/admin/orders/bulk-assign',
+            method: 'POST',
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content'),
+                order_ids: orderIds,
+                employee_id: '{{ auth("admin")->id() }}' // ID de l'employé connecté
+            },
+            beforeSend: function() {
+                $('#performSelfAssignment').prop('disabled', true)
+                                     .html('<i class="fas fa-spinner fa-spin me-2"></i>Assignation...');
+            },
+            success: function(response) {
+                showNotification(response.message || 'Commandes auto-assignées avec succès', 'success');
+
+                // Supprimer les lignes assignées
+                orderIds.forEach(function(orderId) {
+                    $(`tr[data-order-id="${orderId}"]`).fadeOut(500, function() {
+                        $(this).remove();
+                    });
+                });
+
+                // Réinitialiser la sélection
+                selectedOrders = [];
+                updateSelectedCountSelf();
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showNotification(response.message || 'Erreur lors de l\'auto-assignation', 'error');
+            },
+            complete: function() {
+                $('#performSelfAssignment').prop('disabled', false)
+                                     .html('<i class="fas fa-check me-2"></i>M\'assigner (<span id="selectedCountSelf">0</span>)');
+            }
+        });
+    }
+
+    $('#cancelSelfAssignment').on('click', function() {
+        exitSelfAssignmentMode();
     });
 
     // ================================

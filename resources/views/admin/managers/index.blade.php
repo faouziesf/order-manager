@@ -8,7 +8,10 @@
         <h1 class="h3 mb-0 text-gray-800">Gestion des Managers</h1>
         <p class="text-muted">Gérez vos managers et leurs accès</p>
     </div>
-    @if($admin->managers()->count() < $admin->max_managers)
+    @php
+        $managerCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->count();
+    @endphp
+    @if($managerCount < $admin->max_managers)
         <a href="{{ route('admin.managers.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>Nouveau Manager
         </a>
@@ -36,14 +39,14 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stats-card stats-card-success h-100 py-2">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="stats-card-label">Managers Actifs</div>
-                        <div class="stats-card-number">{{ $admin->managers()->where('is_active', true)->count() }}</div>
+                        <div class="stats-card-number">{{ \App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->where('is_active', true)->count() }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-check-circle stats-card-icon text-success"></i>
@@ -52,7 +55,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stats-card stats-card-warning h-100 py-2">
             <div class="card-body">
@@ -68,14 +71,14 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stats-card stats-card-info h-100 py-2">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
-                        <div class="stats-card-label">Employés Gérés</div>
-                        <div class="stats-card-number">{{ $admin->employees()->count() }}</div>
+                        <div class="stats-card-label">Employés Total</div>
+                        <div class="stats-card-number">{{ \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->count() }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-users stats-card-icon text-info"></i>
@@ -99,7 +102,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="card-body">
         @if($managers->count() > 0)
             <div class="table-responsive">
@@ -108,7 +111,6 @@
                         <tr>
                             <th>Manager</th>
                             <th>Contact</th>
-                            <th>Employés</th>
                             <th>Statut</th>
                             <th>Créé le</th>
                             <th>Actions</th>
@@ -120,7 +122,7 @@
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="avatar me-3">
-                                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" 
+                                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center"
                                                  style="width: 40px; height: 40px;">
                                                 <span class="text-white font-weight-bold">
                                                     {{ substr($manager->name, 0, 1) }}
@@ -140,11 +142,6 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="badge badge-primary">
-                                        {{ $manager->employees()->count() }} employé(s)
-                                    </span>
-                                </td>
-                                <td>
                                     <span class="badge {{ $manager->is_active ? 'badge-success' : 'badge-danger' }}">
                                         {{ $manager->is_active ? 'Actif' : 'Inactif' }}
                                     </span>
@@ -152,31 +149,31 @@
                                 <td>{{ $manager->created_at->format('d/m/Y') }}</td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ route('admin.managers.show', $manager) }}" 
+                                        <a href="{{ route('admin.managers.show', $manager) }}"
                                            class="btn btn-sm btn-info" title="Voir">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('admin.managers.edit', $manager) }}" 
+                                        <a href="{{ route('admin.managers.edit', $manager) }}"
                                            class="btn btn-sm btn-warning" title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form method="POST" action="{{ route('admin.managers.toggle-active', $manager) }}" 
+                                        <form method="POST" action="{{ route('admin.managers.toggle-active', $manager) }}"
                                               class="d-inline">
                                             @csrf
                                             @method('PATCH')
-                                            <button type="submit" 
-                                                    class="btn btn-sm {{ $manager->is_active ? 'btn-secondary' : 'btn-success' }}" 
+                                            <button type="submit"
+                                                    class="btn btn-sm {{ $manager->is_active ? 'btn-secondary' : 'btn-success' }}"
                                                     title="{{ $manager->is_active ? 'Désactiver' : 'Activer' }}"
                                                     onclick="return confirm('Êtes-vous sûr ?')">
                                                 <i class="fas {{ $manager->is_active ? 'fa-ban' : 'fa-check' }}"></i>
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ route('admin.managers.destroy', $manager) }}" 
+                                        <form method="POST" action="{{ route('admin.managers.destroy', $manager) }}"
                                               class="d-inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" 
-                                                    class="btn btn-sm btn-danger" 
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-danger"
                                                     title="Supprimer"
                                                     onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce manager ? Cette action est irréversible.')">
                                                 <i class="fas fa-trash"></i>
@@ -189,7 +186,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <!-- Pagination -->
             @if($managers->hasPages())
                 <div class="d-flex justify-content-center mt-4">
@@ -201,7 +198,7 @@
                 <i class="fas fa-user-tie fa-3x text-muted mb-3"></i>
                 <h5 class="text-muted">Aucun manager</h5>
                 <p class="text-muted">Commencez par créer votre premier manager.</p>
-                @if($admin->managers()->count() < $admin->max_managers)
+                @if($managerCount < $admin->max_managers)
                     <a href="{{ route('admin.managers.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Créer un Manager
                     </a>
@@ -218,7 +215,7 @@
 document.getElementById('searchInput').addEventListener('input', function(e) {
     const searchTerm = e.target.value.toLowerCase();
     const rows = document.querySelectorAll('#managersTable tbody tr');
-    
+
     rows.forEach(row => {
         const text = row.textContent.toLowerCase();
         row.style.display = text.includes(searchTerm) ? '' : 'none';
