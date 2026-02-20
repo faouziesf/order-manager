@@ -20,8 +20,8 @@ class EnsureSuperAdminAccess
         Log::info('Auth::guard(super-admin)->check() = ' . (Auth::guard('super-admin')->check() ? 'true' : 'false'));
         
         if (!Auth::guard('super-admin')->check()) {
-            Log::info('Redirecting to super-admin.login');
-            return redirect()->route('super-admin.login');
+            Log::info('Redirecting to confirmi.home with login modal');
+            return redirect()->route('confirmi.home', ['login' => 1]);
         }
         
         Log::info('Proceeding with request');

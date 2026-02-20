@@ -160,6 +160,9 @@ class ProcessController extends Controller
             ->with(['items.product' => function($query) {
                 $query->where('is_active', true);
             }])
+            ->whereDoesntHave('confirmiAssignment', function ($q) {
+                $q->whereNotIn('status', ['cancelled']);
+            })
             ->where('status', 'nouvelle')
             ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
@@ -173,7 +176,7 @@ class ProcessController extends Controller
             ->orderBy('priority', 'desc')
             ->orderBy('attempts_count', 'asc')
             ->orderBy('created_at', 'asc')
-            ->limit(50) // Limiter pour éviter de charger trop de commandes
+            ->limit(50)
             ->get();
 
         Log::info("File standard: {$orders->count()} commandes trouvées avant filtrage stock");
@@ -205,8 +208,11 @@ class ProcessController extends Controller
             ->with(['items.product' => function($query) {
                 $query->where('is_active', true);
             }])
+            ->whereDoesntHave('confirmiAssignment', function ($q) {
+                $q->whereNotIn('status', ['cancelled']);
+            })
             ->where('status', 'datée')
-            ->whereDate('scheduled_date', '<=', now()) // Seulement après leur date
+            ->whereDate('scheduled_date', '<=', now())
             ->where(function($q) {
                 $q->where('is_suspended', false)->orWhereNull('is_suspended');
             })
@@ -250,6 +256,9 @@ class ProcessController extends Controller
             ->with(['items.product' => function($query) {
                 $query->where('is_active', true);
             }])
+            ->whereDoesntHave('confirmiAssignment', function ($q) {
+                $q->whereNotIn('status', ['cancelled']);
+            })
             ->where('status', 'ancienne')
             // Ne pas filtrer par suspension pour la file ancienne
             ->where('daily_attempts_count', '<', $maxDailyAttempts)
@@ -296,7 +305,10 @@ class ProcessController extends Controller
             ->with(['items.product' => function($query) {
                 $query->where('is_active', true);
             }])
-            ->where('is_suspended', true) // Seulement les commandes suspendues
+            ->whereDoesntHave('confirmiAssignment', function ($q) {
+                $q->whereNotIn('status', ['cancelled']);
+            })
+            ->where('is_suspended', true)
             ->whereIn('status', ['nouvelle', 'datée'])
             ->where(function($q) {
                 // Suspendues pour stock ou automatiquement
@@ -605,7 +617,18 @@ class ProcessController extends Controller
                     'error' => 'Accès refusé à cette commande'
                 ], 403);
             }
-            
+
+            // Bloquer le traitement si la commande est gérée par Confirmi
+            $confirmiAssignment = \App\Models\ConfirmiOrderAssignment::where('order_id', $order->id)
+                ->whereNotIn('status', ['cancelled'])
+                ->first();
+            if ($confirmiAssignment) {
+                return response()->json([
+                    'error' => 'Cette commande est en cours de traitement par l\'équipe Confirmi. Vous ne pouvez pas la modifier.',
+                    'locked_by_confirmi' => true,
+                ], 403);
+            }
+
             DB::beginTransaction();
             
             $action = $request->action;

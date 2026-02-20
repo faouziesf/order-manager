@@ -36,6 +36,11 @@ class Admin extends Authenticatable
         'created_by',
         'last_login_at',
         'ip_address',
+        'confirmi_status',
+        'confirmi_rate_confirmed',
+        'confirmi_rate_delivered',
+        'confirmi_approved_by',
+        'confirmi_activated_at',
     ];
 
     protected $hidden = [
@@ -55,6 +60,9 @@ class Admin extends Authenticatable
         'max_managers' => 'integer',
         'max_employees' => 'integer',
         'total_revenue' => 'decimal:2',
+        'confirmi_rate_confirmed' => 'decimal:3',
+        'confirmi_rate_delivered' => 'decimal:3',
+        'confirmi_activated_at' => 'datetime',
     ];
 
     // ========================================
@@ -133,6 +141,25 @@ class Admin extends Authenticatable
     public function subAccounts()
     {
         return $this->hasMany(Admin::class, 'created_by');
+    }
+
+    // ========================================
+    // RELATIONS CONFIRMI & MASAFA
+    // ========================================
+
+    public function confirmiRequests()
+    {
+        return $this->hasMany(ConfirmiRequest::class);
+    }
+
+    public function masafaConfiguration()
+    {
+        return $this->hasOne(MasafaConfiguration::class);
+    }
+
+    public function isConfirmiActive(): bool
+    {
+        return $this->confirmi_status === 'active';
     }
 
     // ========================================

@@ -15,8 +15,9 @@ class EmployeeController extends Controller
     {
         $admin = auth('admin')->user();
 
-        // Récupérer tous les employés (Admin avec role='employee')
+        // Récupérer les employés créés par cet admin
         $employees = Admin::where('role', Admin::ROLE_EMPLOYEE)
+            ->where('created_by', $admin->id)
             ->latest()
             ->paginate(10);
 
@@ -28,14 +29,15 @@ class EmployeeController extends Controller
         $admin = auth('admin')->user();
 
         // Vérifier si l'admin peut créer plus d'employés
-        $employeeCount = Admin::where('role', Admin::ROLE_EMPLOYEE)->count();
+        $employeeCount = Admin::where('role', Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->count();
         if ($employeeCount >= $admin->max_employees) {
             return redirect()->route('admin.employees.index')
                 ->with('error', 'Vous avez atteint le nombre maximum d\'employés autorisés (' . $admin->max_employees . ').');
         }
 
-        // Récupérer les managers (Admin avec role='manager')
+        // Récupérer les managers créés par cet admin
         $managers = Admin::where('role', Admin::ROLE_MANAGER)
+            ->where('created_by', $admin->id)
             ->where('is_active', true)
             ->get();
 
@@ -47,7 +49,7 @@ class EmployeeController extends Controller
         $admin = auth('admin')->user();
 
         // Vérifier les limites
-        $employeeCount = Admin::where('role', Admin::ROLE_EMPLOYEE)->count();
+        $employeeCount = Admin::where('role', Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->count();
         if ($employeeCount >= $admin->max_employees) {
             return redirect()->route('admin.employees.index')
                 ->with('error', 'Vous avez atteint le nombre maximum d\'employés autorisés.');
@@ -76,7 +78,7 @@ class EmployeeController extends Controller
                 'role' => Admin::ROLE_EMPLOYEE,
                 'created_by' => $admin->id, // IMPORTANT: Lier l'employé à l'admin qui le crée
                 'shop_name' => 'employee_' . time(),
-                'identifier' => 'EMP' . str_pad(Admin::where('role', Admin::ROLE_EMPLOYEE)->count() + 1, 6, '0', STR_PAD_LEFT),
+                'identifier' => $this->generateUniqueIdentifier('EMP'),
                 'is_active' => $request->has('is_active') ? true : false,
             ]);
 
@@ -92,8 +94,8 @@ class EmployeeController extends Controller
 
     public function show(Admin $employee)
     {
-        // Vérifier que c'est bien un employé
-        if ($employee->role !== Admin::ROLE_EMPLOYEE) {
+        // Vérifier que c'est bien un employé appartenant à cet admin
+        if ($employee->role !== Admin::ROLE_EMPLOYEE || $employee->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -102,12 +104,13 @@ class EmployeeController extends Controller
 
     public function edit(Admin $employee)
     {
-        // Vérifier que c'est bien un employé
-        if ($employee->role !== Admin::ROLE_EMPLOYEE) {
+        // Vérifier que c'est bien un employé appartenant à cet admin
+        if ($employee->role !== Admin::ROLE_EMPLOYEE || $employee->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
         $managers = Admin::where('role', Admin::ROLE_MANAGER)
+            ->where('created_by', auth('admin')->id())
             ->where('is_active', true)
             ->get();
 
@@ -116,8 +119,8 @@ class EmployeeController extends Controller
 
     public function update(Request $request, Admin $employee)
     {
-        // Vérifier que c'est bien un employé
-        if ($employee->role !== Admin::ROLE_EMPLOYEE) {
+        // Vérifier que c'est bien un employé appartenant à cet admin
+        if ($employee->role !== Admin::ROLE_EMPLOYEE || $employee->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -167,8 +170,8 @@ class EmployeeController extends Controller
 
     public function destroy(Admin $employee)
     {
-        // Vérifier que c'est bien un employé
-        if ($employee->role !== Admin::ROLE_EMPLOYEE) {
+        // Vérifier que c'est bien un employé appartenant à cet admin
+        if ($employee->role !== Admin::ROLE_EMPLOYEE || $employee->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -186,8 +189,8 @@ class EmployeeController extends Controller
 
     public function toggleActive(Admin $employee)
     {
-        // Vérifier que c'est bien un employé
-        if ($employee->role !== Admin::ROLE_EMPLOYEE) {
+        // Vérifier que c'est bien un employé appartenant à cet admin
+        if ($employee->role !== Admin::ROLE_EMPLOYEE || $employee->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -203,5 +206,14 @@ class EmployeeController extends Controller
             return redirect()->back()
                 ->with('error', 'Erreur lors du changement de statut.');
         }
+    }
+
+    private function generateUniqueIdentifier(string $prefix): string
+    {
+        do {
+            $identifier = $prefix . strtoupper(substr(uniqid(), -5));
+        } while (Admin::where('identifier', $identifier)->exists());
+
+        return $identifier;
     }
 }

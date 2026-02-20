@@ -393,56 +393,14 @@
                         </div>
                     </li>
 
-                    <!-- Livraison -->
-                    <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.delivery.*') ? 'true' : 'false' }} }">
-                        <a href="#" @click.prevent="open = !open"
-                           class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.delivery.*') ? 'active' : '' }}">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-truck me-3"></i>
-                                Livraison
-                            </div>
-                            <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
+                    <!-- Livraison — Masafa Express -->
+                    <li class="nav-item">
+                        <a href="{{ route('admin.delivery.index') }}"
+                           class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.*') ? 'active' : '' }}">
+                            <i class="fas fa-truck me-3"></i>
+                            Livraison
+                            <span class="ms-auto badge" style="background:linear-gradient(135deg,#0f4c81,#1a73c8);font-size:.65rem;padding:.2rem .45rem;border-radius:4px;">Masafa</span>
                         </a>
-
-                        <div x-show="open" x-transition class="submenu">
-                            <ul class="nav flex-column">
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.delivery.configuration') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.configuration') ? 'active' : '' }}">
-                                        <i class="fas fa-cog me-2"></i>
-                                        Configuration
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.delivery.preparation') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.preparation') ? 'active' : '' }}">
-                                        <i class="fas fa-plus me-2"></i>
-                                        Nouvel enlèvement
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.delivery.pickups') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.pickups*') ? 'active' : '' }}">
-                                        <i class="fas fa-warehouse me-2"></i>
-                                        Enlèvements
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.delivery.shipments') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.shipments*') ? 'active' : '' }}">
-                                        <i class="fas fa-shipping-fast me-2"></i>
-                                        Expéditions
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.delivery.stats') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.stats') ? 'active' : '' }}">
-                                        <i class="fas fa-chart-line me-2"></i>
-                                        Statistiques
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
                     </li>
 
                     <!-- Intégrations -->

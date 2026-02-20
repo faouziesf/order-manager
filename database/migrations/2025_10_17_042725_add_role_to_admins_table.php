@@ -30,7 +30,7 @@ return new class extends Migration
             DB::statement("
                 INSERT INTO admins (name, email, password, role, is_active, shop_name, identifier, created_by, phone, created_at, updated_at)
                 SELECT m.name, m.email, m.password, 'manager', m.is_active,
-                       'manager_' || m.id, 'MGR' || substr('000000' || m.id, -6, 6),
+                       CONCAT('manager_', m.id), CONCAT('MGR', LPAD(m.id, 6, '0')),
                        m.admin_id, m.phone, m.created_at, m.updated_at
                 FROM managers m
             ");
@@ -41,15 +41,17 @@ return new class extends Migration
             DB::statement("
                 INSERT INTO admins (name, email, password, role, is_active, shop_name, identifier, created_by, phone, created_at, updated_at)
                 SELECT e.name, e.email, e.password, 'employee', e.is_active,
-                       'employee_' || e.id, 'EMP' || substr('000000' || e.id, -6, 6),
+                       CONCAT('employee_', e.id), CONCAT('EMP', LPAD(e.id, 6, '0')),
                        e.admin_id, e.phone, e.created_at, e.updated_at
                 FROM employees e
             ");
         }
 
-        // Drop old tables si elles existent
-        Schema::dropIfExists('managers');
+        // Drop old tables - disable FK checks, drop employees first (has FK to managers)
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
         Schema::dropIfExists('employees');
+        Schema::dropIfExists('managers');
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
     }
 
     /**

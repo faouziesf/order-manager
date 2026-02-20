@@ -11,7 +11,7 @@
             <p class="text-muted">Gérez vos employés et leurs affectations</p>
         </div>
         <div class="col-md-4 text-end">
-            @if(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->count() < $admin->max_employees)
+            @if(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->count() < $admin->max_employees)
                 <a href="{{ route('admin.employees.create') }}"
                    class="btn btn-success btn-lg shadow">
                     <i class="fas fa-plus me-2"></i>
@@ -33,7 +33,7 @@
 
     <!-- Alertes de limite -->
     @php
-        $employeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->count();
+        $employeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->count();
     @endphp
     @if($employeeCount >= $admin->max_employees * 0.8)
         <div class="row mb-4">
@@ -105,7 +105,7 @@
                         <div>
                             <p class="text-muted small fw-medium mb-1">Employés Actifs</p>
                             @php
-                                $activeEmployeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->where('is_active', true)->count();
+                                $activeEmployeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->where('is_active', true)->count();
                             @endphp
                             <h3 class="fw-bold mb-0">{{ $activeEmployeeCount }}</h3>
                             <small class="text-success">
@@ -140,26 +140,26 @@
             </div>
         </div>
 
-        <!-- Sans Manager -->
+        <!-- Inactifs -->
         <div class="col-xl-3 col-md-6">
             <div class="card border-0 shadow-sm h-100 card-hover">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted small fw-medium mb-1">Sans Manager</p>
+                            <p class="text-muted small fw-medium mb-1">Inactifs</p>
                             @php
-                                $noManagerCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->whereNull('manager_id')->count();
+                                $inactiveEmployeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->where('is_active', false)->count();
                             @endphp
-                            <h3 class="fw-bold mb-0">{{ $noManagerCount }}</h3>
-                            @if($noManagerCount > 0)
+                            <h3 class="fw-bold mb-0">{{ $inactiveEmployeeCount }}</h3>
+                            @if($inactiveEmployeeCount > 0)
                                 <small class="text-warning">
                                     <i class="fas fa-exclamation-triangle me-1"></i>
-                                    À assigner
+                                    Désactivés
                                 </small>
                             @else
                                 <small class="text-success">
                                     <i class="fas fa-check me-1"></i>
-                                    Tous assignés
+                                    Tous actifs
                                 </small>
                             @endif
                         </div>
@@ -184,16 +184,14 @@
                 
                 <div class="col-md-6">
                     <div class="row g-2">
-                        <!-- Filter by Manager -->
+                        <!-- Filter by Status -->
                         <div class="col-md-6">
                             <select class="form-select form-select-sm"
-                                    onchange="filterByManager(this.value)"
-                                    x-model="selectedManager">
-                                <option value="">Tous les managers</option>
-                                <option value="no-manager">Sans manager</option>
-                                @foreach(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->where('admin_id', $admin->id)->get() as $manager)
-                                    <option value="{{ $manager->id }}">{{ $manager->name }}</option>
-                                @endforeach
+                                    x-model="selectedStatus"
+                                    @change="filterEmployees()">
+                                <option value="">Tous les statuts</option>
+                                <option value="active">Actifs</option>
+                                <option value="inactive">Inactifs</option>
                             </select>
                         </div>
                         
@@ -273,10 +271,6 @@
                                     <i class="fas fa-sort ms-1" :class="getSortIcon('name')"></i>
                                 </th>
                                 <th>Contact</th>
-                                <th class="sortable-header cursor-pointer" @click="sortBy('manager')">
-                                    Manager
-                                    <i class="fas fa-sort ms-1" :class="getSortIcon('manager')"></i>
-                                </th>
                                 <th class="sortable-header cursor-pointer" @click="sortBy('status')">
                                     Statut
                                     <i class="fas fa-sort ms-1" :class="getSortIcon('status')"></i>
@@ -291,8 +285,8 @@
                         <tbody>
                             @foreach($employees as $employee)
                                 <tr class="table-row-hover" 
-                                    data-manager-id="{{ $employee->manager_id }}"
-                                    data-employee-id="{{ $employee->id }}">
+                                    data-employee-id="{{ $employee->id }}"
+                                    data-active="{{ $employee->is_active ? '1' : '0' }}">
                                     <!-- Checkbox -->
                                     <td>
                                         <input type="checkbox" 
@@ -334,25 +328,6 @@
                                         </div>
                                     </td>
                                     
-                                    <!-- Manager -->
-                                    <td>
-                                        @if($employee->manager)
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-primary rounded-circle p-2 me-2 text-white fw-bold text-center" style="width: 32px; height: 32px; line-height: 16px; font-size: 12px;">
-                                                    {{ substr($employee->manager->name, 0, 1) }}
-                                                </div>
-                                                <div>
-                                                    <div class="fw-medium small">{{ $employee->manager->name }}</div>
-                                                    <small class="text-muted">Manager</small>
-                                                </div>
-                                            </div>
-                                        @else
-                                            <span class="badge bg-secondary">
-                                                <i class="fas fa-user-slash me-1"></i>
-                                                Sans manager
-                                            </span>
-                                        @endif
-                                    </td>
                                     
                                     <!-- Statut -->
                                     <td>
@@ -491,7 +466,7 @@
                             Commencez par créer votre premier employé pour développer votre équipe.
                         @endif
                     </p>
-                    @if(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('admin_id', $admin->id)->count() < $admin->max_employees)
+                    @if(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->count() < $admin->max_employees)
                         <div class="d-flex flex-column align-items-center gap-3">
                             <a href="{{ route('admin.employees.create') }}"
                                class="btn btn-success btn-lg">
@@ -603,7 +578,7 @@
 function employeesIndex() {
     return {
         searchTerm: '',
-        selectedManager: '',
+        selectedStatus: '',
         selectedEmployees: [],
         showModal: false,
         modalType: '',
@@ -650,7 +625,7 @@ function employeesIndex() {
             
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
-                const managerId = row.dataset.managerId;
+                const isActive = row.dataset.active;
                 
                 let showRow = true;
                 
@@ -659,12 +634,12 @@ function employeesIndex() {
                     showRow = text.includes(searchTerm);
                 }
                 
-                // Filtrage par manager
-                if (this.selectedManager && showRow) {
-                    if (this.selectedManager === 'no-manager') {
-                        showRow = managerId === '' || managerId === 'null' || !managerId;
-                    } else {
-                        showRow = managerId === this.selectedManager;
+                // Filtrage par statut
+                if (this.selectedStatus && showRow) {
+                    if (this.selectedStatus === 'active') {
+                        showRow = isActive === '1' || isActive === 'true';
+                    } else if (this.selectedStatus === 'inactive') {
+                        showRow = isActive === '0' || isActive === 'false';
                     }
                 }
                 

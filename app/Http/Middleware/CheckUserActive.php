@@ -25,7 +25,7 @@ class CheckUserActive
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect()->route('login')
+                return redirect()->route('confirmi.home')
                     ->with('error', 'Votre compte a été désactivé. Veuillez contacter l\'administrateur.');
             }
 

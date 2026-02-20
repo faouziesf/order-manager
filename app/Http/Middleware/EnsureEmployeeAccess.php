@@ -15,7 +15,7 @@ class EnsureEmployeeAccess
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::guard('admin')->check()) {
-            return redirect()->route('login');
+            return redirect()->route('confirmi.home', ['login' => 1]);
         }
 
         return $next($request);

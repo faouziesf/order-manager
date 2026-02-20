@@ -34,7 +34,7 @@ class CheckAdminExpiry
                 
                 Auth::guard('admin')->logout();
                 
-                return redirect()->route('admin.login')
+                return redirect()->route('confirmi.home')
                     ->with('error', 'Votre compte a été désactivé. Contactez l\'administrateur système.');
             }
             

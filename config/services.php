@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'masafa' => [
+        'base_url' => env('MASAFA_BASE_URL', 'http://127.0.0.1:8001'),
+    ],
+
 ];

@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\SuspendedController;
 use App\Http\Controllers\Admin\WooCommerceController;
 use App\Http\Controllers\Admin\DeliveryController;
+use App\Http\Controllers\Admin\ConfirmiController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
@@ -263,10 +264,39 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
 
         // ========================================
-        // 🚀 GESTION DES LIVRAISONS MULTI-TRANSPORTEURS - SECTION COMPLÈTE ET CORRIGÉE
+        // CONFIRMI - CONFIRMATION PAR LA PLATEFORME
+        // ========================================
+        Route::prefix('confirmi')->name('confirmi.')->group(function () {
+            Route::get('/', [ConfirmiController::class, 'index'])->name('index');
+            Route::post('/request', [ConfirmiController::class, 'requestActivation'])->name('request');
+            Route::get('/orders', [ConfirmiController::class, 'orders'])->name('orders');
+            Route::get('/billing', [ConfirmiController::class, 'billing'])->name('billing');
+            Route::post('/masafa-config', [ConfirmiController::class, 'saveMasafaConfig'])->name('masafa-config');
+        });
+
+        // ========================================
+        // 🚀 LIVRAISON — MASAFA EXPRESS
         // ========================================
         Route::prefix('delivery')->name('delivery.')->group(function () {
+            Route::get('/',                                   [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'index'])->name('index');
+            Route::post('config',                            [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'saveConfig'])->name('config.save');
+            Route::post('connect',                           [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'connectWithCredentials'])->name('connect');
+            Route::post('test-connection',                   [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'testConnection'])->name('test-connection');
+            Route::get('pickup-addresses',                   [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'getPickupAddresses'])->name('pickup-addresses');
+            Route::post('orders/{order}/send',               [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'sendOrder'])->name('orders.send');
+            Route::post('orders/send-bulk',                  [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'sendBulk'])->name('orders.send-bulk');
+            Route::post('orders/{order}/sync-status',        [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'syncStatus'])->name('orders.sync-status');
+            Route::delete('config',                          [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'deleteConfig'])->name('config.delete');
+        });
 
+        // ---- dead routes kept so old view links don't 500 ----
+        // (all redirect to the new delivery index)
+        Route::get('delivery-debug-stats', fn() => redirect()->route('admin.delivery.index'))->name('delivery-debug-stats');
+        Route::get('delivery-test',        fn() => redirect()->route('admin.delivery.index'))->name('delivery-test');
+        Route::get('delivery-quick-test',  fn() => redirect()->route('admin.delivery.index'))->name('delivery-quick-test');
+        // ---- end of delivery section ----
+
+        /* ===== LEGACY ROUTES DISABLED =====
             // ================================
         // 🆕 ROUTES DE DIAGNOSTIC JAX - À AJOUTER DANS routes/admin.php
         // Dans la section Route::prefix('delivery')->name('delivery.')->group(function () {
@@ -1075,7 +1105,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             }
         })->name('test-pickups-quick');
 
-        // Route pour créer des données de test
         Route::post('create-test-pickup-data', function () {
             $admin = auth('admin')->user();
             
@@ -1219,5 +1248,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ], 500);
             }
         })->name('test-shipments-quick');
+        ===== END LEGACY ROUTES DISABLED ===== */
     });
 });

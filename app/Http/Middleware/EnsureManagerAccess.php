@@ -15,7 +15,13 @@ class EnsureManagerAccess
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::guard('admin')->check()) {
-            return redirect()->route('login');
+            return redirect()->route('confirmi.home', ['login' => 1]);
+        }
+
+        $user = Auth::guard('admin')->user();
+        if ($user->isEmployee()) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Accès refusé. Cette section est réservée aux administrateurs et managers.');
         }
 
         return $next($request);

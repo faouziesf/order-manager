@@ -20,6 +20,9 @@ class DashboardController extends Controller
     {
         $admin = Auth::guard('admin')->user();
 
+        // Pour les managers/employés, résoudre l'ID de l'admin parent
+        $parentAdminId = $admin->isAdmin() ? $admin->id : $admin->created_by;
+
         // Statistiques principales
         $stats = [
             'total_orders' => $admin->orders()->count(),
@@ -36,17 +39,17 @@ class DashboardController extends Controller
             'out_of_stock_products' => $admin->products()->where('stock', '<=', 0)->count(),
 
             'total_managers' => Admin::where('role', Admin::ROLE_MANAGER)
-                ->where('created_by', $admin->id)
+                ->where('created_by', $parentAdminId)
                 ->count(),
             'active_managers' => Admin::where('role', Admin::ROLE_MANAGER)
-                ->where('created_by', $admin->id)
+                ->where('created_by', $parentAdminId)
                 ->where('is_active', true)
                 ->count(),
             'total_employees' => Admin::where('role', Admin::ROLE_EMPLOYEE)
-                ->where('created_by', $admin->id)
+                ->where('created_by', $parentAdminId)
                 ->count(),
             'active_employees' => Admin::where('role', Admin::ROLE_EMPLOYEE)
-                ->where('created_by', $admin->id)
+                ->where('created_by', $parentAdminId)
                 ->where('is_active', true)
                 ->count(),
 
@@ -89,7 +92,7 @@ class DashboardController extends Controller
 
         // Employés les plus actifs (basé sur les commandes assignées)
         $activeEmployees = Admin::where('role', Admin::ROLE_EMPLOYEE)
-            ->where('created_by', $admin->id)
+            ->where('created_by', $parentAdminId)
             ->withCount(['orders' => function($query) {
                 $query->whereDate('updated_at', '>=', Carbon::now()->subDays(7));
             }])

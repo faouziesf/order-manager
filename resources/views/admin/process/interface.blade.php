@@ -2692,9 +2692,13 @@ $(document).ready(function() {
         })
         .fail(function(xhr, status, error) {
             let errorMessage = 'Erreur lors du traitement de l\'action';
+            let isConfirmiLock = false;
             try {
                 const response = JSON.parse(xhr.responseText);
-                if (response.error) {
+                if (response.locked_by_confirmi) {
+                    isConfirmiLock = true;
+                    errorMessage = '🔒 Commande verrouillée par Confirmi — passage à la suivante.';
+                } else if (response.error) {
                     errorMessage = response.error;
                 } else if (response.errors) {
                     const errors = Object.values(response.errors).flat();
@@ -2702,7 +2706,12 @@ $(document).ready(function() {
                 }
             } catch (e) {}
             
-            showNotification(errorMessage, 'error');
+            showNotification(errorMessage, isConfirmiLock ? 'warning' : 'error');
+            
+            if (isConfirmiLock) {
+                $('.modal').modal('hide');
+                setTimeout(() => loadCurrentQueue(), 1500);
+            }
         })
         .always(function() {
             setTimeout(() => {

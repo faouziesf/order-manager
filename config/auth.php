@@ -21,6 +21,11 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+
+        'confirmi' => [
+            'driver' => 'session',
+            'provider' => 'confirmi-users',
+        ],
     ],
 
     'providers' => [
@@ -37,6 +42,11 @@ return [
         'admins' => [
             'driver' => 'eloquent',
             'model' => App\Models\Admin::class,
+        ],
+
+        'confirmi-users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\ConfirmiUser::class,
         ],
     ],
 
@@ -57,6 +67,13 @@ return [
 
         'admins' => [
             'provider' => 'admins',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'confirmi-users' => [
+            'provider' => 'confirmi-users',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,

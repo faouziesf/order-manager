@@ -466,36 +466,29 @@
                     </div>
                 </div>
 
-                <!-- Livraison avec sous-menus -->
+                <!-- Livraison — Masafa Express -->
                 <div class="menu-item">
-                    <div class="menu-link {{ request()->routeIs('admin.delivery*') ? 'active expanded' : '' }}" onclick="toggleSubmenu(this)">
+                    <a href="{{ route('admin.delivery.index') }}" class="menu-link {{ request()->routeIs('admin.delivery*') ? 'active' : '' }}">
                         <i class="fas fa-truck"></i>
                         <span>Livraison</span>
-                        <i class="fas fa-chevron-down menu-chevron"></i>
-                    </div>
-                    <div class="submenu {{ request()->routeIs('admin.delivery*') ? 'show' : '' }}">
-                        <div class="submenu-item">
-                            <a href="{{ route('admin.delivery.shipments') }}" class="submenu-link {{ request()->routeIs('admin.delivery.shipments') ? 'active' : '' }}">
-                                <i class="fas fa-shipping-fast"></i>Expéditions
-                            </a>
-                        </div>
-                        <div class="submenu-item">
-                            <a href="{{ route('admin.delivery.preparation') }}" class="submenu-link {{ request()->routeIs('admin.delivery.preparation') ? 'active' : '' }}">
-                                <i class="fas fa-box-open"></i>Préparation
-                            </a>
-                        </div>
-                        <div class="submenu-item">
-                            <a href="{{ route('admin.delivery.configuration') }}" class="submenu-link {{ request()->routeIs('admin.delivery.configuration') ? 'active' : '' }}">
-                                <i class="fas fa-cog"></i>Configuration
-                            </a>
-                        </div>
-                        <div class="submenu-item">
-                            <a href="{{ route('admin.delivery.stats') }}" class="submenu-link {{ request()->routeIs('admin.delivery.stats') ? 'active' : '' }}">
-                                <i class="fas fa-chart-bar"></i>Statistiques
-                            </a>
-                        </div>
-                    </div>
+                        <span class="badge ms-auto" style="background:linear-gradient(135deg,#0f4c81,#1a73c8);font-size:.6rem;padding:.2rem .4rem;border-radius:4px;color:#fff;">Masafa</span>
+                    </a>
                 </div>
+
+                @if(auth('admin')->user() && auth('admin')->user()->role === 'admin')
+                <!-- Confirmi -->
+                <div class="menu-item">
+                    <a href="{{ route('admin.confirmi.index') }}" class="menu-link {{ request()->routeIs('admin.confirmi*') ? 'active' : '' }}">
+                        <i class="fas fa-headset"></i>
+                        <span>Confirmi</span>
+                        @if(auth('admin')->user()->confirmi_status === 'active')
+                            <span class="badge bg-success ms-auto" style="font-size:0.6rem;">Actif</span>
+                        @elseif(auth('admin')->user()->confirmi_status === 'pending')
+                            <span class="badge bg-warning ms-auto" style="font-size:0.6rem;">En cours</span>
+                        @endif
+                    </a>
+                </div>
+                @endif
 
                 <!-- Importation avec sous-menus -->
                 <div class="menu-item">

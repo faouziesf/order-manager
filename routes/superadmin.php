@@ -8,6 +8,9 @@ use App\Http\Controllers\SuperAdmin\AnalyticsController;
 use App\Http\Controllers\SuperAdmin\ReportController;
 use App\Http\Controllers\SuperAdmin\SystemController;
 use App\Http\Controllers\SuperAdmin\NotificationController;
+use App\Http\Controllers\SuperAdmin\ConfirmiUserController;
+use App\Http\Controllers\SuperAdmin\ConfirmiBillingController;
+use App\Http\Controllers\SuperAdmin\ConfirmiRequestController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -182,6 +185,37 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
             Route::post('notifications/update', [SettingController::class, 'updateNotifications'])->name('notifications.update');
         });
         
+        // ========================================
+        // GESTION DES UTILISATEURS CONFIRMI
+        // ========================================
+        Route::prefix('confirmi-users')->name('confirmi-users.')->group(function () {
+            Route::get('/', [ConfirmiUserController::class, 'index'])->name('index');
+            Route::get('create', [ConfirmiUserController::class, 'create'])->name('create');
+            Route::post('/', [ConfirmiUserController::class, 'store'])->name('store');
+            Route::get('{confirmiUser}/edit', [ConfirmiUserController::class, 'edit'])->name('edit');
+            Route::put('{confirmiUser}', [ConfirmiUserController::class, 'update'])->name('update');
+            Route::patch('{confirmiUser}/toggle-active', [ConfirmiUserController::class, 'toggleActive'])->name('toggle-active');
+            Route::delete('{confirmiUser}', [ConfirmiUserController::class, 'destroy'])->name('destroy');
+        });
+
+        // ========================================
+        // DEMANDES D'ACTIVATION CONFIRMI
+        // ========================================
+        Route::prefix('confirmi-requests')->name('confirmi-requests.')->group(function () {
+            Route::get('/', [ConfirmiRequestController::class, 'index'])->name('index');
+            Route::post('{confirmiRequest}/approve', [ConfirmiRequestController::class, 'approve'])->name('approve');
+            Route::post('{confirmiRequest}/reject', [ConfirmiRequestController::class, 'reject'])->name('reject');
+        });
+
+        // ========================================
+        // FACTURATION CONFIRMI
+        // ========================================
+        Route::prefix('confirmi-billing')->name('confirmi-billing.')->group(function () {
+            Route::get('/', [ConfirmiBillingController::class, 'index'])->name('index');
+            Route::post('/mark-paid', [ConfirmiBillingController::class, 'markPaid'])->name('mark-paid');
+            Route::post('/mark-paid-admin/{admin}', [ConfirmiBillingController::class, 'markPaidForAdmin'])->name('mark-paid-admin');
+        });
+
         // ========================================
         // PROFILE SUPER ADMIN
         // ========================================

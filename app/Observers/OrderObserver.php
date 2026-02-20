@@ -2,6 +2,8 @@
 
 namespace App\Observers;
 
+use App\Models\Admin;
+use App\Models\ConfirmiOrderAssignment;
 use App\Models\Order;
 use App\Traits\DuplicateDetectionTrait;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +19,9 @@ class OrderObserver
     {
         // Détecter automatiquement les doublons après création
         $this->handleDuplicateDetection($order);
+
+        // Auto-push vers Confirmi si l'admin a le service actif
+        $this->pushToConfirmiIfActive($order);
     }
 
     /**
@@ -78,6 +83,36 @@ class OrderObserver
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Auto-push une commande vers Confirmi si l'admin a le service actif
+     */
+    private function pushToConfirmiIfActive(Order $order)
+    {
+        try {
+            $admin = Admin::find($order->admin_id);
+            if (!$admin || $admin->confirmi_status !== 'active') {
+                return;
+            }
+
+            // Vérifier qu'il n'y a pas déjà une assignation
+            if (ConfirmiOrderAssignment::where('order_id', $order->id)->exists()) {
+                return;
+            }
+
+            ConfirmiOrderAssignment::create([
+                'order_id' => $order->id,
+                'admin_id' => $admin->id,
+                'status' => 'pending',
+            ]);
+
+            Log::info("[Confirmi] Commande #{$order->id} auto-pushée vers Confirmi pour admin #{$admin->id}");
+        } catch (\Exception $e) {
+            Log::error("[Confirmi] Erreur auto-push commande #{$order->id}", [
+                'error' => $e->getMessage(),
             ]);
         }
     }

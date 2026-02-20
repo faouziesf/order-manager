@@ -15,8 +15,9 @@ class ManagerController extends Controller
     {
         $admin = auth('admin')->user();
 
-        // Récupérer tous les managers (Admin avec role='manager')
+        // Récupérer les managers créés par cet admin
         $managers = Admin::where('role', Admin::ROLE_MANAGER)
+            ->where('created_by', $admin->id)
             ->latest()
             ->paginate(10);
 
@@ -28,7 +29,7 @@ class ManagerController extends Controller
         $admin = auth('admin')->user();
 
         // Vérifier si l'admin peut créer plus de managers
-        $managerCount = Admin::where('role', Admin::ROLE_MANAGER)->count();
+        $managerCount = Admin::where('role', Admin::ROLE_MANAGER)->where('created_by', $admin->id)->count();
         if ($managerCount >= $admin->max_managers) {
             return redirect()->route('admin.managers.index')
                 ->with('error', 'Vous avez atteint le nombre maximum de managers autorisés (' . $admin->max_managers . ').');
@@ -42,7 +43,7 @@ class ManagerController extends Controller
         $admin = auth('admin')->user();
 
         // Vérifier les limites
-        $managerCount = Admin::where('role', Admin::ROLE_MANAGER)->count();
+        $managerCount = Admin::where('role', Admin::ROLE_MANAGER)->where('created_by', $admin->id)->count();
         if ($managerCount >= $admin->max_managers) {
             return redirect()->route('admin.managers.index')
                 ->with('error', 'Vous avez atteint le nombre maximum de managers autorisés.');
@@ -71,7 +72,7 @@ class ManagerController extends Controller
                 'role' => Admin::ROLE_MANAGER,
                 'created_by' => $admin->id, // IMPORTANT: Lier le manager à l'admin qui le crée
                 'shop_name' => 'manager_' . time(),
-                'identifier' => 'MGR' . str_pad(Admin::where('role', Admin::ROLE_MANAGER)->count() + 1, 6, '0', STR_PAD_LEFT),
+                'identifier' => $this->generateUniqueIdentifier('MGR'),
                 'is_active' => $request->has('is_active') ? true : false,
             ]);
 
@@ -87,8 +88,8 @@ class ManagerController extends Controller
 
     public function show(Admin $manager)
     {
-        // Vérifier que c'est bien un manager
-        if ($manager->role !== Admin::ROLE_MANAGER) {
+        // Vérifier que c'est bien un manager appartenant à cet admin
+        if ($manager->role !== Admin::ROLE_MANAGER || $manager->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -97,8 +98,8 @@ class ManagerController extends Controller
 
     public function edit(Admin $manager)
     {
-        // Vérifier que c'est bien un manager
-        if ($manager->role !== Admin::ROLE_MANAGER) {
+        // Vérifier que c'est bien un manager appartenant à cet admin
+        if ($manager->role !== Admin::ROLE_MANAGER || $manager->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -107,8 +108,8 @@ class ManagerController extends Controller
 
     public function update(Request $request, Admin $manager)
     {
-        // Vérifier que c'est bien un manager
-        if ($manager->role !== Admin::ROLE_MANAGER) {
+        // Vérifier que c'est bien un manager appartenant à cet admin
+        if ($manager->role !== Admin::ROLE_MANAGER || $manager->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -158,8 +159,8 @@ class ManagerController extends Controller
 
     public function destroy(Admin $manager)
     {
-        // Vérifier que c'est bien un manager
-        if ($manager->role !== Admin::ROLE_MANAGER) {
+        // Vérifier que c'est bien un manager appartenant à cet admin
+        if ($manager->role !== Admin::ROLE_MANAGER || $manager->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -177,8 +178,8 @@ class ManagerController extends Controller
 
     public function toggleActive(Admin $manager)
     {
-        // Vérifier que c'est bien un manager
-        if ($manager->role !== Admin::ROLE_MANAGER) {
+        // Vérifier que c'est bien un manager appartenant à cet admin
+        if ($manager->role !== Admin::ROLE_MANAGER || $manager->created_by !== auth('admin')->id()) {
             abort(404);
         }
 
@@ -194,5 +195,27 @@ class ManagerController extends Controller
             return redirect()->back()
                 ->with('error', 'Erreur lors du changement de statut.');
         }
+    }
+
+    public function getManagersForAdmin()
+    {
+        $admin = auth('admin')->user();
+
+        $managers = Admin::where('role', Admin::ROLE_MANAGER)
+            ->where('created_by', $admin->id)
+            ->where('is_active', true)
+            ->select('id', 'name', 'email')
+            ->get();
+
+        return response()->json($managers);
+    }
+
+    private function generateUniqueIdentifier(string $prefix): string
+    {
+        do {
+            $identifier = $prefix . strtoupper(substr(uniqid(), -5));
+        } while (Admin::where('identifier', $identifier)->exists());
+
+        return $identifier;
     }
 }

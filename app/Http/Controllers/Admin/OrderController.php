@@ -25,7 +25,7 @@ class OrderController extends Controller
             $admin = Auth::guard('admin')->user();
             
             // Construire la query de base
-            $query = $admin->orders()->with(['items.product', 'employee']);
+            $query = $admin->orders()->with(['items.product', 'employee', 'confirmiAssignment']);
             
             // Appliquer les filtres
             if ($request->filled('search')) {
@@ -336,6 +336,11 @@ class OrderController extends Controller
     {
         try {
             $this->authorize('update', $order);
+
+            // Bloquer si commande gérée par Confirmi
+            if (\App\Models\ConfirmiOrderAssignment::where('order_id', $order->id)->whereNotIn('status', ['cancelled'])->exists()) {
+                return redirect()->route('admin.orders.index')->with('error', 'Cette commande est en cours de traitement par l\'équipe Confirmi et ne peut pas être modifiée.');
+            }
             
             $order->load(['items.product']);
             $admin = Auth::guard('admin')->user();
@@ -370,6 +375,11 @@ class OrderController extends Controller
     {
         try {
             $this->authorize('update', $order);
+
+            // Bloquer si commande gérée par Confirmi
+            if (\App\Models\ConfirmiOrderAssignment::where('order_id', $order->id)->whereNotIn('status', ['cancelled'])->exists()) {
+                return redirect()->route('admin.orders.index')->with('error', 'Cette commande est en cours de traitement par l\'équipe Confirmi.');
+            }
 
             // VALIDATION CONDITIONNELLE SELON STATUT
             $validationRules = [

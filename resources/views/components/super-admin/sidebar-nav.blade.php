@@ -27,6 +27,49 @@
 </div>
 
 <div class="nav-section">
+    <div class="nav-section-title">Confirmi</div>
+    
+    <div class="nav-item">
+        <a href="{{ route('super-admin.confirmi-users.index') }}" class="nav-link {{ request()->routeIs('super-admin.confirmi-users.*') ? 'active' : '' }}">
+            <div class="nav-icon">
+                <i class="fas fa-headset"></i>
+            </div>
+            <span class="nav-text">Utilisateurs Confirmi</span>
+        </a>
+    </div>
+
+    <div class="nav-item">
+        <a href="{{ route('super-admin.confirmi-requests.index') }}" class="nav-link {{ request()->routeIs('super-admin.confirmi-requests.*') ? 'active' : '' }}">
+            <div class="nav-icon">
+                <i class="fas fa-inbox"></i>
+            </div>
+            <span class="nav-text">Demandes Confirmi</span>
+            @php
+                $pendingConfirmiRequests = \App\Models\ConfirmiRequest::where('status', 'pending')->count();
+            @endphp
+            @if($pendingConfirmiRequests > 0)
+                <span class="nav-badge">{{ $pendingConfirmiRequests }}</span>
+            @endif
+        </a>
+    </div>
+
+    <div class="nav-item">
+        <a href="{{ route('super-admin.confirmi-billing.index') }}" class="nav-link {{ request()->routeIs('super-admin.confirmi-billing.*') ? 'active' : '' }}">
+            <div class="nav-icon">
+                <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <span class="nav-text">Facturation Confirmi</span>
+            @php
+                $unpaidConfirmiBilling = \App\Models\ConfirmiBilling::where('is_paid', false)->sum('amount');
+            @endphp
+            @if($unpaidConfirmiBilling > 0)
+                <span class="nav-badge">{{ number_format($unpaidConfirmiBilling, 0) }}</span>
+            @endif
+        </a>
+    </div>
+</div>
+
+<div class="nav-section">
     <div class="nav-section-title">Analytics</div>
     
     <div class="nav-item">

@@ -13,7 +13,7 @@ class AuthController extends Controller
 {
     public function showLoginForm()
     {
-        return view('admin.auth.login');
+        return redirect()->route('confirmi.home', ['login' => 1]);
     }
 
     public function login(Request $request)
@@ -55,7 +55,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return redirect()->route('confirmi.home');
     }
 
     public function showExpiredPage()

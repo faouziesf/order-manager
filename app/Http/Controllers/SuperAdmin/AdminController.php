@@ -23,10 +23,10 @@ class AdminController extends Controller
     {
         $query = Admin::where('role', Admin::ROLE_ADMIN)
             ->withCount([
-                'children as managers_count' => function($q) {
+                'subAccounts as managers_count' => function($q) {
                     $q->where('role', Admin::ROLE_MANAGER);
                 },
-                'children as employees_count' => function($q) {
+                'subAccounts as employees_count' => function($q) {
                     $q->where('role', Admin::ROLE_EMPLOYEE);
                 }
             ]);
@@ -118,8 +118,8 @@ class AdminController extends Controller
 
     public function show(Admin $admin)
     {
-        $totalManagers = $admin->children()->where('role', Admin::ROLE_MANAGER)->count();
-        $totalEmployees = $admin->children()->where('role', Admin::ROLE_EMPLOYEE)->count();
+        $totalManagers = $admin->subAccounts()->where('role', Admin::ROLE_MANAGER)->count();
+        $totalEmployees = $admin->subAccounts()->where('role', Admin::ROLE_EMPLOYEE)->count();
         
         // Statistiques avancées
         $stats = [
@@ -217,8 +217,8 @@ class AdminController extends Controller
     {
         try {
             // Vérifier s'il y a des données liées
-            $hasManagers = $admin->children()->where('role', Admin::ROLE_MANAGER)->count() > 0;
-            $hasEmployees = $admin->children()->where('role', Admin::ROLE_EMPLOYEE)->count() > 0;
+            $hasManagers = $admin->subAccounts()->where('role', Admin::ROLE_MANAGER)->count() > 0;
+            $hasEmployees = $admin->subAccounts()->where('role', Admin::ROLE_EMPLOYEE)->count() > 0;
 
             if ($hasManagers || $hasEmployees) {
                 return redirect()->back()

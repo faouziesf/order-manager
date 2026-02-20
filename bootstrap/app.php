@@ -11,6 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->replace(
+            \Illuminate\Auth\Middleware\Authenticate::class,
+            \App\Http\Middleware\Authenticate::class
+        );
+
         // Enregistrement des alias de middleware personnalisés
         $middleware->alias([
             'super-admin' => \App\Http\Middleware\EnsureSuperAdminAccess::class,
@@ -20,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'check-admin-expiry' => \App\Http\Middleware\CheckAdminExpiry::class,
             'check_user_active' => \App\Http\Middleware\CheckUserActive::class,
             'super-admin.active' => \App\Http\Middleware\SuperAdminActive::class,
+            'confirmi' => \App\Http\Middleware\EnsureConfirmiAccess::class,
+            'confirmi.commercial' => \App\Http\Middleware\EnsureConfirmiCommercial::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -18,7 +18,7 @@ class SuperAdminActive
     {
         // Vérifier si l'utilisateur est connecté en tant que super-admin
         if (!Auth::guard('super-admin')->check()) {
-            return redirect()->route('super-admin.login')
+            return redirect()->route('confirmi.home', ['login' => 1])
                 ->with('error', 'Vous devez être connecté pour accéder à cette page.');
         }
 
@@ -27,7 +27,7 @@ class SuperAdminActive
         // Vérifier si le super admin est actif
         if (!$superAdmin || !$superAdmin->is_active) {
             Auth::guard('super-admin')->logout();
-            return redirect()->route('super-admin.login')
+            return redirect()->route('confirmi.home')
                 ->with('error', 'Votre compte a été désactivé. Contactez l\'administrateur système.');
         }
 

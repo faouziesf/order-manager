@@ -17,13 +17,13 @@ class DashboardController extends Controller
         $stats = $this->getMainStats();
         
         // Activité récente
-        $recentActivity = $this->getRecentActivity();
+        $recentActivity = $this->buildRecentActivity();
         
         // Alertes système
         $alerts = $this->getSystemAlerts();
         
         // Données pour les graphiques
-        $chartData = $this->getChartData();
+        $chartData = $this->buildChartData();
         
         // Admins récents
         $recentAdmins = Admin::latest()->take(5)->get();
@@ -48,15 +48,25 @@ class DashboardController extends Controller
 
     public function getChartData()
     {
-        return response()->json([
+        return response()->json($this->buildChartData());
+    }
+
+    private function buildChartData()
+    {
+        return [
             'adminsRegistration' => $this->getAdminsRegistrationChart(),
             'ordersActivity' => $this->getOrdersActivityChart(),
             'systemUsage' => $this->getSystemUsageChart(),
             'revenueChart' => $this->getRevenueChart()
-        ]);
+        ];
     }
 
     public function getRecentActivity()
+    {
+        return response()->json($this->buildRecentActivity()->values());
+    }
+
+    private function buildRecentActivity()
     {
         $activities = collect();
         
@@ -102,7 +112,7 @@ class DashboardController extends Controller
             $activities = collect();
         }
 
-        return response()->json($activities->values());
+        return $activities;
     }
 
     public function getAlerts()

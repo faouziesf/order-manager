@@ -957,8 +957,15 @@
                                 </span>
                                 @if($order->is_assigned)
                                     <div class="mt-1">
-                                        <small class="text-success" style="font-size: 0.7rem;"> <!-- OPTIMISÉ: Taille réduite -->
+                                        <small class="text-success" style="font-size: 0.7rem;">
                                             <i class="fas fa-user-check me-1"></i>Assignée
+                                        </small>
+                                    </div>
+                                @endif
+                                @if($order->confirmiAssignment && !in_array($order->confirmiAssignment->status, ['cancelled']))
+                                    <div class="mt-1">
+                                        <small class="text-primary" style="font-size: 0.7rem;" title="Gérée par l'équipe Confirmi">
+                                            <i class="fas fa-headset me-1"></i>Confirmi
                                         </small>
                                     </div>
                                 @endif

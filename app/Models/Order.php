@@ -97,6 +97,11 @@ class Order extends Model
         return $this->belongsTo(City::class, 'customer_city');
     }
 
+    public function confirmiAssignment()
+    {
+        return $this->hasOne(ConfirmiOrderAssignment::class);
+    }
+
     public function shipments()
     {
         return $this->hasMany(Shipment::class);
