@@ -18,14 +18,14 @@ body{font-family:'Inter',sans-serif;color:var(--text);overflow-x:hidden}
 .nav-links a:hover{color:#fff}
 .btn-nav{padding:.48rem 1.2rem;background:var(--b600);color:#fff;border:none;border-radius:8px;font:.875rem/1 'Inter',sans-serif;font-weight:600;cursor:pointer;transition:background .2s}
 .btn-nav:hover{background:var(--b700)}
-@media(max-width:768px){.nav-links{display:none}}
+@media(max-width:768px){.nav-links{display:none}.hero-cta{flex-direction:column;align-items:center}.hero-cta .btn-white,.hero-cta .btn-outline{width:100%;max-width:280px}}
 /* HERO */
 .hero{min-height:100vh;background:linear-gradient(140deg,var(--b950) 0%,var(--b900) 35%,var(--b800) 70%,#1d4ed8 100%);display:flex;align-items:center;justify-content:center;text-align:center;padding:130px 5% 90px;position:relative;overflow:hidden}
 .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 25% 60%,rgba(37,99,235,.35) 0%,transparent 55%),radial-gradient(ellipse at 80% 20%,rgba(96,165,250,.2) 0%,transparent 50%);pointer-events:none}
 .hero-grid{position:absolute;inset:0;opacity:.035;background-image:linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px);background-size:48px 48px}
 .hero-inner{position:relative;z-index:1;max-width:820px;margin:0 auto}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.45);color:var(--gold);padding:6px 16px;border-radius:50px;font-size:.7rem;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:1.5rem}
-.hero-logo-wrap{width:94px;height:94px;margin:0 auto 1.5rem;background:rgba(255,255,255,.1);border-radius:24px;display:flex;align-items:center;justify-content:center;padding:12px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.hero-logo-wrap{width:94px;height:94px;margin:0 auto 1.5rem;background:rgba(255, 255, 255, 1);border-radius:24px;display:flex;align-items:center;justify-content:center;padding:12px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15);box-shadow:0 8px 32px rgba(0,0,0,.3)}
 .hero-logo-wrap img{width:100%;height:100%;object-fit:contain}
 .hero h1{font-size:clamp(2rem,5.5vw,3.6rem);font-weight:900;color:#fff;line-height:1.13;letter-spacing:-1.5px;margin-bottom:1.25rem}
 .hero h1 .acc{color:var(--b400)}
@@ -37,6 +37,10 @@ body{font-family:'Inter',sans-serif;color:var(--text);overflow-x:hidden}
 .btn-outline:hover{background:rgba(255,255,255,.18);color:#fff}
 .hero-bounce{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.4);font-size:.7rem;display:flex;flex-direction:column;align-items:center;gap:5px;animation:boc 2s infinite}
 @keyframes boc{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(7px)}}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.9}}
+@keyframes bounce{0%,100%{transform:translateY(0)}25%{transform:translateY(-5px)}75%{transform:translateY(-3px)}}
+@keyframes rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 /* STATS */
 .stats{background:var(--b800);padding:2.25rem 5%}
 .stats-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
@@ -146,9 +150,14 @@ footer{background:var(--b950);padding:2.5rem 5% 1.5rem}
         <a href="#comment">Comment ça marche</a>
         <a href="#tunisie">À propos</a>
     </div>
-    <button class="btn-nav" onclick="openModal()">
-        <i class="fas fa-sign-in-alt" style="margin-right:6px;"></i>Se connecter
-    </button>
+    <div style="display:flex;gap:0.75rem;align-items:center;">
+        <a href="{{ route('register') }}" class="btn-nav" style="background:transparent;border:1px solid rgba(255,255,255,.3);">
+            <i class="fas fa-user-plus" style="margin-right:6px;"></i>S'inscrire
+        </a>
+        <button class="btn-nav" onclick="openModal()">
+            <i class="fas fa-sign-in-alt" style="margin-right:6px;"></i>Se connecter
+        </button>
+    </div>
 </nav>
 
 <!-- HERO -->
@@ -156,6 +165,15 @@ footer{background:var(--b950);padding:2.5rem 5% 1.5rem}
     <div class="hero-grid"></div>
     <div class="hero-inner">
         <div class="hero-badge"><i class="fas fa-star"></i> Première plateforme de confirmation en Tunisie</div>
+        <div class="hero-badge" style="background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(37,99,235,.25));border:3px solid #ffffffff;color:#ffffff;margin-top:1rem;padding:12px 24px;font-size:.85rem;font-weight:800;letter-spacing:1px;box-shadow:0 8px 32px rgba(255, 255, 255, 1);animation:pulse 2s infinite;position:relative;overflow:hidden;">
+            <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shimmer 3s infinite;"></div>
+            <i class="fas fa-rocket" style="margin-right:8px;position:relative;z-index:1;"></i> 
+            <span style="position:relative;z-index:1;">ESSAI GRATUIT 14 JOURS</span>
+            <span style="margin-left:8px;position:relative;z-index:1;">•</span>
+            <span style="margin-left:8px;position:relative;z-index:1;">Accès complet</span>
+            <span style="margin-left:8px;position:relative;z-index:1;">•</span>
+            <span style="margin-left:8px;position:relative;z-index:1;">Sans engagement</span>
+        </div>
         <div class="hero-logo-wrap">
             <img src="{{ asset('img/confirmi.png') }}" alt="Confirmi">
         </div>
@@ -164,8 +182,13 @@ footer{background:var(--b950);padding:2.5rem 5% 1.5rem}
             Débarrassez-vous d'Excel et des feuilles volantes ! Confirmi est la plateforme tout-en-un pour synchroniser vos boutiques internationales, gérer vos stocks et confirmer vos commandes à la vitesse de l'éclair.
         </p>
         <div class="hero-cta">
-            <button class="btn-white" onclick="openModal()">
-                <i class="fas fa-sign-in-alt" style="margin-right:8px;"></i>Accéder à la plateforme
+            <a href="{{ route('register') }}" class="btn-white" style="text-decoration:none;position:relative;overflow:hidden;background:linear-gradient(135deg,#fff,#f8fafc);border:2px solid #3b82f6;box-shadow:0 8px 32px rgba(59,130,246,.2);">
+                <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(59,130,246,.05),transparent);animation:shimmer 3s infinite;"></div>
+                <i class="fas fa-play-circle" style="margin-right:10px;color:#3b82f6;position:relative;z-index:1;"></i>
+                <span style="color:#1e40af;font-weight:800;font-size:1.05rem;position:relative;z-index:1;">Commencer mon essai gratuit</span>
+            </a>
+            <button class="btn-outline" onclick="openModal()">
+                <i class="fas fa-sign-in-alt"></i> Se connecter
             </button>
             <a href="#benefices" class="btn-outline">
                 <i class="fas fa-play-circle"></i> Découvrir les avantages
@@ -192,6 +215,18 @@ footer{background:var(--b950);padding:2.5rem 5% 1.5rem}
         <h2 class="s-title">Tout ce dont vous avez besoin pour exploser vos ventes</h2>
         <p class="s-sub">Une suite complète d'outils puissants conçus pour vous faire gagner un temps précieux et éliminer les erreurs humaines.</p>
         <div class="benefits-grid">
+            <div class="bc" style="border:2px solid #3b82f6;box-shadow:0 8px 30px rgba(59,130,246,.15);background:linear-gradient(135deg,rgba(59,130,246,.02),rgba(37,99,235,.05));">
+                <div class="bi bl" style="background:linear-gradient(135deg,#3b82f6,#2563eb);animation:pulse 2s infinite;"><i class="fas fa-rocket"></i></div>
+                <h3 style="color:#1e40af;font-size:1.05rem;">Essai Professionnel 14 Jours</h3>
+                <p style="font-size:.9rem;line-height:1.7;">Accédez à <strong>toutes les fonctionnalités premium</strong> sans engagement. Testez la plateforme avec vos données réelles et découvrez comment Confirmi peut transformer votre e-commerce.</p>
+                <div style="margin-top:1rem;padding:.75rem;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:8px;border:1px solid #bfdbfe;">
+                    <div style="display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;">
+                        <div style="color:#1e40af;font-weight:600;font-size:.85rem;"><i class="fas fa-check-circle" style="color:#3b82f6;margin-right:4px;"></i>Toutes les intégrations</div>
+                        <div style="color:#1e40af;font-weight:600;font-size:.85rem;"><i class="fas fa-check-circle" style="color:#3b82f6;margin-right:4px;"></i>Support prioritaire</div>
+                        <div style="color:#1e40af;font-weight:600;font-size:.85rem;"><i class="fas fa-check-circle" style="color:#3b82f6;margin-right:4px;"></i>Multi-utilisateurs</div>
+                    </div>
+                </div>
+            </div>
             <div class="bc">
                 <div class="bi ro"><i class="fas fa-file-excel"></i></div>
                 <h3>Adieu Excel et Google Sheets</h3>
@@ -289,10 +324,39 @@ footer{background:var(--b950);padding:2.5rem 5% 1.5rem}
 <section class="cta-bg">
     <div class="wrap">
         <h2>Prêt à révolutionner votre e-commerce ?</h2>
-        <p style="font-size: 1.1rem; margin-bottom: 2.5rem;">Abandonnez définitivement Excel. Automatisez vos imports depuis Shopify ou WooCommerce, suivez votre stock en direct et laissez votre équipe confirmer plus de commandes en un temps record.</p>
-        <button class="btn-cta" onclick="openModal()">
-            <i class="fas fa-rocket" style="margin-right:8px;"></i>Commencer l'expérience Confirmi
-        </button>
+        <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">Abandonnez définitivement Excel. Automatisez vos imports depuis Shopify ou WooCommerce, suivez votre stock en direct et laissez votre équipe confirmer plus de commandes en un temps record.</p>
+        <div style="background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(37,99,235,.15));border:2px solid #3b82f6;border-radius:16px;padding:2rem 2.5rem;margin-bottom:2.5rem;text-align:center;position:relative;">
+            <div style="color:#1e40af;font-weight:800;font-size:1.3rem;margin-bottom:1rem;">
+                <i class="fas fa-rocket" style="margin-right:10px;"></i>Démarrez avec un essai professionnel
+            </div>
+            <div style="color:#1e293b;font-size:1.1rem;line-height:1.7;margin-bottom:1.5rem;">
+                Testez <strong>toutes les fonctionnalités</strong> pendant 14 jours • 
+                <strong>Accès complet</strong> • 
+                <strong>Support dédié</strong> • 
+                <strong>Annulation flexible</strong>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-top:1.5rem;">
+                <div style="display:flex;align-items:center;gap:8px;color:#475569;font-size:.9rem;">
+                    <i class="fas fa-check-circle" style="color:#3b82f6;"></i>
+                    <span>Intégrations complètes</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;color:#475569;font-size:.9rem;">
+                    <i class="fas fa-check-circle" style="color:#3b82f6;"></i>
+                    <span>Multi-utilisateurs</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;color:#475569;font-size:.9rem;">
+                    <i class="fas fa-check-circle" style="color:#3b82f6;"></i>
+                    <span>Support prioritaire</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;color:#475569;font-size:.9rem;">
+                    <i class="fas fa-check-circle" style="color:#3b82f6;"></i>
+                    <span>Sans engagement</span>
+                </div>
+            </div>
+        </div>
+        <a href="{{ route('register') }}" class="btn-cta" style="text-decoration:none;background:linear-gradient(135deg,#3b82f6,#2563eb);font-size:1.15rem;padding:1.1rem 3rem;box-shadow:0 8px 32px rgba(59,130,246,.3);border:2px solid #1e40af;">
+            <i class="fas fa-play-circle" style="margin-right:12px;"></i><strong>Commencer mon essai gratuit</strong>
+        </a>
     </div>
 </section>
 
@@ -352,6 +416,19 @@ footer{background:var(--b950);padding:2.5rem 5% 1.5rem}
                     <i class="fas fa-sign-in-alt" style="margin-right:8px;"></i>Se connecter
                 </button>
             </form>
+            <div style="text-align:center;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid #e2e8f0;">
+                <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:2px solid #3b82f6;border-radius:12px;padding:1.2rem;margin-bottom:1rem;position:relative;">
+                    <div style="color:#1e40af;font-weight:800;font-size:.9rem;margin-bottom:.4rem;">
+                        <i class="fas fa-rocket" style="margin-right:8px;"></i>Essai professionnel 14 jours
+                    </div>
+                    <div style="color:#3730a3;font-size:.8rem;font-weight:500;">Accès complet • Support prioritaire • Sans engagement</div>
+                </div>
+                <p style="font-size:.78rem;color:#64748b;margin-bottom:.6rem;">Pas encore de compte ?</p>
+                <a href="{{ route('register') }}" style="display:inline-flex;align-items:center;gap:6px;color:var(--b600);font-size:.8rem;font-weight:600;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='var(--b700)'" onmouseout="this.style.color='var(--b600)'">
+                    <i class="fas fa-user-plus"></i>
+                    Créer mon compte d'essai
+                </a>
+            </div>
         </div>
     </div>
 </div>
