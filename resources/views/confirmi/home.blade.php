@@ -215,19 +215,7 @@ footer{background:var(--b950);padding:2.5rem 5% 1.5rem}
         <h2 class="s-title">Tout ce dont vous avez besoin pour exploser vos ventes</h2>
         <p class="s-sub">Une suite complète d'outils puissants conçus pour vous faire gagner un temps précieux et éliminer les erreurs humaines.</p>
         <div class="benefits-grid">
-            <div class="bc" style="border:2px solid #3b82f6;box-shadow:0 8px 30px rgba(59,130,246,.15);background:linear-gradient(135deg,rgba(59,130,246,.02),rgba(37,99,235,.05));">
-                <div class="bi bl" style="background:linear-gradient(135deg,#3b82f6,#2563eb);animation:pulse 2s infinite;"><i class="fas fa-rocket"></i></div>
-                <h3 style="color:#1e40af;font-size:1.05rem;">Essai Professionnel 14 Jours</h3>
-                <p style="font-size:.9rem;line-height:1.7;">Accédez à <strong>toutes les fonctionnalités premium</strong> sans engagement. Testez la plateforme avec vos données réelles et découvrez comment Confirmi peut transformer votre e-commerce.</p>
-                <div style="margin-top:1rem;padding:.75rem;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:8px;border:1px solid #bfdbfe;">
-                    <div style="display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;">
-                        <div style="color:#1e40af;font-weight:600;font-size:.85rem;"><i class="fas fa-check-circle" style="color:#3b82f6;margin-right:4px;"></i>Toutes les intégrations</div>
-                        <div style="color:#1e40af;font-weight:600;font-size:.85rem;"><i class="fas fa-check-circle" style="color:#3b82f6;margin-right:4px;"></i>Support prioritaire</div>
-                        <div style="color:#1e40af;font-weight:600;font-size:.85rem;"><i class="fas fa-check-circle" style="color:#3b82f6;margin-right:4px;"></i>Multi-utilisateurs</div>
-                    </div>
-                </div>
-            </div>
-            <div class="bc">
+                        <div class="bc">
                 <div class="bi ro"><i class="fas fa-file-excel"></i></div>
                 <h3>Adieu Excel et Google Sheets</h3>
                 <p>Oubliez les tableurs interminables et les notes papier. Organisez, triez et traitez toutes vos commandes beaucoup plus rapidement sur une interface de traitement dédiée et intuitive.</p>
