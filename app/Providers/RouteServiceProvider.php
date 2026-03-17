@@ -43,6 +43,10 @@ class RouteServiceProvider extends ServiceProvider
             // Routes pour le super admin
             Route::middleware('web')
                 ->group(base_path('routes/superadmin.php'));
+
+            // Routes pour Confirmi
+            Route::middleware('web')
+                ->group(base_path('routes/confirmi.php'));
         });
     }
 }

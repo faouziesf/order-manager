@@ -96,6 +96,7 @@ class DatabaseSeeder extends Seeder
         // Exécuter les autres seeders
         $this->call([
             RegionsSeeder::class,
+            ConfirmiSeeder::class,
         ]);
     }
 }

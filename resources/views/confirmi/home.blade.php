@@ -157,7 +157,15 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(135de
 </div>
 @endif
 
-<form method="POST" action="{{ route('confirmi.login.submit') }}">
+@if(session('csrf_error'))
+<div style="background:#fef3c7;color:#78350f;border:2px solid #fbbf24;padding:.875rem 1rem;border-radius:12px;font-size:.875rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.625rem">
+<i class="fas fa-exclamation-triangle"></i>
+<span>Votre session a expiré. La page va se recharger automatiquement...</span>
+</div>
+<script>setTimeout(function(){window.location.reload();},2000);</script>
+@endif
+
+<form method="POST" action="{{ route('confirmi.login.submit') }}" id="loginForm">
 @csrf
 <div class="form-group">
 <label class="form-label">
