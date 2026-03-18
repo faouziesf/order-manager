@@ -2,11 +2,14 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') - Confirmi</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -37,10 +40,11 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg-main);
             color: var(--text-dark);
             min-height: 100vh;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
         /* ===== SIDEBAR ===== */
@@ -52,10 +56,12 @@
             background: linear-gradient(180deg, var(--royal-blue-900) 0%, var(--royal-blue-dark) 100%);
             color: white;
             z-index: 1000;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            will-change: transform;
+            -webkit-overflow-scrolling: touch;
         }
 
         .sidebar-brand {
@@ -210,13 +216,73 @@
             z-index: 999;
         }
 
+        /* ===== BOTTOM NAV MOBILE ===== */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--white);
+            border-top: 1px solid var(--border);
+            padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom));
+            z-index: 1001;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+        }
+
+        .bottom-nav-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem 1rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .bottom-nav-item i {
+            font-size: 1.25rem;
+            transition: transform 0.2s;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--royal-blue-600);
+        }
+
+        .bottom-nav-item.active i {
+            transform: scale(1.1);
+        }
+
+        .bottom-nav-badge {
+            position: absolute;
+            top: 0.25rem;
+            right: 0.5rem;
+            background: var(--danger);
+            color: white;
+            font-size: 0.6rem;
+            padding: 0.1rem 0.35rem;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); box-shadow: 0 0 30px rgba(0,0,0,0.3); }
             .mobile-overlay.active { display: block; }
             .main-header { left: 0; padding-left: 4rem; }
-            .main-content { margin-left: 0; padding: 1rem; }
+            .main-content { margin-left: 0; padding: 1rem; padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
             .mobile-toggle { display: flex; }
+            .bottom-nav { display: block; }
         }
 
         /* ===== CARDS ===== */
@@ -462,6 +528,45 @@
 
         @yield('content')
     </main>
+
+    <!-- Bottom Navigation Mobile -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="{{ route('confirmi.dashboard') }}" class="bottom-nav-item {{ request()->routeIs('confirmi.dashboard') ? 'active' : '' }}">
+                <i class="fas fa-home"></i>
+                <span>Accueil</span>
+            </a>
+            @if($isCommercial)
+                <a href="{{ route('confirmi.commercial.orders.pending') }}" class="bottom-nav-item {{ request()->routeIs('confirmi.commercial.orders.pending') ? 'active' : '' }}">
+                    <i class="fas fa-clock"></i>
+                    <span>En attente</span>
+                    @if($pendingOrdersCount > 0)<span class="bottom-nav-badge">{{ $pendingOrdersCount }}</span>@endif
+                </a>
+                <a href="{{ route('confirmi.commercial.orders.index') }}" class="bottom-nav-item {{ request()->routeIs('confirmi.commercial.orders.index') ? 'active' : '' }}">
+                    <i class="fas fa-list"></i>
+                    <span>Commandes</span>
+                </a>
+                <a href="{{ route('confirmi.commercial.employees.index') }}" class="bottom-nav-item {{ request()->routeIs('confirmi.commercial.employees.*') ? 'active' : '' }}">
+                    <i class="fas fa-users"></i>
+                    <span>Équipe</span>
+                </a>
+            @else
+                <a href="{{ route('confirmi.employee.orders.queue') }}" class="bottom-nav-item {{ request()->routeIs('confirmi.employee.orders.process') ? 'active' : '' }}">
+                    <i class="fas fa-headset"></i>
+                    <span>Traiter</span>
+                    @if($pendingOrdersCount > 0)<span class="bottom-nav-badge">{{ $pendingOrdersCount }}</span>@endif
+                </a>
+                <a href="{{ route('confirmi.employee.orders.index') }}" class="bottom-nav-item {{ request()->routeIs('confirmi.employee.orders.index') ? 'active' : '' }}">
+                    <i class="fas fa-list"></i>
+                    <span>Commandes</span>
+                </a>
+                <a href="{{ route('confirmi.employee.orders.history') }}" class="bottom-nav-item {{ request()->routeIs('confirmi.employee.orders.history') ? 'active' : '' }}">
+                    <i class="fas fa-history"></i>
+                    <span>Historique</span>
+                </a>
+            @endif
+        </div>
+    </nav>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

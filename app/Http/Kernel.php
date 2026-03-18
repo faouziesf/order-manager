@@ -77,5 +77,9 @@ class Kernel extends HttpKernel
 
         // Nouveau middleware pour vérifier si le super admin est actif
         'super-admin.active' => \App\Http\Middleware\SuperAdminActive::class,
+
+        // Middlewares Confirmi
+        'confirmi' => \App\Http\Middleware\EnsureConfirmiAccess::class,
+        'confirmi.commercial' => \App\Http\Middleware\EnsureConfirmiCommercial::class,
     ];
 }

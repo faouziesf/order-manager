@@ -41,10 +41,14 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         // ── 1. Confirmi users (commercial / employee) ──────────────────────
+        \Log::info('Tentative connexion Confirmi', ['email' => $credentials['email']]);
+        
         if (Auth::guard('confirmi')->attempt($credentials, $remember)) {
             $user = Auth::guard('confirmi')->user();
+            \Log::info('Connexion Confirmi réussie', ['user_id' => $user->id, 'role' => $user->role]);
 
             if (!$user->is_active) {
+                \Log::warning('Compte Confirmi inactif', ['user_id' => $user->id]);
                 Auth::guard('confirmi')->logout();
                 return back()->with('error', 'Votre compte Confirmi a été désactivé.')->withInput();
             }
@@ -55,8 +59,11 @@ class AuthController extends Controller
             ]);
 
             $request->session()->regenerate();
+            \Log::info('Redirection vers dashboard Confirmi');
             return redirect()->route('confirmi.dashboard');
         }
+        
+        \Log::info('Échec connexion Confirmi, essai Super Admin');
 
         // ── 2. Super Admin ─────────────────────────────────────────────────
         if (Auth::guard('super-admin')->attempt($credentials, $remember)) {
@@ -102,6 +109,8 @@ class AuthController extends Controller
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('confirmi.home');
+        
+        // Redirection avec session flag pour forcer refresh
+        return redirect()->route('confirmi.home')->with('logout_success', true);
     }
 }

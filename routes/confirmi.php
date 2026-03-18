@@ -16,13 +16,12 @@ Route::prefix('confirmi')->name('confirmi.')->group(function () {
     Route::get('/', [AuthController::class, 'home'])->name('home');
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+    Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
 
     // ========================================
     // ROUTES PROTÉGÉES CONFIRMI
     // ========================================
     Route::middleware(['confirmi'])->group(function () {
-
-        Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         // ========================================

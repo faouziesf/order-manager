@@ -28,7 +28,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // ========================================
     Route::get('login', [AdminAuthController::class, 'showLoginForm'])->name('login');
     Route::post('login', [AdminAuthController::class, 'login'])->name('login.submit');
-    Route::post('logout', [AdminAuthController::class, 'logout'])->name('logout');
+    Route::match(['get', 'post'], 'logout', [AdminAuthController::class, 'logout'])->name('logout');
     Route::get('expired', [AdminAuthController::class, 'showExpiredPage'])->name('expired');
 
     // ========================================

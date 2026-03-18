@@ -22,14 +22,14 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
     // ========================================
     Route::get('login', [SuperAdminAuthController::class, 'showLoginForm'])->name('login');
     Route::post('login', [SuperAdminAuthController::class, 'login'])->name('login.submit');
+    Route::match(['get', 'post'], 'logout', function(\Illuminate\Http\Request $request) {
+        return app(\App\Http\Controllers\Confirmi\AuthController::class)->logout($request);
+    })->name('logout');
     
     // ========================================
     // ROUTES PROTÉGÉES PAR AUTHENTIFICATION
     // ========================================
     Route::middleware(['auth:super-admin', \App\Http\Middleware\SuperAdminActive::class])->group(function () {
-        
-        // Déconnexion
-        Route::post('logout', [SuperAdminAuthController::class, 'logout'])->name('logout');
         
         // ========================================
         // DASHBOARD PRINCIPAL

@@ -14,41 +14,13 @@ class AuthController extends Controller
 {
     public function showLoginForm()
     {
-        return redirect()->route('confirmi.home', ['login' => 1]);
+        return redirect()->route('confirmi.home');
     }
 
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        // Ajout de logs pour le débogage
-        Log::info('SuperAdmin login attempt', ['email' => $request->email]);
-
-        $superAdmin = SuperAdmin::where('email', $request->email)->first();
-
-        if (!$superAdmin) {
-            Log::info('SuperAdmin not found');
-            throw ValidationException::withMessages([
-                'email' => ['Les informations d\'identification fournies sont incorrectes.'],
-            ]);
-        }
-
-        if (!Hash::check($request->password, $superAdmin->password)) {
-            Log::info('Invalid password');
-            throw ValidationException::withMessages([
-                'email' => ['Les informations d\'identification fournies sont incorrectes.'],
-            ]);
-        }
-
-        Log::info('SuperAdmin authenticated successfully', ['id' => $superAdmin->id]);
-        Auth::guard('super-admin')->login($superAdmin, $request->filled('remember'));
-        
-        Log::info('Auth::guard(super-admin)->check() after login = ' . (Auth::guard('super-admin')->check() ? 'true' : 'false'));
-
-        return redirect()->route('super-admin.dashboard');
+        // Rediriger vers le contrôleur de connexion unifié
+        return app(\App\Http\Controllers\Confirmi\AuthController::class)->login($request);
     }
 
     public function logout(Request $request)

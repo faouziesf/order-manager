@@ -7,8 +7,8 @@
 <style>
     .status-card {
         background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
+        border-radius: 12px;
+        padding: 1.25rem;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         transition: all 0.3s ease;
         border: 2px solid transparent;
@@ -43,13 +43,13 @@
     }
 
     .status-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 14px;
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         background: var(--status-color);
         color: white;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -60,7 +60,7 @@
     }
 
     .status-label {
-        font-size: 0.9rem;
+        font-size: 0.75rem;
         color: #6b7280;
         font-weight: 600;
         margin-bottom: 0.5rem;
@@ -69,7 +69,7 @@
     }
 
     .status-value {
-        font-size: 2.5rem;
+        font-size: 2rem;
         font-weight: 800;
         color: #1f2937;
         line-height: 1;
@@ -98,23 +98,23 @@
 
     .grid-status {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1rem;
         margin-bottom: 2rem;
     }
 
     /* Quick Stats */
     .quick-stats {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
         margin-bottom: 2rem;
     }
 
     .quick-stat-card {
         background: linear-gradient(135deg, var(--start-color), var(--end-color));
-        border-radius: 12px;
-        padding: 1.25rem;
+        border-radius: 10px;
+        padding: 1rem;
         color: white;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
@@ -138,16 +138,114 @@
     @media (max-width: 768px) {
         .grid-status {
             grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .status-card {
+            padding: 1rem;
+            border-radius: 10px;
+        }
+
+        .status-card-header {
+            margin-bottom: 0.75rem;
         }
 
         .status-value {
-            font-size: 2rem;
+            font-size: 1.75rem;
+        }
+
+        .status-label {
+            font-size: 0.7rem;
         }
 
         .status-icon {
-            width: 50px;
-            height: 50px;
+            width: 44px;
+            height: 44px;
+            font-size: 1.25rem;
+            border-radius: 10px;
+        }
+
+        .status-footer {
+            font-size: 0.75rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+        }
+
+        .quick-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .quick-stat-card {
+            padding: 0.875rem;
+            border-radius: 8px;
+        }
+
+        .quick-stat-card .label {
+            font-size: 0.75rem;
+        }
+
+        .quick-stat-card .value {
             font-size: 1.5rem;
+        }
+
+        .quick-stat-card small {
+            font-size: 0.7rem;
+        }
+
+        .content-card {
+            padding: 1rem !important;
+        }
+
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+
+        .table th, .table td {
+            padding: 0.5rem 0.35rem;
+        }
+
+        h3.fw-bold {
+            font-size: 1.5rem;
+        }
+
+        .mb-4 p.text-muted {
+            font-size: 0.875rem;
+        }
+
+        .customer-info {
+            line-height: 1.3;
+        }
+
+        .customer-info .fw-semibold {
+            font-size: 0.875rem;
+        }
+
+        .customer-info small {
+            font-size: 0.7rem;
+        }
+
+        .order-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .recent-orders-title {
+            font-size: 1.1rem;
+        }
+
+        .recent-orders-title i {
+            font-size: 0.9rem;
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        .container-fluid {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
         }
     }
 </style>
@@ -314,51 +412,64 @@
 
     <!-- Recent Orders Table -->
     <div class="content-card p-4 mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="fw-bold mb-0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0 recent-orders-title">
                 <i class="fas fa-clock text-primary me-2"></i>
                 Dernières Commandes
             </h5>
             <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-primary btn-sm">
-                <i class="fas fa-list me-2"></i>Voir tout
+                <i class="fas fa-list me-2 d-none d-sm-inline"></i><span class="d-none d-sm-inline">Voir tout</span><i class="fas fa-arrow-right d-sm-none"></i>
             </a>
         </div>
 
         @if(isset($recentOrders) && $recentOrders->count() > 0)
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle orders-table">
                 <thead class="table-light">
                     <tr>
                         <th>ID</th>
                         <th>Client</th>
-                        <th>Téléphone</th>
+                        <th class="d-none d-md-table-cell">Téléphone</th>
                         <th>Statut</th>
-                        <th>Total</th>
-                        <th>Date</th>
+                        <th class="d-none d-lg-table-cell">Total</th>
+                        <th class="d-none d-md-table-cell">Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($recentOrders as $order)
                     <tr>
-                        <td><strong>#{{ $order->id }}</strong></td>
-                        <td>{{ $order->customer_name ?? 'N/A' }}</td>
-                        <td><a href="tel:{{ $order->customer_phone }}">{{ $order->customer_phone }}</a></td>
+                        <td><strong class="text-nowrap">#{{ $order->id }}</strong></td>
                         <td>
-                            <span class="badge rounded-pill
+                            <div class="customer-info">
+                                <div class="fw-semibold">{{ $order->customer_name ?? 'N/A' }}</div>
+                                <small class="text-muted d-md-none">{{ $order->customer_phone }}</small>
+                            </div>
+                        </td>
+                        <td class="d-none d-md-table-cell"><a href="tel:{{ $order->customer_phone }}" class="text-decoration-none">{{ $order->customer_phone }}</a></td>
+                        <td>
+                            <span class="badge rounded-pill order-badge
                                 @if($order->status === 'nouvelle') bg-primary
                                 @elseif($order->status === 'confirmée') bg-success
                                 @elseif($order->status === 'datée') bg-warning
-                                @elseif($order->status === 'livrée') bg-info
                                 @elseif($order->status === 'annulée') bg-danger
+                                @elseif($order->status === 'livrée') bg-info
                                 @else bg-secondary
                                 @endif
                             ">
-                                {{ ucfirst($order->status) }}
+                                <span class="d-none d-sm-inline">{{ ucfirst($order->status) }}</span>
+                                <span class="d-sm-none">
+                                    @if($order->status === 'nouvelle') N
+                                    @elseif($order->status === 'confirmée') C
+                                    @elseif($order->status === 'datée') D
+                                    @elseif($order->status === 'livrée') L
+                                    @elseif($order->status === 'annulée') A
+                                    @endif
+                                </span>
                             </span>
                         </td>
-                        <td><strong>{{ number_format($order->total_price, 3) }} TND</strong></td>
-                        <td><small>{{ $order->created_at->diffForHumans() }}</small></td>
+                        <td class="d-none d-lg-table-cell"><strong class="text-nowrap">{{ number_format($order->total_price, 3) }} DT</strong></td>
+                        <td class="d-none d-md-table-cell"><small class="text-muted">{{ $order->created_at->diffForHumans() }}</small></td>
                         <td>
                             <a href="{{ route('admin.orders.show', $order->id) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i>

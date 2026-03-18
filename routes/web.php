@@ -3,6 +3,14 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
+// Routes de test CSRF/Session (à supprimer après debug)
+Route::get('/test-session', function () {
+    return view('test-session');
+});
+Route::post('/test-csrf', function () {
+    return redirect('/test-session')->with('test_result', 'success');
+});
+
 // Route d'accueil - Redirection intelligente basée sur l'authentification
 Route::get('/', function () {
     // Si l'utilisateur est connecté avec le guard admin (tous les rôles)
