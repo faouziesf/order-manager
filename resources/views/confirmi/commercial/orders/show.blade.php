@@ -7,7 +7,7 @@
     <div class="col-lg-8">
         <div class="content-card mb-3">
             <div class="card-header-custom">
-                <h6><i class="fas fa-shopping-bag me-2 text-primary"></i>Détails de la commande</h6>
+                <h6><i class="fas fa-shopping-bag me-2" style="color:var(--accent);"></i>Détails de la commande</h6>
                 <span class="badge-status badge-{{ $assignment->status }}">
                     {{ match($assignment->status) {
                         'pending' => 'En attente', 'assigned' => 'Assignée', 'in_progress' => 'En cours',
@@ -46,7 +46,7 @@
                         </div>
                         <div class="col-md-4">
                             <p class="mb-1"><small class="text-muted">Montant total</small></p>
-                            <p class="fw-bold fs-5 text-primary mb-0">{{ number_format($order->total_price, 3) }} DT</p>
+                            <p class="fw-bold fs-5 mb-0" style="color:var(--accent);">{{ number_format($order->total_price, 3) }} DT</p>
                         </div>
                         <div class="col-md-4">
                             <p class="mb-1"><small class="text-muted">Statut commande</small></p>
@@ -86,7 +86,7 @@
         <!-- Admin info -->
         <div class="content-card">
             <div class="card-header-custom">
-                <h6><i class="fas fa-building me-2 text-info"></i>Client (Admin)</h6>
+                <h6><i class="fas fa-building me-2" style="color:var(--info);"></i>Client (Admin)</h6>
             </div>
             <div class="p-3">
                 @if($assignment->admin)
@@ -117,7 +117,7 @@
         <!-- Assign to employee -->
         @if($assignment->status === 'pending' || $assignment->status === 'assigned')
         <div class="content-card mb-3">
-            <div class="card-header-custom"><h6><i class="fas fa-user-plus me-2 text-primary"></i>{{ $assignment->status === 'pending' ? 'Assigner' : 'Réassigner' }}</h6></div>
+            <div class="card-header-custom"><h6><i class="fas fa-user-plus me-2" style="color:var(--accent);"></i>{{ $assignment->status === 'pending' ? 'Assigner' : 'Réassigner' }}</h6></div>
             <div class="p-3">
                 <form method="POST" action="{{ route('confirmi.commercial.orders.assign', $assignment) }}">
                     @csrf
@@ -137,7 +137,7 @@
 
         @if($assignment->status === 'confirmed')
         <div class="content-card mb-3">
-            <div class="card-header-custom"><h6><i class="fas fa-truck me-2 text-success"></i>Marquer comme livrée</h6></div>
+            <div class="card-header-custom"><h6><i class="fas fa-truck me-2" style="color:var(--success);"></i>Marquer comme livrée</h6></div>
             <div class="p-3">
                 <p class="text-muted mb-3" style="font-size:0.85rem;">
                     La commande a été confirmée. Une fois livrée par le livreur, marquez-la ici pour déclencher la facturation de livraison.
@@ -154,7 +154,7 @@
 
         @if($assignment->notes)
         <div class="content-card">
-            <div class="card-header-custom"><h6><i class="fas fa-sticky-note me-2 text-warning"></i>Notes</h6></div>
+            <div class="card-header-custom"><h6><i class="fas fa-sticky-note me-2" style="color:var(--warning);"></i>Notes</h6></div>
             <div class="p-3"><p class="mb-0" style="font-size:0.85rem;">{{ $assignment->notes }}</p></div>
         </div>
         @endif

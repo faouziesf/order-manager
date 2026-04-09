@@ -4,6 +4,7 @@
 @section('page-title', 'Interface de Traitement')
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
     :root {
         --process-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -12,18 +13,12 @@
         --process-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         --process-info: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
         --process-restock: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        --glass-bg: rgba(255, 255, 255, 0.95);
-        --glass-border: rgba(255, 255, 255, 0.2);
+        --glass-bg: var(--card-bg, rgba(255, 255, 255, 0.95));
+        --glass-border: var(--border-color, rgba(255, 255, 255, 0.2));
         --shadow-elevated: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         --border-radius-xl: 24px;
         --border-radius-2xl: 32px;
         --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    body {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        font-family: 'Inter', sans-serif;
-        overflow-x: hidden;
     }
 
     /* Container principal */

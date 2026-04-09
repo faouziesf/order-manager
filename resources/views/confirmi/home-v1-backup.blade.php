@@ -318,8 +318,8 @@ footer{background:#0a1628;padding:3rem 5% 2rem}
             </div>
             <div class="bc">
                 <div class="bi te"><i class="fas fa-shipping-fast"></i></div>
-                <h3>Expédition Directe Masafa Express</h3>
-                <p>Une fois confirmée, la commande est automatiquement transférée vers Masafa Express pour l'expédition. Un processus zéro clic !</p>
+                <h3>Expédition Directe Kolixy</h3>
+                <p>Une fois confirmée, la commande est automatiquement transférée vers Kolixy pour l'expédition. Un processus zéro clic !</p>
             </div>
         </div>
     </div>
@@ -350,7 +350,7 @@ footer{background:#0a1628;padding:3rem 5% 2rem}
             <div class="step">
                 <div class="step-n">4</div>
                 <h3>Expédition automatisée</h3>
-                <p>Dès qu'une commande est confirmée, elle est envoyée directement à Masafa Express. Suivez tout depuis le dashboard !</p>
+                <p>Dès qu'une commande est confirmée, elle est envoyée directement à Kolixy. Suivez tout depuis le dashboard !</p>
             </div>
         </div>
     </div>

@@ -5,7 +5,7 @@
 @section('content')
 <div class="content-card">
     <div class="card-header-custom">
-        <h6><i class="fas fa-clock me-2 text-warning"></i>En attente ({{ $assignments->total() }})</h6>
+        <h6><i class="fas fa-clock me-2" style="color:var(--warning);"></i>En attente ({{ $assignments->total() }})</h6>
         <div class="d-flex gap-2">
             <select id="bulkEmployee" class="form-select form-select-sm" style="width:auto;font-size:0.8rem;">
                 <option value="">-- Assigner à --</option>
@@ -32,7 +32,6 @@
                         <th>Destinataire</th>
                         <th>Téléphone</th>
                         <th>Ville</th>
-                        <th>Montant</th>
                         <th>Date</th>
                         <th>Action</th>
                     </tr>
@@ -52,7 +51,6 @@
                             </a>
                         </td>
                         <td><small>{{ $a->order->customer_city ?? '' }}</small></td>
-                        <td><strong>{{ number_format($a->order->total_price ?? 0, 3) }} DT</strong></td>
                         <td><small>{{ $a->created_at->format('d/m H:i') }}</small></td>
                         <td>
                             <div class="d-flex gap-1">
@@ -64,7 +62,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-muted">Aucune commande en attente.</td>
+                        <td colspan="8" class="text-center py-4 text-muted">Aucune commande en attente.</td>
                     </tr>
                     @endforelse
                 </tbody>

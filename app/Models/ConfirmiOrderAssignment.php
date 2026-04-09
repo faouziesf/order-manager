@@ -16,6 +16,7 @@ class ConfirmiOrderAssignment extends Model
         'status',
         'attempts',
         'notes',
+        'last_result',
         'assigned_at',
         'first_attempt_at',
         'last_attempt_at',
@@ -78,6 +79,11 @@ class ConfirmiOrderAssignment extends Model
     public function hasAttempts(): bool
     {
         return $this->attempts > 0;
+    }
+
+    public function canBeReassigned(): bool
+    {
+        return $this->attempts === 0 && in_array($this->status, ['pending', 'assigned']);
     }
 
     public function canBeManaged(): bool

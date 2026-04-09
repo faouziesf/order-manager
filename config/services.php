@@ -39,4 +39,8 @@ return [
         'base_url' => env('MASAFA_BASE_URL', 'http://127.0.0.1:8001'),
     ],
 
+    'kolixy' => [
+        'base_url' => env('KOLIXY_BASE_URL', 'https://kolixy.com'),
+    ],
+
 ];

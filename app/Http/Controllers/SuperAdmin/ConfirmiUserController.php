@@ -40,7 +40,7 @@ class ConfirmiUserController extends Controller
             'email' => 'required|email|unique:confirmi_users,email',
             'password' => 'required|string|min:6|confirmed',
             'phone' => 'nullable|string|max:20',
-            'role' => 'required|in:commercial,employee',
+            'role' => 'required|in:commercial,employee,agent',
         ]);
 
         ConfirmiUser::create([
@@ -68,7 +68,7 @@ class ConfirmiUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:confirmi_users,email,' . $confirmiUser->id,
             'phone' => 'nullable|string|max:20',
-            'role' => 'required|in:commercial,employee',
+            'role' => 'required|in:commercial,employee,agent',
             'password' => 'nullable|string|min:6|confirmed',
         ]);
 

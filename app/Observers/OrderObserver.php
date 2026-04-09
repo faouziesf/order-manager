@@ -109,6 +109,20 @@ class OrderObserver
                 'status' => 'pending',
             ]);
 
+            // Auto-assignation si l'admin a un employé par défaut
+            if ($admin->confirmi_default_employee_id) {
+                $assignment = ConfirmiOrderAssignment::where('order_id', $order->id)->first();
+                if ($assignment) {
+                    $assignment->update([
+                        'assigned_to' => $admin->confirmi_default_employee_id,
+                        'assigned_by' => $admin->confirmi_default_employee_id,
+                        'assigned_at' => now(),
+                        'status' => 'assigned',
+                    ]);
+                    Log::info("[Confirmi] Commande #{$order->id} auto-assignée à l'employé #{$admin->confirmi_default_employee_id}");
+                }
+            }
+
             Log::info("[Confirmi] Commande #{$order->id} auto-pushée vers Confirmi pour admin #{$admin->id}");
         } catch (\Exception $e) {
             Log::error("[Confirmi] Erreur auto-push commande #{$order->id}", [

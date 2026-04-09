@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\Authenticate::class
         );
 
+        // Ajouter no-cache headers à toutes les réponses web
+        $middleware->web(append: [
+            \App\Http\Middleware\NoCacheHeaders::class,
+        ]);
+
         // Enregistrement des alias de middleware personnalisés
         $middleware->alias([
             'super-admin' => \App\Http\Middleware\EnsureSuperAdminAccess::class,
@@ -27,8 +32,25 @@ return Application::configure(basePath: dirname(__DIR__))
             'super-admin.active' => \App\Http\Middleware\SuperAdminActive::class,
             'confirmi' => \App\Http\Middleware\EnsureConfirmiAccess::class,
             'confirmi.commercial' => \App\Http\Middleware\EnsureConfirmiCommercial::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Gérer TokenMismatchException (419 CSRF) - rediriger au lieu d'afficher une erreur
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, $request) {
+            if (\Illuminate\Support\Facades\Auth::guard('confirmi')->check()) {
+                return redirect()->route('confirmi.dashboard')
+                    ->with('info', 'Votre session a été rafraîchie.');
+            }
+            if (\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
+                return redirect()->route('admin.dashboard')
+                    ->with('info', 'Votre session a été rafraîchie.');
+            }
+            if (\Illuminate\Support\Facades\Auth::guard('super-admin')->check()) {
+                return redirect()->route('super-admin.dashboard')
+                    ->with('info', 'Votre session a été rafraîchie.');
+            }
+            return redirect()->route('confirmi.home')
+                ->with('info', 'Votre session a expiré. Veuillez vous reconnecter.');
+        });
     })->create();

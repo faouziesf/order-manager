@@ -40,8 +40,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('dashboard');
 
         // ========================================
-        // GESTION DES PRODUITS
+        // GESTION DES PRODUITS (permission: can_manage_products)
         // ========================================
+        Route::middleware(['permission:can_manage_products'])->group(function () {
 
         // Routes spéciales AVANT la route resource (ORDRE CRITIQUE)
         Route::get('products/review', [ProductController::class, 'reviewNewProducts'])
@@ -74,9 +75,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Route resource APRÈS toutes les routes spéciales
         Route::resource('products', ProductController::class);
 
+        }); // end permission:can_manage_products
+
         // ========================================
-        // GESTION DES COMMANDES - SECTION CORRIGÉE
+        // GESTION DES COMMANDES - SECTION CORRIGÉE (permission: can_manage_orders)
         // ========================================
+
+        Route::middleware(['permission:can_manage_orders'])->group(function () {
 
         // ⚠️ ROUTES SPÉCIALES AVANT RESOURCE (ORDRE CRITIQUE POUR ÉVITER 404) ⚠️
         Route::get('orders/check-phone-duplicates', [OrderController::class, 'checkPhoneForDuplicates'])
@@ -109,9 +114,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ⚠️ ROUTE RESOURCE EN DERNIER (CRITICAL) ⚠️
         Route::resource('orders', OrderController::class);
 
+        }); // end permission:can_manage_orders
+
         // ========================================
-        // TRAITEMENT DES COMMANDES - API UNIFIÉE (INCHANGÉ)
+        // TRAITEMENT DES COMMANDES - API UNIFIÉE (permission: can_process_orders)
         // ========================================
+
+        Route::middleware(['permission:can_process_orders'])->group(function () {
 
         // Interface de traitement principal
         Route::get('process', [ProcessController::class, 'interface'])
@@ -172,9 +181,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/bulk-reactivate', [RestockController::class, 'bulkReactivate'])->name('bulk-reactivate');
         });
 
+        }); // end permission:can_process_orders
+
         // ========================================
-        // GESTION DES UTILISATEURS (INCHANGÉ)
+        // GESTION DES UTILISATEURS (permission: can_manage_users)
         // ========================================
+        Route::middleware(['permission:can_manage_users'])->group(function () {
+
         Route::resource('managers', ManagerController::class);
         Route::patch('managers/{manager}/toggle-active', [ManagerController::class, 'toggleActive'])
             ->name('managers.toggle-active');
@@ -190,9 +203,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('login-history/{user_type}/{user_id}', [LoginHistoryController::class, 'show'])
             ->name('login-history.show');
 
+        }); // end permission:can_manage_users
+
         // ========================================
-        // IMPORTATION ET INTÉGRATIONS (INCHANGÉ)
+        // IMPORTATION ET INTÉGRATIONS (permission: can_import)
         // ========================================
+        Route::middleware(['permission:can_import'])->group(function () {
+
         Route::get('import', [ImportController::class, 'index'])->name('import.index');
         Route::post('import/csv', [ImportController::class, 'importCsv'])->name('import.csv');
         Route::post('import/xml', [ImportController::class, 'importXml'])->name('import.xml');
@@ -232,8 +249,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');
 
+        }); // end permission:can_import
+
         // ========================================
-        // GESTION DES COMMANDES DOUBLES (INCHANGÉ)
+        // GESTION DES COMMANDES DOUBLES (permission: can_manage_orders)
         // ========================================
         Route::prefix('duplicates')->name('duplicates.')->group(function () {
             Route::get('/', [DuplicateOrdersController::class, 'index'])->name('index');
@@ -252,8 +271,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // ========================================
-        // PARAMÈTRES (INCHANGÉ)
+        // PARAMÈTRES (permission: can_manage_settings)
         // ========================================
+        Route::middleware(['permission:can_manage_settings'])->group(function () {
         Route::get('settings', [AdminSettingController::class, 'index'])->name('settings.index');
         Route::post('settings', [AdminSettingController::class, 'store'])->name('settings.store');
         Route::get('settings/reset', [AdminSettingController::class, 'reset'])->name('settings.reset');
@@ -262,6 +282,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings/api/{key}', [AdminSettingController::class, 'getSetting'])->name('settings.get');
         Route::post('settings/api/{key}', [AdminSettingController::class, 'setSetting'])->name('settings.set');
         Route::get('settings/stats', [AdminSettingController::class, 'getUsageStats'])->name('settings.stats');
+        }); // end permission:can_manage_settings
 
         // ========================================
         // CONFIRMI - CONFIRMATION PAR LA PLATEFORME
@@ -270,24 +291,47 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/', [ConfirmiController::class, 'index'])->name('index');
             Route::post('/request', [ConfirmiController::class, 'requestActivation'])->name('request');
             Route::get('/orders', [ConfirmiController::class, 'orders'])->name('orders');
+            Route::get('/history', [ConfirmiController::class, 'history'])->name('history');
             Route::get('/billing', [ConfirmiController::class, 'billing'])->name('billing');
-            Route::post('/masafa-config', [ConfirmiController::class, 'saveMasafaConfig'])->name('masafa-config');
         });
 
         // ========================================
-        // 🚀 LIVRAISON — MASAFA EXPRESS
+        // 🚀 LIVRAISON — KOLIXY (permission: can_manage_delivery)
         // ========================================
-        Route::prefix('delivery')->name('delivery.')->group(function () {
-            Route::get('/',                                   [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'index'])->name('index');
-            Route::post('config',                            [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'saveConfig'])->name('config.save');
-            Route::post('connect',                           [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'connectWithCredentials'])->name('connect');
-            Route::post('test-connection',                   [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'testConnection'])->name('test-connection');
-            Route::get('pickup-addresses',                   [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'getPickupAddresses'])->name('pickup-addresses');
-            Route::post('orders/{order}/send',               [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'sendOrder'])->name('orders.send');
-            Route::post('orders/send-bulk',                  [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'sendBulk'])->name('orders.send-bulk');
-            Route::post('orders/{order}/sync-status',        [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'syncStatus'])->name('orders.sync-status');
-            Route::delete('config',                          [\App\Http\Controllers\Admin\MasafaDeliveryController::class, 'deleteConfig'])->name('config.delete');
+        Route::middleware(['permission:can_manage_delivery'])->group(function () {
+        Route::prefix('kolixy')->name('kolixy.')->group(function () {
+            // Dashboard
+            Route::get('/',                                   [\App\Http\Controllers\Admin\KolixyController::class, 'dashboard'])->name('dashboard');
+
+            // Configuration
+            Route::get('configuration',                       [\App\Http\Controllers\Admin\KolixyController::class, 'configuration'])->name('configuration');
+            Route::post('connect',                            [\App\Http\Controllers\Admin\KolixyController::class, 'connect'])->name('connect');
+            Route::post('config',                             [\App\Http\Controllers\Admin\KolixyController::class, 'saveConfig'])->name('config.save');
+            Route::post('test-connection',                    [\App\Http\Controllers\Admin\KolixyController::class, 'testConnection'])->name('test-connection');
+            Route::get('pickup-addresses',                    [\App\Http\Controllers\Admin\KolixyController::class, 'getPickupAddresses'])->name('pickup-addresses');
+            Route::delete('config',                           [\App\Http\Controllers\Admin\KolixyController::class, 'deleteConfig'])->name('config.delete');
+
+            // Vérification
+            Route::get('verification',                        [\App\Http\Controllers\Admin\KolixyController::class, 'verification'])->name('verification');
+            Route::get('packages/{tracking}/details',         [\App\Http\Controllers\Admin\KolixyController::class, 'getPackageDetails'])->name('packages.details');
+
+            // Imprimer BL
+            Route::get('imprimer-bl',                         [\App\Http\Controllers\Admin\KolixyController::class, 'imprimerBL'])->name('imprimer-bl');
+            Route::post('download-labels',                    [\App\Http\Controllers\Admin\KolixyController::class, 'downloadLabels'])->name('download-labels');
+            Route::get('orders/{order}/print-bl',             [\App\Http\Controllers\Admin\KolixyController::class, 'printBL'])->name('orders.print-bl');
+            Route::get('print-bl-bulk',                       [\App\Http\Controllers\Admin\KolixyController::class, 'printBLBulk'])->name('print-bl-bulk');
+
+            // Envoyer Commande
+            Route::get('envoyer-commande',                    [\App\Http\Controllers\Admin\KolixyController::class, 'envoyerCommande'])->name('envoyer-commande');
+            Route::post('orders/{order}/send',                [\App\Http\Controllers\Admin\KolixyController::class, 'sendOrder'])->name('orders.send');
+            Route::post('orders/send-bulk',                   [\App\Http\Controllers\Admin\KolixyController::class, 'sendBulk'])->name('orders.send-bulk');
+            Route::post('orders/{order}/sync-status',         [\App\Http\Controllers\Admin\KolixyController::class, 'syncStatus'])->name('orders.sync-status');
         });
+
+        }); // end permission:can_manage_delivery
+
+        // Legacy delivery redirect
+        Route::get('delivery', fn() => redirect()->route('admin.kolixy.dashboard'))->name('delivery.index');
 
         // ---- dead routes kept so old view links don't 500 ----
         // (all redirect to the new delivery index)

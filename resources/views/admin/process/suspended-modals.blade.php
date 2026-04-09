@@ -440,6 +440,34 @@
 .modal.show .modal-dialog {
     transform: scale(1) translateY(0);
 }
+
+/* ===== DARK MODE OVERRIDES ===== */
+html[data-theme="dark"] .form-label { color: var(--text-secondary) !important; }
+html[data-theme="dark"] .modal-footer { background: var(--bg-muted, #1f2937) !important; }
+html[data-theme="dark"] .alert-info {
+    background: rgba(6,182,212,0.15) !important;
+    color: #67e8f9 !important;
+    border-left-color: rgba(6,182,212,0.5) !important;
+}
+html[data-theme="dark"] .alert-success {
+    background: rgba(16,185,129,0.15) !important;
+    color: #6ee7b7 !important;
+    border-left-color: rgba(16,185,129,0.5) !important;
+}
+html[data-theme="dark"] .alert-warning {
+    background: rgba(245,158,11,0.15) !important;
+    color: #fde68a !important;
+    border-left-color: rgba(245,158,11,0.5) !important;
+}
+html[data-theme="dark"] .alert-danger {
+    background: rgba(239,68,68,0.15) !important;
+    color: #fca5a5 !important;
+    border-left-color: rgba(239,68,68,0.5) !important;
+}
+html[data-theme="dark"] .form-text { color: var(--text-muted, #9ca3af) !important; }
+html[data-theme="dark"] .bg-light { background: var(--bg-muted, #1f2937) !important; color: var(--text, #f9fafb) !important; }
+html[data-theme="dark"] .btn-primary { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important; }
+html[data-theme="dark"] .btn-secondary { background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important; }
 </style>
 
 <script>

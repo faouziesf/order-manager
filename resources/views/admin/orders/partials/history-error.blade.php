@@ -71,4 +71,8 @@
             width: 100%;
         }
     }
+
+    /* Dark mode override */
+    html[data-theme="dark"] .error-title { color: var(--text); }
+    html[data-theme="dark"] .error-message { color: var(--text-secondary); }
 </style>

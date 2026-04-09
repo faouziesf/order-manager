@@ -1,102 +1,92 @@
 @extends('layouts.super-admin')
 
 @section('title', 'Utilisateurs Confirmi')
-
-@section('breadcrumb')
-    <ol class="breadcrumb breadcrumb-custom">
-        <li class="breadcrumb-item"><a href="{{ route('super-admin.dashboard') }}">Dashboard</a></li>
-        <li class="breadcrumb-item active">Utilisateurs Confirmi</li>
-    </ol>
-@endsection
-
-@section('page-header')
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="page-title">Utilisateurs Confirmi</h1>
-            <p class="page-subtitle">Gérez les commerciaux et employés de la plateforme Confirmi</p>
-        </div>
-        <a href="{{ route('super-admin.confirmi-users.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Nouvel utilisateur
-        </a>
-    </div>
-@endsection
+@section('page-title', 'Utilisateurs Confirmi')
 
 @section('content')
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">Liste des utilisateurs</h5>
-        <form method="GET" class="d-flex gap-2">
-            <select name="role" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+    <!-- Filters -->
+    <div class="sa-card" style="margin-bottom:24px">
+        <form method="GET" action="{{ route('super-admin.confirmi-users.index') }}" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <input type="text" name="search" class="sa-input" placeholder="Rechercher..." value="{{ request('search') }}" style="max-width:260px">
+            <select name="role" class="sa-input sa-select" style="max-width:160px">
                 <option value="">Tous les rôles</option>
-                <option value="commercial" {{ request('role') == 'commercial' ? 'selected' : '' }}>Commerciaux</option>
-                <option value="employee" {{ request('role') == 'employee' ? 'selected' : '' }}>Employés</option>
+                <option value="commercial" {{ request('role') === 'commercial' ? 'selected' : '' }}>Commercial</option>
+                <option value="employee" {{ request('role') === 'employee' ? 'selected' : '' }}>Employé</option>
+                <option value="agent" {{ request('role') === 'agent' ? 'selected' : '' }}>Agent</option>
             </select>
-            <input type="text" name="search" class="form-control form-control-sm" placeholder="Rechercher..." value="{{ request('search') }}" style="width:200px;">
-            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
+            <button type="submit" class="sa-btn sa-btn-primary sa-btn-sm"><i class="fas fa-search"></i> Filtrer</button>
+            @if(request()->hasAny(['search','role']))
+                <a href="{{ route('super-admin.confirmi-users.index') }}" class="sa-btn sa-btn-outline sa-btn-sm"><i class="fas fa-times"></i></a>
+            @endif
+            <a href="{{ route('super-admin.confirmi-users.create') }}" class="sa-btn sa-btn-primary" style="margin-left:auto"><i class="fas fa-plus"></i> Nouvel Utilisateur</a>
         </form>
     </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Nom</th>
-                    <th>Email</th>
-                    <th>Téléphone</th>
-                    <th>Rôle</th>
-                    <th>Statut</th>
-                    <th>Dernière connexion</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($users as $user)
-                <tr>
-                    <td>{{ $user->id }}</td>
-                    <td><strong>{{ $user->name }}</strong></td>
-                    <td>{{ $user->email }}</td>
-                    <td>{{ $user->phone ?? '-' }}</td>
-                    <td>
-                        @if($user->role === 'commercial')
-                            <span class="badge bg-primary">Commercial</span>
-                        @else
-                            <span class="badge bg-info">Employé</span>
-                        @endif
-                    </td>
-                    <td>
-                        @if($user->is_active)
-                            <span class="badge bg-success">Actif</span>
-                        @else
-                            <span class="badge bg-danger">Inactif</span>
-                        @endif
-                    </td>
-                    <td>{{ $user->last_login_at ? $user->last_login_at->format('d/m/Y H:i') : 'Jamais' }}</td>
-                    <td>
-                        <div class="d-flex gap-1">
-                            <a href="{{ route('super-admin.confirmi-users.edit', $user) }}" class="btn btn-sm btn-outline-primary" title="Modifier">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <form method="POST" action="{{ route('super-admin.confirmi-users.toggle-active', $user) }}" class="d-inline">
-                                @csrf @method('PATCH')
-                                <button type="submit" class="btn btn-sm btn-outline-{{ $user->is_active ? 'warning' : 'success' }}" title="{{ $user->is_active ? 'Désactiver' : 'Activer' }}">
-                                    <i class="fas fa-{{ $user->is_active ? 'ban' : 'check' }}"></i>
-                                </button>
-                            </form>
-                            <form method="POST" action="{{ route('super-admin.confirmi-users.destroy', $user) }}" class="d-inline" onsubmit="return confirm('Supprimer cet utilisateur ?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr><td colspan="8" class="text-center py-4 text-muted">Aucun utilisateur Confirmi.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
+
+    <!-- Users Table -->
+    <div class="sa-card">
+        <div class="sa-card-header">
+            <h3 class="sa-card-title">{{ $users->total() }} utilisateur(s)</h3>
+        </div>
+        <div class="sa-table-wrap">
+            <table class="sa-table">
+                <thead>
+                    <tr>
+                        <th>Utilisateur</th>
+                        <th>Rôle</th>
+                        <th>Téléphone</th>
+                        <th>Statut</th>
+                        <th>Dernière connexion</th>
+                        <th>Créé le</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($users as $user)
+                        <tr>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:10px">
+                                    <div class="sa-avatar" style="background:{{ $user->role === 'commercial' ? 'linear-gradient(135deg,var(--sa-primary),var(--sa-primary-light))' : ($user->role === 'agent' ? 'linear-gradient(135deg,var(--sa-warning),#fbbf24)' : 'linear-gradient(135deg,var(--sa-success),#34d399)') }}">
+                                        {{ strtoupper(substr($user->name,0,1)) }}
+                                    </div>
+                                    <div>
+                                        <strong>{{ $user->name }}</strong>
+                                        <div style="font-size:.7rem;color:var(--sa-text-muted)">{{ $user->email }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="sa-badge sa-badge-{{ $user->role === 'commercial' ? 'primary' : ($user->role === 'agent' ? 'warning' : 'info') }}">
+                                    {{ ucfirst($user->role) }}
+                                </span>
+                            </td>
+                            <td style="font-size:.8125rem;color:var(--sa-text-secondary)">{{ $user->phone ?? '-' }}</td>
+                            <td><span class="sa-badge sa-badge-{{ $user->is_active ? 'success' : 'danger' }}">{{ $user->is_active ? 'Actif' : 'Inactif' }}</span></td>
+                            <td style="font-size:.75rem;color:var(--sa-text-muted)">{{ $user->last_login_at ? $user->last_login_at->diffForHumans() : 'Jamais' }}</td>
+                            <td style="font-size:.75rem;color:var(--sa-text-muted)">{{ $user->created_at->format('d/m/Y') }}</td>
+                            <td>
+                                <div style="display:flex;gap:4px">
+                                    <a href="{{ route('super-admin.confirmi-users.edit', $user) }}" class="sa-btn sa-btn-outline sa-btn-icon sa-btn-sm" title="Modifier"><i class="fas fa-pen"></i></a>
+                                    <form action="{{ route('super-admin.confirmi-users.toggle-active', $user) }}" method="POST" style="display:inline">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="sa-btn sa-btn-icon sa-btn-sm {{ $user->is_active ? 'sa-btn-warning' : 'sa-btn-success' }}" title="{{ $user->is_active ? 'Désactiver' : 'Activer' }}">
+                                            <i class="fas fa-{{ $user->is_active ? 'ban' : 'check' }}"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ route('super-admin.confirmi-users.destroy', $user) }}" method="POST" style="display:inline" onsubmit="return confirm('Supprimer cet utilisateur ?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="sa-btn sa-btn-danger sa-btn-icon sa-btn-sm" title="Supprimer"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7"><div class="sa-empty"><i class="fas fa-users-cog"></i><p>Aucun utilisateur Confirmi</p></div></td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($users->hasPages())
+            <div class="sa-pagination">{{ $users->links() }}</div>
+        @endif
     </div>
-    <div class="card-footer">{{ $users->withQueryString()->links() }}</div>
-</div>
 @endsection

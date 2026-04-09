@@ -2,13 +2,63 @@
 
 @section('title', 'Détails de l\'Employé')
 
+@section('css')
+@include('admin.partials._shared-styles')
+<style>
+    .emp-profile-card {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius, 14px); overflow: hidden;
+    }
+    .emp-profile-header {
+        padding: 1.75rem 1.5rem; text-align: center;
+        background: var(--bg-muted); border-bottom: 1px solid var(--border);
+    }
+    .emp-profile-avatar {
+        width: 72px; height: 72px;
+        border-radius: var(--radius, 14px);
+        background: var(--primary-50, #eef2ff); color: var(--primary);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 1.75rem; margin-bottom: 0.75rem;
+    }
+    .emp-profile-header h4 { color: var(--text); font-weight: 800; margin: 0 0 0.2rem; }
+    .emp-profile-header p { color: var(--text-secondary); margin: 0; font-size: 0.85rem; }
+    .emp-mini-stat {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius, 14px); padding: 1.15rem;
+        text-align: center; height: 100%; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .emp-mini-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .emp-mini-stat .stat-icon {
+        width: 44px; height: 44px; border-radius: var(--radius-sm, 10px);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 1rem; margin-bottom: 0.6rem;
+    }
+    .emp-mini-stat h4 { color: var(--text); font-weight: 800; margin: 0 0 0.15rem; }
+    .emp-mini-stat small { color: var(--text-secondary); font-size: 0.78rem; }
+    .emp-section-card {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius, 14px); overflow: hidden; margin-bottom: 1rem;
+    }
+    .emp-section-head {
+        padding: 1rem 1.25rem; background: var(--bg-muted); border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .emp-section-head h6 { margin: 0; font-weight: 700; color: var(--text); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+    .emp-section-head h6 i { color: var(--primary); }
+    .emp-page-header h1 { color: var(--text); font-weight: 800; letter-spacing: -0.02em; }
+    .emp-page-header p { color: var(--text-secondary); }
+    .sticky-sidebar { position: sticky; top: 80px; }
+    @media (max-width: 991.98px) { .sticky-sidebar { position: static; } }
+</style>
+@endsection
+
 @section('content')
 <div class="container-fluid animate-fade-in" x-data="employeeDetailsPage()">
     <!-- Header Section -->
-    <div class="row mb-4">
+    <div class="row mb-4 emp-page-header">
         <div class="col-md-8">
-            <h1 class="h2 fw-bold text-dark mb-2">Détails de l'Employé</h1>
-            <p class="text-muted">Informations complètes de {{ $employee->name }}</p>
+            <h1 class="h2 mb-2">Détails de l'Employé</h1>
+            <p class="mb-0">Informations complètes de {{ $employee->name }}</p>
         </div>
         <div class="col-md-4 text-end">
             <div class="btn-group" role="group">
@@ -41,16 +91,14 @@
         <div class="col-lg-4">
             <div class="sticky-sidebar">
                 <!-- Profile Card -->
-                <div class="card shadow-lg border-0 mb-4">
+                <div class="emp-profile-card mb-4">
                     <!-- Header avec avatar -->
-                    <div class="card-header bg-gradient-success text-white text-center py-4">
-                        <div class="bg-white bg-opacity-25 rounded-4 p-3 d-inline-block mb-3" style="width: 80px; height: 80px;">
-                            <span class="h2 fw-bold mb-0 d-flex align-items-center justify-content-center h-100">
-                                {{ substr($employee->name, 0, 1) }}
-                            </span>
+                    <div class="emp-profile-header">
+                        <div class="emp-profile-avatar">
+                            {{ substr($employee->name, 0, 1) }}
                         </div>
-                        <h4 class="fw-bold mb-1">{{ $employee->name }}</h4>
-                        <p class="text-white-50 mb-0">Employé</p>
+                        <h4>{{ $employee->name }}</h4>
+                        <p>Employé</p>
                     </div>
                     
                     <!-- Informations de contact -->
@@ -122,12 +170,9 @@
                 </div>
                 
                 <!-- Actions rapides -->
-                <div class="card shadow border-0">
-                    <div class="card-header bg-light">
-                        <h6 class="card-title mb-0">
-                            <i class="fas fa-bolt text-warning me-2"></i>
-                            Actions rapides
-                        </h6>
+                <div class="emp-section-card">
+                    <div class="emp-section-head">
+                        <h6><i class="fas fa-bolt"></i> Actions rapides</h6>
                     </div>
                     <div class="card-body p-2">
                         <div class="d-grid gap-2">
@@ -477,7 +522,7 @@
                                     required
                                     class="form-select form-select-lg">
                                 <option value="">Choisir un manager...</option>
-                                @foreach(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->where('admin_id', $employee->admin_id)->where('is_active', true)->get() as $manager)
+                                @foreach(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->where('created_by', $employee->created_by)->where('is_active', true)->get() as $manager)
                                     <option value="{{ $manager->id }}">
                                         {{ $manager->name }} - {{ $manager->email }}
                                     </option>
@@ -647,127 +692,15 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 /* Gradient de succès personnalisé */
-.bg-gradient-success {
-    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
-}
+.bg-gradient-success { background: var(--bg-muted); }
 
-/* Amélioration des cartes */
-.card {
-    transition: all 0.3s ease;
-    border-radius: 1rem;
-}
+/* Modern animation */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Amélioration des boutons */
-.btn {
-    transition: all 0.2s ease-in-out;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-}
-
-/* Sticky sidebar responsive */
-@media (max-width: 991.98px) {
-    .sticky-top {
-        position: static !important;
-    }
-}
-
-/* Amélioration des badges */
-.badge {
-    font-size: 0.75em;
-}
-
-/* Style pour les liens */
-a:hover {
-    transition: all 0.2s ease;
-}
-
-/* Toast container */
-.toast-container {
-    z-index: 9999;
-}
-
-/* Amélioration du modal */
-.modal.show {
-    backdrop-filter: blur(3px);
-}
-
-/* Animation pour les éléments qui apparaissent */
-.fade-in {
-    opacity: 0;
-    animation: fadeIn 0.6s ease-out forwards;
-}
-
-/* Style pour les icônes de navigateur */
-.fab {
-    font-size: 1em;
-}
-
-/* Amélioration des tableaux */
-.table-hover tbody tr:hover {
-    background-color: rgba(13, 110, 253, 0.05);
-}
-
-/* Code styling */
-code {
-    background-color: rgba(13, 110, 253, 0.1);
-    color: #0d6efd;
-    padding: 0.125rem 0.25rem;
-    border-radius: 0.25rem;
-    font-size: 0.875em;
-}
-
-/* Responsive improvements */
 @media (max-width: 576px) {
-    .btn-group {
-        flex-direction: column;
-        width: 100%;
-        gap: 0.25rem;
-    }
-    
-    .btn-group .btn {
-        border-radius: 0.375rem !important;
-        margin-bottom: 0;
-    }
-    
-    .card-body {
-        padding: 1rem;
-    }
-    
-    .modal-dialog {
-        margin: 0.5rem;
-    }
-}
-
-/* Custom scrollbar for sidebar */
-.sticky-top {
-    max-height: calc(100vh - 2rem);
-    overflow-y: auto;
-}
-
-/* Safari scrollbar */
-.sticky-top::-webkit-scrollbar {
-    width: 6px;
-}
-
-.sticky-top::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
-}
-
-.sticky-top::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.sticky-top::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
+    .btn-group { flex-direction: column; width: 100%; gap: 0.25rem; }
+    .btn-group .btn { border-radius: 0.375rem !important; }
 }
 </style>
 @endsection

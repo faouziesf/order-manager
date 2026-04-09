@@ -4,17 +4,12 @@
 @section('page-title', 'Interface de Traitement')
 
 @section('css')
+@include('admin.partials._shared-styles')
 <link rel="stylesheet" href="{{ asset('css/responsive-system.css') }}">
 <style>
     /* ============================================
        DESIGN MINIMALISTE MODERNE
        ============================================ */
-
-    body {
-        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
-        font-family: var(--font-sans);
-        overflow-x: hidden;
-    }
 
     /* Container principal */
     .process-container {
@@ -773,6 +768,16 @@
             max-height: 200px;
         }
     }
+
+    /* ============= DARK MODE OVERRIDES ============= */
+    html[data-theme="dark"] .order-card { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .cart-card { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .search-input { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .search-suggestions { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .cart-item:hover { background: var(--bg-card-hover); }
+    html[data-theme="dark"] .quantity-controls { background: var(--bg-muted); border-color: var(--border); }
+    html[data-theme="dark"] .actions-zone { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .process-container { background: var(--bg-card); border-color: var(--border); }
 </style>
 @endsection
 

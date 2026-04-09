@@ -1,835 +1,253 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#8b5cf6">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <title>@yield('title') - Order Manager</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <style>
-        :root {
-            --primary-color: #4f46e5;
-            --primary-dark: #3730a3;
-            --secondary-color: #64748b;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
-            --warning-color: #f59e0b;
-            --info-color: #06b6d4;
-            --light-color: #f8fafc;
-            --dark-color: #1e293b;
-            --sidebar-width: 280px;
-            --sidebar-collapsed-width: 80px;
-            --header-height: 70px;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--light-color);
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        
-        /* Sidebar Styles */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: var(--sidebar-width);
-            height: 100vh;
-            background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-            color: white;
-            transition: all 0.3s ease;
-            z-index: 1000;
-            overflow-y: auto;
-            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .sidebar.collapsed {
-            width: var(--sidebar-collapsed-width);
-        }
-        
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .sidebar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-        }
-        
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .sidebar.collapsed .sidebar-header {
-            padding: 20px 10px;
-            text-align: center;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: white;
-            text-decoration: none;
-        }
-        
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
-        
-        .sidebar.collapsed .logo-text {
-            display: none;
-        }
-        
-        .sidebar-nav {
-            padding: 20px 0;
-        }
-        
-        .nav-section {
-            margin-bottom: 30px;
-        }
-        
-        .nav-section-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: rgba(255, 255, 255, 0.6);
-            padding: 0 20px;
-            margin-bottom: 10px;
-        }
-        
-        .sidebar.collapsed .nav-section-title {
-            display: none;
-        }
-        
-        .nav-item {
-            margin-bottom: 2px;
-        }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            padding: 12px 20px;
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            position: relative;
-            gap: 12px;
-        }
-        
-        .sidebar.collapsed .nav-link {
-            padding: 12px;
-            justify-content: center;
-        }
-        
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            transform: translateX(5px);
-        }
-        
-        .sidebar.collapsed .nav-link:hover {
-            transform: none;
-        }
-        
-        .nav-link.active {
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-            border-right: 4px solid white;
-        }
-        
-        .nav-link.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: white;
-        }
-        
-        .nav-icon {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            flex-shrink: 0;
-        }
-        
-        .nav-text {
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        
-        .sidebar.collapsed .nav-text {
-            display: none;
-        }
-        
-        .nav-badge {
-            margin-left: auto;
-            background: var(--danger-color);
-            color: white;
-            font-size: 0.75rem;
-            padding: 2px 6px;
-            border-radius: 10px;
-            min-width: 18px;
-            text-align: center;
-        }
-        
-        .sidebar.collapsed .nav-badge {
-            display: none;
-        }
-        
-        /* Main Content */
-        .main-content {
-            margin-left: var(--sidebar-width);
-            min-height: 100vh;
-            transition: all 0.3s ease;
-        }
-        
-        .main-content.expanded {
-            margin-left: var(--sidebar-collapsed-width);
-        }
-        
-        /* Header */
-        .header {
-            background: white;
-            height: var(--header-height);
-            display: flex;
-            align-items: center;
-            padding: 0 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            position: sticky;
-            top: 0;
-            z-index: 999;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .sidebar-toggle {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            color: var(--secondary-color);
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-        
-        .sidebar-toggle:hover {
-            background: var(--light-color);
-            color: var(--primary-color);
-        }
-        
-        .breadcrumb-custom {
-            margin: 0;
-            background: none;
-            padding: 0;
-            font-size: 0.875rem;
-        }
-        
-        .breadcrumb-custom .breadcrumb-item a {
-            color: var(--secondary-color);
-            text-decoration: none;
-        }
-        
-        .breadcrumb-custom .breadcrumb-item.active {
-            color: var(--dark-color);
-            font-weight: 500;
-        }
-        
-        .header-right {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .header-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: var(--light-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--secondary-color);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        
-        .header-icon:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: var(--danger-color);
-            color: white;
-            font-size: 0.7rem;
-            padding: 2px 5px;
-            border-radius: 8px;
-            min-width: 16px;
-            text-align: center;
-        }
-        
-        .user-dropdown {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            background: var(--light-color);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-        }
-        
-        .user-dropdown:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .user-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: var(--primary-color);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-        
-        .user-info {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .user-name {
-            font-weight: 600;
-            font-size: 0.875rem;
-            line-height: 1;
-        }
-        
-        .user-role {
-            font-size: 0.75rem;
-            color: var(--secondary-color);
-            line-height: 1;
-        }
-        
-        /* Content Area */
-        .content {
-            padding: 30px;
-        }
-        
-        .page-header {
-            margin-bottom: 30px;
-        }
-        
-        .page-title {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 5px;
-        }
-        
-        .page-subtitle {
-            color: var(--secondary-color);
-            font-size: 0.875rem;
-        }
-        
-        /* Cards */
-        .card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            margin-bottom: 25px;
-            overflow: hidden;
-        }
-        
-        .card-header {
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 20px 25px;
-        }
-        
-        .card-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin: 0;
-            color: var(--dark-color);
-        }
-        
-        .card-body {
-            padding: 25px;
-        }
-        
-        /* Stats Cards */
-        .stats-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            border: none;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stats-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--primary-color);
-        }
-        
-        .stats-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-        }
-        
-        .stats-card.success::before { background: var(--success-color); }
-        .stats-card.warning::before { background: var(--warning-color); }
-        .stats-card.danger::before { background: var(--danger-color); }
-        .stats-card.info::before { background: var(--info-color); }
-        
-        .stats-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .stats-text {
-            flex: 1;
-        }
-        
-        .stats-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 5px;
-        }
-        
-        .stats-label {
-            font-size: 0.875rem;
-            color: var(--secondary-color);
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        .stats-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            background: var(--primary-color);
-        }
-        
-        .stats-icon.success { background: var(--success-color); }
-        .stats-icon.warning { background: var(--warning-color); }
-        .stats-icon.danger { background: var(--danger-color); }
-        .stats-icon.info { background: var(--info-color); }
-        
-        /* Alerts */
-        .alert {
-            border: none;
-            border-radius: 10px;
-            padding: 15px 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-        }
-        
-        /* Buttons */
-        .btn {
-            border-radius: 8px;
-            font-weight: 500;
-            padding: 10px 20px;
-            border: none;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-        
-        /* Tables */
-        .table {
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .table thead th {
-            background: var(--light-color);
-            border: none;
-            font-weight: 600;
-            color: var(--dark-color);
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
-            padding: 15px;
-        }
-        
-        .table tbody td {
-            border: none;
-            padding: 15px;
-            vertical-align: middle;
-        }
-        
-        .table tbody tr {
-            border-bottom: 1px solid #e2e8f0;
-        }
-        
-        .table tbody tr:hover {
-            background: var(--light-color);
-        }
-        
-        /* Badges */
-        .badge {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 500;
-            font-size: 0.75rem;
-        }
-        
-        /* Progress bars */
-        .progress {
-            height: 8px;
-            border-radius: 4px;
-            background: #e2e8f0;
-        }
-        
-        .progress-bar {
-            border-radius: 4px;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                width: var(--sidebar-width);
-            }
-            
-            .sidebar.show {
-                transform: translateX(0);
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .main-content.expanded {
-                margin-left: 0;
-            }
-            
-            .content {
-                padding: 20px 15px;
-            }
-            
-            .header {
-                padding: 0 15px;
-            }
-            
-            .stats-number {
-                font-size: 1.5rem;
-            }
-            
-            .user-info {
-                display: none;
-            }
-        }
-        
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-    </style>
-    
-    @yield('css')
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,user-scalable=yes">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="theme-color" content="#4f46e5">
+<title>@yield('title', 'Super Admin') - Order Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+    --sa-primary:#4f46e5;--sa-primary-dark:#4338ca;--sa-primary-light:#6366f1;--sa-primary-50:#eef2ff;--sa-primary-100:#e0e7ff;
+    --sa-success:#10b981;--sa-success-light:#d1fae5;--sa-warning:#f59e0b;--sa-warning-light:#fef3c7;--sa-danger:#ef4444;--sa-danger-light:#fee2e2;--sa-info:#06b6d4;--sa-info-light:#cffafe;
+    --sa-bg:#f1f5f9;--sa-card:#fff;--sa-border:#e2e8f0;--sa-text:#0f172a;--sa-text-secondary:#64748b;--sa-text-muted:#94a3b8;
+    --sa-sidebar-bg:#0f172a;--sa-sidebar-text:#94a3b8;
+    --sa-radius:14px;--sa-radius-sm:10px;--sa-shadow:0 1px 3px rgba(0,0,0,.06);--sa-shadow-lg:0 8px 24px rgba(0,0,0,.08);
+    --sa-sidebar-w:260px;--sa-header-h:64px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--sa-bg);color:var(--sa-text);font-size:14px;line-height:1.6;min-height:100vh}
+
+/* === SIDEBAR === */
+.sa-sidebar{position:fixed;top:0;left:0;width:var(--sa-sidebar-w);height:100vh;background:var(--sa-sidebar-bg);color:var(--sa-sidebar-text);z-index:1000;display:flex;flex-direction:column;transition:transform .3s ease}
+.sa-sidebar-head{padding:20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sa-sidebar-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff}
+.sa-sidebar-brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--sa-primary),var(--sa-primary-light));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800}
+.sa-sidebar-brand span{font-size:1.05rem;font-weight:800;letter-spacing:-.3px}
+.sa-sidebar-brand small{display:block;font-size:.7rem;font-weight:500;color:var(--sa-sidebar-text);margin-top:1px}
+.sa-sidebar-nav{flex:1;overflow-y:auto;padding:16px 12px}
+.sa-sidebar-nav::-webkit-scrollbar{width:4px}
+.sa-sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
+.sa-nav-section{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.35);padding:16px 12px 6px;font-weight:700}
+.sa-nav-link{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--sa-radius-sm);color:var(--sa-sidebar-text);text-decoration:none;font-size:.8125rem;font-weight:500;transition:all .15s;margin-bottom:2px;position:relative}
+.sa-nav-link:hover{background:rgba(255,255,255,.06);color:#e2e8f0}
+.sa-nav-link.active{background:rgba(99,102,241,.18);color:#fff;font-weight:600}
+.sa-nav-link i{width:18px;text-align:center;font-size:.85rem;opacity:.7}
+.sa-nav-link.active i{opacity:1;color:var(--sa-primary-light)}
+.sa-nav-badge{margin-left:auto;min-width:20px;height:20px;border-radius:10px;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px}
+.sa-nav-badge-danger{background:var(--sa-danger);color:#fff}
+.sa-nav-badge-warning{background:var(--sa-warning);color:#fff}
+.sa-nav-badge-info{background:var(--sa-primary-light);color:#fff}
+.sa-sidebar-foot{padding:16px;border-top:1px solid rgba(255,255,255,.08)}
+.sa-sidebar-user{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--sa-radius-sm)}
+.sa-sidebar-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--sa-primary),var(--sa-primary-light));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:#fff}
+.sa-sidebar-user-info{flex:1;min-width:0}
+.sa-sidebar-user-info strong{display:block;font-size:.8rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sa-sidebar-user-info small{font-size:.7rem;color:var(--sa-sidebar-text)}
+.sa-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999}
+
+/* === HEADER === */
+.sa-header{position:fixed;top:0;left:var(--sa-sidebar-w);right:0;height:var(--sa-header-h);background:var(--sa-card);border-bottom:1px solid var(--sa-border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;z-index:998;transition:left .3s}
+.sa-header-left{display:flex;align-items:center;gap:16px}
+.sa-header-burger{display:none;width:40px;height:40px;border:none;background:var(--sa-bg);border-radius:var(--sa-radius-sm);cursor:pointer;font-size:1.1rem;color:var(--sa-text)}
+.sa-header h1{font-size:1.15rem;font-weight:700;color:var(--sa-text)}
+.sa-header-actions{display:flex;align-items:center;gap:12px}
+.sa-logout-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:var(--sa-danger-light);color:var(--sa-danger);border:none;border-radius:var(--sa-radius-sm);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+.sa-logout-btn:hover{background:var(--sa-danger);color:#fff}
+
+/* === CONTENT === */
+.sa-content{margin-left:var(--sa-sidebar-w);padding-top:var(--sa-header-h);min-height:100vh;transition:margin-left .3s}
+.sa-page{padding:24px}
+
+/* === COMPONENTS === */
+.sa-card{background:var(--sa-card);border:1px solid var(--sa-border);border-radius:var(--sa-radius);padding:24px;box-shadow:var(--sa-shadow)}
+.sa-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.sa-card-title{font-size:1rem;font-weight:700;color:var(--sa-text)}
+
+.sa-stat{background:var(--sa-card);border:1px solid var(--sa-border);border-radius:var(--sa-radius);padding:20px;box-shadow:var(--sa-shadow);display:flex;align-items:center;gap:16px}
+.sa-stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0}
+.sa-stat-icon-primary{background:var(--sa-primary-50);color:var(--sa-primary)}
+.sa-stat-icon-success{background:var(--sa-success-light);color:var(--sa-success)}
+.sa-stat-icon-warning{background:var(--sa-warning-light);color:var(--sa-warning)}
+.sa-stat-icon-danger{background:var(--sa-danger-light);color:var(--sa-danger)}
+.sa-stat-icon-info{background:var(--sa-info-light);color:var(--sa-info)}
+.sa-stat-value{font-size:1.5rem;font-weight:800;color:var(--sa-text);line-height:1.2}
+.sa-stat-label{font-size:.75rem;color:var(--sa-text-secondary);font-weight:500}
+
+.sa-grid{display:grid;gap:20px}
+.sa-grid-2{grid-template-columns:repeat(2,1fr)}
+.sa-grid-3{grid-template-columns:repeat(3,1fr)}
+.sa-grid-4{grid-template-columns:repeat(4,1fr)}
+
+.sa-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.sa-table{width:100%;border-collapse:collapse}
+.sa-table th{padding:10px 16px;text-align:left;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--sa-text-secondary);background:var(--sa-bg);border-bottom:1px solid var(--sa-border)}
+.sa-table td{padding:12px 16px;border-bottom:1px solid var(--sa-border);font-size:.8125rem;color:var(--sa-text)}
+.sa-table tr:hover td{background:rgba(99,102,241,.02)}
+.sa-table tr:last-child td{border-bottom:none}
+
+.sa-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600}
+.sa-badge-success{background:var(--sa-success-light);color:#065f46}
+.sa-badge-danger{background:var(--sa-danger-light);color:#991b1b}
+.sa-badge-warning{background:var(--sa-warning-light);color:#92400e}
+.sa-badge-info{background:var(--sa-info-light);color:#155e75}
+.sa-badge-primary{background:var(--sa-primary-50);color:var(--sa-primary-dark)}
+.sa-badge-muted{background:#f1f5f9;color:#64748b}
+
+.sa-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:var(--sa-radius-sm);font-size:.8125rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;font-family:inherit;text-decoration:none}
+.sa-btn-primary{background:var(--sa-primary);color:#fff}
+.sa-btn-primary:hover{background:var(--sa-primary-dark);color:#fff}
+.sa-btn-success{background:var(--sa-success);color:#fff}
+.sa-btn-success:hover{background:#059669;color:#fff}
+.sa-btn-danger{background:var(--sa-danger);color:#fff}
+.sa-btn-danger:hover{background:#dc2626;color:#fff}
+.sa-btn-warning{background:var(--sa-warning);color:#fff}
+.sa-btn-outline{background:transparent;border:1px solid var(--sa-border);color:var(--sa-text-secondary)}
+.sa-btn-outline:hover{border-color:var(--sa-primary);color:var(--sa-primary);background:var(--sa-primary-50)}
+.sa-btn-sm{padding:5px 12px;font-size:.75rem}
+.sa-btn-icon{width:32px;height:32px;padding:0;justify-content:center}
+
+.sa-input{width:100%;padding:9px 14px;border:1px solid var(--sa-border);border-radius:var(--sa-radius-sm);font-size:.8125rem;font-family:inherit;transition:all .15s;background:var(--sa-card);color:var(--sa-text)}
+.sa-input:focus{outline:none;border-color:var(--sa-primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.sa-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6,9 12,15 18,9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+
+.sa-avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:#fff;flex-shrink:0}
+.sa-avatar-primary{background:linear-gradient(135deg,var(--sa-primary),var(--sa-primary-light))}
+.sa-avatar-success{background:linear-gradient(135deg,var(--sa-success),#34d399)}
+
+.sa-empty{text-align:center;padding:40px 20px;color:var(--sa-text-secondary)}
+.sa-empty i{font-size:2.5rem;margin-bottom:12px;opacity:.3}
+.sa-empty p{font-size:.875rem}
+
+.sa-alert{padding:14px 18px;border-radius:var(--sa-radius-sm);font-size:.8125rem;display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.sa-alert-success{background:var(--sa-success-light);color:#065f46;border:1px solid #a7f3d0}
+.sa-alert-danger{background:var(--sa-danger-light);color:#991b1b;border:1px solid #fecaca}
+.sa-alert-warning{background:var(--sa-warning-light);color:#92400e;border:1px solid #fde68a}
+.sa-alert-info{background:var(--sa-primary-50);color:var(--sa-primary-dark);border:1px solid var(--sa-primary-100)}
+
+.sa-pagination{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:20px;flex-wrap:wrap}
+.sa-pagination a,.sa-pagination span{padding:6px 12px;border-radius:8px;font-size:.8rem;font-weight:500;text-decoration:none;border:1px solid var(--sa-border);color:var(--sa-text-secondary)}
+.sa-pagination a:hover{border-color:var(--sa-primary);color:var(--sa-primary)}
+.sa-pagination .active span{background:var(--sa-primary);color:#fff;border-color:var(--sa-primary)}
+.sa-pagination .disabled span{opacity:.4}
+
+.sa-form-group{margin-bottom:16px}
+.sa-form-label{display:block;font-size:.8rem;font-weight:600;color:var(--sa-text);margin-bottom:6px}
+.sa-form-hint{font-size:.7rem;color:var(--sa-text-muted);margin-top:4px}
+
+.sa-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;padding:16px}
+.sa-modal-overlay.show{display:flex}
+.sa-modal{background:var(--sa-card);border-radius:var(--sa-radius);padding:24px;width:100%;max-width:480px;box-shadow:var(--sa-shadow-lg)}
+.sa-modal-title{font-size:1.1rem;font-weight:700;margin-bottom:16px}
+
+/* === RESPONSIVE === */
+@media(max-width:1024px){.sa-grid-4{grid-template-columns:repeat(2,1fr)}.sa-grid-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){
+    .sa-sidebar{transform:translateX(-100%)}.sa-sidebar.open{transform:translateX(0)}.sa-overlay.open{display:block}
+    .sa-header{left:0}.sa-header-burger{display:flex;align-items:center;justify-content:center}
+    .sa-content{margin-left:0}.sa-page{padding:16px}
+    .sa-grid-4,.sa-grid-3,.sa-grid-2{grid-template-columns:1fr}
+    .sa-stat{padding:16px}.sa-stat-value{font-size:1.25rem}
+    .sa-card{padding:16px;border-radius:12px}
+    .sa-table th,.sa-table td{padding:10px 12px;font-size:.75rem}
+    .sa-btn{padding:7px 14px;font-size:.75rem}
+}
+@media(max-width:480px){.sa-header h1{font-size:.95rem}.sa-page{padding:12px}}
+</style>
+@yield('css')
 </head>
 <body>
-    <div class="sidebar-overlay d-md-none" id="sidebarOverlay"></div>
-    
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <a href="{{ route('super-admin.dashboard') }}" class="logo">
-                <div class="logo-icon">
-                    <i class="fas fa-crown"></i>
-                </div>
-                <span class="logo-text">Order Manager</span>
+    @include('partials._no-cache')
+
+    @php
+        $saUser = auth('super-admin')->user();
+        $saName = $saUser ? $saUser->name : 'Admin';
+        $saInitial = $saUser ? strtoupper(substr($saUser->name,0,1)) : 'S';
+        $pendingRequests = \App\Models\ConfirmiRequest::where('status','pending')->count();
+        $unpaidBilling = \App\Models\ConfirmiBilling::where('is_paid',false)->count();
+        $inactiveAdmins = \App\Models\Admin::where('role','admin')->where('is_active',false)->count();
+        $pendingEmballage = \App\Models\EmballageTask::where('status','pending')->count();
+    @endphp
+
+    <aside class="sa-sidebar" id="sidebar">
+        <div class="sa-sidebar-head">
+            <a href="{{ route('super-admin.dashboard') }}" class="sa-sidebar-brand">
+                <div class="sa-sidebar-brand-icon">OM</div>
+                <div><span>Order Manager</span><small>Super Admin</small></div>
             </a>
         </div>
-        
-        <div class="sidebar-nav">
-            @include('components.super-admin.sidebar-nav')
-        </div>
-    </div>
-    
-    <div class="main-content" id="mainContent">
-        <div class="header">
-            <div class="header-left">
-                <button class="sidebar-toggle" id="sidebarToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                
-                <nav class="breadcrumb-custom">
-                    @yield('breadcrumb')
-                </nav>
-            </div>
-            
-            <div class="header-right">
-                <x-super-admin.notification-bell 
-                    :autoRefresh="true" 
-                    :refreshInterval="30" />
+        <nav class="sa-sidebar-nav">
+            <div class="sa-nav-section">Principal</div>
+            <a href="{{ route('super-admin.dashboard') }}" class="sa-nav-link {{ request()->routeIs('super-admin.dashboard*') ? 'active' : '' }}">
+                <i class="fas fa-chart-pie"></i><span>Dashboard</span>
+            </a>
+            <a href="{{ route('super-admin.admins.index') }}" class="sa-nav-link {{ request()->routeIs('super-admin.admins*') ? 'active' : '' }}">
+                <i class="fas fa-building"></i><span>Administrateurs</span>
+                @if($inactiveAdmins > 0)<span class="sa-nav-badge sa-nav-badge-danger">{{ $inactiveAdmins }}</span>@endif
+            </a>
 
-                <div class="header-icon" title="Paramètres">
-                    <i class="fas fa-cog"></i>
-                </div>
-                
-                <div class="dropdown">
-                    <button class="user-dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <div class="user-avatar">
-                            {{ substr(Auth::guard('super-admin')->user()->name, 0, 2) }}
-                        </div>
-                        <div class="user-info">
-                            <div class="user-name">{{ Auth::guard('super-admin')->user()->name }}</div>
-                            <div class="user-role">Super Admin</div>
-                        </div>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profil</a></li>
-                        <li><a class="dropdown-item" href="{{ route('super-admin.settings.index') }}"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form action="{{ route('super-admin.logout') }}" method="POST">
-                                @csrf
-                                <button type="submit" class="dropdown-item">
-                                    <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
-                                </button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
+            <div class="sa-nav-section">Confirmi</div>
+            <a href="{{ route('super-admin.confirmi-users.index') }}" class="sa-nav-link {{ request()->routeIs('super-admin.confirmi-users*') ? 'active' : '' }}">
+                <i class="fas fa-users-cog"></i><span>Utilisateurs</span>
+            </a>
+            <a href="{{ route('super-admin.confirmi-requests.index') }}" class="sa-nav-link {{ request()->routeIs('super-admin.confirmi-requests*') ? 'active' : '' }}">
+                <i class="fas fa-inbox"></i><span>Demandes</span>
+                @if($pendingRequests > 0)<span class="sa-nav-badge sa-nav-badge-warning">{{ $pendingRequests }}</span>@endif
+            </a>
+            <a href="{{ route('super-admin.confirmi-billing.index') }}" class="sa-nav-link {{ request()->routeIs('super-admin.confirmi-billing*') ? 'active' : '' }}">
+                <i class="fas fa-file-invoice-dollar"></i><span>Facturation</span>
+                @if($unpaidBilling > 0)<span class="sa-nav-badge sa-nav-badge-info">{{ $unpaidBilling }}</span>@endif
+            </a>
+            <a href="{{ route('super-admin.emballage.index') }}" class="sa-nav-link {{ request()->routeIs('super-admin.emballage*') ? 'active' : '' }}">
+                <i class="fas fa-box"></i><span>Emballage</span>
+                @if($pendingEmballage > 0)<span class="sa-nav-badge sa-nav-badge-warning">{{ $pendingEmballage }}</span>@endif
+            </a>
+
+            <div class="sa-nav-section">Système</div>
+            <a href="{{ route('super-admin.settings.index') }}" class="sa-nav-link {{ request()->routeIs('super-admin.settings*') ? 'active' : '' }}">
+                <i class="fas fa-cog"></i><span>Paramètres</span>
+            </a>
+        </nav>
+        <div class="sa-sidebar-foot">
+            <div class="sa-sidebar-user">
+                <div class="sa-sidebar-avatar">{{ $saInitial }}</div>
+                <div class="sa-sidebar-user-info"><strong>{{ $saName }}</strong><small>Super Admin</small></div>
             </div>
         </div>
-        
-        <div class="content">
-            @hasSection('page-header')
-                <div class="page-header fade-in">
-                    @yield('page-header')
-                </div>
-            @endif
-            
-            @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show fade-in" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-            
-            @if(session('error'))
-                <div class="alert alert-danger alert-dismissible fade show fade-in" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-            
-            @if(session('warning'))
-                <div class="alert alert-warning alert-dismissible fade show fade-in" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    {{ session('warning') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-            
-            @if(session('info'))
-                <div class="alert alert-info alert-dismissible fade show fade-in" role="alert">
-                    <i class="fas fa-info-circle me-2"></i>
-                    {{ session('info') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-            
-            <div class="fade-in">
-                @yield('content')
-            </div>
+    </aside>
+
+    <div class="sa-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+    <header class="sa-header">
+        <div class="sa-header-left">
+            <button class="sa-header-burger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <h1>@yield('page-title', 'Dashboard')</h1>
+        </div>
+        <div class="sa-header-actions">
+            <form action="{{ route('super-admin.logout') }}" method="POST" style="display:inline">
+                @csrf
+                <button type="submit" class="sa-logout-btn"><i class="fas fa-sign-out-alt"></i><span>Déconnexion</span></button>
+            </form>
+        </div>
+    </header>
+
+    <div class="sa-content">
+        <div class="sa-page">
+            @if(session('success'))<div class="sa-alert sa-alert-success"><i class="fas fa-check-circle"></i>{{ session('success') }}</div>@endif
+            @if(session('error'))<div class="sa-alert sa-alert-danger"><i class="fas fa-exclamation-circle"></i>{{ session('error') }}</div>@endif
+            @if(session('info'))<div class="sa-alert sa-alert-info"><i class="fas fa-info-circle"></i>{{ session('info') }}</div>@endif
+            @if(session('warning'))<div class="sa-alert sa-alert-warning"><i class="fas fa-exclamation-triangle"></i>{{ session('warning') }}</div>@endif
+            @yield('content')
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const sidebarOverlay = document.getElementById('sidebarOverlay');
-            
-            // Toggle sidebar
-            sidebarToggle.addEventListener('click', function() {
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.toggle('show');
-                    sidebarOverlay.style.display = sidebar.classList.contains('show') ? 'block' : 'none';
-                } else {
-                    sidebar.classList.toggle('collapsed');
-                    mainContent.classList.toggle('expanded');
-                    
-                    // Save state
-                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-                }
-            });
-            
-            // Close sidebar on overlay click (mobile)
-            sidebarOverlay.addEventListener('click', function() {
-                sidebar.classList.remove('show');
-                sidebarOverlay.style.display = 'none';
-            });
-            
-            // Restore sidebar state
-            const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-            if (sidebarCollapsed && window.innerWidth > 768) {
-                sidebar.classList.add('collapsed');
-                mainContent.classList.add('expanded');
-            }
-            
-            // Handle window resize
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 768) {
-                    sidebar.classList.remove('show');
-                    sidebarOverlay.style.display = 'none';
-                }
-            });
-            
-            // Auto-hide alerts
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                setTimeout(function() {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 5000);
-            });
-            
-            // Notification updates (if available)
-            if (typeof updateNotificationCount === 'function') {
-                setInterval(updateNotificationCount, 30000); // Update every 30 seconds
-            }
-        });
-        
-        // Utility function for updating notification count
-        function updateNotificationCount() {
-            fetch('{{ route('super-admin.notifications.api.unread-count') }}')
-                .then(response => response.json())
-                .then(data => {
-                    const badge = document.querySelector('.notification-badge');
-                    if (data.count > 0) {
-                        if (badge) {
-                            badge.textContent = data.count;
-                        } else {
-                            const notificationIcon = document.getElementById('notificationToggle');
-                            const newBadge = document.createElement('span');
-                            newBadge.className = 'notification-badge';
-                            newBadge.textContent = data.count;
-                            notificationIcon.appendChild(newBadge);
-                        }
-                    } else if (badge) {
-                        badge.remove();
-                    }
-                })
-                .catch(error => console.log('Error updating notifications:', error));
-        }
+    function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('open')}
+    function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
+    if(window.innerWidth<=768){document.querySelectorAll('.sa-nav-link').forEach(l=>l.addEventListener('click',closeSidebar))}
     </script>
-    
-    @yield('js')
+    @yield('scripts')
 </body>
 </html>

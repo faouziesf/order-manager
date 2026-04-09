@@ -20,12 +20,12 @@ Route::get('/', function () {
     
     // Si l'utilisateur est connecté avec le guard confirmi
     if (Auth::guard('confirmi')->check()) {
-        $user = Auth::guard('confirmi')->user();
-        if ($user->role === 'commercial') {
-            return redirect()->route('confirmi.commercial.dashboard');
-        } else {
-            return redirect()->route('confirmi.employee.dashboard');
-        }
+        return redirect()->route('confirmi.dashboard');
+    }
+    
+    // Si l'utilisateur est connecté avec le guard super-admin
+    if (Auth::guard('super-admin')->check()) {
+        return redirect()->route('super-admin.dashboard');
     }
     
     // Si personne n'est connecté, rediriger vers la page d'accueil Confirmi

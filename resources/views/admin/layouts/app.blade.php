@@ -195,94 +195,10 @@
                     </a>
                 </li>
 
-                @if(auth('admin')->user()->role === \App\Models\Admin::ROLE_EMPLOYEE)
-                    {{-- MENU EMPLOYEE: Seulement Traitement et Commandes --}}
+                @php $authUser = auth('admin')->user(); @endphp
 
-                    <!-- Interface de traitement -->
-                    <li class="nav-item">
-                        <a href="{{ route('admin.process.interface') }}"
-                           class="nav-link d-flex align-items-center {{ request()->routeIs('admin.process.*') ? 'active' : '' }}">
-                            <i class="fas fa-tasks me-3"></i>
-                            Traitement
-                        </a>
-                    </li>
-
-                    <!-- Commandes -->
-                    <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.orders.*') ? 'true' : 'false' }} }">
-                        <a href="#" @click.prevent="open = !open"
-                           class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-shopping-cart me-3"></i>
-                                Commandes
-                            </div>
-                            <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
-                        </a>
-
-                        <div x-show="open" x-transition class="submenu">
-                            <ul class="nav flex-column">
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.orders.index') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
-                                        <i class="fas fa-list me-2"></i>
-                                        Mes commandes
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.orders.create') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.orders.create') ? 'active' : '' }}">
-                                        <i class="fas fa-plus me-2"></i>
-                                        Créer commande
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-
-                @elseif(auth('admin')->user()->role === \App\Models\Admin::ROLE_MANAGER)
-                    {{-- MENU MANAGER: Toutes les commandes de l'admin --}}
-
-                    <!-- Commandes -->
-                    <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.orders.*') || request()->routeIs('admin.process.*') ? 'true' : 'false' }} }">
-                        <a href="#" @click.prevent="open = !open"
-                           class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.orders.*') || request()->routeIs('admin.process.*') ? 'active' : '' }}">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-shopping-cart me-3"></i>
-                                Commandes
-                            </div>
-                            <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
-                        </a>
-
-                        <div x-show="open" x-transition class="submenu">
-                            <ul class="nav flex-column">
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.orders.index') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
-                                        <i class="fas fa-list me-2"></i>
-                                        Toutes les commandes
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.process.interface') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.process.*') ? 'active' : '' }}">
-                                        <i class="fas fa-tasks me-2"></i>
-                                        Traitement
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('admin.orders.create') }}"
-                                       class="nav-link d-flex align-items-center {{ request()->routeIs('admin.orders.create') ? 'active' : '' }}">
-                                        <i class="fas fa-plus me-2"></i>
-                                        Créer commande
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-
-                @else
-                    {{-- MENU ADMIN COMPLET --}}
-
-                    <!-- Gestion des utilisateurs -->
+                    {{-- Gestion des utilisateurs — admin only --}}
+                    @if($authUser->can('can_manage_users'))
                     <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.managers.*') || request()->routeIs('admin.employees.*') ? 'true' : 'false' }} }">
                         <a href="#" @click.prevent="open = !open"
                            class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.managers.*') || request()->routeIs('admin.employees.*') ? 'active' : '' }}">
@@ -292,7 +208,6 @@
                             </div>
                             <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
                         </a>
-
                         <div x-show="open" x-transition class="submenu">
                             <ul class="nav flex-column">
                                 <li class="nav-item">
@@ -303,11 +218,10 @@
                                             Managers
                                         </div>
                                         <span class="badge badge-counter rounded-pill">
-                                            {{ \App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->where('created_by', auth('admin')->id())->count() }}/{{ auth('admin')->user()->max_managers }}
+                                            {{ \App\Models\Admin::where('role', \App\Models\Admin::ROLE_MANAGER)->where('created_by', auth('admin')->id())->count() }}/{{ $authUser->max_managers }}
                                         </span>
                                     </a>
                                 </li>
-
                                 <li class="nav-item">
                                     <a href="{{ route('admin.employees.index') }}"
                                        class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.employees.*') ? 'active' : '' }}">
@@ -316,15 +230,17 @@
                                             Employés
                                         </div>
                                         <span class="badge badge-counter rounded-pill">
-                                            {{ \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', auth('admin')->id())->count() }}/{{ auth('admin')->user()->max_employees }}
+                                            {{ \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', auth('admin')->id())->count() }}/{{ $authUser->max_employees }}
                                         </span>
                                     </a>
                                 </li>
                             </ul>
                         </div>
                     </li>
+                    @endif
 
-                    <!-- Produits -->
+                    {{-- Produits --}}
+                    @if($authUser->can('can_manage_products'))
                     <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.products.*') ? 'true' : 'false' }} }">
                         <a href="#" @click.prevent="open = !open"
                            class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.products.*') ? 'active' : '' }}">
@@ -334,7 +250,6 @@
                             </div>
                             <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
                         </a>
-
                         <div x-show="open" x-transition class="submenu">
                             <ul class="nav flex-column">
                                 <li class="nav-item">
@@ -354,8 +269,10 @@
                             </ul>
                         </div>
                     </li>
+                    @endif
 
-                    <!-- Commandes -->
+                    {{-- Commandes --}}
+                    @if($authUser->can('can_manage_orders'))
                     <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.orders.*') || request()->routeIs('admin.process.*') ? 'true' : 'false' }} }">
                         <a href="#" @click.prevent="open = !open"
                            class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.orders.*') || request()->routeIs('admin.process.*') ? 'active' : '' }}">
@@ -365,7 +282,6 @@
                             </div>
                             <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
                         </a>
-
                         <div x-show="open" x-transition class="submenu">
                             <ul class="nav flex-column">
                                 <li class="nav-item">
@@ -375,6 +291,7 @@
                                         Toutes les commandes
                                     </a>
                                 </li>
+                                @if($authUser->can('can_process_orders'))
                                 <li class="nav-item">
                                     <a href="{{ route('admin.process.interface') }}"
                                        class="nav-link d-flex align-items-center {{ request()->routeIs('admin.process.*') ? 'active' : '' }}">
@@ -382,6 +299,7 @@
                                         Traitement
                                     </a>
                                 </li>
+                                @endif
                                 <li class="nav-item">
                                     <a href="{{ route('admin.orders.create') }}"
                                        class="nav-link d-flex align-items-center {{ request()->routeIs('admin.orders.create') ? 'active' : '' }}">
@@ -392,18 +310,22 @@
                             </ul>
                         </div>
                     </li>
+                    @endif
 
-                    <!-- Livraison — Masafa Express -->
+                    {{-- Livraison — Kolixy --}}
+                    @if($authUser->can('can_manage_delivery'))
                     <li class="nav-item">
                         <a href="{{ route('admin.delivery.index') }}"
                            class="nav-link d-flex align-items-center {{ request()->routeIs('admin.delivery.*') ? 'active' : '' }}">
                             <i class="fas fa-truck me-3"></i>
                             Livraison
-                            <span class="ms-auto badge" style="background:linear-gradient(135deg,#0f4c81,#1a73c8);font-size:.65rem;padding:.2rem .45rem;border-radius:4px;">Masafa</span>
+                            <span class="ms-auto badge" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);font-size:.65rem;padding:.2rem .45rem;border-radius:4px;">Kolixy</span>
                         </a>
                     </li>
+                    @endif
 
-                    <!-- Intégrations -->
+                    {{-- Intégrations --}}
+                    @if($authUser->can('can_manage_integrations'))
                     <li class="nav-item" x-data="{ open: {{ request()->routeIs('admin.woocommerce.*') || request()->routeIs('admin.import.*') ? 'true' : 'false' }} }">
                         <a href="#" @click.prevent="open = !open"
                            class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('admin.woocommerce.*') || request()->routeIs('admin.import.*') ? 'active' : '' }}">
@@ -413,7 +335,6 @@
                             </div>
                             <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
                         </a>
-
                         <div x-show="open" x-transition class="submenu">
                             <ul class="nav flex-column">
                                 <li class="nav-item">
@@ -423,6 +344,7 @@
                                         WooCommerce
                                     </a>
                                 </li>
+                                @if($authUser->can('can_import'))
                                 <li class="nav-item">
                                     <a href="{{ route('admin.import.index') }}"
                                        class="nav-link d-flex align-items-center {{ request()->routeIs('admin.import.*') ? 'active' : '' }}">
@@ -430,11 +352,14 @@
                                         Import CSV/XML
                                     </a>
                                 </li>
+                                @endif
                             </ul>
                         </div>
                     </li>
+                    @endif
 
-                    <!-- Paramètres -->
+                    {{-- Paramètres --}}
+                    @if($authUser->can('can_manage_settings'))
                     <li class="nav-item">
                         <a href="{{ route('admin.settings.index') }}"
                            class="nav-link d-flex align-items-center {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
@@ -442,7 +367,7 @@
                             Paramètres
                         </a>
                     </li>
-                @endif
+                    @endif
             </ul>
         </nav>
 

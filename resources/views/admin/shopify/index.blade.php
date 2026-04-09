@@ -1,589 +1,174 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
-@section('title', 'Intégrations Shopify')
+@section('title', 'Integrations Shopify')
 
 @section('css')
-<style>
-    .connection-status {
-        display: inline-block;
-        width: 15px;
-        height: 15px;
-        border-radius: 50%;
-        margin-right: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .status-active {
-        background: linear-gradient(135deg, #10b981, #059669);
-        animation: pulse-green 2s infinite;
-    }
-    
-    .status-inactive {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-    }
-    
-    .status-syncing {
-        background: linear-gradient(135deg, #f59e0b, #d97706);
-        animation: pulse-orange 1.5s infinite;
-    }
-    
-    .status-error {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        animation: pulse-red 1s infinite;
-    }
-    
-    @keyframes pulse-green {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.7; transform: scale(1.1); }
-    }
-    
-    @keyframes pulse-orange {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.6; transform: scale(1.2); }
-    }
-    
-    @keyframes pulse-red {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    
-    .card-stats {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
-        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-    }
-    
-    .stat-item {
-        text-align: center;
-        padding: 16px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        margin-bottom: 16px;
-        transition: all 0.3s ease;
-    }
-    
-    .stat-item:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: translateY(-2px);
-    }
-    
-    .stat-number {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 8px;
-        background: linear-gradient(45deg, #ffffff, #f0f9ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    
-    .stat-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        font-weight: 500;
-    }
-    
-    .integration-card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 16px;
-        border: 2px solid #e5e7eb;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .integration-card.active {
-        border-color: #10b981;
-        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
-    }
-    
-    .integration-card.inactive {
-        border-color: #f3f4f6;
-        opacity: 0.7;
-    }
-    
-    .integration-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-    }
-    
-    .integration-header {
-        display: flex;
-        justify-content: between;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-    
-    .integration-info h6 {
-        margin: 0;
-        font-weight: 600;
-        color: #1f2937;
-    }
-    
-    .integration-url {
-        color: #6b7280;
-        font-size: 0.9rem;
-        margin-top: 4px;
-    }
-    
-    .integration-actions {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-    }
-    
-    .config-section {
-        background: rgba(255, 255, 255, 0.98);
-        border-radius: 16px;
-        padding: 32px;
-        margin-bottom: 24px;
-        border: 1px solid rgba(102, 126, 234, 0.1);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(20px);
-    }
-    
-    .connection-test-result {
-        margin-top: 16px;
-        padding: 16px;
-        border-radius: 12px;
-        border-left: 4px solid;
-        display: none;
-        animation: slideIn 0.3s ease;
-    }
-    
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .connection-test-result.success {
-        background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-        border-left-color: #10b981;
-        color: #047857;
-    }
-    
-    .connection-test-result.error {
-        background: linear-gradient(135deg, #fef2f2, #fecaca);
-        border-left-color: #ef4444;
-        color: #dc2626;
-    }
-    
-    .help-box {
-        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-        border: 1px solid #93c5fd;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 20px 0;
-        color: #1e40af;
-    }
-    
-    .help-box h6 {
-        color: #1d4ed8;
-        margin-bottom: 16px;
-        font-weight: 600;
-    }
-    
-    .help-box ol {
-        margin-bottom: 0;
-        padding-left: 20px;
-    }
-    
-    .help-box li {
-        margin-bottom: 8px;
-        line-height: 1.5;
-    }
-    
-    .modern-checkbox {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 16px;
-        background: rgba(102, 126, 234, 0.05);
-        border-radius: 12px;
-        border: 2px solid transparent;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    
-    .modern-checkbox:hover {
-        background: rgba(102, 126, 234, 0.1);
-        border-color: rgba(102, 126, 234, 0.2);
-    }
-    
-    .modern-checkbox input[type="checkbox"] {
-        width: 20px;
-        height: 20px;
-        accent-color: #667eea;
-    }
-    
-    .integration-info-box {
-        background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-        border: 1px solid #0ea5e9;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 20px 0;
-        color: #0369a1;
-    }
-    
-    .toggle-switch {
-        position: relative;
-        display: inline-block;
-        width: 50px;
-        height: 24px;
-    }
-    
-    .toggle-switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-    
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 24px;
-    }
-    
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-    
-    input:checked + .slider {
-        background-color: #10b981;
-    }
-    
-    input:checked + .slider:before {
-        transform: translateX(26px);
-    }
-    
-    /* Styles pour le modal */
-    .modal-content {
-        border-radius: 16px;
-        border: none;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-    }
-    
-    .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 16px 16px 0 0;
-        border-bottom: none;
-        padding: 20px 24px;
-    }
-    
-    .modal-header .btn-close {
-        filter: invert(1);
-        opacity: 0.8;
-    }
-    
-    .modal-header .btn-close:hover {
-        opacity: 1;
-    }
-    
-    .modal-body {
-        padding: 24px;
-    }
-    
-    .modal-footer {
-        padding: 20px 24px;
-        border-top: 1px solid #e5e7eb;
-        border-radius: 0 0 16px 16px;
-    }
-    
-    .modal-lg {
-        max-width: 800px;
-    }
-    
-    /* Animation pour le modal */
-    .modal.fade .modal-dialog {
-        transform: translateY(-50px);
-        transition: transform 0.3s ease-out;
-    }
-    
-    .modal.show .modal-dialog {
-        transform: translateY(0);
-    }
-</style>
+<style>:root { --intg-color-1: #96bf48; --intg-color-2: #5e8e3e; }</style>
+@include('admin.partials._integration-styles')
 @endsection
 
 @section('content')
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">
-        <i class="fab fa-shopify me-3"></i>Intégrations Shopify
-    </h1>
-    <div class="d-flex gap-2">
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addIntegrationModal">
-            <i class="fas fa-plus me-2"></i>Nouvelle intégration
+<div class="om-page-header">
+    <div>
+        <h1 style="font-size:24px; font-weight:800; color:var(--om-text); margin:0;">
+            <i class="fab fa-shopify" style="color:#96bf48; margin-right:8px;"></i>Integrations Shopify
+        </h1>
+        <p style="color:var(--om-text-light); margin:4px 0 0; font-size:14px;">Connectez vos boutiques Shopify pour importer automatiquement les commandes</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="om-btn om-btn-primary" style="background:#96bf48; border-color:#96bf48;" data-bs-toggle="modal" data-bs-target="#addIntegrationModal">
+            <i class="fas fa-plus"></i> Nouvelle integration
         </button>
-        <button class="btn btn-outline-primary" onclick="refreshStats()">
-            <i class="fas fa-sync-alt me-2"></i>Actualiser
+        <button class="om-btn om-btn-ghost" onclick="refreshStats()">
+            <i class="fas fa-sync-alt"></i> Actualiser
         </button>
         @if($integrations->where('is_active', true)->count() > 0)
-            <a href="{{ route('admin.shopify.sync') }}" class="btn btn-primary">
-                <i class="fas fa-download me-2"></i>Synchroniser toutes
-            </a>
+        <a href="{{ route('admin.shopify.sync') }}" class="om-btn om-btn-success">
+            <i class="fas fa-download"></i> Synchroniser
+        </a>
         @endif
     </div>
 </div>
 
-<!-- Statistiques globales -->
-<div class="card-stats">
-    <div class="row align-items-center">
-        <div class="col-md-8">
-            <h4 class="mb-3">
-                <i class="fas fa-chart-bar me-2"></i>Aperçu des intégrations
-            </h4>
-            
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="stat-item">
-                        <div class="stat-number" id="total-integrations">{{ $syncStats['total_integrations'] }}</div>
-                        <div class="stat-label">Intégrations totales</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-item">
-                        <div class="stat-number" id="active-integrations">{{ $syncStats['active_integrations'] }}</div>
-                        <div class="stat-label">Intégrations actives</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-item">
-                        <div class="stat-number" id="total-orders">{{ $syncStats['total_orders'] }}</div>
-                        <div class="stat-label">Commandes importées</div>
-                    </div>
-                </div>
-            </div>
+<div class="integration-stats">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+        <h4 style="font-weight:800; margin:0;"><i class="fas fa-chart-bar" style="margin-right:8px;"></i>Apercu des integrations</h4>
+        <div class="intg-badges">
+            <span class="intg-badge"><i class="fas fa-clock" style="margin-right:6px;"></i>Sync auto: 3 min</span>
+            <span class="intg-badge"><i class="fas fa-store" style="margin-right:6px;"></i>Multi-boutiques</span>
         </div>
-        
-        <div class="col-md-4 text-end">
-            <div class="d-flex flex-column gap-2">
-                <span class="badge bg-light text-dark fs-6 p-2">
-                    <i class="fas fa-clock me-2"></i>Sync auto: toutes les 3 min
-                </span>
-                <span class="badge bg-light text-dark fs-6 p-2">
-                    <i class="fas fa-store me-2"></i>Multi-boutiques supportées
-                </span>
-            </div>
+    </div>
+    <div class="intg-stat-grid">
+        <div class="intg-stat-box">
+            <div class="intg-stat-num" id="total-integrations">{{ $syncStats['total_integrations'] }}</div>
+            <div class="intg-stat-lbl">Integrations totales</div>
+        </div>
+        <div class="intg-stat-box">
+            <div class="intg-stat-num" id="active-integrations">{{ $syncStats['active_integrations'] }}</div>
+            <div class="intg-stat-lbl">Integrations actives</div>
+        </div>
+        <div class="intg-stat-box">
+            <div class="intg-stat-num" id="total-orders">{{ $syncStats['total_orders'] }}</div>
+            <div class="intg-stat-lbl">Commandes importees</div>
         </div>
     </div>
 </div>
 
-<!-- Liste des intégrations existantes -->
 @if($integrations->count() > 0)
-<div class="row mb-4">
-    <div class="col-12">
-        <h4 class="mb-3">
-            <i class="fas fa-list me-2"></i>Intégrations configurées
-        </h4>
-        
-        @foreach($integrations as $integration)
-        <div class="integration-card {{ $integration->is_active ? 'active' : 'inactive' }}">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="integration-info">
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="connection-status {{ $integration->is_active ? ($integration->sync_status === 'syncing' ? 'status-syncing' : ($integration->sync_status === 'error' ? 'status-error' : 'status-active')) : 'status-inactive' }}"></span>
-                            <h6 class="mb-0">{{ parse_url($integration->shop_url, PHP_URL_HOST) }}</h6>
-                        </div>
-                        <div class="integration-url">{{ $integration->shop_url }}</div>
-                        @if($integration->last_sync_at)
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>Dernière sync: {{ $integration->last_sync_at->diffForHumans() }}
-                            </small>
-                        @endif
-                        @if($integration->sync_error)
-                            <div class="text-danger mt-1">
-                                <small><i class="fas fa-exclamation-triangle me-1"></i>{{ $integration->sync_error }}</small>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="d-flex justify-content-end align-items-center gap-3">
-                        <!-- Toggle Switch -->
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="text-muted">{{ $integration->is_active ? 'Actif' : 'Inactif' }}</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" {{ $integration->is_active ? 'checked' : '' }} 
-                                       onchange="toggleIntegration({{ $integration->id }}, this)">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        
-                        <!-- Actions -->
-                        <div class="integration-actions">
-                            <button class="btn btn-sm btn-outline-danger" 
-                                    onclick="deleteIntegration({{ $integration->id }}, '{{ parse_url($integration->shop_url, PHP_URL_HOST) }}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<h5 style="font-weight:700; color:var(--om-text); margin-bottom:16px;">
+    <i class="fas fa-list" style="margin-right:8px; color:#96bf48;"></i>Integrations configurees
+</h5>
+@foreach($integrations as $integration)
+<div class="intg-card {{ $integration->is_active ? 'active' : 'inactive' }}">
+    <div class="intg-card-info">
+        <div style="display:flex; align-items:center;">
+            <span class="status-dot {{ $integration->is_active ? ($integration->sync_status === 'syncing' ? 'syncing' : ($integration->sync_status === 'error' ? 'error' : 'active')) : 'inactive' }}"></span>
+            <h6>{{ parse_url($integration->shop_url, PHP_URL_HOST) }}</h6>
         </div>
-        @endforeach
+        <div class="intg-card-url">{{ $integration->shop_url }}</div>
+        @if($integration->last_sync_at)
+        <div class="intg-card-meta"><i class="fas fa-clock" style="margin-right:4px;"></i>Derniere sync: {{ $integration->last_sync_at->diffForHumans() }}</div>
+        @endif
+        @if($integration->sync_error)
+        <div style="color:var(--om-danger); font-size:12px; margin-top:4px;"><i class="fas fa-exclamation-triangle" style="margin-right:4px;"></i>{{ $integration->sync_error }}</div>
+        @endif
+    </div>
+    <div class="intg-card-actions">
+        <span style="font-size:13px; color:var(--om-text-light);">{{ $integration->is_active ? 'Actif' : 'Inactif' }}</span>
+        <label class="toggle-sw">
+            <input type="checkbox" {{ $integration->is_active ? 'checked' : '' }} onchange="toggleIntegration({{ $integration->id }}, this)">
+            <span class="slider"></span>
+        </label>
+        <button class="om-btn om-btn-ghost om-btn-sm om-btn-icon" style="color:var(--om-danger);" onclick="deleteIntegration({{ $integration->id }}, '{{ parse_url($integration->shop_url, PHP_URL_HOST) }}')">
+            <i class="fas fa-trash"></i>
+        </button>
+    </div>
+</div>
+@endforeach
+@else
+<div class="om-card" style="text-align:center; padding:48px 32px;">
+    <div class="om-empty">
+        <div class="om-empty-icon"><i class="fab fa-shopify"></i></div>
+        <h3>Aucune integration Shopify</h3>
+        <p>Commencez par connecter votre premiere boutique</p>
+        <button class="om-btn om-btn-primary" style="background:#96bf48; border-color:#96bf48;" data-bs-toggle="modal" data-bs-target="#addIntegrationModal">
+            <i class="fas fa-plus"></i> Ajouter une integration
+        </button>
     </div>
 </div>
 @endif
 
-@if($integrations->count() === 0)
-<!-- Message si aucune intégration -->
-<div class="row">
-    <div class="col-12">
-        <div class="config-section text-center">
-            <div class="mb-4">
-                <i class="fab fa-shopify display-4 text-muted mb-3"></i>
-                <h4 class="text-muted">Aucune intégration Shopify configurée</h4>
-                <p class="text-muted">Commencez par connecter votre première boutique Shopify</p>
-            </div>
-            <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#addIntegrationModal">
-                <i class="fas fa-plus me-2"></i>Ajouter votre première intégration
-            </button>
-        </div>
-    </div>
-</div>
-@endif
-
-<!-- Modal pour ajouter une nouvelle intégration -->
-<div class="modal fade" id="addIntegrationModal" tabindex="-1" aria-labelledby="addIntegrationModalLabel" aria-hidden="true">
+<div class="modal fade" id="addIntegrationModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addIntegrationModalLabel">
-                    <i class="fab fa-shopify me-2"></i>Nouvelle intégration Shopify
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header intg-modal-header">
+                <h5 class="modal-title"><i class="fab fa-shopify" style="margin-right:8px;"></i>Nouvelle integration Shopify</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            
             <form action="{{ route('admin.shopify.store') }}" method="POST" id="shopify-form">
                 @csrf
                 <div class="modal-body">
-                    <div class="connection-test-result" id="connection-result"></div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <div class="form-group">
-                                <label for="shop_url">URL de la boutique Shopify</label>
-                                <input type="url" class="form-control @error('shop_url') is-invalid @enderror" 
-                                       id="shop_url" name="shop_url" 
-                                       value="{{ old('shop_url') }}" 
-                                       required placeholder="https://votreboutique.com">
-                                @error('shop_url')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <small class="form-text text-muted">L'URL complète de votre boutique Shopify</small>
+                    <div class="conn-result" id="connection-result"></div>
+                    <div class="om-form-group" style="margin-bottom:16px;">
+                        <label class="om-form-label">URL de la boutique Shopify</label>
+                        <input type="url" class="om-form-input @error('shop_url') is-invalid @enderror" id="shop_url" name="shop_url" value="{{ old('shop_url') }}" required placeholder="https://votreboutique.myshopify.com">
+                        @error('shop_url')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="row" style="gap:0;">
+                        <div class="col-md-4 mb-3">
+                            <div class="om-form-group">
+                                <label class="om-form-label">Cle API (API Key)</label>
+                                <input type="text" class="om-form-input @error('api_key') is-invalid @enderror" id="api_key" name="api_key" value="{{ old('api_key') }}" required placeholder="xxxxxxxxx">
+                                @error('api_key')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="om-form-group">
+                                <label class="om-form-label">Secret API</label>
+                                <input type="password" class="om-form-input @error('api_secret') is-invalid @enderror" id="api_secret" name="api_secret" value="{{ old('api_secret') }}" required placeholder="shpss_xxxxxxx">
+                                @error('api_secret')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="om-form-group">
+                                <label class="om-form-label">Access Token <small style="color:var(--om-text-light);">(optionnel)</small></label>
+                                <input type="password" class="om-form-input @error('access_token') is-invalid @enderror" id="access_token" name="access_token" value="{{ old('access_token') }}" placeholder="shpat_xxxxxxx">
+                                @error('access_token')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="api_key">Clé API (API Key)</label>
-                                <input type="text" class="form-control @error('api_key') is-invalid @enderror"
-                                       id="api_key" name="api_key"
-                                       value="{{ old('api_key') }}"
-                                       required placeholder="xxxxxxxxxxxxxxxxx">
-                                @error('api_key')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                    <label class="modern-check" style="margin-bottom:20px;">
+                        <input type="checkbox" id="is_active" name="is_active" value="1" checked>
+                        <div>
+                            <strong>Activer immediatement</strong>
+                            <small style="display:block; color:var(--om-text-light);">Sync automatique toutes les 3 min</small>
                         </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="api_secret">Secret API (API Secret)</label>
-                                <input type="password" class="form-control @error('api_secret') is-invalid @enderror"
-                                       id="api_secret" name="api_secret"
-                                       value="{{ old('api_secret') }}"
-                                       required placeholder="shpss_xxxxxxxxxxxxxxxxx">
-                                @error('api_secret')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="access_token">Access Token</label>
-                                <input type="password" class="form-control @error('access_token') is-invalid @enderror"
-                                       id="access_token" name="access_token"
-                                       value="{{ old('access_token') }}"
-                                       placeholder="shpat_xxxxxxxxxxxxxxxxx">
-                                @error('access_token')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <small class="form-text text-muted">Optionnel si vous utilisez OAuth</small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="modern-checkbox mb-4">
-                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" checked>
-                        <label class="form-check-label fw-bold" for="is_active">
-                            Activer immédiatement cette intégration
-                            <small class="d-block text-muted">Synchronisation automatique toutes les 3 minutes</small>
-                        </label>
-                    </div>
-                    
+                    </label>
                     <div class="help-box">
-                        <h6><i class="fas fa-info-circle me-2"></i>Comment obtenir vos clés API Shopify</h6>
+                        <h6><i class="fas fa-info-circle" style="margin-right:8px;"></i>Comment obtenir vos cles API Shopify</h6>
                         <ol>
-                            <li>Connectez-vous à l'administration de votre boutique Shopify</li>
-                            <li>Allez dans <strong>Paramètres → Applications et canaux de vente</strong></li>
-                            <li>Cliquez sur <strong>"Développer des applications"</strong></li>
-                            <li>Cliquez sur <strong>"Créer une application"</strong></li>
-                            <li>Donnez un nom à votre application (ex: "Order Manager Integration")</li>
-                            <li>Configurez les <strong>Scopes</strong> requis (read_orders, write_orders, read_products...)</li>
+                            <li>Connectez-vous a l'admin Shopify</li>
+                            <li>Allez dans <strong>Parametres > Applications et canaux de vente</strong></li>
+                            <li>Cliquez sur <strong>"Developper des applications"</strong></li>
+                            <li>Creez une application et configurez les Scopes (read_orders, write_orders, read_products)</li>
                             <li>Installez l'application sur votre boutique</li>
-                            <li>Copiez l'<strong>API Key</strong>, l'<strong>API Secret</strong> et l'<strong>Access Token</strong> dans les champs ci-dessus</li>
+                            <li>Copiez l'API Key, l'API Secret et l'Access Token ci-dessus</li>
                         </ol>
                     </div>
-                    
-                    <div class="integration-info-box">
-                        <h6><i class="fas fa-magic me-2"></i>Fonctionnement de l'intégration automatique</h6>
+                    <div class="info-box">
+                        <h6><i class="fas fa-magic" style="margin-right:8px;"></i>Fonctionnement</h6>
                         <ul>
-                            <li><strong>Multi-boutiques :</strong> Vous pouvez connecter plusieurs boutiques Shopify</li>
-                            <li><strong>Import intelligent :</strong> Seules les commandes terminées/annulées gardent leur statut</li>
-                            <li><strong>Statut "nouvelle" :</strong> Toutes les autres commandes deviennent "nouvelle" pour traitement</li>
-                            <li><strong>Localisation automatique :</strong> Les régions et villes sont créées automatiquement</li>
-                            <li><strong>Synchronisation bidirectionnelle :</strong> Les modifications sont synchronisées dans les deux sens</li>
+                            <li><strong>Multi-boutiques :</strong> Connectez plusieurs boutiques</li>
+                            <li><strong>Import intelligent :</strong> Les commandes terminees gardent leur statut</li>
+                            <li><strong>Localisation auto :</strong> Regions et villes creees automatiquement</li>
+                            <li><strong>Sync bidirectionnelle :</strong> Modifications synchronisees</li>
                         </ul>
                     </div>
                 </div>
-                
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-primary" onclick="testConnection()">
-                        <i class="fas fa-plug me-2"></i>Tester la connexion
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Annuler
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Ajouter cette intégration
-                    </button>
+                    <button type="button" class="om-btn om-btn-ghost" onclick="testConnection()"><i class="fas fa-plug"></i> Tester</button>
+                    <button type="button" class="om-btn om-btn-ghost" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="om-btn om-btn-primary" style="background:#96bf48; border-color:#96bf48;"><i class="fas fa-save"></i> Ajouter</button>
                 </div>
             </form>
         </div>
@@ -593,207 +178,90 @@
 
 @section('scripts')
 <script>
-    // Configuration CSRF
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    
-    // Test de connexion en temps réel
-    function testConnection() {
-        const storeUrl = document.getElementById('shop_url').value;
-        const consumerKey = document.getElementById('api_key').value;
-        const consumerSecret = document.getElementById('api_secret').value;
-        const resultDiv = document.getElementById('connection-result');
-        const testBtn = document.querySelector('button[onclick="testConnection()"]');
-        
-        if (!storeUrl || !consumerKey || !consumerSecret) {
-            showConnectionResult('error', 'Veuillez remplir tous les champs requis avant de tester la connexion.');
-            return;
-        }
-        
-        // Animation du bouton
-        testBtn.disabled = true;
-        testBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Test en cours...';
-        
-        fetch('{{ route("admin.shopify.test-connection") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify({
-                shop_url: storeUrl,
-                api_key: consumerKey,
-                api_secret: consumerSecret
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                let message = data.message;
-                if (data.store_info) {
-                    message += `<br><strong>Boutique:</strong> ${data.store_info.name}`;
-                    if (data.store_info.version) {
-                        message += `<br><strong>Version Shopify:</strong> ${data.store_info.version}`;
-                    }
-                }
-                showConnectionResult('success', message);
-            } else {
-                showConnectionResult('error', data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            showConnectionResult('error', 'Erreur de connexion: ' + error.message);
-        })
-        .finally(() => {
-            testBtn.disabled = false;
-            testBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Tester la connexion';
-        });
-    }
-    
-    function showConnectionResult(type, message) {
-        const resultDiv = document.getElementById('connection-result');
-        resultDiv.className = `connection-test-result ${type}`;
-        resultDiv.innerHTML = `
-            <div class="d-flex align-items-start">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-3 mt-1"></i>
-                <div>${message}</div>
-            </div>
-        `;
-        resultDiv.style.display = 'block';
-        
-        // Cacher après 10 secondes si succès
-        if (type === 'success') {
-            setTimeout(() => {
-                resultDiv.style.display = 'none';
-            }, 10000);
-        }
-    }
-    
-    // Toggle d'activation/désactivation
-    function toggleIntegration(id, checkbox) {
-        const isActive = checkbox.checked;
-        
-        fetch(`{{ route('admin.shopify.index') }}/toggle/${id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify({
-                is_active: isActive
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Mettre à jour visuellement la carte d'intégration
-                const card = checkbox.closest('.integration-card');
-                if (isActive) {
-                    card.classList.remove('inactive');
-                    card.classList.add('active');
-                } else {
-                    card.classList.remove('active');
-                    card.classList.add('inactive');
-                }
-                
-                // Actualiser les statistiques
-                refreshStats();
-                
-                // Afficher un message de succès
-                showNotification('success', data.message);
-            } else {
-                // Revenir à l'état précédent en cas d'erreur
-                checkbox.checked = !isActive;
-                showNotification('error', 'Erreur lors de la modification');
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            checkbox.checked = !isActive;
-            showNotification('error', 'Erreur de connexion');
-        });
-    }
-    
-    // Suppression d'intégration
-    function deleteIntegration(id, storeName) {
-        if (confirm(`Êtes-vous sûr de vouloir supprimer l'intégration avec ${storeName} ?`)) {
-            window.location.href = `{{ route('admin.shopify.index') }}/delete/${id}`;
-        }
-    }
-    
-    // Actualisation des statistiques
-    function refreshStats() {
-        fetch('{{ route("admin.shopify.stats") }}')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('total-integrations').textContent = data.total_integrations;
-            document.getElementById('active-integrations').textContent = data.active_integrations;
-            document.getElementById('total-orders').textContent = data.total_orders;
-        })
-        .catch(error => {
-            console.error('Erreur lors de l\'actualisation:', error);
-        });
-    }
-    
-    // Fonction pour afficher les notifications
-    function showNotification(type, message) {
-        // Créer une notification temporaire
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Supprimer automatiquement après 3 secondes
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 3000);
-    }
-    
-    // Auto-refresh des stats toutes les 30 secondes
-    setInterval(refreshStats, 30000);
-    
-    // Gestion du formulaire
-    document.addEventListener('DOMContentLoaded', function() {
-        // Validation en temps réel des URLs
-        const urlInput = document.getElementById('shop_url');
-        urlInput.addEventListener('blur', function() {
-            if (this.value && !this.value.startsWith('http')) {
-                this.value = 'https://' + this.value;
-            }
-        });
-        
-        // Réinitialiser le formulaire après soumission réussie
-        const form = document.getElementById('shopify-form');
-        form.addEventListener('submit', function(e) {
-            const submitBtn = form.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
-        });
-        
-        // Rouvrir le modal en cas d'erreur de validation
-        @if($errors->any())
-            var addIntegrationModal = new bootstrap.Modal(document.getElementById('addIntegrationModal'));
-            addIntegrationModal.show();
-        @endif
-        
-        // Réinitialiser le formulaire quand le modal se ferme
-        document.getElementById('addIntegrationModal').addEventListener('hidden.bs.modal', function () {
-            const form = document.getElementById('shopify-form');
-            form.reset();
-            document.getElementById('connection-result').style.display = 'none';
-            
-            // Remettre le bouton submit dans son état normal
-            const submitBtn = form.querySelector('button[type="submit"]');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Ajouter cette intégration';
-        });
+const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+function testConnection() {
+    const url = document.getElementById('shop_url').value;
+    const key = document.getElementById('api_key').value;
+    const secret = document.getElementById('api_secret').value;
+    const token = document.getElementById('access_token').value;
+    const btn = document.querySelector('button[onclick="testConnection()"]');
+    if (!url || !key || !secret) { showConn('error', 'Remplissez les champs requis.'); return; }
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Test...';
+    fetch('{{ route("admin.shopify.test-connection") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ shop_url: url, api_key: key, api_secret: secret, access_token: token })
+    }).then(r => r.json()).then(d => {
+        let msg = d.message;
+        if (d.store_info) { msg += '<br><strong>Boutique:</strong> ' + d.store_info.name; }
+        showConn(d.success ? 'success' : 'error', msg);
+    }).catch(e => showConn('error', 'Erreur: ' + e.message))
+    .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plug"></i> Tester'; });
+}
+
+function showConn(type, msg) {
+    const el = document.getElementById('connection-result');
+    el.className = 'conn-result ' + type;
+    el.innerHTML = '<i class="fas fa-' + (type==='success'?'check-circle':'exclamation-triangle') + '" style="margin-right:8px;"></i>' + msg;
+    el.style.display = 'block';
+    if (type==='success') setTimeout(() => el.style.display='none', 10000);
+}
+
+function toggleIntegration(id, cb) {
+    const active = cb.checked;
+    fetch('{{ route("admin.shopify.index") }}/toggle/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ is_active: active })
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            const card = cb.closest('.intg-card');
+            card.classList.toggle('active', active); card.classList.toggle('inactive', !active);
+            refreshStats(); showNotif('success', d.message);
+        } else { cb.checked = !active; showNotif('error', 'Erreur'); }
+    }).catch(() => { cb.checked = !active; showNotif('error', 'Erreur connexion'); });
+}
+
+function deleteIntegration(id, name) {
+    if (confirm('Supprimer l\'integration avec ' + name + ' ?'))
+        window.location.href = '{{ route("admin.shopify.index") }}/delete/' + id;
+}
+
+function refreshStats() {
+    fetch('{{ route("admin.shopify.stats") }}').then(r => r.json()).then(d => {
+        document.getElementById('total-integrations').textContent = d.total_integrations;
+        document.getElementById('active-integrations').textContent = d.active_integrations;
+        document.getElementById('total-orders').textContent = d.total_orders;
+    }).catch(e => console.error('Stats error:', e));
+}
+
+function showNotif(type, msg) {
+    const n = document.createElement('div');
+    n.className = 'alert alert-' + (type==='success'?'success':'danger') + ' alert-dismissible fade show position-fixed';
+    n.style.cssText = 'top:20px;right:20px;z-index:9999;min-width:300px;border-radius:12px;';
+    n.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
+}
+
+setInterval(refreshStats, 30000);
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('shop_url').addEventListener('blur', function() {
+        if (this.value && !this.value.startsWith('http')) this.value = 'https://' + this.value;
     });
+    document.getElementById('shopify-form').addEventListener('submit', function() {
+        const btn = this.querySelector('button[type="submit"]');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+    });
+    @if($errors->any()) new bootstrap.Modal(document.getElementById('addIntegrationModal')).show(); @endif
+    document.getElementById('addIntegrationModal').addEventListener('hidden.bs.modal', function() {
+        document.getElementById('shopify-form').reset();
+        document.getElementById('connection-result').style.display = 'none';
+        const btn = this.querySelector('button[type="submit"]');
+        if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Ajouter'; }
+    });
+});
 </script>
 @endsection

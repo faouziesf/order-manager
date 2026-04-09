@@ -7,7 +7,7 @@
     <div class="col-lg-7">
         <div class="content-card">
             <div class="card-header-custom">
-                <h6><i class="fas fa-user-plus me-2 text-primary"></i>Nouvel employé Confirmi</h6>
+                <h6><i class="fas fa-user-plus me-2" style="color:var(--accent);"></i>Nouvel employé Confirmi</h6>
                 <a href="{{ route('confirmi.commercial.employees.index') }}" class="btn btn-sm btn-outline-royal">
                     <i class="fas fa-arrow-left me-1"></i>Retour
                 </a>
@@ -22,6 +22,14 @@
                 <form method="POST" action="{{ route('confirmi.commercial.employees.store') }}">
                     @csrf
                     <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" style="font-size:.8rem;">Rôle <span class="text-danger">*</span></label>
+                            <select name="role" class="form-select @error('role') is-invalid @enderror" required>
+                                <option value="employee" {{ old('role', request('role', 'employee')) === 'employee' ? 'selected' : '' }}>Employé (Confirmation)</option>
+                                <option value="agent" {{ old('role', request('role')) === 'agent' ? 'selected' : '' }}>Agent (Emballage)</option>
+                            </select>
+                            @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" style="font-size:.8rem;">Nom complet <span class="text-danger">*</span></label>
                             <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"

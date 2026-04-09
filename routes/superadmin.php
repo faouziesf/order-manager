@@ -217,6 +217,15 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
         });
 
         // ========================================
+        // EMBALLAGE
+        // ========================================
+        Route::prefix('emballage')->name('emballage.')->group(function () {
+            Route::get('/', function () {
+                return view('super-admin.emballage.index');
+            })->name('index');
+        });
+
+        // ========================================
         // PROFILE SUPER ADMIN
         // ========================================
         Route::prefix('profile')->name('profile.')->group(function () {

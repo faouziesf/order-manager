@@ -79,6 +79,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(135de
 </style>
 </head>
 <body>
+@include('partials._no-cache')
 
 <!-- Header -->
 <header class="header">
@@ -150,10 +151,28 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(135de
 <h2>Connexion</h2>
 <p>Accédez à votre espace</p>
 
+@if(session('success'))
+<div style="background:#f0fdf4;color:#166534;border:2px solid #bbf7d0;padding:.875rem 1rem;border-radius:12px;font-size:.875rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.625rem">
+<i class="fas fa-check-circle"></i>
+<span>{{ session('success') }}</span>
+</div>
+@endif
+
 @if(session('error'))
 <div style="background:#fef2f2;color:#991b1b;border:2px solid #fecaca;padding:.875rem 1rem;border-radius:12px;font-size:.875rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.625rem">
 <i class="fas fa-exclamation-circle"></i>
 <span>{{ session('error') }}</span>
+</div>
+@endif
+
+@if($errors->any())
+<div style="background:#fef2f2;color:#991b1b;border:2px solid #fecaca;padding:.875rem 1rem;border-radius:12px;font-size:.875rem;margin-bottom:1.25rem">
+@foreach($errors->all() as $error)
+<div style="display:flex;align-items:center;gap:.625rem;margin-bottom:.25rem">
+<i class="fas fa-exclamation-circle"></i>
+<span>{{ $error }}</span>
+</div>
+@endforeach
 </div>
 @endif
 
@@ -164,7 +183,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(135de
 <i class="fas fa-envelope"></i>
 <span>Email</span>
 </label>
-<input type="email" name="email" class="form-input" placeholder="votre@email.com" value="{{ old('email') }}" required autofocus>
+<input type="email" name="email" class="form-input" placeholder="votre@email.com" value="{{ old('email', request('email')) }}" required autofocus>
 </div>
 
 <div class="form-group">
@@ -238,10 +257,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(135de
 
 <div class="feature">
 <div class="feature-icon">
-<i class="fas fa-shipping-fast"></i>
+<i class="fas fa-box"></i>
 </div>
-<h3>Expédition Auto</h3>
-<p>Transfert automatique vers Masafa Express après confirmation.</p>
+<h3>Emballage & Expédition</h3>
+<p>Créez vos bons de livraison et gérez l'emballage directement depuis la plateforme.</p>
 </div>
 </div>
 </section>
@@ -253,13 +272,5 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(135de
 </div>
 </footer>
 
-@if(session('logout_success'))
-<script>
-// Auto-refresh après déconnexion pour forcer nouvelle session
-setTimeout(function() {
-    window.location.reload(true);
-}, 100);
-</script>
-@endif
 </body>
 </html>

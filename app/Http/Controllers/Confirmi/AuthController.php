@@ -99,18 +99,16 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        // Log out from whichever guard is active
+        // Log out from ALL guards to ensure clean state
         foreach (['confirmi', 'super-admin', 'admin'] as $guard) {
             if (Auth::guard($guard)->check()) {
                 Auth::guard($guard)->logout();
-                break;
             }
         }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         
-        // Redirection avec session flag pour forcer refresh
-        return redirect()->route('confirmi.home')->with('logout_success', true);
+        return redirect()->route('confirmi.home');
     }
 }

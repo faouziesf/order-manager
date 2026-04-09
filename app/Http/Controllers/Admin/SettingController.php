@@ -26,7 +26,12 @@ class SettingController extends Controller
      */
     public function index()
     {
-        $adminId = auth('admin')->id();
+        $admin = auth('admin')->user();
+        if ($admin->confirmi_status === 'active') {
+            return redirect()->route('admin.confirmi.index')->with('info', 'Vos paramètres de traitement sont gérés par Confirmi.');
+        }
+
+        $adminId = $admin->id;
         
         // Récupérer tous les paramètres avec des valeurs par défaut
         $settings = [
@@ -76,8 +81,13 @@ class SettingController extends Controller
      */
     public function store(Request $request)
     {
+        $admin = auth('admin')->user();
+        if ($admin->confirmi_status === 'active') {
+            return back()->with('error', 'Paramètres gérés par Confirmi.');
+        }
+
         try {
-            $adminId = auth('admin')->id();
+            $adminId = $admin->id;
             
             // Validation des paramètres
             $validated = $request->validate([

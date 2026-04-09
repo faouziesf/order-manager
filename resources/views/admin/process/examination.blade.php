@@ -4,6 +4,7 @@
 @section('page-title', 'Interface d\'Examen des Problèmes de Stock')
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
     :root {
         --examination-primary: #f59e0b;
@@ -12,21 +13,16 @@
         --examination-warning: #ef4444;
         --examination-danger: #8b5cf6;
         --examination-info: #06b6d4;
-        --glass-bg: rgba(255, 255, 255, 0.95);
+        --glass-bg: var(--card-bg, rgba(255, 255, 255, 0.95));
         --shadow-modern: 0 4px 6px rgba(0, 0, 0, 0.05);
         --shadow-elevated: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         --border-radius-modern: 12px;
         --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    body {
-        background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
     /* Container principal optimisé pour desktop */
     .examination-container {
-        background: white;
+        background: var(--card-bg, white);
         border-radius: var(--border-radius-modern);
         box-shadow: var(--shadow-modern);
         margin: 0.5rem;
@@ -1153,6 +1149,24 @@
     .table tbody tr, .order-card {
         animation: slideUp 0.2s ease-out;
     }
+
+    /* ============= DARK MODE OVERRIDES ============= */
+    html[data-theme="dark"] .search-input { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .filters-trigger { background: var(--bg-card); color: var(--text-secondary); border-color: var(--border); }
+    html[data-theme="dark"] .filters-dropdown-menu { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .filters-title { color: var(--text); }
+    html[data-theme="dark"] .filter-label { color: var(--text-secondary); }
+    html[data-theme="dark"] .filter-input { background: var(--bg-muted); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .filters-reset { color: var(--text-secondary); }
+    html[data-theme="dark"] .view-btn.active { background: var(--bg-card); color: var(--text); }
+    html[data-theme="dark"] .table-container { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .table thead th { color: var(--text-secondary); }
+    html[data-theme="dark"] .order-card { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .order-card-checkbox { background: var(--bg-muted); border-color: var(--border); }
+    html[data-theme="dark"] .customer-name { color: var(--text); }
+    html[data-theme="dark"] .status-nouvelle { color: var(--text-secondary); }
+    html[data-theme="dark"] .btn-secondary { color: var(--text-secondary); }
+    html[data-theme="dark"] .empty-state h3, html[data-theme="dark"] .loading-state h3 { color: var(--text); }
 </style>
 @endsection
 

@@ -8,6 +8,35 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --login-bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #94a3b8;
+            --input-bg: #ffffff;
+            --input-border: #e2e8f0;
+            --error-bg: #fef2f2;
+            --error-text: #991b1b;
+            --error-border: #fecaca;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --login-bg: #0f172a;
+                --card-bg: #1e293b;
+                --text: #f1f5f9;
+                --text-secondary: #94a3b8;
+                --text-muted: #64748b;
+                --input-bg: #1e293b;
+                --input-border: #475569;
+                --error-bg: rgba(239,68,68,0.1);
+                --error-text: #fca5a5;
+                --error-border: rgba(239,68,68,0.2);
+            }
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
@@ -25,39 +54,43 @@
             width: 56px; height: 56px; margin: 0 auto 0.75rem;
             background: rgba(255,255,255,0.15);
             border-radius: 16px; display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; backdrop-filter: blur(10px);
+            font-size: 1.5rem;
         }
         .login-brand h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.5px; }
         .login-brand p { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
 
         .login-card {
-            background: white; border-radius: 16px; padding: 2rem;
+            background: var(--card-bg); border-radius: 16px; padding: 2rem;
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            border: 1px solid var(--input-border);
         }
-        .login-card h2 { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-bottom: 1.5rem; }
+        .login-card h2 { font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 1.5rem; }
 
         .form-group { margin-bottom: 1.25rem; }
         .form-group label {
             display: block; font-size: 0.8rem; font-weight: 600;
-            color: #334155; margin-bottom: 0.4rem;
+            color: var(--text-secondary); margin-bottom: 0.4rem;
         }
         .input-wrapper {
             position: relative;
         }
         .input-wrapper i {
             position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);
-            color: #94a3b8; font-size: 0.9rem;
+            color: var(--text-muted); font-size: 0.9rem;
         }
         .input-wrapper input {
             width: 100%; padding: 0.7rem 0.85rem 0.7rem 2.5rem;
-            border: 1.5px solid #e2e8f0; border-radius: 10px;
+            border: 1.5px solid var(--input-border); border-radius: 10px;
             font-size: 0.9rem; font-family: 'Inter', sans-serif;
             transition: border-color 0.2s, box-shadow 0.2s;
             outline: none;
+            background: var(--input-bg);
+            color: var(--text);
         }
+        .input-wrapper input::placeholder { color: var(--text-muted); }
         .input-wrapper input:focus {
             border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
         }
 
         .remember-row {
@@ -66,7 +99,7 @@
         }
         .remember-row label {
             display: flex; align-items: center; gap: 0.4rem;
-            font-size: 0.8rem; color: #64748b; cursor: pointer;
+            font-size: 0.8rem; color: var(--text-muted); cursor: pointer;
         }
         .remember-row input[type="checkbox"] {
             width: 16px; height: 16px; accent-color: #2563eb;
@@ -77,16 +110,20 @@
             background: linear-gradient(135deg, #1e3a8a, #2563eb);
             color: white; border: none; border-radius: 10px;
             font-size: 0.95rem; font-weight: 700; cursor: pointer;
-            transition: opacity 0.2s;
+            transition: opacity 0.2s, transform 0.2s;
             font-family: 'Inter', sans-serif;
         }
-        .btn-login:hover { opacity: 0.9; }
+        .btn-login:hover { opacity: 0.9; transform: translateY(-1px); }
 
         .alert-error {
-            background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;
+            background: var(--error-bg); color: var(--error-text);
+            border: 1px solid var(--error-border);
             padding: 0.65rem 0.85rem; border-radius: 8px; font-size: 0.8rem;
             margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
         }
+
+        .field-error { color: #ef4444; font-size: 0.75rem; }
+        @media (prefers-color-scheme: dark) { .field-error { color: #fca5a5; } }
 
         @media (max-width: 480px) {
             .login-card { padding: 1.5rem; }
@@ -118,7 +155,7 @@
                         <i class="fas fa-envelope"></i>
                         <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="email@confirmi.com" required autofocus>
                     </div>
-                    @error('email')<small style="color:#dc2626;font-size:0.75rem;">{{ $message }}</small>@enderror
+                    @error('email')<small class="field-error">{{ $message }}</small>@enderror
                 </div>
 
                 <div class="form-group">
@@ -127,7 +164,7 @@
                         <i class="fas fa-lock"></i>
                         <input type="password" id="password" name="password" placeholder="Entrez votre mot de passe" required>
                     </div>
-                    @error('password')<small style="color:#dc2626;font-size:0.75rem;">{{ $message }}</small>@enderror
+                    @error('password')<small class="field-error">{{ $message }}</small>@enderror
                 </div>
 
                 <div class="remember-row">

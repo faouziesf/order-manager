@@ -157,11 +157,88 @@ class OrderManagementController extends Controller
     }
 
     /**
+     * Bulk reject (only orders with 0 attempts)
+     */
+    public function bulkReject(Request $request)
+    {
+        $request->validate([
+            'assignment_ids' => 'required|array',
+            'assignment_ids.*' => 'exists:confirmi_order_assignments,id',
+        ]);
+
+        $count = ConfirmiOrderAssignment::whereIn('id', $request->assignment_ids)
+            ->where('attempts', 0)
+            ->whereIn('status', ['pending', 'assigned'])
+            ->update([
+                'status' => 'cancelled',
+                'completed_at' => now(),
+                'last_result' => 'bulk_rejected',
+            ]);
+
+        return back()->with('success', "{$count} commande(s) rejetée(s).");
+    }
+
+    /**
+     * Bulk reassign (only orders with 0 attempts)
+     */
+    public function bulkReassign(Request $request)
+    {
+        $request->validate([
+            'assignment_ids' => 'required|array',
+            'assignment_ids.*' => 'exists:confirmi_order_assignments,id',
+            'assigned_to' => 'required|exists:confirmi_users,id',
+        ]);
+
+        $employee = ConfirmiUser::findOrFail($request->assigned_to);
+        if (!$employee->isEmployee() || !$employee->is_active) {
+            return back()->with('error', 'Employé invalide ou inactif.');
+        }
+
+        $commercial = Auth::guard('confirmi')->user();
+
+        $count = ConfirmiOrderAssignment::whereIn('id', $request->assignment_ids)
+            ->where('attempts', 0)
+            ->whereIn('status', ['pending', 'assigned', 'in_progress'])
+            ->update([
+                'assigned_to' => $employee->id,
+                'assigned_by' => $commercial->id,
+                'status' => 'assigned',
+                'assigned_at' => now(),
+            ]);
+
+        return back()->with('success', "{$count} commande(s) réassignée(s) à {$employee->name}.");
+    }
+
+    /**
+     * Set auto-assignment: assign a default employee to an admin
+     */
+    public function setAutoAssign(Request $request, Admin $admin)
+    {
+        $request->validate([
+            'employee_id' => 'nullable|exists:confirmi_users,id',
+        ]);
+
+        if ($admin->confirmi_status !== 'active') {
+            return back()->with('error', 'Admin Confirmi non actif.');
+        }
+
+        $admin->update(['confirmi_default_employee_id' => $request->employee_id]);
+
+        if ($request->employee_id) {
+            $employee = ConfirmiUser::find($request->employee_id);
+            return back()->with('success', "Auto-assignation activée: les commandes de {$admin->shop_name} iront à {$employee->name}.");
+        }
+
+        return back()->with('success', 'Auto-assignation désactivée.');
+    }
+
+    /**
      * Liste des admins avec Confirmi actif
      */
     public function adminsList()
     {
         $admins = Admin::where('confirmi_status', 'active')
+            ->with(['defaultConfirmiEmployee', 'defaultConfirmiAgent'])
             ->withCount([
                 'orders as total_confirmi_orders' => function ($q) {
                     $q->whereHas('confirmiAssignment');
@@ -172,6 +249,42 @@ class OrderManagementController extends Controller
             ])
             ->get();
 
-        return view('confirmi.commercial.admins', compact('admins'));
+        $employees = ConfirmiUser::where('role', 'employee')->where('is_active', true)->get();
+        $agents = ConfirmiUser::where('role', 'agent')->where('is_active', true)->get();
+
+        return view('confirmi.commercial.admins', compact('admins', 'employees', 'agents'));
+    }
+
+    /**
+     * Toggle emballage for an admin
+     */
+    public function toggleEmballage(Admin $admin, Request $request)
+    {
+        if ($admin->confirmi_status !== 'active') {
+            return back()->with('error', 'Admin Confirmi non actif.');
+        }
+
+        $admin->update([
+            'emballage_enabled' => !$admin->emballage_enabled,
+        ]);
+
+        $status = $admin->emballage_enabled ? 'activé' : 'désactivé';
+        return back()->with('success', "Emballage {$status} pour {$admin->name}.");
+    }
+
+    /**
+     * Set default agent for an admin
+     */
+    public function setDefaultAgent(Admin $admin, Request $request)
+    {
+        $request->validate([
+            'agent_id' => 'nullable|exists:confirmi_users,id',
+        ]);
+
+        $admin->update([
+            'confirmi_default_agent_id' => $request->agent_id ?: null,
+        ]);
+
+        return back()->with('success', 'Agent par défaut mis à jour.');
     }
 }

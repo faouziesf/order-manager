@@ -470,11 +470,27 @@ class AdminController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status === 'active');
+            if ($request->status === 'expired') {
+                $query->where('expiry_date', '<', now());
+            } else {
+                $query->where('is_active', $request->status === 'active');
+            }
         }
 
-        if ($request->filled('subscription')) {
+        if ($request->filled('subscription_type')) {
+            $query->where('subscription_type', $request->subscription_type);
+        } elseif ($request->filled('subscription')) {
             $query->where('subscription_type', $request->subscription);
+        }
+
+        if ($request->filled('confirmi')) {
+            if ($request->confirmi === 'active') {
+                $query->where('confirmi_status', 'active');
+            } else {
+                $query->where(function($q) {
+                    $q->whereNull('confirmi_status')->orWhere('confirmi_status', '!=', 'active');
+                });
+            }
         }
 
         if ($request->filled('expiry_filter')) {

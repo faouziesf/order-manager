@@ -5,7 +5,7 @@
 @section('content')
 <div class="content-card">
     <div class="card-header-custom">
-        <h6><i class="fas fa-inbox me-2 text-primary"></i>Demandes ({{ $requests->total() }})</h6>
+        <h6><i class="fas fa-inbox me-2" style="color:var(--accent);"></i>Demandes ({{ $requests->total() }})</h6>
     </div>
     <div class="table-responsive">
         <table class="table table-modern">

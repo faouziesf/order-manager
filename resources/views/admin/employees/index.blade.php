@@ -2,13 +2,69 @@
 
 @section('title', 'Gestion des Employés')
 
+@section('css')
+@include('admin.partials._shared-styles')
+<style>
+    /* Stat cards */
+    .emp-stat-card {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius, 14px); padding: 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    .emp-stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .emp-stat-card .stat-icon {
+        width: 48px; height: 48px; border-radius: var(--radius-sm, 10px);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; flex-shrink: 0;
+    }
+    .emp-stat-card h3 { color: var(--text); font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; }
+    .emp-stat-card p, .emp-stat-card small { color: var(--text-secondary); }
+
+    /* Table card */
+    .emp-table-card {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius, 14px); overflow: hidden;
+    }
+    .emp-table-card .card-header {
+        background: var(--bg-muted) !important; border-bottom: 1px solid var(--border) !important;
+        padding: 1rem 1.25rem;
+    }
+    .emp-table-card .card-header h5 { color: var(--text); }
+    .emp-table-card .card-footer { background: var(--bg-muted) !important; border-top: 1px solid var(--border) !important; }
+
+    /* Empty state modern */
+    .emp-empty-icon {
+        width: 80px; height: 80px;
+        border-radius: var(--radius-lg, 18px);
+        background: var(--bg-muted);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 1rem; font-size: 2rem; color: var(--text-muted);
+    }
+
+    /* Page header */
+    .emp-page-header h1 { color: var(--text); font-weight: 800; letter-spacing: -0.02em; }
+    .emp-page-header p { color: var(--text-secondary); }
+
+    /* Modern action buttons */
+    .emp-actions .btn-outline-primary,
+    .emp-actions .btn-outline-warning,
+    .emp-actions .btn-outline-secondary,
+    .emp-actions .btn-outline-success,
+    .emp-actions .btn-outline-danger {
+        border-radius: var(--radius-sm, 10px);
+        border-width: 1px;
+    }
+</style>
+@endsection
+
 @section('content')
 <div class="container-fluid animate-fade-in" x-data="employeesIndex()">
     <!-- Header Section -->
-    <div class="row mb-4">
+    <div class="row mb-4 emp-page-header">
         <div class="col-md-8">
-            <h1 class="h2 fw-bold text-dark mb-2">Gestion des Employés</h1>
-            <p class="text-muted">Gérez vos employés et leurs affectations</p>
+            <h1 class="h2 mb-2">Gestion des Employés</h1>
+            <p class="mb-0">Gérez vos employés et leurs affectations</p>
         </div>
         <div class="col-md-4 text-end">
             @if(\App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->count() < $admin->max_employees)
@@ -70,28 +126,23 @@
     @endif
 
     <!-- Stats Cards -->
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4">
         <!-- Total Employés -->
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100 card-hover">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small fw-medium mb-1">Total Employés</p>
-                            <h3 class="fw-bold mb-0" x-data="{ count: 0 }" x-init="setTimeout(() => { count = {{ $employees->total() }} }, 300)">
-                                <span x-text="count"></span>
-                            </h3>
-                            <div class="d-flex align-items-center mt-2">
-                                <div class="progress flex-fill me-2" style="height: 8px;">
-                                    <div class="progress-bar bg-success progress-bar-animated" 
-                                         style="width: {{ $admin->max_employees > 0 ? ($employees->total() / $admin->max_employees * 100) : 0 }}%"></div>
-                                </div>
-                                <small class="text-muted">{{ $admin->max_employees > 0 ? round($employees->total() / $admin->max_employees * 100) : 0 }}%</small>
+            <div class="emp-stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="small fw-medium mb-1">Total Employés</p>
+                        <h3 class="mb-0">{{ $employees->total() }}</h3>
+                        <div class="d-flex align-items-center mt-2">
+                            <div class="progress flex-fill me-2" style="height: 6px; border-radius: 3px; background: var(--bg-muted);">
+                                <div class="progress-bar" style="width: {{ $admin->max_employees > 0 ? ($employees->total() / $admin->max_employees * 100) : 0 }}%; background: var(--success); border-radius: 3px;"></div>
                             </div>
+                            <small>{{ $admin->max_employees > 0 ? round($employees->total() / $admin->max_employees * 100) : 0 }}%</small>
                         </div>
-                        <div class="bg-success bg-opacity-10 rounded-3 p-3">
-                            <i class="fas fa-users text-success fa-lg"></i>
-                        </div>
+                    </div>
+                    <div class="stat-icon" style="background: var(--success-light); color: var(--success);">
+                        <i class="fas fa-users"></i>
                     </div>
                 </div>
             </div>
@@ -99,22 +150,20 @@
 
         <!-- Employés Actifs -->
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100 card-hover">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small fw-medium mb-1">Employés Actifs</p>
-                            @php
-                                $activeEmployeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->where('is_active', true)->count();
-                            @endphp
-                            <h3 class="fw-bold mb-0">{{ $activeEmployeeCount }}</h3>
-                            <small class="text-success">
-                                {{ $employees->total() > 0 ? round($activeEmployeeCount / $employees->total() * 100) : 0 }}% du total
-                            </small>
-                        </div>
-                        <div class="bg-primary bg-opacity-10 rounded-3 p-3">
-                            <i class="fas fa-check-circle text-primary fa-lg"></i>
-                        </div>
+            <div class="emp-stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="small fw-medium mb-1">Employés Actifs</p>
+                        @php
+                            $activeEmployeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->where('is_active', true)->count();
+                        @endphp
+                        <h3 class="mb-0">{{ $activeEmployeeCount }}</h3>
+                        <small style="color: var(--success);">
+                            {{ $employees->total() > 0 ? round($activeEmployeeCount / $employees->total() * 100) : 0 }}% du total
+                        </small>
+                    </div>
+                    <div class="stat-icon" style="background: var(--primary-50, #eef2ff); color: var(--primary);">
+                        <i class="fas fa-check-circle"></i>
                     </div>
                 </div>
             </div>
@@ -122,19 +171,17 @@
 
         <!-- Limite Employés -->
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100 card-hover">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small fw-medium mb-1">Limite Employés</p>
-                            <h3 class="fw-bold mb-0">{{ $admin->max_employees }}</h3>
-                            <small class="text-muted">
-                                {{ $admin->max_employees - $employees->total() }} place(s) restante(s)
-                            </small>
-                        </div>
-                        <div class="bg-warning bg-opacity-10 rounded-3 p-3">
-                            <i class="fas fa-chart-bar text-warning fa-lg"></i>
-                        </div>
+            <div class="emp-stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="small fw-medium mb-1">Limite Employés</p>
+                        <h3 class="mb-0">{{ $admin->max_employees }}</h3>
+                        <small>
+                            {{ $admin->max_employees - $employees->total() }} place(s) restante(s)
+                        </small>
+                    </div>
+                    <div class="stat-icon" style="background: var(--warning-light); color: var(--warning);">
+                        <i class="fas fa-chart-bar"></i>
                     </div>
                 </div>
             </div>
@@ -142,30 +189,26 @@
 
         <!-- Inactifs -->
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100 card-hover">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small fw-medium mb-1">Inactifs</p>
-                            @php
-                                $inactiveEmployeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->where('is_active', false)->count();
-                            @endphp
-                            <h3 class="fw-bold mb-0">{{ $inactiveEmployeeCount }}</h3>
-                            @if($inactiveEmployeeCount > 0)
-                                <small class="text-warning">
-                                    <i class="fas fa-exclamation-triangle me-1"></i>
-                                    Désactivés
-                                </small>
-                            @else
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>
-                                    Tous actifs
-                                </small>
-                            @endif
-                        </div>
-                        <div class="bg-info bg-opacity-10 rounded-3 p-3">
-                            <i class="fas fa-user-slash text-info fa-lg"></i>
-                        </div>
+            <div class="emp-stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="small fw-medium mb-1">Inactifs</p>
+                        @php
+                            $inactiveEmployeeCount = \App\Models\Admin::where('role', \App\Models\Admin::ROLE_EMPLOYEE)->where('created_by', $admin->id)->where('is_active', false)->count();
+                        @endphp
+                        <h3 class="mb-0">{{ $inactiveEmployeeCount }}</h3>
+                        @if($inactiveEmployeeCount > 0)
+                            <small style="color: var(--warning);">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Désactivés
+                            </small>
+                        @else
+                            <small style="color: var(--success);">
+                                <i class="fas fa-check me-1"></i>Tous actifs
+                            </small>
+                        @endif
+                    </div>
+                    <div class="stat-icon" style="background: var(--info-light); color: var(--info);">
+                        <i class="fas fa-user-slash"></i>
                     </div>
                 </div>
             </div>
@@ -173,9 +216,9 @@
     </div>
 
     <!-- Table Card -->
-    <div class="card shadow-lg border-0">
+    <div class="emp-table-card">
         <!-- Card Header -->
-        <div class="card-header bg-light border-bottom">
+        <div class="card-header border-bottom">
             <div class="row align-items-center g-3">
                 <div class="col-md-6">
                     <h5 class="card-title mb-0">Liste des Employés</h5>
@@ -455,8 +498,8 @@
             @else
                 <!-- Empty State -->
                 <div class="text-center py-5">
-                    <div class="bg-light rounded-4 p-4 d-inline-block mb-4">
-                        <i class="fas fa-users text-muted" style="font-size: 3rem;"></i>
+                    <div class="emp-empty-icon">
+                        <i class="fas fa-users"></i>
                     </div>
                     <h5 class="fw-semibold">Aucun employé trouvé</h5>
                     <p class="text-muted mb-4">
@@ -935,110 +978,28 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Animations personnalisées */
+/* Animations */
 @keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
+.animate-fade-in { animation: slideUp 0.3s ease-out; }
+.animate-slide-up { animation: slideUp 0.35s ease-out forwards; }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
+/* Action buttons */
+.action-buttons { opacity: 0.7; transition: opacity 0.15s; }
+.table-row-hover:hover .action-buttons { opacity: 1; }
+.table-row-hover:hover { background: var(--bg-card-hover, #f8fafc); }
 
-.animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
-}
+/* Sortable header */
+.sortable-header { cursor: pointer; user-select: none; transition: background 0.15s; }
+.sortable-header:hover { background: var(--bg-card-hover) !important; }
+.cursor-pointer { cursor: pointer; }
 
-.animate-slide-up {
-    animation: slideUp 0.5s ease-out forwards;
-}
-
-/* Amélioration des cartes */
-.card-hover {
-    transition: all 0.3s ease;
-}
-
-.card-hover:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Amélioration des boutons d'action */
-.action-buttons {
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-}
-
-.table-row-hover:hover .action-buttons {
-    opacity: 1;
-}
-
-/* Style pour les lignes du tableau */
-.table-row-hover:hover {
-    background-color: rgba(13, 110, 253, 0.05);
-}
-
-/* Curseur pointeur pour les en-têtes triables */
-.sortable-header {
-    cursor: pointer;
-    user-select: none;
-    transition: background-color 0.2s ease;
-}
-
-.sortable-header:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-.cursor-pointer {
-    cursor: pointer;
-}
-
-/* Amélioration du dropdown */
-.dropdown-menu.show {
-    display: block;
-}
-
-/* Animation pour les barres de progression */
-.progress-bar {
-    transition: width 1.5s ease-out;
-}
-
-/* Style pour les badges */
-.badge {
-    font-size: 0.75em;
-}
-
-/* Amélioration des boutons */
-.btn {
-    transition: all 0.2s ease-in-out;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-}
-
-/* Toast container */
-.toast-container {
-    z-index: 9999;
-}
-
-/* Responsive amélioré */
+/* Responsive */
 @media (max-width: 768px) {
-    .btn-group-sm .btn {
-        padding: 0.25rem 0.4rem;
-        font-size: 0.7rem;
-    }
-    
-    .action-buttons {
-        opacity: 1;
-    }
+    .btn-group-sm .btn { padding: 0.25rem 0.4rem; font-size: 0.7rem; }
+    .action-buttons { opacity: 1; }
 }
 </style>
 @endsection

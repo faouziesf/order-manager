@@ -21,6 +21,7 @@ class Admin extends Authenticatable
         'email',
         'password',
         'role',
+        'permissions',
         'shop_name',
         'identifier',
         'expiry_date',
@@ -41,6 +42,9 @@ class Admin extends Authenticatable
         'confirmi_rate_delivered',
         'confirmi_approved_by',
         'confirmi_activated_at',
+        'confirmi_default_employee_id',
+        'emballage_enabled',
+        'confirmi_default_agent_id',
     ];
 
     protected $hidden = [
@@ -63,7 +67,56 @@ class Admin extends Authenticatable
         'confirmi_rate_confirmed' => 'decimal:3',
         'confirmi_rate_delivered' => 'decimal:3',
         'confirmi_activated_at' => 'datetime',
+        'permissions' => 'array',
     ];
+
+    // ========================================
+    // DEFAULT PERMISSIONS PER ROLE
+    // ========================================
+
+    const DEFAULT_PERMISSIONS = [
+        'can_manage_orders'   => true,
+        'can_process_orders'  => true,
+        'can_manage_products' => true,
+        'can_manage_stock'    => true,
+        'can_manage_users'    => false,
+        'can_manage_settings' => false,
+        'can_manage_delivery' => false,
+        'can_import'          => false,
+        'can_view_stats'      => true,
+        'can_manage_integrations' => false,
+    ];
+
+    /**
+     * Check if this user can perform a given action.
+     * Admins always return true. Managers/Employees check granular permissions.
+     */
+    public function can($ability, $arguments = []): bool
+    {
+        // If it's a standard Laravel policy check, delegate to parent
+        if (!is_string($ability) || str_contains($ability, '.') || !empty($arguments)) {
+            return parent::can($ability, $arguments);
+        }
+
+        // Full admin has all permissions
+        if ($this->role === self::ROLE_ADMIN) {
+            return true;
+        }
+
+        $permissions = $this->permissions ?? [];
+        return (bool) ($permissions[$ability] ?? self::DEFAULT_PERMISSIONS[$ability] ?? false);
+    }
+
+    /**
+     * Get the effective admin ID (the parent admin for sub-accounts).
+     */
+    public function getEffectiveAdminId(): int
+    {
+        if ($this->role !== self::ROLE_ADMIN && $this->created_by) {
+            return $this->created_by;
+        }
+        return $this->id;
+    }
 
     // ========================================
     // RELATIONS EXISTANTES
@@ -157,9 +210,24 @@ class Admin extends Authenticatable
         return $this->hasOne(MasafaConfiguration::class);
     }
 
+    public function kolixyConfiguration()
+    {
+        return $this->hasOne(MasafaConfiguration::class);
+    }
+
     public function isConfirmiActive(): bool
     {
         return $this->confirmi_status === 'active';
+    }
+
+    public function defaultConfirmiEmployee()
+    {
+        return $this->belongsTo(ConfirmiUser::class, 'confirmi_default_employee_id');
+    }
+
+    public function defaultConfirmiAgent()
+    {
+        return $this->belongsTo(ConfirmiUser::class, 'confirmi_default_agent_id');
     }
 
     // ========================================

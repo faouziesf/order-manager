@@ -252,7 +252,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color
 <div class="feature-card">
 <div class="feature-icon"><i class="fas fa-shipping-fast"></i></div>
 <h3 class="feature-title">Expédition Auto</h3>
-<p class="feature-desc">Transfert automatique vers Masafa Express après confirmation.</p>
+<p class="feature-desc">Transfert automatique vers Kolixy après confirmation.</p>
 </div>
 </div>
 </section>
@@ -293,7 +293,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color
 <div class="step-number">4</div>
 <div class="step-content">
 <h3 class="step-title">Expédiez automatiquement</h3>
-<p class="step-desc">Envoi direct à Masafa Express après confirmation.</p>
+<p class="step-desc">Envoi direct à Kolixy après confirmation.</p>
 </div>
 </div>
 </div>

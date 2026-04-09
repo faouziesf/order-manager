@@ -1,216 +1,273 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
 @section('title', 'Importation de commandes')
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
-    .import-box {
-        border: 2px dashed #ccc;
-        padding: 20px;
+    .upload-zone {
+        border: 2px dashed var(--om-border);
+        border-radius: 16px;
+        padding: 48px 24px;
         text-align: center;
-        background-color: #f9f9f9;
-        border-radius: 5px;
-        margin-bottom: 20px;
-    }
-    
-    .import-icon {
-        font-size: 40px;
-        color: #aaa;
-        margin-bottom: 15px;
-    }
-    
-    .file-input-zone {
-        position: relative;
-        padding: 30px;
+        background: var(--bg-muted, #f8fafc);
+        transition: all 0.3s ease;
         cursor: pointer;
-        transition: all 0.3s;
+        position: relative;
     }
-    
-    .file-input-zone:hover {
-        background-color: #f0f0f0;
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: var(--om-primary);
+        background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+        transform: translateY(-2px);
     }
-    
-    .file-input-zone input[type="file"] {
+    .upload-zone input[type="file"] {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         opacity: 0;
         cursor: pointer;
     }
-    
-    .example-table {
-        width: 100%;
-        margin: 20px 0;
-        border-collapse: collapse;
+    .upload-icon {
+        width: 72px; height: 72px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, var(--om-primary) 0%, #7c3aed 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        color: white;
+        font-size: 28px;
     }
-    
-    .example-table th, .example-table td {
-        border: 1px solid #ddd;
-        padding: 8px;
+    .file-info {
+        display: none;
+        margin-top: 16px;
+        padding: 12px 20px;
+        background: #ecfdf5;
+        border-radius: 10px;
+        color: #065f46;
+        font-weight: 600;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+    }
+    .file-info.show { display: flex; }
+    .format-card {
+        background: var(--card-bg, white);
+        border-radius: 16px;
+        border: 1px solid var(--om-border);
+        padding: 24px;
+    }
+    .format-card h6 {
+        font-weight: 700;
+        color: var(--om-text);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .column-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 16px 0;
+    }
+    .column-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-color, #f1f5f9);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+    }
+    .column-list li:last-child { border-bottom: 0; }
+    .column-list .col-tag {
+        background: #eef2ff;
+        color: var(--om-primary);
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .product-example {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        border-radius: 10px;
+        overflow: hidden;
+        font-size: 13px;
+    }
+    .product-example th {
+        background: var(--om-primary);
+        color: white;
+        padding: 8px 12px;
+        font-weight: 600;
         text-align: left;
     }
-    
-    .example-table th {
-        background-color: #f8f9fc;
-        font-weight: 500;
+    .product-example td {
+        padding: 8px 12px;
+        background: var(--bg-muted, #f8fafc);
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
     }
-    
-    .advanced-options {
+    .options-section {
+        background: var(--bg-muted, #f8fafc);
+        border-radius: 12px;
+        border: 1px solid var(--om-border);
+        padding: 20px;
         margin-top: 20px;
-        padding: 15px;
-        background-color: #f8f9fc;
-        border-radius: 5px;
-        border: 1px solid #e3e6f0;
     }
-    
-    .file-selected {
-        display: none;
-        margin-top: 15px;
-        font-weight: 500;
+    .options-section h6 {
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--om-text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 </style>
 @endsection
 
 @section('content')
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Importation de commandes</h1>
+<div class="om-page-header">
+    <div>
+        <h1 style="font-size:24px; font-weight:800; color:var(--om-text); margin:0;">
+            <i class="fas fa-file-import" style="color:var(--om-primary); margin-right:8px;"></i>Importation de commandes
+        </h1>
+        <p style="color:var(--om-text-light); margin:4px 0 0; font-size:14px;">Importez vos commandes depuis un fichier CSV en quelques clics</p>
+    </div>
 </div>
 
-<div class="row">
-    <div class="col-lg-8">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">Importer des commandes depuis un fichier CSV</h6>
+<div class="row" style="gap:0;">
+    {{-- LEFT: Upload Form --}}
+    <div class="col-lg-8 mb-4">
+        <div class="om-card">
+            <div class="om-card-header">
+                <h3 class="om-card-title"><i class="fas fa-cloud-upload-alt" style="color:var(--om-primary);"></i> Importer un fichier CSV</h3>
             </div>
-            <div class="card-body">
-                <form action="{{ route('admin.import.csv') }}" method="POST" enctype="multipart/form-data">
+            <div class="om-card-body">
+                <form action="{{ route('admin.import.csv') }}" method="POST" enctype="multipart/form-data" id="importForm">
                     @csrf
-                    
-                    <div class="import-box">
-                        <div class="file-input-zone" id="fileInputZone">
-                            <input type="file" name="csv_file" id="csvFile" accept=".csv, .txt" required />
-                            <div class="import-icon">
-                                <i class="fas fa-file-csv"></i>
-                            </div>
-                            <h5>Glissez votre fichier CSV ici</h5>
-                            <p class="text-muted">ou cliquez pour sélectionner un fichier</p>
-                            <div class="file-selected" id="fileSelected">
-                                Fichier sélectionné: <span id="fileName"></span>
-                            </div>
+
+                    <div class="upload-zone" id="uploadZone">
+                        <input type="file" name="csv_file" id="csvFile" accept=".csv, .txt" required />
+                        <div class="upload-icon">
+                            <i class="fas fa-file-csv"></i>
+                        </div>
+                        <h5 style="font-weight:700; color:var(--om-text); margin-bottom:4px;">Glissez votre fichier CSV ici</h5>
+                        <p style="color:var(--om-text-light); margin:0; font-size:14px;">ou cliquez pour parcourir vos fichiers</p>
+                        <div class="file-info" id="fileInfo">
+                            <i class="fas fa-check-circle"></i>
+                            <span id="fileName"></span>
                         </div>
                     </div>
-                    
-                    <div class="form-group row">
-                        <label for="delimiter" class="col-sm-3 col-form-label">Délimiteur</label>
-                        <div class="col-sm-9">
-                            <select class="form-control" id="delimiter" name="delimiter" required>
-                                <option value="," selected>Virgule (,)</option>
-                                <option value=";">Point-virgule (;)</option>
-                                <option value="|">Barre verticale (|)</option>
-                                <option value="\t">Tabulation</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group row">
-                        <label for="default_status" class="col-sm-3 col-form-label">Statut par défaut</label>
-                        <div class="col-sm-9">
-                            <select class="form-control" id="default_status" name="default_status" required>
-                                <option value="nouvelle" selected>Nouvelle</option>
-                                <option value="confirmée">Confirmée</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group row">
-                        <label for="default_priority" class="col-sm-3 col-form-label">Priorité par défaut</label>
-                        <div class="col-sm-9">
-                            <select class="form-control" id="default_priority" name="default_priority" required>
-                                <option value="normale" selected>Normale</option>
-                                <option value="urgente">Urgente</option>
-                                <option value="vip">VIP</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="advanced-options">
-                        <h6 class="mb-3">Options avancées</h6>
-                        
-                        <div class="form-group row">
-                            <label for="default_governorate" class="col-sm-3 col-form-label">Gouvernorat par défaut</label>
-                            <div class="col-sm-9">
-                                <select class="form-control" id="default_governorate" name="default_governorate">
-                                    <option value="">-- Sélectionner --</option>
-                                    @foreach($regions as $region)
-                                        <option value="{{ $region->id }}">{{ $region->name }}</option>
-                                    @endforeach
+
+                    <div class="row mt-4" style="gap:0;">
+                        <div class="col-md-4 mb-3">
+                            <div class="om-form-group">
+                                <label class="om-form-label">Delimiteur</label>
+                                <select class="om-form-input" id="delimiter" name="delimiter" required>
+                                    <option value="," selected>Virgule (,)</option>
+                                    <option value=";">Point-virgule (;)</option>
+                                    <option value="|">Barre verticale (|)</option>
+                                    <option value="\t">Tabulation</option>
                                 </select>
                             </div>
                         </div>
-                        
-                        <div class="form-group row">
-                            <label for="default_city" class="col-sm-3 col-form-label">Ville par défaut</label>
-                            <div class="col-sm-9">
-                                <select class="form-control" id="default_city" name="default_city">
-                                    <option value="">-- Sélectionner d'abord un gouvernorat --</option>
+                        <div class="col-md-4 mb-3">
+                            <div class="om-form-group">
+                                <label class="om-form-label">Statut par defaut</label>
+                                <select class="om-form-input" id="default_status" name="default_status" required>
+                                    <option value="nouvelle" selected>Nouvelle</option>
+                                    <option value="confirmee">Confirmee</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="om-form-group">
+                                <label class="om-form-label">Priorite par defaut</label>
+                                <select class="om-form-input" id="default_priority" name="default_priority" required>
+                                    <option value="normale" selected>Normale</option>
+                                    <option value="urgente">Urgente</option>
+                                    <option value="vip">VIP</option>
                                 </select>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-file-import mr-1"></i> Importer les commandes
+
+                    <div class="options-section">
+                        <h6><i class="fas fa-sliders-h" style="color:var(--om-primary);"></i> Options avancees</h6>
+                        <div class="row" style="gap:0;">
+                            <div class="col-md-6 mb-3">
+                                <div class="om-form-group">
+                                    <label class="om-form-label">Gouvernorat par defaut</label>
+                                    <select class="om-form-input" id="default_governorate" name="default_governorate">
+                                        <option value="">-- Selectionner --</option>
+                                        @foreach($regions as $region)
+                                            <option value="{{ $region->id }}">{{ $region->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="om-form-group">
+                                    <label class="om-form-label">Ville par defaut</label>
+                                    <select class="om-form-input" id="default_city" name="default_city">
+                                        <option value="">-- Selectionner un gouvernorat --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:24px; display:flex; gap:12px;">
+                        <button type="submit" class="om-btn om-btn-primary">
+                            <i class="fas fa-file-import"></i> Importer les commandes
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    
-    <div class="col-lg-4">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Format du fichier CSV</h6>
-            </div>
-            <div class="card-body">
-                <p>Votre fichier CSV doit contenir au moins une colonne de téléphone. Les noms de colonnes reconnus automatiquement sont:</p>
-                
-                <ul>
-                    <li><strong>Téléphone:</strong> telephone, phone, tel</li>
-                    <li><strong>Nom:</strong> nom, name, client</li>
-                    <li><strong>Téléphone 2:</strong> telephone2, phone2, tel2</li>
-                    <li><strong>Adresse:</strong> adresse, address</li>
-                    <li><strong>Gouvernorat:</strong> gouvernorat, region</li>
-                    <li><strong>Ville:</strong> ville, city</li>
-                    <li><strong>Frais de livraison:</strong> frais_livraison, shipping, livraison</li>
-                    <li><strong>Notes:</strong> notes, remarques, commentaire</li>
-                </ul>
-                
-                <p><strong>Produits:</strong> Pour ajouter des produits, utilisez le format suivant:</p>
-                
-                <table class="example-table">
-                    <tr>
-                        <th>produit_1</th>
-                        <th>quantite_1</th>
-                        <th>prix_1</th>
-                    </tr>
-                    <tr>
-                        <td>iPhone</td>
-                        <td>1</td>
-                        <td>1200</td>
-                    </tr>
-                </table>
-                
-                <p class="mt-3">Vous pouvez ajouter plusieurs produits en incrémentant le chiffre (produit_2, produit_3, etc.)</p>
-                
-                <div class="mt-4">
-                    <a href="{{ asset('exemples/modele_import_commandes.csv') }}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-download mr-1"></i> Télécharger modèle CSV
-                    </a>
-                </div>
+
+    {{-- RIGHT: Format Guide --}}
+    <div class="col-lg-4 mb-4">
+        <div class="format-card">
+            <h6><i class="fas fa-book" style="color:var(--om-primary);"></i> Format du fichier CSV</h6>
+            <p style="font-size:13px; color:var(--om-text-light); margin-bottom:16px;">
+                Votre fichier doit contenir au moins une colonne telephone. Colonnes reconnues :
+            </p>
+            <ul class="column-list">
+                <li><span class="col-tag">telephone</span> Telephone principal</li>
+                <li><span class="col-tag">nom</span> Nom du client</li>
+                <li><span class="col-tag">telephone2</span> Telephone secondaire</li>
+                <li><span class="col-tag">adresse</span> Adresse de livraison</li>
+                <li><span class="col-tag">gouvernorat</span> Region / Gouvernorat</li>
+                <li><span class="col-tag">ville</span> Ville / Delegation</li>
+                <li><span class="col-tag">frais_livraison</span> Frais de livraison</li>
+                <li><span class="col-tag">notes</span> Remarques / Notes</li>
+            </ul>
+
+            <h6 style="margin-top:20px;"><i class="fas fa-box" style="color:#8b5cf6;"></i> Format des produits</h6>
+            <p style="font-size:13px; color:var(--om-text-light);">Ajoutez des produits avec le format suivant :</p>
+            <table class="product-example">
+                <tr>
+                    <th>produit_1</th>
+                    <th>quantite_1</th>
+                    <th>prix_1</th>
+                </tr>
+                <tr>
+                    <td>iPhone 15</td>
+                    <td>1</td>
+                    <td>1200</td>
+                </tr>
+            </table>
+            <p style="font-size:12px; color:var(--om-text-light); margin-top:8px;">
+                Incrementez le chiffre pour plusieurs produits (produit_2, produit_3...)
+            </p>
+
+            <div style="margin-top:20px;">
+                <a href="{{ asset('exemples/modele_import_commandes.csv') }}" class="om-btn om-btn-ghost" style="width:100%; justify-content:center;">
+                    <i class="fas fa-download"></i> Telecharger le modele CSV
+                </a>
             </div>
         </div>
     </div>
@@ -219,46 +276,58 @@
 
 @section('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Gestion de la sélection de fichier
-        const fileInput = document.getElementById('csvFile');
-        const fileSelected = document.getElementById('fileSelected');
-        const fileName = document.getElementById('fileName');
-        
-        fileInput.addEventListener('change', function(e) {
-            if (this.files && this.files.length > 0) {
-                fileName.textContent = this.files[0].name;
-                fileSelected.style.display = 'block';
-            } else {
-                fileSelected.style.display = 'none';
-            }
-        });
-        
-        // Chargement dynamique des villes en fonction du gouvernorat
-        const governorateSelect = document.getElementById('default_governorate');
-        const citySelect = document.getElementById('default_city');
-        
-        governorateSelect.addEventListener('change', function() {
-            const regionId = this.value;
-            
-            // Réinitialiser le select des villes
-            citySelect.innerHTML = '<option value="">-- Sélectionner une ville --</option>';
-            
-            if (regionId) {
-                // Charger les villes via AJAX
-                fetch(`/admin/get-cities?region_id=${regionId}`)
-                    .then(response => response.json())
-                    .then(cities => {
-                        cities.forEach(city => {
-                            const option = document.createElement('option');
-                            option.value = city.id;
-                            option.textContent = city.name;
-                            citySelect.appendChild(option);
-                        });
-                    })
-                    .catch(error => console.error('Erreur lors du chargement des villes:', error));
-            }
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('csvFile');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const uploadZone = document.getElementById('uploadZone');
+
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+            fileName.textContent = this.files[0].name;
+            fileInfo.classList.add('show');
+            uploadZone.style.borderColor = 'var(--om-success)';
+            uploadZone.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)';
+        } else {
+            fileInfo.classList.remove('show');
+            uploadZone.style.borderColor = '';
+            uploadZone.style.background = '';
+        }
+    });
+
+    ['dragenter', 'dragover'].forEach(evt => {
+        uploadZone.addEventListener(evt, function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
         });
     });
+    ['dragleave', 'drop'].forEach(evt => {
+        uploadZone.addEventListener(evt, function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+        });
+    });
+
+    const govSelect = document.getElementById('default_governorate');
+    const citySelect = document.getElementById('default_city');
+
+    govSelect.addEventListener('change', function() {
+        const regionId = this.value;
+        citySelect.innerHTML = '<option value="">-- Selectionner une ville --</option>';
+        if (regionId) {
+            fetch('/admin/get-cities?region_id=' + encodeURIComponent(regionId))
+                .then(r => r.json())
+                .then(cities => {
+                    cities.forEach(city => {
+                        const opt = document.createElement('option');
+                        opt.value = city.id;
+                        opt.textContent = city.name;
+                        citySelect.appendChild(opt);
+                    });
+                })
+                .catch(err => console.error('Erreur chargement villes:', err));
+        }
+    });
+});
 </script>
 @endsection

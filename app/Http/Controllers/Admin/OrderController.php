@@ -875,8 +875,9 @@ class OrderController extends Controller
     {
         try {
             $admin = Auth::guard('admin')->user();
-            
-            if ($order->admin_id !== $admin->id) {
+            $effectiveAdminId = $admin->getEffectiveAdminId();
+
+            if ($order->admin_id !== $effectiveAdminId) {
                 return response()->json(['error' => 'Accès refusé'], 403);
             }
             

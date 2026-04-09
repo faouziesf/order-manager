@@ -3,21 +3,23 @@
 @section('title', 'Commande #' . $order->id)
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
     .order-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--primary, #4f46e5);
         color: white;
-        border-radius: 16px;
+        border-radius: var(--radius, 14px);
         padding: 2rem;
         margin-bottom: 2rem;
-        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        box-shadow: var(--shadow, 0 4px 12px rgba(0,0,0,0.08));
     }
 
     .order-status-card {
-        background: white;
-        border-radius: 16px;
+        background: var(--card-bg, #fff);
+        border-radius: var(--radius, 14px);
         padding: 1.5rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+        border: 1px solid var(--border-color, #e2e8f0);
         margin-bottom: 1.5rem;
     }
 
@@ -35,19 +37,19 @@
         left: 0;
         right: 0;
         height: 2px;
-        background: #e5e7eb;
+        background: var(--border-color, #e5e7eb);
         z-index: 1;
     }
 
     .timeline-step {
-        background: white;
+        background: var(--card-bg, #fff);
         border-radius: 50%;
         width: 40px;
         height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 3px solid #e5e7eb;
+        border: 3px solid var(--border-color, #e5e7eb);
         position: relative;
         z-index: 2;
         font-size: 0.9rem;
@@ -60,8 +62,8 @@
     }
 
     .timeline-step.completed {
-        border-color: #6366f1;
-        background: #6366f1;
+        border-color: var(--primary, #4f46e5);
+        background: var(--primary, #4f46e5);
         color: white;
     }
 
@@ -73,28 +75,30 @@
     }
 
     .info-card {
-        background: white;
-        border-radius: 16px;
+        background: var(--card-bg, #fff);
+        border-radius: var(--radius, 14px);
         padding: 1.5rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+        border: 1px solid var(--border-color, #e2e8f0);
     }
 
     .info-card h6 {
-        color: #6b7280;
+        color: var(--text-muted, #64748b);
         font-size: 0.875rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 1rem;
-        border-bottom: 2px solid #f3f4f6;
+        border-bottom: 2px solid var(--border-color, #e2e8f0);
         padding-bottom: 0.5rem;
     }
 
     .products-table {
-        background: white;
-        border-radius: 16px;
+        background: var(--card-bg, #fff);
+        border-radius: var(--radius, 14px);
         overflow: hidden;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+        border: 1px solid var(--border-color, #e2e8f0);
         margin-bottom: 2rem;
     }
 
@@ -103,17 +107,18 @@
     }
 
     .products-table .table thead th {
-        background: #f8fafc;
+        background: var(--bg-muted, #f8fafc);
         border: none;
         font-weight: 600;
-        color: #374151;
+        color: var(--text-color, #1e293b);
         padding: 1rem;
     }
 
     .products-table .table tbody td {
         border: none;
         padding: 1rem;
-        border-bottom: 1px solid #f3f4f6;
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+        color: var(--text-color, #1e293b);
     }
 
     .priority-badge {
@@ -125,8 +130,8 @@
     }
 
     .priority-normale {
-        background: #e5e7eb;
-        color: #374151;
+        background: var(--bg-muted, #e5e7eb);
+        color: var(--text-color, #374151);
     }
 
     .priority-urgente {
@@ -145,10 +150,11 @@
     }
 
     .history-timeline {
-        background: white;
-        border-radius: 16px;
+        background: var(--card-bg, #fff);
+        border-radius: var(--radius, 14px);
         padding: 2rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+        border: 1px solid var(--border-color, #e2e8f0);
     }
 
     .history-item {
@@ -165,9 +171,9 @@
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: #6366f1;
-        border: 2px solid white;
-        box-shadow: 0 0 0 3px #e5e7eb;
+        background: var(--primary, #4f46e5);
+        border: 2px solid var(--card-bg, #fff);
+        box-shadow: 0 0 0 3px var(--border-color, #e2e8f0);
     }
 
     .history-item:not(:last-child)::after {
@@ -177,7 +183,7 @@
         top: 24px;
         bottom: -24px;
         width: 2px;
-        background: #e5e7eb;
+        background: var(--border-color, #e2e8f0);
     }
 
     .action-buttons {
@@ -189,13 +195,18 @@
 
     .btn-action {
         padding: 0.75rem 1.5rem;
-        border-radius: 12px;
+        border-radius: var(--radius-sm, 10px);
         font-weight: 500;
         border: none;
-        transition: all 0.2s ease;
+        transition: transform 0.2s, box-shadow 0.2s;
         display: flex;
         align-items: center;
         gap: 0.5rem;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow, 0 4px 12px rgba(0,0,0,0.1));
     }
 
     .btn-action:hover {
@@ -221,6 +232,11 @@
         color: #d4a147;
     }
 
+    [data-theme="dark"] .info-card strong,
+    [data-theme="dark"] .history-item h6 {
+        color: var(--text-color);
+    }
+
     @media (max-width: 768px) {
         .info-grid {
             grid-template-columns: 1fr;
@@ -239,15 +255,16 @@
 @endsection
 
 @section('content')
+<div class="container-fluid om-animate">
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-primary mb-2">
+        <a href="{{ route('admin.orders.index') }}" class="om-btn om-btn-ghost mb-2">
             <i class="fas fa-arrow-left me-2"></i>Retour aux commandes
         </a>
-        <h1 class="text-gradient mb-2">
+        <h1 class="om-page-title">
             <i class="fas fa-shopping-basket me-2"></i>Commande #{{ $order->id }}
         </h1>
-        <p class="text-muted mb-0">Détails complets de la commande</p>
+        <p class="om-page-subtitle">Détails complets de la commande</p>
     </div>
 </div>
 
@@ -457,7 +474,7 @@
 
 <!-- Liste des produits -->
 <div class="products-table">
-    <div class="d-flex justify-content-between align-items-center p-3 bg-light">
+    <div class="d-flex justify-content-between align-items-center p-3" style="background: var(--bg-muted, #f8fafc);">
         <h5 class="mb-0">
             <i class="fas fa-box me-2"></i>Produits commandés ({{ $order->items->count() }})
         </h5>
@@ -531,7 +548,7 @@
 @if($order->notes)
     <div class="info-card">
         <h6><i class="fas fa-sticky-note me-2"></i>Notes</h6>
-        <div class="bg-light p-3 rounded">
+        <div class="p-3 rounded" style="background: var(--bg-muted, #f8fafc);">
             {!! nl2br(e($order->notes)) !!}
         </div>
     </div>
@@ -605,6 +622,7 @@
     <button class="btn btn-action btn-info" onclick="printOrder({{ $order->id }})">
         <i class="fas fa-print"></i>Imprimer
     </button>
+</div>
 </div>
 @endsection
 

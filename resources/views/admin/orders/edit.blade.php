@@ -4,23 +4,19 @@
 @section('page-title', 'Modifier Commande #' . str_pad($order->id, 6, '0', STR_PAD_LEFT))
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
     :root {
-        --royal-blue: #1e3a8a;
-        --royal-blue-light: #3b82f6;
-        --royal-blue-dark: #1e40af;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --glass-bg: rgba(255, 255, 255, 0.98);
-        --shadow: 0 2px 15px rgba(30, 58, 138, 0.08);
-        --border-radius: 8px;
+        --royal-blue: var(--primary, #4f46e5);
+        --royal-blue-light: var(--primary-light, #818cf8);
+        --royal-blue-dark: var(--primary-dark, #4338ca);
+        --success: var(--success, #10b981);
+        --warning: var(--warning, #f59e0b);
+        --danger: var(--danger, #ef4444);
+        --glass-bg: var(--bg-card, rgba(255, 255, 255, 0.98));
+        --shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+        --border-radius: var(--radius-sm, 10px);
         --transition: all 0.2s ease;
-    }
-
-    body {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-        font-family: 'Inter', sans-serif;
     }
 
     .page-container {
@@ -30,10 +26,10 @@
     }
 
     .page-header {
-        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
+        background: var(--primary, #4f46e5);
         color: white;
         padding: 1.25rem 1.5rem;
-        border-radius: var(--border-radius);
+        border-radius: var(--radius, 14px);
         margin-bottom: 1rem;
         box-shadow: var(--shadow);
         display: flex;
@@ -207,16 +203,18 @@
     }
 
     .main-form {
-        background: var(--glass-bg);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
+        background: var(--card-bg, #fff);
+        border-radius: var(--radius, 14px);
+        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+        border: 1px solid var(--border-color, #e2e8f0);
         padding: 1.5rem;
     }
 
     .sidebar-controls {
-        background: var(--glass-bg);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
+        background: var(--card-bg, #fff);
+        border-radius: var(--radius, 14px);
+        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+        border: 1px solid var(--border-color, #e2e8f0);
         padding: 1.25rem;
         position: sticky;
         top: 1rem;
@@ -234,13 +232,13 @@
     .section-title {
         font-size: 1rem;
         font-weight: 600;
-        color: var(--royal-blue);
+        color: var(--primary, #4f46e5);
         margin-bottom: 1rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #f1f5f9;
+        border-bottom: 2px solid var(--border-color, #e2e8f0);
     }
 
     .form-grid {
@@ -265,7 +263,7 @@
 
     .form-label {
         font-weight: 600;
-        color: #374151;
+        color: var(--text-color, #374151);
         margin-bottom: 0.4rem;
         font-size: 0.875rem;
         display: flex;
@@ -274,17 +272,19 @@
     }
 
     .form-control {
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
+        border: 1px solid var(--border-color, #d1d5db);
+        border-radius: var(--radius-sm, 10px);
         padding: 0.6rem;
-        transition: var(--transition);
+        transition: border-color 0.2s, box-shadow 0.2s;
         font-size: 0.875rem;
         width: 100%;
+        background: var(--card-bg, #fff);
+        color: var(--text-color, #1e293b);
     }
 
     .form-control:focus {
-        border-color: var(--royal-blue);
-        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        border-color: var(--primary, #4f46e5);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         outline: none;
     }
 
@@ -412,8 +412,8 @@
 
     /* Gestion des produits */
     .products-section {
-        background: #f8fafc;
-        border-radius: 6px;
+        background: var(--bg-muted, #f8fafc);
+        border-radius: var(--radius-sm, 10px);
         padding: 1rem;
         margin-bottom: 1rem;
     }
@@ -428,10 +428,10 @@
         top: 100%;
         left: 0;
         right: 0;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: var(--radius-sm, 10px);
+        box-shadow: var(--shadow, 0 4px 12px rgba(0,0,0,0.1));
         z-index: 1000;
         max-height: 200px;
         overflow-y: auto;
@@ -441,15 +441,15 @@
     .suggestion-item {
         padding: 0.75rem;
         cursor: pointer;
-        border-bottom: 1px solid #f3f4f6;
-        transition: var(--transition);
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+        transition: background 0.15s;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
     .suggestion-item:hover {
-        background: rgba(30, 58, 138, 0.05);
+        background: var(--bg-hover, rgba(79,70,229,0.04));
     }
 
     .product-ref {
@@ -468,9 +468,9 @@
     }
 
     .product-item {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: var(--radius-sm, 10px);
         padding: 0.75rem;
         margin-bottom: 0.5rem;
         display: flex;
@@ -485,12 +485,12 @@
     .product-name {
         font-weight: 600;
         font-size: 0.875rem;
-        color: #374151;
+        color: var(--text-color, #374151);
     }
 
     .product-price {
         font-size: 0.75rem;
-        color: #6b7280;
+        color: var(--text-muted, #64748b);
         font-family: 'JetBrains Mono', monospace;
     }
 
@@ -503,29 +503,32 @@
     .quantity-btn {
         width: 28px;
         height: 28px;
-        border: 1px solid #d1d5db;
-        background: white;
+        border: 1px solid var(--border-color, #d1d5db);
+        background: var(--card-bg, #fff);
         border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        transition: var(--transition);
+        transition: border-color 0.15s, background 0.15s;
         font-size: 0.75rem;
+        color: var(--text-color, #1e293b);
     }
 
     .quantity-btn:hover {
-        border-color: var(--royal-blue);
-        background: rgba(30, 58, 138, 0.05);
+        border-color: var(--primary, #4f46e5);
+        background: rgba(79, 70, 229, 0.05);
     }
 
     .quantity-input {
         width: 60px;
         text-align: center;
-        border: 1px solid #d1d5db;
+        border: 1px solid var(--border-color, #d1d5db);
         border-radius: 4px;
         padding: 0.25rem;
         font-size: 0.875rem;
+        background: var(--card-bg, #fff);
+        color: var(--text-color, #1e293b);
     }
 
     .remove-btn {
@@ -631,8 +634,8 @@
     .priority-vip.active { background: var(--danger); color: white; }
 
     .summary-box {
-        background: #f8fafc;
-        border-radius: 6px;
+        background: var(--bg-muted, #f8fafc);
+        border-radius: var(--radius-sm, 10px);
         padding: 1rem;
         margin-bottom: 1rem;
     }
@@ -643,14 +646,15 @@
         align-items: center;
         margin-bottom: 0.5rem;
         font-size: 0.875rem;
+        color: var(--text-color, #1e293b);
     }
 
     .summary-row:last-child {
         margin-bottom: 0;
         font-weight: 700;
         padding-top: 0.5rem;
-        border-top: 1px solid #e5e7eb;
-        color: var(--royal-blue);
+        border-top: 1px solid var(--border-color, #e2e8f0);
+        color: var(--primary, #4f46e5);
     }
 
     .action-buttons {
@@ -684,20 +688,20 @@
     }
 
     .btn-cancel {
-        background: #f3f4f6;
-        color: #6b7280;
+        background: var(--bg-muted, #f3f4f6);
+        color: var(--text-muted, #64748b);
         border: none;
         padding: 0.75rem 1rem;
-        border-radius: 6px;
+        border-radius: var(--radius-sm, 10px);
         font-weight: 600;
         cursor: pointer;
-        transition: var(--transition);
+        transition: background 0.2s;
         text-decoration: none;
         font-size: 0.875rem;
     }
 
     .btn-cancel:hover {
-        background: #e5e7eb;
+        background: var(--border-color, #e2e8f0);
         color: #374151;
         text-decoration: none;
     }
@@ -720,15 +724,16 @@
     /* Styles pour les modals */
     .modal-royal .modal-content {
         border: none;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
+        border-radius: var(--radius, 14px);
+        box-shadow: var(--shadow-xl, 0 12px 40px rgba(0,0,0,0.12));
+        background: var(--card-bg, #fff);
     }
 
     .modal-royal .modal-header {
-        background: linear-gradient(135deg, var(--royal-blue) 0%, var(--royal-blue-dark) 100%);
+        background: var(--primary, #4f46e5);
         color: white;
         border: none;
-        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        border-radius: var(--radius, 14px) var(--radius, 14px) 0 0;
     }
 
     .modal-royal .modal-title {
@@ -755,17 +760,16 @@
     }
 
     .history-item {
-        background: #f8fafc;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
+        background: var(--bg-muted, #f8fafc);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: var(--radius-sm, 10px);
         padding: 1rem;
         margin-bottom: 0.75rem;
-        transition: var(--transition);
+        transition: box-shadow 0.2s;
     }
 
     .history-item:hover {
-        background: white;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-sm, 0 2px 6px rgba(0,0,0,0.06));
     }
 
     .history-header {
@@ -777,17 +781,17 @@
 
     .history-action {
         font-weight: 600;
-        color: var(--royal-blue);
+        color: var(--primary, #4f46e5);
         font-size: 0.9rem;
     }
 
     .history-date {
-        color: #6b7280;
+        color: var(--text-muted, #64748b);
         font-size: 0.75rem;
     }
 
     .history-notes {
-        color: #374151;
+        color: var(--text-color, #374151);
         font-size: 0.875rem;
         line-height: 1.5;
     }
@@ -798,17 +802,16 @@
     }
 
     .duplicate-item {
-        background: #f8fafc;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
+        background: var(--bg-muted, #f8fafc);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: var(--radius-sm, 10px);
         padding: 1rem;
         margin-bottom: 0.75rem;
-        transition: var(--transition);
+        transition: box-shadow 0.2s;
     }
 
     .duplicate-item:hover {
-        background: white;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-sm, 0 2px 6px rgba(0,0,0,0.06));
     }
 
     .duplicate-header {
@@ -820,7 +823,7 @@
 
     .duplicate-id {
         font-weight: 600;
-        color: var(--royal-blue);
+        color: var(--primary, #4f46e5);
     }
 
     .status-badge-mini {
@@ -845,6 +848,11 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
     }
+
+    /* ============= DARK MODE OVERRIDES ============= */
+    html[data-theme="dark"] .btn-outline-small { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .btn-cancel:hover { color: var(--text-secondary); }
+    html[data-theme="dark"] .status-nouvelle-mini { color: var(--text-secondary); }
 </style>
 @endsection
 

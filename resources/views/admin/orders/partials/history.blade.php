@@ -400,4 +400,10 @@
             align-items: flex-start;
         }
     }
+
+    /* ============= DARK MODE OVERRIDES ============= */
+    html[data-theme="dark"] .history-icon { background: var(--bg-muted); border-color: var(--border); }
+    html[data-theme="dark"] .history-content { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .history-action { color: var(--text-secondary); }
+    html[data-theme="dark"] .empty-title { color: var(--text); }
 </style>

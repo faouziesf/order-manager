@@ -2,13 +2,45 @@
 
 @section('title', 'Créer un Employé')
 
+@section('css')
+@include('admin.partials._shared-styles')
+<style>
+    .emp-form-card {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius, 14px); overflow: hidden;
+    }
+    .emp-form-header {
+        padding: 1.25rem 1.5rem;
+        background: var(--bg-muted); border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; gap: 0.75rem;
+    }
+    .emp-form-header-icon {
+        width: 42px; height: 42px;
+        border-radius: var(--radius-sm, 10px);
+        background: var(--success-light); color: var(--success);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+    }
+    .emp-form-header h4 { margin: 0; font-weight: 700; color: var(--text); font-size: 1.05rem; }
+    .emp-section-title {
+        display: flex; align-items: center; gap: 0.5rem;
+        margin-bottom: 1rem; padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .emp-section-title i { color: var(--primary); font-size: 0.85rem; }
+    .emp-section-title h5 { color: var(--text); font-weight: 700; font-size: 0.95rem; margin: 0; }
+    .emp-page-header h1 { color: var(--text); font-weight: 800; letter-spacing: -0.02em; }
+    .emp-page-header p { color: var(--text-secondary); }
+</style>
+@endsection
+
 @section('content')
 <div class="container-fluid animate-fade-in" x-data="createEmployeeForm()">
     <!-- Header Section -->
-    <div class="row mb-4">
+    <div class="row mb-4 emp-page-header">
         <div class="col-md-8">
-            <h1 class="h2 fw-bold text-dark mb-2">Nouvel Employé</h1>
-            <p class="text-muted">Créer un nouveau compte employé</p>
+            <h1 class="h2 mb-2">Nouvel Employé</h1>
+            <p class="mb-0">Créer un nouveau compte employé</p>
         </div>
         <div class="col-md-4 text-end">
             <a href="{{ route('admin.employees.index') }}" 
@@ -22,15 +54,13 @@
     <!-- Main Form Card -->
     <div class="row justify-content-center">
         <div class="col-xl-10">
-            <div class="card shadow-lg border-0">
+            <div class="emp-form-card">
                 <!-- Card Header -->
-                <div class="card-header bg-gradient-success text-white py-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-white bg-opacity-25 rounded-3 p-2 me-3">
-                            <i class="fas fa-user-friends fa-lg"></i>
-                        </div>
-                        <h4 class="card-title mb-0">Informations de l'Employé</h4>
+                <div class="emp-form-header">
+                    <div class="emp-form-header-icon">
+                        <i class="fas fa-user-friends"></i>
                     </div>
+                    <h4>Informations de l'Employé</h4>
                 </div>
 
                 <!-- Form Content -->
@@ -40,9 +70,9 @@
                         
                         <!-- Informations personnelles -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-user text-success me-2"></i>
-                                <h5 class="text-success mb-0">Informations personnelles</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-user"></i>
+                                <h5>Informations personnelles</h5>
                             </div>
                             
                             <div class="row g-3">
@@ -113,9 +143,9 @@
                         
                         <!-- Attribution à un manager -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-user-tie text-success me-2"></i>
-                                <h5 class="text-success mb-0">Attribution à un manager</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-user-tie"></i>
+                                <h5>Attribution à un manager</h5>
                             </div>
                             
                             <div class="col-12">
@@ -146,9 +176,9 @@
                         
                         <!-- Informations de connexion -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-key text-success me-2"></i>
-                                <h5 class="text-success mb-0">Informations de connexion</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-key"></i>
+                                <h5>Informations de connexion</h5>
                             </div>
                             
                             <div class="row g-3">
@@ -231,12 +261,12 @@
                         
                         <!-- Paramètres du compte -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-cog text-success me-2"></i>
-                                <h5 class="text-success mb-0">Paramètres du compte</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-cog"></i>
+                                <h5>Paramètres du compte</h5>
                             </div>
                             
-                            <div class="bg-light rounded p-3">
+                            <div class="rounded p-3" style="background: var(--bg-muted);">
                                 <div class="form-check">
                                     <input type="checkbox" 
                                            id="is_active" 
@@ -358,61 +388,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Animations personnalisées */
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
-}
-
-.animate-slide-up {
-    animation: slideUp 0.5s ease-out forwards;
-}
-
-/* Gradient de succès personnalisé */
-.bg-gradient-success {
-    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
-}
-
-/* Amélioration des transitions */
-.btn {
-    transition: all 0.2s ease-in-out;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-}
-
-.form-control:focus, .form-select:focus {
-    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
-    border-color: #198754;
-}
-
-/* Amélioration des cartes */
-.card {
-    border-radius: 1rem;
-    transition: transform 0.2s ease-in-out;
-    border: 0;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
-}
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: slideUp 0.3s ease-out; }
+.animate-slide-up { animation: slideUp 0.35s ease-out forwards; }
 </style>
 @endsection

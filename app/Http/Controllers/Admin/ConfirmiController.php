@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ConfirmiBilling;
 use App\Models\ConfirmiOrderAssignment;
 use App\Models\ConfirmiRequest;
-use App\Models\MasafaConfiguration;
+use App\Models\ConfirmiUser;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,11 +43,34 @@ class ConfirmiController extends Controller
                 'confirmed' => ConfirmiOrderAssignment::where('admin_id', $admin->id)->where('status', 'confirmed')->count(),
                 'cancelled' => ConfirmiOrderAssignment::where('admin_id', $admin->id)->where('status', 'cancelled')->count(),
             ];
+
+            // Success rate
+            $finished = $stats['confirmed'] + $stats['cancelled'];
+            $stats['success_rate'] = $finished > 0 ? round(($stats['confirmed'] / $finished) * 100, 1) : 0;
+
+            // Today's stats
+            $stats['today_total'] = ConfirmiOrderAssignment::where('admin_id', $admin->id)->whereDate('created_at', today())->count();
+            $stats['today_confirmed'] = ConfirmiOrderAssignment::where('admin_id', $admin->id)->where('status', 'confirmed')->whereDate('updated_at', today())->count();
+            $stats['today_cancelled'] = ConfirmiOrderAssignment::where('admin_id', $admin->id)->where('status', 'cancelled')->whereDate('updated_at', today())->count();
+
+            // This week vs last week
+            $stats['week_confirmed'] = ConfirmiOrderAssignment::where('admin_id', $admin->id)
+                ->where('status', 'confirmed')
+                ->where('updated_at', '>=', now()->startOfWeek())->count();
+            $stats['last_week_confirmed'] = ConfirmiOrderAssignment::where('admin_id', $admin->id)
+                ->where('status', 'confirmed')
+                ->whereBetween('updated_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])->count();
+
+            // Average attempts before confirmation
+            $stats['avg_attempts'] = round(ConfirmiOrderAssignment::where('admin_id', $admin->id)
+                ->where('status', 'confirmed')
+                ->avg('attempts') ?? 0, 1);
         }
 
-        $masafaConfig = MasafaConfiguration::where('admin_id', $admin->id)->first();
+
 
         $billing = null;
+        $employeeStats = null;
         if ($status === 'active') {
             $billing = [
                 'month_total' => ConfirmiBilling::where('admin_id', $admin->id)
@@ -63,9 +86,25 @@ class ConfirmiController extends Controller
                     ->where('billing_type', 'delivered')
                     ->whereMonth('billed_at', now()->month)->count(),
             ];
+
+            // Employee stats working on this admin's orders
+            $employeeStats = ConfirmiUser::where('role', 'employee')
+                ->whereHas('assignedOrders', fn($q) => $q->where('admin_id', $admin->id))
+                ->withCount([
+                    'assignedOrders as my_total' => fn($q) => $q->where('admin_id', $admin->id),
+                    'assignedOrders as my_confirmed' => fn($q) => $q->where('admin_id', $admin->id)->where('status', 'confirmed'),
+                    'assignedOrders as my_cancelled' => fn($q) => $q->where('admin_id', $admin->id)->where('status', 'cancelled'),
+                    'assignedOrders as my_pending' => fn($q) => $q->where('admin_id', $admin->id)->whereIn('status', ['assigned', 'in_progress']),
+                ])
+                ->get()
+                ->map(function ($emp) {
+                    $finished = $emp->my_confirmed + $emp->my_cancelled;
+                    $emp->success_rate = $finished > 0 ? round(($emp->my_confirmed / $finished) * 100, 1) : 0;
+                    return $emp;
+                });
         }
 
-        return view('admin.confirmi.index', compact('admin', 'status', 'pendingRequest', 'latestRequest', 'stats', 'masafaConfig', 'billing'));
+        return view('admin.confirmi.index', compact('admin', 'status', 'pendingRequest', 'latestRequest', 'stats', 'billing', 'employeeStats'));
     }
 
     /**
@@ -192,5 +231,35 @@ class ConfirmiController extends Controller
         $assignments = $query->latest()->paginate(20);
 
         return view('admin.confirmi.orders', compact('assignments', 'admin'));
+    }
+
+    /**
+     * Historique des commandes terminées (confirmées, annulées, livrées)
+     */
+    public function history(Request $request)
+    {
+        $admin = Auth::guard('admin')->user();
+
+        if ($admin->confirmi_status !== 'active') {
+            return redirect()->route('admin.confirmi.index')->with('error', 'Confirmi n\'est pas activé.');
+        }
+
+        $query = ConfirmiOrderAssignment::where('admin_id', $admin->id)
+            ->whereIn('status', ['confirmed', 'cancelled', 'delivered'])
+            ->with(['order', 'assignee']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $assignments = $query->latest('completed_at')->paginate(20);
+
+        $historyCounts = [
+            'confirmed' => ConfirmiOrderAssignment::where('admin_id', $admin->id)->where('status', 'confirmed')->count(),
+            'cancelled' => ConfirmiOrderAssignment::where('admin_id', $admin->id)->where('status', 'cancelled')->count(),
+            'delivered' => ConfirmiOrderAssignment::where('admin_id', $admin->id)->where('status', 'delivered')->count(),
+        ];
+
+        return view('admin.confirmi.history', compact('assignments', 'historyCounts'));
     }
 }

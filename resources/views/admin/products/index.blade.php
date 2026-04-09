@@ -3,31 +3,28 @@
 @section('title', 'Liste des produits')
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
     :root {
-        --royal-blue: #1e40af;
-        --royal-blue-dark: #1e3a8a;
+        --royal-blue: var(--primary, #1e40af);
+        --royal-blue-dark: var(--primary-dark, #1e3a8a);
         --royal-blue-light: #3b82f6;
-        --royal-blue-lighter: #dbeafe;
-        --royal-blue-bg: #eff6ff;
-        --success: #059669;
-        --warning: #d97706;
-        --danger: #dc2626;
-        --gray-50: #f9fafb;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
-        --gray-500: #6b7280;
-        --gray-700: #374151;
-        --gray-900: #111827;
-    }
-
-    body {
-        background: var(--gray-50);
+        --royal-blue-lighter: var(--border, #dbeafe);
+        --royal-blue-bg: var(--bg-muted, #eff6ff);
+        --success: var(--success, #059669);
+        --warning: var(--warning, #d97706);
+        --danger: var(--danger, #dc2626);
+        --gray-50: var(--bg-muted, #f9fafb);
+        --gray-100: var(--bg-muted, #f3f4f6);
+        --gray-200: var(--border, #e5e7eb);
+        --gray-500: var(--text-muted, #6b7280);
+        --gray-700: var(--text, #374151);
+        --gray-900: var(--text, #111827);
     }
 
     /* Header */
     .page-header {
-        background: white;
+        background: var(--card-bg, white);
         border-radius: 12px;
         padding: 2rem;
         margin-bottom: 2rem;
@@ -56,7 +53,7 @@
     }
 
     .stat-card {
-        background: white;
+        background: var(--card-bg, white);
         border-radius: 12px;
         padding: 1.5rem;
         box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
@@ -176,7 +173,7 @@
 
     /* Filtres */
     .filters-card {
-        background: white;
+        background: var(--card-bg, white);
         border-radius: 12px;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
@@ -203,14 +200,15 @@
         border-radius: 8px;
         padding: 0.5rem 0.75rem;
         transition: all 0.3s ease;
-        background: white;
+        background: var(--card-bg, white);
+        color: var(--gray-900);
         font-size: 0.875rem;
     }
 
     .form-control:focus, .form-select:focus {
         border-color: var(--royal-blue);
         box-shadow: 0 0 0 0.2rem rgba(30, 64, 175, 0.25);
-        background: white;
+        background: var(--card-bg, white);
     }
 
     .btn-outline-primary {
@@ -232,7 +230,7 @@
 
     /* Table des produits */
     .products-card {
-        background: white;
+        background: var(--card-bg, white);
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
         border: 1px solid var(--royal-blue-lighter);
@@ -240,7 +238,7 @@
     }
 
     .products-card-header {
-        background: linear-gradient(135deg, var(--royal-blue-bg) 0%, white 100%);
+        background: linear-gradient(135deg, var(--royal-blue-bg) 0%, var(--card-bg, white) 100%);
         padding: 1.5rem;
         border-bottom: 1px solid var(--royal-blue-lighter);
     }
@@ -367,7 +365,7 @@
 
     /* Pagination */
     .pagination-wrapper {
-        background: white;
+        background: var(--card-bg, white);
         padding: 1.5rem;
         border-top: 1px solid var(--royal-blue-lighter);
     }

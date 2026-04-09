@@ -47,6 +47,24 @@
     </div>
 </div>
 
+{{-- BULK ACTIONS BAR --}}
+<div class="content-card mb-3" id="bulkBar" style="display:none;">
+    <div class="p-3 d-flex align-items-center gap-3 flex-wrap" style="background:rgba(37,99,235,0.05);">
+        <strong id="selectedCount" style="font-size:0.85rem;">0 sélectionnée(s)</strong>
+        <small class="text-muted">(uniquement les commandes sans tentative)</small>
+        <div class="ms-auto d-flex gap-2">
+            <select id="reassignEmployee" class="form-select form-select-sm" style="width:auto;font-size:0.8rem;">
+                <option value="">-- Réassigner à --</option>
+                @foreach($employees as $emp)
+                    <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                @endforeach
+            </select>
+            <button onclick="bulkReassign()" class="btn btn-sm btn-royal"><i class="fas fa-exchange-alt me-1"></i>Réassigner</button>
+            <button onclick="bulkReject()" class="btn btn-sm btn-danger"><i class="fas fa-ban me-1"></i>Rejeter</button>
+        </div>
+    </div>
+</div>
+
 <div class="content-card">
     <div class="card-header-custom">
         <h6>Commandes ({{ $assignments->total() }})</h6>
@@ -55,11 +73,11 @@
         <table class="table table-modern">
             <thead>
                 <tr>
+                    <th><input type="checkbox" id="checkAll"></th>
                     <th>#</th>
                     <th>Admin</th>
                     <th>Destinataire</th>
                     <th>Téléphone</th>
-                    <th>Montant</th>
                     <th>Assigné à</th>
                     <th>Tentatives</th>
                     <th>Statut</th>
@@ -70,11 +88,15 @@
             <tbody>
                 @forelse($assignments as $a)
                 <tr>
+                    <td>
+                        @if($a->attempts === 0 && in_array($a->status, ['pending', 'assigned', 'in_progress']))
+                            <input type="checkbox" class="row-check" value="{{ $a->id }}">
+                        @endif
+                    </td>
                     <td><strong>{{ $a->order->id ?? '-' }}</strong></td>
                     <td>{{ $a->admin->shop_name ?? $a->admin->name ?? 'N/A' }}</td>
                     <td>{{ $a->order->customer_name ?? 'N/A' }}</td>
                     <td>{{ $a->order->customer_phone ?? 'N/A' }}</td>
-                    <td><strong>{{ number_format($a->order->total_price ?? 0, 3) }} DT</strong></td>
                     <td>{{ $a->assignee->name ?? '-' }}</td>
                     <td><span class="badge bg-secondary">{{ $a->attempts }}</span></td>
                     <td>
@@ -103,4 +125,63 @@
     </div>
     <div class="p-3">{{ $assignments->withQueryString()->links() }}</div>
 </div>
+
+{{-- Hidden forms for bulk actions --}}
+<form id="bulkRejectForm" method="POST" action="{{ route('confirmi.commercial.orders.bulk-reject') }}" style="display:none;">
+    @csrf
+    <div id="rejectIds"></div>
+</form>
+<form id="bulkReassignForm" method="POST" action="{{ route('confirmi.commercial.orders.bulk-reassign') }}" style="display:none;">
+    @csrf
+    <input type="hidden" name="assigned_to" id="reassignTo">
+    <div id="reassignIds"></div>
+</form>
+@endsection
+
+@section('scripts')
+<script>
+document.getElementById('checkAll').addEventListener('change', function() {
+    document.querySelectorAll('.row-check').forEach(c => c.checked = this.checked);
+    updateBulkBar();
+});
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('row-check')) updateBulkBar();
+});
+
+function getCheckedIds() {
+    return Array.from(document.querySelectorAll('.row-check:checked')).map(c => c.value);
+}
+
+function updateBulkBar() {
+    const ids = getCheckedIds();
+    document.getElementById('bulkBar').style.display = ids.length > 0 ? 'block' : 'none';
+    document.getElementById('selectedCount').textContent = ids.length + ' sélectionnée(s)';
+}
+
+function bulkReject() {
+    const ids = getCheckedIds();
+    if (ids.length === 0) return;
+    if (!confirm('Rejeter ' + ids.length + ' commande(s) sans tentative ?')) return;
+    const container = document.getElementById('rejectIds');
+    container.innerHTML = '';
+    ids.forEach(id => {
+        container.innerHTML += '<input type="hidden" name="assignment_ids[]" value="' + id + '">';
+    });
+    document.getElementById('bulkRejectForm').submit();
+}
+
+function bulkReassign() {
+    const ids = getCheckedIds();
+    const emp = document.getElementById('reassignEmployee').value;
+    if (ids.length === 0) { alert('Sélectionnez au moins une commande.'); return; }
+    if (!emp) { alert('Sélectionnez un employé.'); return; }
+    document.getElementById('reassignTo').value = emp;
+    const container = document.getElementById('reassignIds');
+    container.innerHTML = '';
+    ids.forEach(id => {
+        container.innerHTML += '<input type="hidden" name="assignment_ids[]" value="' + id + '">';
+    });
+    document.getElementById('bulkReassignForm').submit();
+}
+</script>
 @endsection

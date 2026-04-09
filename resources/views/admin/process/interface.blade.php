@@ -4,27 +4,22 @@
 @section('page-title', 'Interface de Traitement')
 
 @section('css')
+@include('admin.partials._shared-styles')
 <link rel="stylesheet" href="{{ asset('css/responsive-system.css') }}">
 <style>
     :root {
-        --process-primary: #4f46e5;
-        --process-success: #10b981;
-        --process-warning: #f59e0b;
-        --process-danger: #ef4444;
-        --process-info: #0ea5e9;
+        --process-primary: var(--primary, #4f46e5);
+        --process-success: var(--success, #10b981);
+        --process-warning: var(--warning, #f59e0b);
+        --process-danger: var(--danger, #ef4444);
+        --process-info: var(--info, #0ea5e9);
         --process-restock: #059669;
-        --glass-bg: rgba(255, 255, 255, 0.95);
-        --glass-border: rgba(229, 231, 235, 0.8);
+        --glass-bg: var(--bg-card, rgba(255, 255, 255, 0.95));
+        --glass-border: var(--border, rgba(229, 231, 235, 0.8));
         --shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         --border-radius-xl: 16px;
         --border-radius-2xl: 20px;
         --transition-smooth: all 0.3s ease;
-    }
-
-    body {
-        background: #f1f5f9;
-        font-family: 'Inter', sans-serif;
-        overflow-x: hidden;
     }
 
     /* Container principal */
@@ -1526,6 +1521,85 @@
         background: #10b981;
         border-radius: 3px;
     }
+
+    /* ============= DARK MODE OVERRIDES ============= */
+    /* Container */
+    html[data-theme="dark"] .process-container { background: var(--bg-card); border-color: var(--border); }
+
+    /* Order card */
+    html[data-theme="dark"] .order-card { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .order-header { background: var(--bg-muted); border-color: var(--border); }
+    html[data-theme="dark"] .order-id { color: var(--text); }
+    html[data-theme="dark"] .meta-item { color: var(--text-secondary); }
+    html[data-theme="dark"] .meta-icon { background: var(--bg-card-hover); color: var(--text-muted); }
+
+    /* Status badges — keep colored but adjust for dark bg */
+    html[data-theme="dark"] .status-nouvelle { background: rgba(67,56,202,0.2); color: #a5b4fc; }
+    html[data-theme="dark"] .status-datée { background: rgba(146,64,14,0.2); color: #fde68a; }
+    html[data-theme="dark"] .status-confirmée { background: rgba(6,95,70,0.2); color: #6ee7b7; }
+    html[data-theme="dark"] .status-ancienne { background: rgba(153,27,27,0.2); color: #fca5a5; }
+
+    /* Order tags */
+    html[data-theme="dark"] .tag-priority-urgente { background: rgba(220,38,38,0.15); color: #f87171; border-color: rgba(239,68,68,0.3); }
+    html[data-theme="dark"] .tag-priority-vip { background: rgba(146,64,14,0.15); color: #fde68a; border-color: rgba(251,191,36,0.3); }
+    html[data-theme="dark"] .tag-priority-normale { background: rgba(67,56,202,0.15); color: #a5b4fc; border-color: rgba(165,180,252,0.3); }
+    html[data-theme="dark"] .tag-assigned { background: rgba(6,95,70,0.15); color: #6ee7b7; border-color: rgba(110,231,183,0.3); }
+    html[data-theme="dark"] .tag-suspended { background: rgba(153,27,27,0.15); color: #fca5a5; border-color: rgba(252,165,165,0.3); }
+    html[data-theme="dark"] .tag-scheduled { background: rgba(146,64,14,0.15); color: #fde68a; border-color: rgba(251,191,36,0.3); }
+
+    /* Alerts */
+    html[data-theme="dark"] .duplicate-alert { background: rgba(146,64,14,0.15); border-color: rgba(251,191,36,0.4); }
+    html[data-theme="dark"] .restock-info { background: rgba(6,95,70,0.15); border-color: rgba(110,231,183,0.3); }
+    html[data-theme="dark"] .alert-message { background: var(--bg-muted); color: var(--text-secondary); border-left-color: var(--warning); }
+
+    /* Form */
+    html[data-theme="dark"] .customer-form { background: transparent; }
+    html[data-theme="dark"] .form-label { color: var(--text-secondary); }
+    html[data-theme="dark"] .form-control { background: var(--bg-muted); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .form-control:focus { background: var(--bg-card); border-color: var(--primary); }
+    html[data-theme="dark"] .form-control:disabled { background: var(--bg-muted); color: var(--text-muted); }
+    html[data-theme="dark"] .form-control::placeholder { color: var(--text-muted); }
+
+    /* Cart */
+    html[data-theme="dark"] .cart-card { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .product-search { background: var(--bg-muted); border-color: var(--border); }
+    html[data-theme="dark"] .search-input { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+    html[data-theme="dark"] .search-input:focus { border-color: var(--success); }
+    html[data-theme="dark"] .search-icon { color: var(--text-muted); }
+    html[data-theme="dark"] .search-suggestions { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .suggestion-item { border-color: var(--border); color: var(--text); }
+    html[data-theme="dark"] .suggestion-item:hover { background: var(--bg-card-hover); }
+
+    /* Cart items */
+    html[data-theme="dark"] .cart-item { background: var(--bg-muted); border-color: var(--border); }
+    html[data-theme="dark"] .cart-item:hover { background: var(--bg-card-hover); }
+    html[data-theme="dark"] .item-name { color: var(--text); }
+    html[data-theme="dark"] .item-price { color: var(--text-muted); }
+    html[data-theme="dark"] .cart-empty { color: var(--text-muted); }
+
+    /* Quantity controls */
+    html[data-theme="dark"] .quantity-controls { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .qty-btn { background: var(--bg-muted); color: var(--text-secondary); }
+    html[data-theme="dark"] .qty-btn:hover { background: var(--bg-card-hover); color: var(--text); }
+    html[data-theme="dark"] .qty-input { color: var(--text); background: transparent; }
+    html[data-theme="dark"] .remove-btn { background: rgba(239,68,68,0.15); color: var(--danger); }
+    html[data-theme="dark"] .remove-btn:hover { background: rgba(239,68,68,0.25); }
+
+    /* Cart summary */
+    html[data-theme="dark"] .cart-summary { background: var(--bg-muted); border-color: var(--border); }
+    html[data-theme="dark"] .summary-label { color: var(--text-secondary); }
+    html[data-theme="dark"] .summary-value { color: var(--text); }
+    html[data-theme="dark"] .summary-row:last-child { color: var(--text); border-color: var(--border); }
+
+    /* Actions zone */
+    html[data-theme="dark"] .actions-zone { background: var(--bg-card); border-color: var(--border); }
+
+    /* "No order" empty state */
+    html[data-theme="dark"] .no-order { color: var(--text-muted); }
+    html[data-theme="dark"] .no-order h3 { color: var(--text); }
+
+    /* Queue badge on active tab */
+    html[data-theme="dark"] .queue-tab.active .queue-badge { background: rgba(255,255,255,0.9); color: #4f46e5; }
 </style>
 @endsection
 
@@ -1816,10 +1890,12 @@
 
 @section('scripts')
 <script>
+// Shared state — accessible from modals script
+var cartItems = [];
+var currentOrder = null;
+var currentQueue = 'standard';
+
 $(document).ready(function() {
-    let currentQueue = 'standard';
-    let currentOrder = null;
-    let cartItems = [];
     let searchTimeout;
     let isLoadingQueue = false;
     let isLoadingCounts = false;
@@ -2754,7 +2830,7 @@ $(document).ready(function() {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
     
-    function showNotification(message, type = 'info') {
+    window.showNotification = function(message, type = 'info') {
         const alertClass = {
             'success': 'alert-success',
             'error': 'alert-danger',

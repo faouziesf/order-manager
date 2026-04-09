@@ -65,6 +65,7 @@
     @yield('css')
 </head>
 <body class="antialiased min-h-screen bg-gray-50 text-gray-800">
+    @include('partials._no-cache')
     <div class="flex h-screen overflow-hidden" x-data="{ sidebarOpen: false }">
         <!-- Sidebar -->
         <div x-cloak 

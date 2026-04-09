@@ -1,282 +1,248 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
 @section('title', 'Détails du Manager')
 
-@section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="h3 mb-0 text-gray-800">Détails du Manager</h1>
-        <p class="text-muted">Informations complètes de {{ $manager->name }}</p>
-    </div>
-    <div class="d-flex gap-2">
-        <a href="{{ route('admin.managers.edit', $manager) }}" class="btn btn-warning">
-            <i class="fas fa-edit me-2"></i>Modifier
-        </a>
-        <form method="POST" action="{{ route('admin.managers.toggle-active', $manager) }}" class="d-inline">
-            @csrf
-            @method('PATCH')
-            <button type="submit" 
-                    class="btn {{ $manager->is_active ? 'btn-secondary' : 'btn-success' }}"
-                    onclick="return confirm('Êtes-vous sûr ?')">
-                <i class="fas {{ $manager->is_active ? 'fa-ban' : 'fa-check' }} me-2"></i>
-                {{ $manager->is_active ? 'Désactiver' : 'Activer' }}
-            </button>
-        </form>
-        <a href="{{ route('admin.managers.index') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Retour
-        </a>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Informations principales -->
-    <div class="col-lg-4 mb-4">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white text-center">
-                <div class="rounded-circle bg-white d-flex align-items-center justify-content-center mx-auto mb-3" 
-                     style="width: 80px; height: 80px;">
-                    <span class="text-primary font-weight-bold" style="font-size: 32px;">
-                        {{ substr($manager->name, 0, 1) }}
-                    </span>
-                </div>
-                <h5 class="mb-1">{{ $manager->name }}</h5>
-                <p class="mb-0 opacity-75">Manager</p>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label text-muted">Email</label>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-envelope text-primary me-2"></i>
-                        <a href="mailto:{{ $manager->email }}" class="text-decoration-none">{{ $manager->email }}</a>
-                    </div>
-                </div>
-                
-                @if($manager->phone)
-                <div class="mb-3">
-                    <label class="form-label text-muted">Téléphone</label>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-phone text-success me-2"></i>
-                        <a href="tel:{{ $manager->phone }}" class="text-decoration-none">{{ $manager->phone }}</a>
-                    </div>
-                </div>
-                @endif
-                
-                <div class="mb-3">
-                    <label class="form-label text-muted">Statut</label>
-                    <div>
-                        <span class="badge {{ $manager->is_active ? 'badge-success' : 'badge-danger' }} fs-6">
-                            <i class="fas {{ $manager->is_active ? 'fa-check-circle' : 'fa-times-circle' }} me-1"></i>
-                            {{ $manager->is_active ? 'Actif' : 'Inactif' }}
-                        </span>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label text-muted">Employés supervisés</label>
-                    <div>
-                        <span class="badge badge-info fs-6">
-                            <i class="fas fa-users me-1"></i>
-                            {{ $manager->employees()->count() }} employé(s)
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Actions rapides -->
-        <div class="card shadow mt-4">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions rapides</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ route('admin.login-history.show', ['user_type' => 'Manager', 'user_id' => $manager->id]) }}" 
-                       class="btn btn-outline-info btn-sm">
-                        <i class="fas fa-history me-2"></i>Historique des connexions
-                    </a>
-                    <a href="{{ route('admin.employees.index') }}?manager={{ $manager->id }}" 
-                       class="btn btn-outline-success btn-sm">
-                        <i class="fas fa-users me-2"></i>Voir ses employés
-                    </a>
-                    <button class="btn btn-outline-primary btn-sm" onclick="sendWelcomeEmail()">
-                        <i class="fas fa-envelope me-2"></i>Renvoyer email de bienvenue
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Détails et statistiques -->
-    <div class="col-lg-8">
-        <!-- Statistiques -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card stats-card-primary h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-users fa-2x text-primary mb-2"></i>
-                        <h4 class="font-weight-bold">{{ $manager->employees()->count() }}</h4>
-                        <p class="text-muted mb-0">Employés</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card stats-card-success h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-user-check fa-2x text-success mb-2"></i>
-                        <h4 class="font-weight-bold">{{ $manager->employees()->where('is_active', true)->count() }}</h4>
-                        <p class="text-muted mb-0">Actifs</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card stats-card-info h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-calendar-alt fa-2x text-info mb-2"></i>
-                        <h4 class="font-weight-bold">{{ $manager->created_at->diffInDays() }}</h4>
-                        <p class="text-muted mb-0">Jours</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card stats-card-warning h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-sign-in-alt fa-2x text-warning mb-2"></i>
-                        <h4 class="font-weight-bold">{{ $manager->loginHistory()->successful()->count() }}</h4>
-                        <p class="text-muted mb-0">Connexions</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Employés supervisés -->
-        <div class="card shadow mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">
-                    <i class="fas fa-users me-2"></i>Employés supervisés ({{ $manager->employees()->count() }})
-                </h6>
-                @if($manager->employees()->count() > 0)
-                    <a href="{{ route('admin.employees.index') }}?manager={{ $manager->id }}" class="btn btn-sm btn-outline-primary">
-                        Voir tous
-                    </a>
-                @endif
-            </div>
-            <div class="card-body">
-                @if($manager->employees()->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Employé</th>
-                                    <th>Email</th>
-                                    <th>Statut</th>
-                                    <th>Créé le</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($manager->employees()->take(5)->get() as $employee)
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-2" 
-                                                     style="width: 30px; height: 30px;">
-                                                    <span class="text-white" style="font-size: 12px;">
-                                                        {{ substr($employee->name, 0, 1) }}
-                                                    </span>
-                                                </div>
-                                                {{ $employee->name }}
-                                            </div>
-                                        </td>
-                                        <td>{{ $employee->email }}</td>
-                                        <td>
-                                            <span class="badge {{ $employee->is_active ? 'badge-success' : 'badge-danger' }}">
-                                                {{ $employee->is_active ? 'Actif' : 'Inactif' }}
-                                            </span>
-                                        </td>
-                                        <td>{{ $employee->created_at->format('d/m/Y') }}</td>
-                                        <td>
-                                            <a href="{{ route('admin.employees.show', $employee) }}" 
-                                               class="btn btn-sm btn-outline-info">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    @if($manager->employees()->count() > 5)
-                        <div class="text-center mt-3">
-                            <small class="text-muted">... et {{ $manager->employees()->count() - 5 }} autre(s)</small>
-                        </div>
-                    @endif
-                @else
-                    <div class="text-center py-4">
-                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                        <h6 class="text-muted">Aucun employé assigné</h6>
-                        <p class="text-muted">Ce manager ne supervise encore aucun employé.</p>
-                        <a href="{{ route('admin.employees.create') }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-plus me-2"></i>Créer un employé
-                        </a>
-                    </div>
-                @endif
-            </div>
-        </div>
-        
-        <!-- Informations système -->
-        <div class="card shadow">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations système</h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label text-muted">Créé le</label>
-                            <div>{{ $manager->created_at->format('d/m/Y à H:i') }}</div>
-                            <small class="text-muted">{{ $manager->created_at->diffForHumans() }}</small>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label text-muted">Dernière modification</label>
-                            <div>{{ $manager->updated_at->format('d/m/Y à H:i') }}</div>
-                            <small class="text-muted">{{ $manager->updated_at->diffForHumans() }}</small>
-                        </div>
-                    </div>
-                </div>
-                
-                @if($manager->loginHistory()->latest()->first())
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label text-muted">Dernière connexion</label>
-                                <div>{{ $manager->loginHistory()->latest()->first()->login_at->format('d/m/Y à H:i') }}</div>
-                                <small class="text-muted">{{ $manager->loginHistory()->latest()->first()->login_at->diffForHumans() }}</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label text-muted">IP de connexion</label>
-                                <div><code>{{ $manager->loginHistory()->latest()->first()->ip_address }}</code></div>
-                            </div>
-                        </div>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
+@section('css')
+@include('admin.partials._shared-styles')
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, var(--om-primary), var(--om-primary-dark));
+        padding: 2rem;
+        text-align: center;
+        color: white;
+    }
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        border: 3px solid rgba(255,255,255,0.4);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+    .info-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--om-gray-100);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--om-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 0.85rem;
+    }
+</style>
 @endsection
 
-@section('scripts')
-<script>
-function sendWelcomeEmail() {
-    if (confirm('Envoyer un email de bienvenue à {{ $manager->name }} ?')) {
-        // Ici vous pouvez ajouter une requête AJAX pour envoyer l'email
-        alert('Fonctionnalité à implémenter : envoi d\'email de bienvenue');
-    }
-}
-</script>
+@section('content')
+<div class="container-fluid om-animate">
+    <div class="om-page-header">
+        <div>
+            <h1 class="om-page-title">Détails du Manager</h1>
+            <p class="om-page-subtitle">{{ $manager->name }}</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.managers.edit', $manager) }}" class="om-btn om-btn-primary om-btn-sm"><i class="fas fa-pen"></i> Modifier</a>
+            <form method="POST" action="{{ route('admin.managers.toggle-active', $manager) }}" class="d-inline">
+                @csrf @method('PATCH')
+                <button type="submit" class="om-btn om-btn-sm {{ $manager->is_active ? 'om-btn-ghost' : 'om-btn-success' }}"
+                        onclick="return confirm('Êtes-vous sûr ?')">
+                    <i class="fas {{ $manager->is_active ? 'fa-ban' : 'fa-check' }}"></i>
+                    {{ $manager->is_active ? 'Désactiver' : 'Activer' }}
+                </button>
+            </form>
+            <a href="{{ route('admin.managers.index') }}" class="om-btn om-btn-ghost om-btn-sm"><i class="fas fa-arrow-left"></i> Retour</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left: Profile Card -->
+        <div class="col-lg-4">
+            <div class="om-card" style="overflow: hidden;">
+                <div class="profile-header">
+                    <div class="profile-avatar">{{ strtoupper(substr($manager->name, 0, 1)) }}</div>
+                    <h5 class="fw-bold mb-1">{{ $manager->name }}</h5>
+                    <p class="mb-2 opacity-75">Manager</p>
+                    <span class="om-badge {{ $manager->is_active ? 'om-badge-success' : 'om-badge-danger' }}" style="background: rgba(255,255,255,0.2); color: white;">
+                        <i class="fas {{ $manager->is_active ? 'fa-check-circle' : 'fa-times-circle' }}" style="font-size: 0.6rem;"></i>
+                        {{ $manager->is_active ? 'Actif' : 'Inactif' }}
+                    </span>
+                </div>
+                <div class="om-card-body">
+                    <div class="info-row">
+                        <div class="info-icon" style="background: var(--om-primary-light); color: var(--om-primary);"><i class="fas fa-envelope"></i></div>
+                        <div><small style="color: var(--om-gray-500);">Email</small><br><a href="mailto:{{ $manager->email }}" class="text-decoration-none">{{ $manager->email }}</a></div>
+                    </div>
+                    @if($manager->phone)
+                    <div class="info-row">
+                        <div class="info-icon" style="background: var(--om-success-light); color: var(--om-success);"><i class="fas fa-phone"></i></div>
+                        <div><small style="color: var(--om-gray-500);">Téléphone</small><br><a href="tel:{{ $manager->phone }}" class="text-decoration-none">{{ $manager->phone }}</a></div>
+                    </div>
+                    @endif
+                    <div class="info-row">
+                        <div class="info-icon" style="background: var(--om-info-light); color: var(--om-info);"><i class="fas fa-users"></i></div>
+                        <div><small style="color: var(--om-gray-500);">Employés</small><br><strong>{{ $manager->employees()->count() }}</strong> supervisé(s)</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-icon" style="background: var(--om-warning-light); color: var(--om-warning);"><i class="fas fa-calendar"></i></div>
+                        <div><small style="color: var(--om-gray-500);">Membre depuis</small><br>{{ $manager->created_at->format('d/m/Y') }} <small style="color: var(--om-gray-500);">({{ $manager->created_at->diffForHumans() }})</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="om-card mt-3">
+                <div class="om-card-header"><h6 class="fw-bold mb-0"><i class="fas fa-bolt me-2" style="color: var(--om-warning);"></i>Actions rapides</h6></div>
+                <div class="om-card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('admin.login-history.show', ['user_type' => 'Manager', 'user_id' => $manager->id]) }}" class="om-btn om-btn-ghost om-btn-sm" style="justify-content: flex-start;">
+                            <i class="fas fa-history"></i> Historique des connexions
+                        </a>
+                        <a href="{{ route('admin.employees.index') }}?manager={{ $manager->id }}" class="om-btn om-btn-ghost om-btn-sm" style="justify-content: flex-start;">
+                            <i class="fas fa-users"></i> Voir ses employés
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Stats + Employees -->
+        <div class="col-lg-8">
+            <!-- Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="om-stat" style="--stat-color: var(--om-primary)">
+                        <div class="text-center">
+                            <div class="om-stat-value">{{ $manager->employees()->count() }}</div>
+                            <div class="om-stat-label">Employés</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="om-stat" style="--stat-color: var(--om-success)">
+                        <div class="text-center">
+                            <div class="om-stat-value">{{ $manager->employees()->where('is_active', true)->count() }}</div>
+                            <div class="om-stat-label">Actifs</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="om-stat" style="--stat-color: var(--om-info)">
+                        <div class="text-center">
+                            <div class="om-stat-value">{{ $manager->created_at->diffInDays() }}</div>
+                            <div class="om-stat-label">Jours</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="om-stat" style="--stat-color: var(--om-warning)">
+                        <div class="text-center">
+                            <div class="om-stat-value">{{ $manager->loginHistory()->successful()->count() }}</div>
+                            <div class="om-stat-label">Connexions</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employees Table -->
+            <div class="om-card">
+                <div class="om-card-header">
+                    <h6 class="fw-bold mb-0"><i class="fas fa-users me-2" style="color: var(--om-primary);"></i>Employés supervisés ({{ $manager->employees()->count() }})</h6>
+                    @if($manager->employees()->count() > 0)
+                        <a href="{{ route('admin.employees.index') }}?manager={{ $manager->id }}" class="om-btn om-btn-ghost om-btn-sm">Voir tous</a>
+                    @endif
+                </div>
+                <div class="om-card-body" style="padding: 0;">
+                    @if($manager->employees()->count() > 0)
+                        <div class="table-responsive">
+                            <table class="om-table">
+                                <thead>
+                                    <tr>
+                                        <th>Employé</th>
+                                        <th>Email</th>
+                                        <th class="text-center">Statut</th>
+                                        <th class="d-none d-md-table-cell">Créé le</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($manager->employees()->take(10)->get() as $employee)
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="om-avatar om-avatar-sm" style="background: var(--om-success);">{{ strtoupper(substr($employee->name, 0, 1)) }}</div>
+                                                <span class="fw-semibold">{{ $employee->name }}</span>
+                                            </div>
+                                        </td>
+                                        <td style="color: var(--om-gray-500);">{{ $employee->email }}</td>
+                                        <td class="text-center">
+                                            <span class="om-badge {{ $employee->is_active ? 'om-badge-success' : 'om-badge-danger' }}">{{ $employee->is_active ? 'Actif' : 'Inactif' }}</span>
+                                        </td>
+                                        <td class="d-none d-md-table-cell" style="color: var(--om-gray-500); font-size: 0.85rem;">{{ $employee->created_at->format('d/m/Y') }}</td>
+                                        <td class="text-end">
+                                            <a href="{{ route('admin.employees.show', $employee) }}" class="om-btn om-btn-ghost om-btn-icon om-btn-sm"><i class="fas fa-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        @if($manager->employees()->count() > 10)
+                            <div class="text-center p-3" style="border-top: 1px solid var(--om-gray-200);">
+                                <small style="color: var(--om-gray-500);">... et {{ $manager->employees()->count() - 10 }} autre(s)</small>
+                            </div>
+                        @endif
+                    @else
+                        <div class="om-empty">
+                            <div class="om-empty-icon"><i class="fas fa-users"></i></div>
+                            <h5>Aucun employé assigné</h5>
+                            <p>Ce manager ne supervise encore aucun employé.</p>
+                            <a href="{{ route('admin.employees.create') }}" class="om-btn om-btn-primary om-btn-sm"><i class="fas fa-plus"></i> Créer un employé</a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="om-card mt-3">
+                <div class="om-card-header"><h6 class="fw-bold mb-0"><i class="fas fa-info-circle me-2" style="color: var(--om-gray-500);"></i>Informations système</h6></div>
+                <div class="om-card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <small style="color: var(--om-gray-500);">Créé le</small>
+                            <div>{{ $manager->created_at->format('d/m/Y à H:i') }}</div>
+                            <small style="color: var(--om-gray-500);">{{ $manager->created_at->diffForHumans() }}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <small style="color: var(--om-gray-500);">Dernière modification</small>
+                            <div>{{ $manager->updated_at->format('d/m/Y à H:i') }}</div>
+                            <small style="color: var(--om-gray-500);">{{ $manager->updated_at->diffForHumans() }}</small>
+                        </div>
+                        @if($manager->loginHistory()->latest()->first())
+                        <div class="col-md-6">
+                            <small style="color: var(--om-gray-500);">Dernière connexion</small>
+                            <div>{{ $manager->loginHistory()->latest()->first()->login_at->format('d/m/Y à H:i') }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <small style="color: var(--om-gray-500);">IP de connexion</small>
+                            <div><code style="background: var(--om-gray-100); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ $manager->loginHistory()->latest()->first()->ip_address }}</code></div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

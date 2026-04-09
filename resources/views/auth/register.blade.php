@@ -62,6 +62,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color
 </style>
 </head>
 <body>
+@include('partials._no-cache')
 <header class="header">
 <div class="header-content">
 <a href="{{ route('confirmi.home') }}" class="back-btn"><i class="fas fa-arrow-left"></i></a>

@@ -2,13 +2,46 @@
 
 @section('title', 'Modifier l\'Employé')
 
+@section('css')
+@include('admin.partials._shared-styles')
+<style>
+    .emp-form-card {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius, 14px); overflow: hidden;
+    }
+    .emp-form-header {
+        padding: 1.25rem 1.5rem;
+        background: var(--bg-muted); border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; gap: 1rem;
+    }
+    .emp-form-avatar {
+        width: 48px; height: 48px;
+        border-radius: var(--radius-sm, 10px);
+        background: var(--primary-50, #eef2ff); color: var(--primary);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 1.15rem;
+    }
+    .emp-form-header-info h4 { margin: 0 0 0.15rem; font-weight: 700; color: var(--text); font-size: 1.05rem; }
+    .emp-form-header-info small { color: var(--text-secondary); font-size: 0.8rem; }
+    .emp-section-title {
+        display: flex; align-items: center; gap: 0.5rem;
+        margin-bottom: 1rem; padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .emp-section-title i { color: var(--primary); font-size: 0.85rem; }
+    .emp-section-title h5 { color: var(--text); font-weight: 700; font-size: 0.95rem; margin: 0; }
+    .emp-page-header h1 { color: var(--text); font-weight: 800; letter-spacing: -0.02em; }
+    .emp-page-header p { color: var(--text-secondary); }
+</style>
+@endsection
+
 @section('content')
 <div class="container-fluid animate-fade-in" x-data="editEmployeeForm()">
     <!-- Header Section -->
-    <div class="row mb-4">
+    <div class="row mb-4 emp-page-header">
         <div class="col-md-6">
-            <h1 class="h2 fw-bold text-dark mb-2">Modifier l'Employé</h1>
-            <p class="text-muted">Modifier les informations de {{ $employee->name }}</p>
+            <h1 class="h2 mb-2">Modifier l'Employé</h1>
+            <p class="mb-0">Modifier les informations de {{ $employee->name }}</p>
         </div>
         <div class="col-md-6 text-end">
             <div class="btn-group" role="group">
@@ -29,22 +62,15 @@
     <!-- Main Form Card -->
     <div class="row justify-content-center">
         <div class="col-xl-10">
-            <div class="card shadow-lg border-0">
+            <div class="emp-form-card">
                 <!-- Card Header avec avatar -->
-                <div class="card-header bg-gradient-success text-white py-4">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-white bg-opacity-25 rounded-4 p-3 me-3">
-                            <span class="h4 mb-0 fw-bold">
-                                {{ substr($employee->name, 0, 1) }}
-                            </span>
-                        </div>
-                        <div>
-                            <h4 class="card-title mb-1">{{ $employee->name }}</h4>
-                            <small class="text-white-50">{{ $employee->email }}</small>
-                            @if($employee->manager)
-                                <div class="small text-white-50">Supervisé par: {{ $employee->manager->name }}</div>
-                            @endif
-                        </div>
+                <div class="emp-form-header">
+                    <div class="emp-form-avatar">
+                        {{ substr($employee->name, 0, 1) }}
+                    </div>
+                    <div class="emp-form-header-info">
+                        <h4>{{ $employee->name }}</h4>
+                        <small>{{ $employee->email }}@if($employee->manager) · Supervisé par: {{ $employee->manager->name }}@endif</small>
                     </div>
                 </div>
 
@@ -56,9 +82,9 @@
                         
                         <!-- Informations personnelles -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-user text-success me-2"></i>
-                                <h5 class="text-success mb-0">Informations personnelles</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-user"></i>
+                                <h5>Informations personnelles</h5>
                             </div>
                             
                             <div class="row g-3">
@@ -127,9 +153,9 @@
                         
                         <!-- Attribution à un manager -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-user-tie text-success me-2"></i>
-                                <h5 class="text-success mb-0">Attribution à un manager</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-user-tie"></i>
+                                <h5>Attribution à un manager</h5>
                             </div>
                             
                             <div class="row">
@@ -189,9 +215,9 @@
                         
                         <!-- Modifier le mot de passe -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-key text-success me-2"></i>
-                                <h5 class="text-success mb-0">Modifier le mot de passe</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-key"></i>
+                                <h5>Modifier le mot de passe</h5>
                             </div>
                             
                             <div class="alert alert-info">
@@ -273,15 +299,15 @@
                         
                         <!-- Paramètres du compte et statistiques -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-cog text-success me-2"></i>
-                                <h5 class="text-success mb-0">Paramètres du compte</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-cog"></i>
+                                <h5>Paramètres du compte</h5>
                             </div>
                             
                             <div class="row g-3">
                                 <!-- Switch compte actif -->
                                 <div class="col-md-6">
-                                    <div class="bg-light rounded p-3">
+                                    <div class="rounded p-3" style="background: var(--bg-muted);">
                                         <div class="form-check">
                                             <input type="checkbox" 
                                                    id="is_active" 
@@ -330,9 +356,9 @@
                         
                         <!-- Informations du compte -->
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom border-success border-opacity-25">
-                                <i class="fas fa-history text-success me-2"></i>
-                                <h5 class="text-success mb-0">Informations du compte</h5>
+                            <div class="emp-section-title">
+                                <i class="fas fa-history"></i>
+                                <h5>Informations du compte</h5>
                             </div>
                             
                             <div class="row g-3">
@@ -540,66 +566,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Animations personnalisées */
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
-}
-
-.animate-slide-up {
-    animation: slideUp 0.5s ease-out forwards;
-}
-
-/* Gradient de succès personnalisé */
-.bg-gradient-success {
-    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
-}
-
-/* Amélioration des transitions */
-.btn {
-    transition: all 0.2s ease-in-out;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-}
-
-.form-control:focus, .form-select:focus {
-    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
-    border-color: #198754;
-}
-
-/* Amélioration des cartes */
-.card {
-    border-radius: 1rem;
-    transition: transform 0.2s ease-in-out;
-    border: 0;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
-}
-
-/* Modal custom overlay */
-.modal.show {
-    backdrop-filter: blur(3px);
-}
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: slideUp 0.3s ease-out; }
+.animate-slide-up { animation: slideUp 0.35s ease-out forwards; }
 </style>
 @endsection

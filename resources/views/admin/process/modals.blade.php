@@ -404,6 +404,40 @@
 .status-ancienne { background: #fed7d7; color: #9b2c2c; }
 .status-annulée { background: #fee2e2; color: #dc2626; }
 .status-livrée { background: #dcfce7; color: #166534; }
+
+/* ===== DARK MODE OVERRIDES ===== */
+html[data-theme="dark"] .alert-info {
+    background: rgba(6,182,212,0.15) !important;
+    color: #67e8f9 !important;
+    border-left-color: rgba(6,182,212,0.5) !important;
+}
+html[data-theme="dark"] .alert-success {
+    background: rgba(16,185,129,0.15) !important;
+    color: #6ee7b7 !important;
+    border-left-color: rgba(16,185,129,0.5) !important;
+}
+html[data-theme="dark"] .alert-warning {
+    background: rgba(245,158,11,0.15) !important;
+    color: #fde68a !important;
+    border-left-color: rgba(245,158,11,0.5) !important;
+}
+html[data-theme="dark"] .alert-danger {
+    background: rgba(239,68,68,0.15) !important;
+    color: #fca5a5 !important;
+    border-left-color: rgba(239,68,68,0.5) !important;
+}
+html[data-theme="dark"] .form-text { color: var(--text-muted, #9ca3af) !important; }
+/* Timeline dark */
+html[data-theme="dark"] .timeline::before { background: var(--border, #374151) !important; }
+html[data-theme="dark"] .timeline-marker-icon { border-color: var(--bg-card, #1f2937) !important; }
+html[data-theme="dark"] .timeline-content .card { border-left-color: var(--border, #374151) !important; }
+/* Status badges dark */
+html[data-theme="dark"] .status-nouvelle { background: rgba(99,102,241,0.2) !important; color: #a5b4fc !important; }
+html[data-theme="dark"] .status-datée { background: rgba(245,158,11,0.2) !important; color: #fde68a !important; }
+html[data-theme="dark"] .status-confirmée { background: rgba(16,185,129,0.2) !important; color: #6ee7b7 !important; }
+html[data-theme="dark"] .status-ancienne { background: rgba(239,68,68,0.2) !important; color: #fca5a5 !important; }
+html[data-theme="dark"] .status-annulée { background: rgba(239,68,68,0.2) !important; color: #fca5a5 !important; }
+html[data-theme="dark"] .status-livrée { background: rgba(16,185,129,0.2) !important; color: #6ee7b7 !important; }
 </style>
 
 <script>

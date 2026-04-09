@@ -1,36 +1,32 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
-@section('title', 'Livraison — Masafa Express')
+@section('title', 'Livraison — Kolixy')
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
     :root {
-        --masafa-blue: #0f4c81;
-        --masafa-blue-light: #1a73c8;
-        --masafa-orange: #f97316;
+        --kolixy-blue: #0f4c81;
+        --kolixy-blue-light: #1a73c8;
+        --kolixy-orange: #f97316;
         --royal-blue-light: #3b82f6;
         --royal-blue-lighter: #60a5fa;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --info: #06b6d4;
-        --light: #f8fafc;
-        --dark: #1f2937;
-        --border: #e5e7eb;
+        --success: var(--success, #10b981);
+        --warning: var(--warning, #f59e0b);
+        --danger: var(--danger, #ef4444);
+        --info: var(--info, #06b6d4);
+        --light: var(--bg-muted, #f8fafc);
+        --dark: var(--text, #1f2937);
+        --border: var(--border, #e5e7eb);
         --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
         --radius: 8px;
         --transition: all 0.2s ease;
     }
 
-    body {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-        font-family: 'Inter', system-ui, sans-serif;
-    }
-
     /* ===== CONTAINER PRINCIPAL ===== */
     .delivery-dashboard {
-        background: white;
+        background: var(--card-bg, white);
         border-radius: var(--radius);
         box-shadow: var(--shadow);
         margin: 0.5rem;
@@ -109,12 +105,12 @@
     }
 
     .btn-header.btn-primary {
-        background: white;
+        background: var(--card-bg, white);
         color: var(--royal-blue);
     }
 
     .btn-header.btn-primary:hover {
-        background: #f8fafc;
+        background: var(--bg-muted, #f8fafc);
         color: var(--royal-blue);
     }
 
@@ -132,7 +128,7 @@
     }
 
     .stat-card {
-        background: white;
+        background: var(--card-bg, white);
         padding: 0.875rem;
         border-radius: var(--radius);
         box-shadow: var(--shadow);
@@ -222,14 +218,14 @@
 
     /* ===== CARTE TRANSPORTEUR ULTRA-MODERNE ===== */
     .carrier-card {
-        background: white;
+        background: var(--card-bg, white);
         border-radius: var(--radius);
         box-shadow: var(--shadow);
         overflow: hidden;
         transition: var(--transition);
         border: 1px solid var(--border);
         position: relative;
-        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        background: var(--card-bg, white);
     }
 
     .carrier-card:hover {
@@ -517,7 +513,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 0.375rem;
-            background: white;
+            background: var(--card-bg, white);
             border-radius: 4px;
         }
 
@@ -588,6 +584,17 @@
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(100%); opacity: 0; }
     }
+
+    /* ============= DARK MODE OVERRIDES ============= */
+    html[data-theme="dark"] .delivery-dashboard { background: var(--bg-card); border-color: var(--border); }
+    html[data-theme="dark"] .delivery-dashboard [style*="background:#fff"],
+    html[data-theme="dark"] .delivery-dashboard [style*="background: #fff"],
+    html[data-theme="dark"] .delivery-dashboard [style*="background:white"],
+    html[data-theme="dark"] .delivery-dashboard [style*="background: white"] { background: var(--bg-card) !important; }
+    html[data-theme="dark"] .delivery-dashboard [style*="color:#1e293b"],
+    html[data-theme="dark"] .delivery-dashboard [style*="color: #1e293b"],
+    html[data-theme="dark"] .delivery-dashboard [style*="color:#374151"],
+    html[data-theme="dark"] .delivery-dashboard [style*="color: #374151"] { color: var(--text) !important; }
 </style>
 @endsection
 
@@ -599,8 +606,8 @@
     <div style="position:absolute;right:-40px;top:-40px;width:160px;height:160px;background:rgba(255,255,255,.08);border-radius:50%;"></div>
     <div style="position:relative;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
         <div>
-            <h1 style="font-size:1.5rem;font-weight:700;margin:0;"><i class="fas fa-truck me-2"></i>Livraison — Masafa Express</h1>
-            <p style="opacity:.85;margin:.25rem 0 0;font-size:.875rem;">Gérez l'envoi de vos commandes confirmées via l'API Masafa Express</p>
+            <h1 style="font-size:1.5rem;font-weight:700;margin:0;"><i class="fas fa-truck me-2"></i>Livraison — Kolixy</h1>
+            <p style="opacity:.85;margin:.25rem 0 0;font-size:.875rem;">Gérez l'envoi de vos commandes confirmées via l'API Kolixy</p>
         </div>
         <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
             @if($config && $config->api_token)
@@ -734,7 +741,7 @@
         @if($sentOrders->total() === 0)
         <div style="text-align:center;padding:3rem 1rem;color:#94a3b8;">
             <i class="fas fa-shipping-fast" style="font-size:2.5rem;opacity:.3;display:block;margin-bottom:.75rem;"></i>
-            <p style="margin:0;font-size:.875rem;">Aucune commande encore envoyée via Masafa Express.</p>
+            <p style="margin:0;font-size:.875rem;">Aucune commande encore envoyée via Kolixy.</p>
         </div>
         @else
         <div style="overflow-x:auto;">
@@ -770,7 +777,7 @@
                     <td style="padding:.65rem 1rem;">
                         <button onclick="syncStatus({{ $order->id }}, this)"
                             style="background:#fff;color:#1e293b;border:1.5px solid #e2e8f0;border-radius:7px;padding:.38rem .7rem;font-size:.8rem;cursor:pointer;"
-                            title="Synchroniser le statut depuis Masafa Express">
+                            title="Synchroniser le statut depuis KOLIXY">
                             <i class="fas fa-sync-alt"></i>
                         </button>
                     </td>
@@ -804,7 +811,7 @@
         </div>
         <div style="flex:1;min-width:0;">
             <div style="color:#fff;font-weight:700;font-size:.9rem;">Compte lié</div>
-            <div style="color:rgba(255,255,255,.8);font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Masafa Express connecté avec succès</div>
+            <div style="color:rgba(255,255,255,.8);font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Kolixy connecté avec succès</div>
         </div>
         <button onclick="deleteConfig()" title="Délier le compte"
             style="flex-shrink:0;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:7px;padding:.3rem .65rem;font-size:.78rem;cursor:pointer;white-space:nowrap;">
@@ -815,7 +822,7 @@
     {{-- Account info --}}
     <div style="padding:1.25rem 1.4rem;">
         @php
-            $userName  = $config->masafa_user_name  ?? 'Client Masafa';
+            $userName  = $config->masafa_user_name  ?? 'Client Kolixy';
             $userEmail = $config->masafa_user_email ?? '';
             $initials  = collect(explode(' ', $userName))->map(fn($w)=>strtoupper(mb_substr($w,0,1)))->take(2)->implode('');
         @endphp
@@ -841,7 +848,7 @@
             Paramètres d'expédition
         </button>
         <div id="adv-fields" style="display:none;">
-            <form method="POST" action="{{ route('admin.delivery.config.save') }}" id="masafa-settings-form">
+            <form method="POST" action="{{ route('admin.delivery.config.save') }}" id="kolixy-settings-form">
                 @csrf
                 <input type="hidden" name="api_token" value="{{ $config->api_token }}">
 
@@ -918,7 +925,7 @@
         <div style="width:56px;height:56px;background:rgba(255,255,255,.18);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto .8rem;">
             <i class="fas fa-truck" style="color:#fff;font-size:1.4rem;"></i>
         </div>
-        <div style="color:#fff;font-weight:700;font-size:1.1rem;margin-bottom:.3rem;">Masafa Express</div>
+        <div style="color:#fff;font-weight:700;font-size:1.1rem;margin-bottom:.3rem;">Kolixy</div>
         <div style="color:rgba(255,255,255,.75);font-size:.82rem;">Connectez-vous à votre compte pour activer la livraison</div>
     </div>
 
@@ -931,7 +938,7 @@
 
         <div style="margin-bottom:.85rem;">
             <label style="display:block;font-weight:600;font-size:.83rem;margin-bottom:.35rem;color:#374151;">Adresse email</label>
-            <input id="masafa-email" type="email" autocomplete="email"
+            <input id="kolixy-email" type="email" autocomplete="email"
                    placeholder="votre@email.com"
                    style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:.6rem 1rem;font-size:.88rem;box-sizing:border-box;transition:border .15s;"
                    onfocus="this.style.borderColor='#1a73c8'" onblur="this.style.borderColor='#e2e8f0'">
@@ -940,11 +947,11 @@
         <div style="margin-bottom:1.25rem;">
             <label style="display:block;font-weight:600;font-size:.83rem;margin-bottom:.35rem;color:#374151;">Mot de passe</label>
             <div style="position:relative;">
-                <input id="masafa-password" type="password" autocomplete="current-password"
+                <input id="kolixy-password" type="password" autocomplete="current-password"
                        placeholder="••••••••"
                        style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:.6rem 2.5rem .6rem 1rem;font-size:.88rem;box-sizing:border-box;transition:border .15s;"
                        onfocus="this.style.borderColor='#1a73c8'" onblur="this.style.borderColor='#e2e8f0'"
-                       onkeydown="if(event.key==='Enter') connectMasafa()">
+                       onkeydown="if(event.key==='Enter') connectKolixy()">
                 <button type="button" onclick="togglePasswordVisibility()" style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;padding:0;">
                     <i id="pw-eye" class="fas fa-eye" style="font-size:.85rem;"></i>
                 </button>
@@ -952,10 +959,10 @@
         </div>
 
         {{-- Main CTA button --}}
-        <button type="button" onclick="connectMasafa()" id="btn-masafa-connect"
+        <button type="button" onclick="connectKolixy()" id="btn-kolixy-connect"
             style="width:100%;background:linear-gradient(135deg,#0f4c81,#1a73c8);color:#fff;border:none;border-radius:10px;padding:.8rem 1rem;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.6rem;letter-spacing:.01em;box-shadow:0 2px 8px rgba(15,76,129,.35);transition:opacity .15s;">
             <i class="fas fa-sign-in-alt"></i>
-            Se connecter avec Masafa Express
+            Se connecter avec Kolixy
         </button>
 
         <div style="text-align:center;margin-top:1rem;color:#94a3b8;font-size:.75rem;">
@@ -1033,7 +1040,7 @@ function onCheckChange() {
 
 // ===== PASSWORD VISIBILITY TOGGLE (login form) =====
 function togglePasswordVisibility() {
-    const inp = document.getElementById('masafa-password');
+    const inp = document.getElementById('kolixy-password');
     const eye = document.getElementById('pw-eye');
     if (!inp) return;
     inp.type = inp.type === 'password' ? 'text' : 'password';
@@ -1100,7 +1107,7 @@ async function loadPickupAddresses() {
             // No addresses: show fallback text input
             if (fallback) { fallback.disabled = false; fallback.style.display = 'block'; }
             showToast('info', d.data && d.data.length === 0
-                ? 'Aucune adresse de ramassage trouvée. Ajoutez-en une dans votre espace Masafa Express.'
+                ? 'Aucune adresse de ramassage trouvée. Ajoutez-en une dans votre espace Kolixy.'
                 : (d.message ?? 'Impossible de charger les adresses.'));
         }
     } catch(e) {
@@ -1132,10 +1139,10 @@ function onPickupAddressChange(select) {
     if (nameInput && !nameInput.value) nameInput.value = addr.name;
 }
 
-// ===== CONNECT WITH MASAFA EXPRESS CREDENTIALS =====
-async function connectMasafa() {
-    const email    = document.getElementById('masafa-email')?.value?.trim();
-    const password = document.getElementById('masafa-password')?.value;
+// ===== CONNECT WITH KOLIXY CREDENTIALS =====
+async function connectKolixy() {
+    const email    = document.getElementById('kolixy-email')?.value?.trim();
+    const password = document.getElementById('kolixy-password')?.value;
     const errBox   = document.getElementById('connect-error');
     const errMsg   = document.getElementById('connect-error-msg');
 
@@ -1144,7 +1151,7 @@ async function connectMasafa() {
     if (!email)    { showError('Veuillez saisir votre adresse email.'); return; }
     if (!password) { showError('Veuillez saisir votre mot de passe.'); return; }
 
-    const btn  = document.getElementById('btn-masafa-connect');
+    const btn  = document.getElementById('btn-kolixy-connect');
     const orig = btn.innerHTML;
     btn.innerHTML = '<span class="spinner"></span> Connexion en cours…';
     btn.disabled  = true;
@@ -1159,7 +1166,7 @@ async function connectMasafa() {
         const d = await r.json();
 
         if (d.success) {
-            showToast('success', d.message ?? 'Compte Masafa Express lié !');
+            showToast('success', d.message ?? 'Compte Kolixy lié !');
             setTimeout(() => location.reload(), 1200);
         } else {
             showError(d.message ?? 'Identifiants incorrects.');
@@ -1195,7 +1202,7 @@ async function testConnection() {
 
 // ===== SEND SINGLE ORDER =====
 async function sendOrder(orderId, btn) {
-    if (!confirm('Envoyer la commande #'+orderId+' à Masafa Express ?')) return;
+    if (!confirm('Envoyer la commande #'+orderId+' à Kolixy ?')) return;
     const orig = btn.innerHTML;
     btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
     try {
@@ -1221,7 +1228,7 @@ async function sendOrder(orderId, btn) {
 async function sendSelected() {
     const ids = [...document.querySelectorAll('.order-chk:checked')].map(cb => cb.value);
     if (!ids.length) return;
-    if (!confirm(`Envoyer ${ids.length} commande(s) à Masafa Express ?`)) return;
+    if (!confirm(`Envoyer ${ids.length} commande(s) à Kolixy ?`)) return;
     const btn = document.getElementById('btn-send-bulk');
     if (btn) { btn.innerHTML = '<span class="spinner"></span> Envoi...'; btn.disabled = true; }
     try {
@@ -1283,7 +1290,7 @@ function copyTracking(tracking, el) {
 
 // ===== DELETE CONFIG =====
 async function deleteConfig() {
-    if (!confirm('Supprimer la configuration Masafa Express ? Cette action est irréversible.')) return;
+    if (!confirm('Supprimer la configuration Kolixy ? Cette action est irréversible.')) return;
     try {
         const r = await fetch('/admin/delivery/config', {
             method: 'DELETE',
@@ -1300,6 +1307,6 @@ const _s = document.createElement('style');
 _s.textContent = '.spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes slideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(100%);opacity:0}}';
 document.head.appendChild(_s);
 
-console.log('✅ Masafa Express Delivery loaded');
+console.log('✅ KOLIXY Delivery loaded');
 </script>
 @endsection

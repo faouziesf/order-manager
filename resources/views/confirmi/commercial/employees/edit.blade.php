@@ -7,7 +7,7 @@
     <div class="col-lg-7">
         <div class="content-card">
             <div class="card-header-custom">
-                <h6><i class="fas fa-user-edit me-2 text-primary"></i>Modifier l'employé</h6>
+                <h6><i class="fas fa-user-edit me-2" style="color:var(--accent);"></i>Modifier l'employé</h6>
                 <a href="{{ route('confirmi.commercial.employees.index') }}" class="btn btn-sm btn-outline-royal">
                     <i class="fas fa-arrow-left me-1"></i>Retour
                 </a>

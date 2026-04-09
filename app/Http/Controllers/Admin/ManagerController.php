@@ -145,6 +145,15 @@ class ManagerController extends Controller
                 $updateData['password'] = Hash::make($request->password);
             }
 
+            // Build permissions array from submitted checkboxes
+            $permissionKeys = array_keys(Admin::DEFAULT_PERMISSIONS);
+            $submittedPerms = $request->input('permissions', []);
+            $permissions = [];
+            foreach ($permissionKeys as $key) {
+                $permissions[$key] = isset($submittedPerms[$key]) && $submittedPerms[$key] == '1';
+            }
+            $updateData['permissions'] = $permissions;
+
             $manager->update($updateData);
 
             return redirect()->route('admin.managers.index')

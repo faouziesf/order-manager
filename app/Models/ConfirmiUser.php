@@ -4,15 +4,17 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ConfirmiUser extends Authenticatable
 {
-    use Notifiable;
+    use Notifiable, SoftDeletes;
 
     protected $table = 'confirmi_users';
 
     const ROLE_COMMERCIAL = 'commercial';
     const ROLE_EMPLOYEE = 'employee';
+    const ROLE_AGENT = 'agent';
 
     protected $fillable = [
         'name',
@@ -48,6 +50,11 @@ class ConfirmiUser extends Authenticatable
         return $this->role === self::ROLE_EMPLOYEE;
     }
 
+    public function isAgent(): bool
+    {
+        return $this->role === self::ROLE_AGENT;
+    }
+
     // ========== Relations ==========
 
     public function creator()
@@ -65,6 +72,11 @@ class ConfirmiUser extends Authenticatable
         return $this->hasMany(ConfirmiOrderAssignment::class, 'assigned_by');
     }
 
+    public function emballageTasks()
+    {
+        return $this->hasMany(EmballageTask::class, 'assigned_to');
+    }
+
     // ========== Scopes ==========
 
     public function scopeCommercials($query)
@@ -75,6 +87,11 @@ class ConfirmiUser extends Authenticatable
     public function scopeEmployees($query)
     {
         return $query->where('role', self::ROLE_EMPLOYEE);
+    }
+
+    public function scopeAgents($query)
+    {
+        return $query->where('role', self::ROLE_AGENT);
     }
 
     public function scopeActive($query)

@@ -20,7 +20,15 @@ class EmployeeManagementController extends Controller
             ->latest()
             ->get();
 
-        return view('confirmi.commercial.employees.index', compact('employees'));
+        $agents = ConfirmiUser::agents()
+            ->withCount(['emballageTasks as total_tasks',
+                'emballageTasks as shipped_tasks' => fn($q) => $q->whereIn('status', ['shipped', 'completed']),
+                'emballageTasks as pending_tasks' => fn($q) => $q->whereIn('status', ['pending', 'received', 'packed']),
+            ])
+            ->latest()
+            ->get();
+
+        return view('confirmi.commercial.employees.index', compact('employees', 'agents'));
     }
 
     public function create()
@@ -35,6 +43,7 @@ class EmployeeManagementController extends Controller
             'email'    => 'required|email|unique:confirmi_users,email',
             'phone'    => 'nullable|string|max:20',
             'password' => 'required|string|min:6|confirmed',
+            'role'     => 'required|in:employee,agent',
         ]);
 
         ConfirmiUser::create([
@@ -42,7 +51,7 @@ class EmployeeManagementController extends Controller
             'email'      => $request->email,
             'phone'      => $request->phone,
             'password'   => Hash::make($request->password),
-            'role'       => ConfirmiUser::ROLE_EMPLOYEE,
+            'role'       => $request->role,
             'is_active'  => true,
             'created_by' => null,
         ]);
@@ -53,7 +62,7 @@ class EmployeeManagementController extends Controller
 
     public function edit(ConfirmiUser $employee)
     {
-        if (!$employee->isEmployee()) {
+        if (!$employee->isEmployee() && !$employee->isAgent()) {
             abort(403);
         }
 
@@ -62,7 +71,7 @@ class EmployeeManagementController extends Controller
 
     public function update(Request $request, ConfirmiUser $employee)
     {
-        if (!$employee->isEmployee()) {
+        if (!$employee->isEmployee() && !$employee->isAgent()) {
             abort(403);
         }
 
@@ -91,7 +100,7 @@ class EmployeeManagementController extends Controller
 
     public function toggleActive(ConfirmiUser $employee)
     {
-        if (!$employee->isEmployee()) {
+        if (!$employee->isEmployee() && !$employee->isAgent()) {
             abort(403);
         }
 
@@ -103,7 +112,7 @@ class EmployeeManagementController extends Controller
 
     public function destroy(ConfirmiUser $employee)
     {
-        if (!$employee->isEmployee()) {
+        if (!$employee->isEmployee() && !$employee->isAgent()) {
             abort(403);
         }
 

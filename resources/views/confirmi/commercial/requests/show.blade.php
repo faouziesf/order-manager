@@ -7,7 +7,7 @@
     <div class="col-lg-8">
         <div class="content-card mb-3">
             <div class="card-header-custom">
-                <h6><i class="fas fa-building me-2 text-primary"></i>Informations Admin</h6>
+                <h6><i class="fas fa-building me-2" style="color:var(--accent);"></i>Informations Admin</h6>
                 @if($confirmiRequest->status === 'pending')
                     <span class="badge-status badge-pending">En attente</span>
                 @elseif($confirmiRequest->status === 'approved')
@@ -32,14 +32,14 @@
 
         @if($confirmiRequest->admin_message)
         <div class="content-card mb-3">
-            <div class="card-header-custom"><h6><i class="fas fa-comment me-2 text-info"></i>Message de l'admin</h6></div>
+            <div class="card-header-custom"><h6><i class="fas fa-comment me-2" style="color:var(--info);"></i>Message de l'admin</h6></div>
             <div class="p-3"><p class="mb-0">{{ $confirmiRequest->admin_message }}</p></div>
         </div>
         @endif
 
         @if($confirmiRequest->response_message)
         <div class="content-card">
-            <div class="card-header-custom"><h6><i class="fas fa-reply me-2 text-success"></i>Réponse</h6></div>
+            <div class="card-header-custom"><h6><i class="fas fa-reply me-2" style="color:var(--success);"></i>Réponse</h6></div>
             <div class="p-3"><p class="mb-0">{{ $confirmiRequest->response_message }}</p></div>
         </div>
         @endif
@@ -49,7 +49,7 @@
         @if($confirmiRequest->status === 'pending')
         <!-- Approve Form -->
         <div class="content-card mb-3">
-            <div class="card-header-custom"><h6><i class="fas fa-check-circle me-2 text-success"></i>Approuver</h6></div>
+            <div class="card-header-custom"><h6><i class="fas fa-check-circle me-2" style="color:var(--success);"></i>Approuver</h6></div>
             <div class="p-3">
                 <form method="POST" action="{{ route('confirmi.commercial.requests.approve', $confirmiRequest) }}">
                     @csrf
@@ -72,7 +72,7 @@
 
         <!-- Reject Form -->
         <div class="content-card">
-            <div class="card-header-custom"><h6><i class="fas fa-times-circle me-2 text-danger"></i>Rejeter</h6></div>
+            <div class="card-header-custom"><h6><i class="fas fa-times-circle me-2" style="color:var(--danger);"></i>Rejeter</h6></div>
             <div class="p-3">
                 <form method="POST" action="{{ route('confirmi.commercial.requests.reject', $confirmiRequest) }}">
                     @csrf

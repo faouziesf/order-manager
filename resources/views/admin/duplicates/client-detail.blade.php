@@ -7,27 +7,22 @@
 @endpush
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
     :root {
-        --primary: #6366f1;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --info: #3b82f6;
+        --success: var(--success, #10b981);
+        --warning: var(--warning, #f59e0b);
+        --danger: var(--danger, #ef4444);
+        --info: var(--info, #3b82f6);
         --doublons: #d4a147;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
+        --gray-100: var(--bg-muted, #f3f4f6);
+        --gray-200: var(--border, #e5e7eb);
         --gray-600: #4b5563;
-        --gray-800: #1f2937;
-        --white: #ffffff;
-        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        --gray-800: var(--text, #1f2937);
+        --white: var(--bg-card, #ffffff);
+        --shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+        --shadow-lg: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
         --border-radius: 12px;
-    }
-
-    body {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        font-family: 'Inter', sans-serif;
     }
 
     .page-header {
@@ -74,7 +69,7 @@
     }
 
     .stat-card {
-        background: white;
+        background: var(--white);
         padding: 1.5rem;
         border-radius: var(--border-radius);
         box-shadow: var(--shadow);
@@ -127,14 +122,14 @@
     }
 
     .orders-section, .analysis-section {
-        background: white;
+        background: var(--white);
         border-radius: var(--border-radius);
         box-shadow: var(--shadow);
         overflow: hidden;
     }
 
     .section-header {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        background: var(--gray-100);
         padding: 1.25rem 1.5rem;
         border-bottom: 1px solid var(--gray-200);
         display: flex;
@@ -159,7 +154,7 @@
     }
 
     .order-card:hover {
-        background: #f8fafc;
+        background: var(--gray-100);
     }
 
     .order-card:last-child {
@@ -266,7 +261,7 @@
     }
 
     .products-list {
-        background: #f8fafc;
+        background: var(--gray-100);
         padding: 1rem;
         border-radius: 8px;
         margin-top: 1rem;
@@ -346,7 +341,7 @@
     .btn-success { background: var(--success); color: white; }
     .btn-warning { background: var(--warning); color: white; }
     .btn-danger { background: var(--danger); color: white; }
-    .btn-outline { background: white; color: var(--gray-600); border: 1px solid var(--gray-300); }
+    .btn-outline { background: var(--white); color: var(--gray-600); border: 1px solid var(--gray-300); }
 
     .top-products {
         padding: 1.5rem;
@@ -409,7 +404,7 @@
     .timeline-item {
         position: relative;
         margin-bottom: 1.5rem;
-        background: white;
+        background: var(--white);
         padding: 1rem;
         border-radius: 8px;
         box-shadow: var(--shadow);
@@ -452,7 +447,7 @@
     }
 
     .bulk-actions {
-        background: white;
+        background: var(--white);
         padding: 1.5rem;
         border-radius: var(--border-radius);
         box-shadow: var(--shadow);

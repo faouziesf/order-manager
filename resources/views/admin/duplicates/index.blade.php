@@ -7,23 +7,18 @@
 @endpush
 
 @section('css')
+@include('admin.partials._shared-styles')
 <style>
     :root {
-        --primary: #6366f1;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --info: #3b82f6;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
+        --success: var(--success, #10b981);
+        --warning: var(--warning, #f59e0b);
+        --danger: var(--danger, #ef4444);
+        --info: var(--info, #3b82f6);
+        --gray-100: var(--bg-muted, #f3f4f6);
+        --gray-200: var(--border, #e5e7eb);
         --gray-600: #4b5563;
-        --gray-800: #1f2937;
-        --white: #ffffff;
-    }
-
-    body {
-        background-color: #f8fafc;
-        font-family: 'Inter', sans-serif;
+        --gray-800: var(--text, #1f2937);
+        --white: var(--bg-card, #ffffff);
     }
 
     .container-fluid {
@@ -34,7 +29,7 @@
 
     /* Stats + Actions section */
     .stats-actions {
-        background: white;
+        background: var(--white);
         border-radius: 12px;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
@@ -121,7 +116,7 @@
     }
 
     .btn-outline {
-        background: white;
+        background: var(--white);
         color: var(--gray-600);
         border: 2px solid var(--gray-200);
     }
@@ -133,7 +128,7 @@
 
     /* Search toolbar */
     .search-toolbar {
-        background: white;
+        background: var(--white);
         border-radius: 12px;
         padding: 1.25rem;
         margin-bottom: 1.5rem;
@@ -213,14 +208,14 @@
 
     /* Table */
     .table-container {
-        background: white;
+        background: var(--white);
         border-radius: 12px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         overflow: hidden;
     }
 
     .table-header {
-        background: #f8fafc;
+        background: var(--gray-100);
         padding: 1rem 1.5rem;
         border-bottom: 1px solid var(--gray-200);
         display: flex;
@@ -263,7 +258,7 @@
     }
 
     .table th {
-        background: #f8fafc;
+        background: var(--gray-100);
         padding: 0.75rem 1rem;
         text-align: left;
         font-weight: 600;
@@ -283,7 +278,7 @@
     }
 
     .table tr:hover {
-        background: #f8fafc;
+        background: var(--gray-100);
     }
 
     .table tr.selected {
@@ -456,7 +451,7 @@
     }
 
     .modal-content {
-        background: white;
+        background: var(--white);
         border-radius: 12px;
         width: 90%;
         max-width: 600px;
@@ -506,7 +501,7 @@
     }
 
     .order-item {
-        background: #f8fafc;
+        background: var(--gray-100);
         padding: 1rem;
         border-radius: 8px;
         border: 1px solid var(--gray-200);
@@ -548,7 +543,7 @@
     }
 
     .loading-spinner {
-        background: white;
+        background: var(--white);
         padding: 2rem;
         border-radius: 8px;
         text-align: center;
@@ -585,7 +580,7 @@
     .page-link {
         padding: 0.5rem 0.75rem;
         border: 1px solid var(--gray-200);
-        background: white;
+        background: var(--white);
         text-decoration: none;
         color: var(--gray-600);
         border-radius: 4px;
