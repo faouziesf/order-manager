@@ -177,20 +177,49 @@
             background: var(--bg-card); color: var(--text-secondary);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             font-size: 0.85rem; transition: all 0.15s;
+            -webkit-appearance: none; appearance: none;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
         .theme-toggle:hover { background: var(--bg-hover); color: var(--text); }
+        .user-menu { position: relative; }
         .user-pill {
             display: flex; align-items: center; gap: 0.5rem;
             padding: 0.25rem 0.75rem 0.25rem 0.25rem;
             background: var(--bg-card); border: 1px solid var(--border);
             border-radius: 50px; font-size: 0.78rem; font-weight: 600; color: var(--text);
+            cursor: pointer; transition: all 0.15s;
         }
+        .user-pill:hover { border-color: var(--accent); }
         .user-pill .avatar {
             width: 28px; height: 28px; border-radius: 50%;
             background: linear-gradient(135deg, var(--accent), #6366f1);
             color: white; display: flex; align-items: center; justify-content: center;
             font-size: 0.7rem; font-weight: 700;
         }
+        .user-dropdown {
+            display: none; position: absolute; right: 0; top: calc(100% + 8px);
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); box-shadow: var(--shadow-lg);
+            min-width: 180px; z-index: 1050; overflow: hidden;
+        }
+        .user-dropdown.show { display: block; }
+        .user-dropdown-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-card-alt);
+        }
+        .user-dropdown-header strong { display: block; font-size: 0.8rem; color: var(--text); }
+        .user-dropdown-header small { font-size: 0.7rem; color: var(--text-secondary); }
+        .user-dropdown a, .user-dropdown button {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.6rem 1rem; width: 100%;
+            font-size: 0.8rem; font-weight: 500; color: var(--text);
+            text-decoration: none; background: none; border: none;
+            text-align: left; cursor: pointer; transition: background 0.15s;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: var(--bg-hover); }
+        .user-dropdown .dropdown-logout { color: var(--danger, #ef4444); }
+        .user-dropdown .dropdown-logout:hover { background: rgba(239,68,68,0.06); }
 
         /* ═══ CONTENT ═══ */
         .main-content {
@@ -209,11 +238,20 @@
             border-radius: var(--radius); cursor: pointer;
             align-items: center; justify-content: center;
             box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+        /* Masquer le burger quand la sidebar est ouverte pour ne pas couvrir le logo */
+        body.sidebar-open .mobile-toggle {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
         }
         .mobile-overlay {
             display: none; position: fixed; inset: 0;
             background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
-            z-index: 999;
+            z-index: 999; cursor: pointer;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
         .bottom-nav {
             display: none; position: fixed;
@@ -361,6 +399,74 @@
 
         .alert { border-radius: var(--radius); font-size: 0.85rem; border: none; }
 
+        /* ═══ BOOTSTRAP DARK MODE OVERRIDES ═══ */
+        html[data-theme="dark"] body { background: var(--bg) !important; color: var(--text) !important; }
+        html[data-theme="dark"] .card,
+        html[data-theme="dark"] .card-body,
+        html[data-theme="dark"] .card-header,
+        html[data-theme="dark"] .card-footer { background: var(--bg-card) !important; color: var(--text) !important; border-color: var(--border) !important; }
+        html[data-theme="dark"] .table { color: var(--text) !important; --bs-table-bg: transparent; --bs-table-color: var(--text); }
+        html[data-theme="dark"] .table thead th,
+        html[data-theme="dark"] .table-light { background: var(--bg-card-alt) !important; color: var(--text-secondary) !important; border-color: var(--border) !important; }
+        html[data-theme="dark"] .table td,
+        html[data-theme="dark"] .table th { border-color: var(--border) !important; color: var(--text) !important; }
+        html[data-theme="dark"] .table-hover tbody tr:hover { background: var(--bg-hover) !important; }
+        html[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * { background: var(--table-stripe) !important; color: var(--text) !important; }
+        html[data-theme="dark"] .form-control,
+        html[data-theme="dark"] .form-select { background: var(--input-bg) !important; color: var(--text) !important; border-color: var(--input-border) !important; }
+        html[data-theme="dark"] .form-control:focus,
+        html[data-theme="dark"] .form-select:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(37,99,235,0.15) !important; }
+        html[data-theme="dark"] .form-control::placeholder { color: var(--text-muted) !important; }
+        html[data-theme="dark"] .input-group-text { background: var(--bg-card-alt) !important; color: var(--text-secondary) !important; border-color: var(--input-border) !important; }
+        html[data-theme="dark"] .modal-content { background: var(--bg-card) !important; color: var(--text) !important; border-color: var(--border) !important; }
+        html[data-theme="dark"] .modal-header,
+        html[data-theme="dark"] .modal-footer { border-color: var(--border) !important; background: var(--bg-card) !important; }
+        html[data-theme="dark"] .modal-body { background: var(--bg-card) !important; }
+        html[data-theme="dark"] .dropdown-menu { background: var(--bg-card) !important; border-color: var(--border) !important; }
+        html[data-theme="dark"] .dropdown-item { color: var(--text) !important; }
+        html[data-theme="dark"] .dropdown-item:hover,
+        html[data-theme="dark"] .dropdown-item:focus { background: var(--bg-hover) !important; color: var(--text) !important; }
+        html[data-theme="dark"] .list-group-item { background: var(--bg-card) !important; color: var(--text) !important; border-color: var(--border) !important; }
+        html[data-theme="dark"] .nav-tabs { border-color: var(--border) !important; }
+        html[data-theme="dark"] .nav-tabs .nav-link { color: var(--text-secondary) !important; }
+        html[data-theme="dark"] .nav-tabs .nav-link.active { background: var(--bg-card) !important; color: var(--text) !important; border-color: var(--border) var(--border) var(--bg-card) !important; }
+        html[data-theme="dark"] .nav-pills .nav-link { color: var(--text-secondary) !important; }
+        html[data-theme="dark"] .nav-pills .nav-link.active { background: var(--accent) !important; color: #fff !important; }
+        html[data-theme="dark"] .page-link { background: var(--bg-card) !important; color: var(--text) !important; border-color: var(--border) !important; }
+        html[data-theme="dark"] .page-item.active .page-link { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
+        html[data-theme="dark"] .page-item.disabled .page-link { background: var(--bg-card-alt) !important; color: var(--text-muted) !important; }
+        html[data-theme="dark"] .accordion-button { background: var(--bg-card) !important; color: var(--text) !important; }
+        html[data-theme="dark"] .accordion-button:not(.collapsed) { background: var(--bg-hover) !important; color: var(--text) !important; }
+        html[data-theme="dark"] .accordion-body { background: var(--bg-card) !important; color: var(--text) !important; }
+        html[data-theme="dark"] .accordion-item { background: var(--bg-card) !important; border-color: var(--border) !important; }
+        html[data-theme="dark"] .btn-close { filter: invert(1); }
+        html[data-theme="dark"] .bg-white { background: var(--bg-card) !important; }
+        html[data-theme="dark"] .bg-light { background: var(--bg-card-alt) !important; }
+        html[data-theme="dark"] .text-dark { color: var(--text) !important; }
+        html[data-theme="dark"] .text-muted { color: var(--text-secondary) !important; }
+        html[data-theme="dark"] .border { border-color: var(--border) !important; }
+        html[data-theme="dark"] .border-top,
+        html[data-theme="dark"] .border-bottom,
+        html[data-theme="dark"] .border-start,
+        html[data-theme="dark"] .border-end { border-color: var(--border) !important; }
+        html[data-theme="dark"] label { color: var(--text) !important; }
+        html[data-theme="dark"] h1, html[data-theme="dark"] h2, html[data-theme="dark"] h3,
+        html[data-theme="dark"] h4, html[data-theme="dark"] h5, html[data-theme="dark"] h6 { color: var(--text) !important; }
+        html[data-theme="dark"] p { color: var(--text-secondary); }
+        html[data-theme="dark"] strong, html[data-theme="dark"] b { color: var(--text); }
+        html[data-theme="dark"] .alert-success { background: var(--success-bg) !important; color: #6ee7b7 !important; border-color: rgba(16,185,129,0.3) !important; }
+        html[data-theme="dark"] .alert-danger  { background: var(--danger-bg) !important; color: #fca5a5 !important; border-color: rgba(239,68,68,0.3) !important; }
+        html[data-theme="dark"] .alert-warning { background: var(--warning-bg) !important; color: #fcd34d !important; border-color: rgba(245,158,11,0.3) !important; }
+        html[data-theme="dark"] .alert-info    { background: rgba(6,182,212,0.12) !important; color: #67e8f9 !important; border-color: rgba(6,182,212,0.3) !important; }
+        html[data-theme="dark"] .btn-outline-primary { color: #60a5fa !important; border-color: #60a5fa !important; }
+        html[data-theme="dark"] .btn-outline-primary:hover { background: #60a5fa !important; color: #fff !important; }
+        html[data-theme="dark"] .btn-outline-secondary { color: var(--text-secondary) !important; border-color: var(--border) !important; }
+        html[data-theme="dark"] .btn-outline-danger { color: #f87171 !important; border-color: #f87171 !important; }
+        html[data-theme="dark"] .btn-outline-success { color: #34d399 !important; border-color: #34d399 !important; }
+        html[data-theme="dark"] .btn-outline-warning { color: #fbbf24 !important; border-color: #fbbf24 !important; }
+        html[data-theme="dark"] .badge.bg-secondary { background: var(--bg-hover) !important; color: var(--text-secondary) !important; }
+        html[data-theme="dark"] .badge.bg-light { background: var(--bg-hover) !important; color: var(--text) !important; }
+
         @yield('css')
     </style>
     <script>
@@ -469,13 +575,14 @@
             @endif
         </nav>
 
-        <div class="sidebar-footer">
-            <form action="{{ route('confirmi.logout') }}" method="POST">
-                @csrf
-                <button type="submit" class="menu-link w-100 border-0 bg-transparent text-start" style="color: rgba(255,255,255,0.4);">
-                    <i class="fas fa-sign-out-alt"></i><span>Déconnexion</span>
-                </button>
-            </form>
+        <div class="sidebar-footer" style="padding:0.75rem 1.25rem;border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0;">
+                <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#1e40af,#6366f1);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;flex-shrink:0;">{{ strtoupper(substr($user->name,0,1)) }}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $user->name }}</div>
+                    <div style="font-size:0.65rem;color:rgba(255,255,255,0.3);">{{ $isCommercial ? 'Commercial' : ($isAgent ? 'Agent' : 'Employé') }}</div>
+                </div>
+            </div>
         </div>
     </aside>
 
@@ -486,10 +593,26 @@
             <button class="theme-toggle" onclick="toggleTheme()" title="Changer le thème">
                 <i class="fas fa-moon" id="themeIcon"></i>
             </button>
-            <div class="user-pill">
-                <div class="avatar">{{ strtoupper(substr($user->name, 0, 1)) }}</div>
-                <span>{{ $user->name }}</span>
-                <span class="badge bg-{{ $isCommercial ? 'primary' : ($isAgent ? 'warning' : 'info') }}" style="font-size:0.58rem;">{{ $isCommercial ? 'Commercial' : ($isAgent ? 'Agent' : 'Employé') }}</span>
+            <div class="user-menu">
+                <div class="user-pill" onclick="toggleUserMenu()" id="userPill">
+                    <div class="avatar">{{ strtoupper(substr($user->name, 0, 1)) }}</div>
+                    <span>{{ $user->name }}</span>
+                    <span class="badge bg-{{ $isCommercial ? 'primary' : ($isAgent ? 'warning' : 'info') }}" style="font-size:0.58rem;">{{ $isCommercial ? 'Commercial' : ($isAgent ? 'Agent' : 'Employé') }}</span>
+                    <i class="fas fa-chevron-down" style="font-size:0.6rem;margin-left:0.2rem;color:var(--text-secondary);"></i>
+                </div>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-header">
+                        <strong>{{ $user->name }}</strong>
+                        <small>{{ $isCommercial ? 'Commercial' : ($isAgent ? 'Agent' : 'Employé') }}</small>
+                    </div>
+                    @if($isEmployee)
+                        <a href="{{ route('confirmi.employee.profile') }}"><i class="fas fa-user"></i> Mon profil</a>
+                    @endif
+                    <form action="{{ route('confirmi.logout') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="dropdown-logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</button>
+                    </form>
+                </div>
             </div>
         </div>
     </header>
@@ -558,6 +681,11 @@
                     @if($pendingEmballageTasks > 0)<span class="bottom-nav-badge">{{ $pendingEmballageTasks }}</span>@endif
                 </a>
             @endif
+            {{-- Logout --}}
+            <form id="bottomLogoutForm" action="{{ route('confirmi.logout') }}" method="POST" style="display:none;">@csrf</form>
+            <button type="button" class="bottom-nav-item" onclick="document.getElementById('bottomLogoutForm').submit()" style="background:none;border:none;cursor:pointer;" title="Déconnexion">
+                <i class="fas fa-sign-out-alt" style="color:var(--danger);"></i><span style="color:var(--danger);">Quitter</span>
+            </button>
         </div>
     </nav>
 
@@ -578,13 +706,27 @@
         setTheme(getTheme());
 
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('mobileOverlay').classList.toggle('active');
+            var sidebar = document.getElementById('sidebar');
+            var overlay = document.getElementById('mobileOverlay');
+            var isOpen = sidebar.classList.toggle('active');
+            overlay.classList.toggle('active', isOpen);
+            document.body.classList.toggle('sidebar-open', isOpen);
         }
         function closeSidebar() {
             document.getElementById('sidebar').classList.remove('active');
             document.getElementById('mobileOverlay').classList.remove('active');
+            document.body.classList.remove('sidebar-open');
         }
+        function toggleUserMenu() {
+            document.getElementById('userDropdown').classList.toggle('show');
+        }
+        document.addEventListener('click', function(e) {
+            var pill = document.getElementById('userPill');
+            var dropdown = document.getElementById('userDropdown');
+            if (pill && dropdown && !pill.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
         if (window.innerWidth <= 768) {
             document.querySelectorAll('.menu-link[href]').forEach(function(l) {
                 l.addEventListener('click', closeSidebar);

@@ -39,6 +39,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])
             ->name('dashboard');
 
+        // Profile
+        Route::get('profile', [\App\Http\Controllers\Admin\ProfileController::class, 'show'])->name('profile');
+        Route::put('profile', [\App\Http\Controllers\Admin\ProfileController::class, 'update'])->name('profile.update');
+
         // ========================================
         // GESTION DES PRODUITS (permission: can_manage_products)
         // ========================================

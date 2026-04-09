@@ -11,6 +11,7 @@ use App\Http\Controllers\SuperAdmin\NotificationController;
 use App\Http\Controllers\SuperAdmin\ConfirmiUserController;
 use App\Http\Controllers\SuperAdmin\ConfirmiBillingController;
 use App\Http\Controllers\SuperAdmin\ConfirmiRequestController;
+use App\Http\Controllers\SuperAdmin\ProfileController as SuperAdminProfileController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -229,10 +230,8 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
         // PROFILE SUPER ADMIN
         // ========================================
         Route::prefix('profile')->name('profile.')->group(function () {
-            Route::get('/', [SuperAdminAuthController::class, 'profile'])->name('index');
-            Route::put('update', [SuperAdminAuthController::class, 'updateProfile'])->name('update');
-            Route::put('password', [SuperAdminAuthController::class, 'updatePassword'])->name('password');
-            Route::post('avatar', [SuperAdminAuthController::class, 'uploadAvatar'])->name('avatar');
+            Route::get('/', [SuperAdminProfileController::class, 'show'])->name('index');
+            Route::put('/', [SuperAdminProfileController::class, 'update'])->name('update');
         });
     });
 });

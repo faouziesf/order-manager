@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>@yield('title', 'Admin') - Confirmi Space</title>
+    <title>@yield('title', 'Admin') - Order Manager</title>
 
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -388,49 +388,29 @@
 
         /* Theme Toggle — modern pill switch */
         .theme-toggle {
-            position: relative;
-            width: 52px;
-            height: 28px;
-            border-radius: 14px;
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
             border: 1px solid var(--border);
-            background: var(--bg-muted);
+            background: var(--bg-card);
+            color: var(--text-secondary);
             cursor: pointer;
-            transition: background 0.3s, border-color 0.3s;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        .theme-toggle-track {
-            position: relative;
-            width: 100%;
-            height: 100%;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 6px;
-            font-size: 12px;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.15s;
+            padding: 0;
+            -webkit-appearance: none;
+            appearance: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
+        .theme-toggle:hover { background: var(--bg-muted); color: var(--text); }
 
-        .theme-toggle-thumb {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: var(--primary);
-            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-
-        html[data-theme="dark"] .theme-toggle-thumb { transform: translateX(24px); }
-        html[data-theme="dark"] .theme-toggle { background: var(--bg-card); border-color: var(--border); }
-
-        .theme-toggle-track .fa-sun { color: #f59e0b; }
-        .theme-toggle-track .fa-moon { color: #6366f1; }
-
-        /* User Menu */
+        /* User Menu + Dropdown */
         .user-menu {
+            position: relative;
             display: flex;
             align-items: center;
             gap: 0.6rem;
@@ -440,9 +420,60 @@
             cursor: pointer;
             text-decoration: none;
             transition: background 0.2s;
+            user-select: none;
         }
 
         .user-menu:hover { background: var(--primary-50); }
+
+        .user-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            min-width: 200px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            z-index: 1060;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            transition: opacity 0.18s, transform 0.18s, visibility 0.18s;
+        }
+        .user-menu.open .user-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .user-dropdown-header {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .user-dropdown-header .ud-name { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+        .user-dropdown-header .ud-role { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
+        .user-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.6rem 1rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text);
+            text-decoration: none;
+            transition: background 0.15s;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+        .user-dropdown-item:hover { background: var(--bg-muted); color: var(--text); }
+        .user-dropdown-item i { width: 16px; text-align: center; color: var(--text-secondary); font-size: 0.8rem; }
+        .user-dropdown-divider { height: 1px; background: var(--border); margin: 0.25rem 0; }
+        .user-dropdown-item.logout-item { color: var(--danger); }
+        .user-dropdown-item.logout-item i { color: var(--danger); }
 
         .user-avatar {
             width: 34px;
@@ -476,7 +507,7 @@
             position: fixed;
             top: 0.8rem;
             left: 0.75rem;
-            z-index: 1002;
+            z-index: 1001;
             width: 40px;
             height: 40px;
             background: var(--primary);
@@ -488,6 +519,16 @@
             justify-content: center;
             font-size: 1rem;
             box-shadow: var(--shadow-md);
+            pointer-events: auto;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+        /* Masquer le burger quand la sidebar est visible pour ne pas couvrir le logo */
+        body.sidebar-open .mobile-toggle {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
         }
 
         .mobile-overlay {
@@ -500,6 +541,9 @@
             background: rgba(0,0,0,0.5);
             z-index: 999;
             backdrop-filter: blur(4px);
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
         @media (max-width: 768px) {
@@ -600,8 +644,7 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-            <img src="{{ asset('img/confirmi.png') }}" alt="Confirmi" class="sidebar-brand-logo">
-            <span class="sidebar-brand-text">Space</span>
+            <img src="{{ asset('img/confirmi.png') }}" alt="Confirmi" class="sidebar-brand-logo" style="height:46px;max-width:170px;">
         </div>
 
         <nav class="sidebar-menu">
@@ -769,15 +812,6 @@
                 </div>
                 @endif
 
-                <div class="sidebar-section">Compte</div>
-                <div class="menu-item">
-                    <form action="{{ route('logout') }}" method="POST">
-                        @csrf
-                        <button type="submit" class="menu-link">
-                            <i class="fas fa-sign-out-alt"></i><span>Déconnexion</span>
-                        </button>
-                    </form>
-                </div>
         </nav>
     </aside>
 
@@ -788,15 +822,11 @@
         </div>
 
         <div class="header-actions">
-            <button class="theme-toggle" onclick="toggleTheme()" title="Changer le thème" aria-label="Changer le thème">
-                <div class="theme-toggle-track">
-                    <i class="fas fa-sun"></i>
-                    <i class="fas fa-moon"></i>
-                </div>
-                <div class="theme-toggle-thumb"></div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Changer le thème" aria-label="Changer le thème" id="adminThemeBtn">
+                <i class="fas fa-moon" id="adminThemeIcon"></i>
             </button>
 
-            <div class="user-menu">
+            <div class="user-menu" onclick="toggleUserMenu(this)" id="adminUserMenu">
                 <div class="user-avatar">{{ $userInitial }}</div>
                 <div class="user-info">
                     <div class="user-name">{{ $userName }}</div>
@@ -806,6 +836,23 @@
                         @else Employé
                         @endif
                     </div>
+                </div>
+                <i class="fas fa-chevron-down" style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;"></i>
+                <div class="user-dropdown">
+                    <div class="user-dropdown-header">
+                        <div class="ud-name">{{ $userName }}</div>
+                        <div class="ud-role">@if($isAdmin) Admin @elseif($isManager) Manager @else Employé @endif</div>
+                    </div>
+                    <a href="{{ route('admin.profile') }}" class="user-dropdown-item">
+                        <i class="fas fa-user-circle"></i> Mon profil
+                    </a>
+                    <div class="user-dropdown-divider"></div>
+                    <form action="{{ route('admin.logout') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="user-dropdown-item logout-item">
+                            <i class="fas fa-sign-out-alt"></i> Déconnexion
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -848,6 +895,8 @@
             localStorage.setItem('om-theme', theme);
             var meta = document.getElementById('themeColorMeta');
             if (meta) meta.content = theme === 'dark' ? '#111827' : '#4f46e5';
+            var icon = document.getElementById('adminThemeIcon');
+            if (icon) icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
         }
 
         function toggleTheme() {
@@ -856,13 +905,19 @@
 
         // Sidebar
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('mobileOverlay').classList.toggle('active');
+            var sidebar = document.getElementById('sidebar');
+            var overlay = document.getElementById('mobileOverlay');
+            var isOpen = sidebar.classList.toggle('active');
+            overlay.classList.toggle('active', isOpen);
+            document.body.classList.toggle('sidebar-open', isOpen);
         }
 
         function closeSidebar() {
-            document.getElementById('sidebar').classList.remove('active');
-            document.getElementById('mobileOverlay').classList.remove('active');
+            var sidebar = document.getElementById('sidebar');
+            var overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.classList.remove('sidebar-open');
         }
 
         function toggleSubmenu(el) {
@@ -877,6 +932,23 @@
                 link.addEventListener('click', closeSidebar);
             });
         }
+
+        // User dropdown
+        function toggleUserMenu(el) {
+            el.classList.toggle('open');
+        }
+        document.addEventListener('click', function(e) {
+            var menu = document.getElementById('adminUserMenu');
+            if (menu && !menu.contains(e.target)) {
+                menu.classList.remove('open');
+            }
+        });
+
+        // Init theme icon on page load
+        (function() {
+            var icon = document.getElementById('adminThemeIcon');
+            if (icon) icon.className = getTheme() === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        })();
     </script>
 
     @yield('scripts')
