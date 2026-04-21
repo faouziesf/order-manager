@@ -16,7 +16,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -24,14 +24,18 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     
+    <!-- GSAP & ScrollTrigger -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <style>
         [x-cloak] { display: none !important; }
         body { 
-            font-family: 'Poppins', sans-serif;
-            background-color: #f9fafb;
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
         }
         .sidebar-icon {
             @apply w-6 h-6 text-center transition-all duration-200;
@@ -63,8 +67,12 @@
     </style>
     
     @yield('css')
+
+    <!-- GSAP & ScrollTrigger -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 </head>
-<body class="antialiased min-h-screen bg-gray-50 text-gray-800">
+<body class="antialiased min-h-screen bg-[#030712] text-white">
     @include('partials._no-cache')
     <div class="flex h-screen overflow-hidden" x-data="{ sidebarOpen: false }">
         <!-- Sidebar -->
@@ -492,5 +500,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     @yield('js')
+    @stack('scripts')
+
 </body>
 </html>

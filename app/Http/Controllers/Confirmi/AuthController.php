@@ -50,7 +50,7 @@ class AuthController extends Controller
             if (!$user->is_active) {
                 \Log::warning('Compte Confirmi inactif', ['user_id' => $user->id]);
                 Auth::guard('confirmi')->logout();
-                return back()->with('error', 'Votre compte Confirmi a été désactivé.')->withInput();
+                return back()->with('error', 'Votre compte Confirmi est desactive. Contactez le support au +216 93 357 722 pour reactivation.')->withInput();
             }
 
             $user->update([
@@ -71,7 +71,7 @@ class AuthController extends Controller
 
             if (isset($superAdmin->is_active) && !$superAdmin->is_active) {
                 Auth::guard('super-admin')->logout();
-                return back()->with('error', 'Compte super-admin désactivé.')->withInput();
+                return back()->with('error', 'Compte super-admin desactive. Contactez le support au +216 93 357 722 pour reactivation.')->withInput();
             }
 
             $request->session()->regenerate();
@@ -84,7 +84,7 @@ class AuthController extends Controller
 
             if (!$admin->is_active) {
                 Auth::guard('admin')->logout();
-                return back()->with('error', 'Votre compte est désactivé.')->withInput();
+                return back()->with('error', 'Votre compte est desactive. Contactez le support au +216 93 357 722 pour reactivation.')->withInput();
             }
 
             $request->session()->regenerate();

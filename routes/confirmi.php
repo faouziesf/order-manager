@@ -17,6 +17,18 @@ use App\Models\Admin;
 Route::prefix('confirmi')->name('confirmi.')->group(function () {
 
     Route::get('/', [AuthController::class, 'home'])->name('home');
+    Route::get('/services',  fn() => view('confirmi.services'))->name('services');
+    Route::get('/contact',   fn() => view('confirmi.contact'))->name('contact');
+    Route::get('/register',  fn() => redirect()->route('register'))->name('register');
+    Route::post('/contact', function(\Illuminate\Http\Request $request) {
+        $request->validate([
+            'name'    => 'required|min:2|max:100',
+            'email'   => 'required|email|max:150',
+            'subject' => 'required',
+            'message' => 'required|min:10|max:2000',
+        ]);
+        return back()->with('contact_sent', true);
+    })->name('contact.send');
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
     Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
