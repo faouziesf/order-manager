@@ -146,6 +146,33 @@ body{font-family:'Inter',sans-serif;background:var(--c-bg);color:var(--c-text);o
     .footer-bottom{padding-top:1.2rem}
     .wa-float{width:48px;height:48px;right:1rem;bottom:1rem;font-size:1.2rem}
 }
+
+@media(max-width:480px){
+    .cin-nav{gap:.5rem}
+    .nav-logo-icon{width:30px;height:30px}
+    .btn-ghost,.btn-primary{padding:.42rem .68rem;font-size:.68rem}
+    .svc-h1{font-size:clamp(1.9rem,9vw,2.5rem)}
+    .hero-badge{font-size:.56rem;padding:.32rem .65rem}
+    .svc-sub{font-size:.85rem}
+    .stat-pill{font-size:.63rem;padding:.32rem .62rem}
+    .section-h2{font-size:clamp(1.45rem,8vw,1.95rem)}
+    .section-sub{font-size:.84rem;line-height:1.6}
+    .feat-icon-big{width:52px;height:52px;font-size:1.15rem;border-radius:14px}
+    .feat-list-item{font-size:.8rem}
+    .code-panel{border-radius:14px}
+    .queue-visual{border-radius:14px}
+    .q-badge{width:32px;height:32px}
+    .q-count{font-size:.9rem}
+    .hero-cta-primary,.hero-cta-secondary{width:100%;justify-content:center;padding:.78rem .9rem;font-size:.8rem}
+    .footer-copy{font-size:.68rem}
+}
+
+@media(max-width:380px){
+    .btn-ghost{display:none}
+    .btn-primary{padding:.4rem .62rem;font-size:.66rem}
+    .svc-hero{padding-top:6.8rem}
+    .wa-float{width:44px;height:44px}
+}
 </style>
 </head>
 <body x-data="{ loginOpen: {{ request()->boolean('login') || $errors->hasAny(['email','password']) ? 'true' : 'false' }} }">

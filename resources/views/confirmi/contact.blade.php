@@ -10,10 +10,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script>
 tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','ui-sans-serif'],grotesk:['Space Grotesk','sans-serif']},colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'}}}}}
@@ -130,6 +130,57 @@ body{font-family:'Inter',sans-serif;background:var(--c-bg);color:var(--c-text);o
 .reveal-left{opacity:0;transform:translateX(-60px)}
 .reveal-right{opacity:0;transform:translateX(60px)}
 .reveal-up{opacity:0;transform:translateY(30px)}
+
+@media(max-width:768px){
+    .cin-nav{padding:.85rem 1rem}
+    .nav-logo-text{font-size:.95rem}
+    .btn-ghost,.btn-primary{padding:.45rem .8rem;font-size:.72rem}
+    .ctc-hero{padding:7.2rem 1rem 2.5rem;min-height:58svh}
+    .hero-badge{font-size:.62rem;letter-spacing:.1em;margin-bottom:1.1rem}
+    .ctc-sub{font-size:.9rem;line-height:1.6}
+    .tree-section{padding:3.5rem 1rem 4.2rem}
+    .social-card{padding:1rem 1rem;gap:.9rem;border-radius:16px}
+    .sc-icon{width:46px;height:46px;font-size:1.2rem}
+    .sc-title{font-size:.94rem}
+    .sc-desc{font-size:.75rem}
+    .sc-arrow{width:34px;height:34px;font-size:.75rem}
+    .or-divider{margin:2rem auto}
+    .form-section{padding:0 1rem 4.5rem}
+    .form-card{padding:1.2rem;border-radius:18px}
+    .form-title{font-size:1.28rem}
+    .cin-footer{padding:3rem 1rem 2rem}
+    .footer-grid{grid-template-columns:1fr;gap:1.4rem;padding-bottom:1.7rem}
+    .footer-bottom{padding-top:1.2rem}
+    .wa-float{width:48px;height:48px;right:1rem;bottom:1rem;font-size:1.2rem}
+}
+
+@media(max-width:480px){
+    .cin-nav{gap:.5rem}
+    .nav-logo-icon{width:30px;height:30px}
+    .btn-ghost,.btn-primary{padding:.42rem .68rem;font-size:.68rem}
+    .ctc-h1{font-size:clamp(1.85rem,9vw,2.4rem)}
+    .hero-badge{font-size:.56rem;padding:.32rem .65rem}
+    .ctc-sub{font-size:.85rem}
+    .tree-wrap{max-width:100%}
+    .social-card{gap:.65rem;padding:.85rem .75rem}
+    .sc-icon{width:40px;height:40px;font-size:1rem}
+    .sc-title{font-size:.84rem}
+    .sc-desc{font-size:.68rem}
+    .sc-arrow{width:28px;height:28px;font-size:.68rem}
+    .form-card::before{display:none}
+    .form-title{font-size:1.1rem}
+    .form-sub{font-size:.78rem;margin-bottom:1.1rem}
+    .f-input{padding:.72rem .8rem;font-size:.84rem}
+    .f-label{font-size:.72rem}
+    .footer-copy{font-size:.68rem}
+}
+
+@media(max-width:380px){
+    .btn-ghost{display:none}
+    .btn-primary{padding:.4rem .62rem;font-size:.66rem}
+    .ctc-hero{padding-top:6.8rem}
+    .wa-float{width:44px;height:44px}
+}
 </style>
 </head>
 <body x-data="{ loginOpen: {{ request()->boolean('login') || $errors->hasAny(['email','password']) ? 'true' : 'false' }} }">
@@ -322,6 +373,11 @@ body{font-family:'Inter',sans-serif;background:var(--c-bg);color:var(--c-text);o
             </button>
         </div>
         @if(session('error'))<div style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);font-size:.82rem;color:#fca5a5">{{ session('error') }}</div>@endif
+        @if(session('error') && (str_contains(strtolower(session('error')), 'desactive') || str_contains(strtolower(session('error')), 'inactif')))
+            <div style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);font-size:.8rem;color:#a7f3d0">
+                Besoin de reactivation ? Contactez le support: <a href="https://wa.me/21693357722" target="_blank" rel="noopener noreferrer" style="color:#34d399;font-weight:700;text-decoration:none">+216 93 357 722 (WhatsApp)</a>
+            </div>
+        @endif
         @if($errors->any())<div style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);font-size:.82rem;color:#fca5a5">@foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach</div>@endif
         <form action="{{ route('confirmi.login.submit') }}" method="POST" style="display:flex;flex-direction:column;gap:1rem">
             @csrf
@@ -335,36 +391,46 @@ body{font-family:'Inter',sans-serif;background:var(--c-bg);color:var(--c-text);o
 
 <script>
 // Three.js particles
-(function(){
+function initContactThree(){
+    if(!window.THREE || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     try{
         const canvas=document.getElementById('bgCanvas');
-        const renderer=new THREE.WebGLRenderer({canvas,antialias:false,alpha:true});
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+        const mobile=window.innerWidth < 900;
+        const renderer=new THREE.WebGLRenderer({canvas,antialias:false,alpha:true,powerPreference:'high-performance'});
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,mobile?1:1.25));
         renderer.setSize(window.innerWidth,window.innerHeight);
         const scene=new THREE.Scene();
         const camera=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,1000);
         camera.position.z=6;
-        const count=1000;
+        const count=mobile?500:900;
         const pos=new Float32Array(count*3);
         for(let i=0;i<count;i++){pos[i*3]=(Math.random()-.5)*20;pos[i*3+1]=(Math.random()-.5)*20;pos[i*3+2]=(Math.random()-.5)*18}
         const geo=new THREE.BufferGeometry();
         geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-        const mat=new THREE.PointsMaterial({size:0.04,color:0x6366f1,transparent:true,opacity:.5});
+        const mat=new THREE.PointsMaterial({size:mobile?0.03:0.04,color:0x6366f1,transparent:true,opacity:.5});
         const pts=new THREE.Points(geo,mat);
         scene.add(pts);
-        // Torus ring
         const tg=new THREE.TorusGeometry(3,0.008,12,80);
         const tm=new THREE.MeshBasicMaterial({color:0x4f46e5,transparent:true,opacity:.15,wireframe:true});
         const torus=new THREE.Mesh(tg,tm);
         scene.add(torus);
-        window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
+        let paused=false;
+        document.addEventListener('visibilitychange',()=>{paused=document.hidden});
+        window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(window.devicePixelRatio,window.innerWidth<900?1:1.25));renderer.setSize(window.innerWidth,window.innerHeight)});
         let f=0;
-        (function a(){requestAnimationFrame(a);f+=.0015;pts.rotation.y=f*.2;torus.rotation.x=f*.3;torus.rotation.y=f*.5;renderer.render(scene,camera)})();
+        (function a(){requestAnimationFrame(a);if(paused)return;f+=.0015;pts.rotation.y=f*.2;torus.rotation.x=f*.3;torus.rotation.y=f*.5;renderer.render(scene,camera)})();
     }catch(e){console.warn(e)}
-})();
+}
 
 document.addEventListener('DOMContentLoaded',function(){
+    const idle=window.requestIdleCallback||function(cb){return setTimeout(cb,60)};
+    idle(initContactThree);
     if(!window.gsap)return;
+    const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduce){
+        document.querySelectorAll('.reveal,.reveal-left,.reveal-right,.reveal-up').forEach(el=>{el.style.opacity='1';el.style.transform='none'});
+        return;
+    }
     gsap.registerPlugin(ScrollTrigger);
     ScrollTrigger.create({start:'top -60',onToggle:s=>document.getElementById('mainNav').classList.toggle('scrolled',s.isActive)});
     // Hero

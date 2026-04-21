@@ -549,6 +549,75 @@ body{font-family:'Inter',sans-serif;background:var(--c-bg);color:var(--c-text);o
 .reveal-left{opacity:0;transform:translateX(-60px)}
 .reveal-right{opacity:0;transform:translateX(60px)}
 .reveal-scale{opacity:0;transform:scale(.85)}
+
+@media(max-width:768px){
+  .cin-nav{padding:.85rem 1rem}
+  .nav-logo-text{font-size:.95rem}
+  .btn-ghost,.btn-primary{padding:.45rem .8rem;font-size:.72rem}
+  .hero-section{padding:7.2rem 1rem 3rem;min-height:88svh}
+  .hero-badge{font-size:.62rem;letter-spacing:.1em;margin-bottom:1.15rem}
+  .hero-sub{font-size:.9rem;line-height:1.65}
+  .hero-stats{gap:1.1rem;padding-top:1.2rem}
+  .hero-stat-val{font-size:1.55rem}
+  .scroll-indicator{bottom:1rem}
+  .cin-section{padding:4.8rem 1rem}
+  .pipeline-card{padding:1.05rem}
+  .pipeline-node{margin-bottom:1.2rem}
+  .lifecycle-grid{margin-top:2rem;gap:1.2rem}
+  .life-track{padding-left:1.35rem}
+  .life-step{padding:.8rem .85rem .8rem 1rem}
+  .life-step::before{left:-1.34rem}
+  .life-sticky{position:relative;top:0}
+  .order-3d-zone{height:135px}
+  .pack-cube{transform:scale(.86)}
+  .price-card{padding:1.5rem}
+  .cta-band{padding:4.8rem 1rem}
+  .cin-footer{padding:3rem 1rem 2rem}
+  .footer-grid{grid-template-columns:1fr;gap:1.4rem;padding-bottom:1.7rem}
+  .footer-bottom{padding-top:1.2rem}
+  .wa-float{width:48px;height:48px;right:1rem;bottom:1rem;font-size:1.2rem}
+}
+
+@media(max-width:1024px){
+  .ecosystem-wrap{width:min(100%,320px);height:320px}
+  .eco-ring-1{width:170px;height:170px}
+  .eco-ring-2{width:270px;height:270px}
+  .feat-row{gap:2.5rem}
+}
+
+@media(max-width:480px){
+  .cin-nav{gap:.5rem}
+  .nav-btns{gap:.45rem}
+  .nav-logo-icon{width:30px;height:30px}
+  .hero-h1{font-size:clamp(2rem,9vw,2.6rem);line-height:1}
+  .hero-cta-row{gap:.6rem}
+  .hero-cta-primary,.hero-cta-secondary{width:100%;justify-content:center;padding:.78rem 1rem;font-size:.8rem}
+  .hero-stats{display:grid;grid-template-columns:1fr;gap:.8rem;border-top:none;padding-top:.4rem}
+  .hero-stats > div[style*='width:1px']{display:none}
+  .pipeline-wrap{margin-top:2rem}
+  .pipeline-dot{width:36px;height:36px;font-size:.72rem}
+  .section-h2{font-size:clamp(1.5rem,8vw,2rem)}
+  .section-sub{font-size:.86rem;line-height:1.6}
+  .bento-cell{padding:1.2rem;border-radius:16px}
+  .bento-num{font-size:2.4rem}
+  .ecosystem-wrap{width:min(100%,280px);height:280px}
+  .life-step-title{font-size:.9rem}
+  .life-step-desc{font-size:.75rem}
+  .order-stage{padding:.9rem;border-radius:16px}
+  .order-id{font-size:.92rem}
+  .order-chip{font-size:.58rem;padding:.25rem .5rem}
+  .state-value{font-size:1.03rem}
+  .price-amount{font-size:2.3rem}
+  .footer-copy{font-size:.68rem}
+}
+
+@media(max-width:380px){
+  .btn-ghost{display:none}
+  .btn-primary{padding:.43rem .68rem;font-size:.68rem}
+  .hero-badge{font-size:.56rem;padding:.32rem .65rem}
+  .hero-sub{font-size:.84rem}
+  .wa-float{width:44px;height:44px}
+}
 </style>
 </head>
 <body x-data="{ loginOpen: {{ request()->boolean('login') || $errors->hasAny(['email','password']) ? 'true' : 'false' }} }">
@@ -1042,6 +1111,11 @@ body{font-family:'Inter',sans-serif;background:var(--c-bg);color:var(--c-text);o
             </button>
         </div>
         @if(session('error'))<div style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);font-size:.82rem;color:#fca5a5">{{ session('error') }}</div>@endif
+        @if(session('error') && (str_contains(strtolower(session('error')), 'desactive') || str_contains(strtolower(session('error')), 'inactif')))
+          <div style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);font-size:.8rem;color:#a7f3d0">
+            Besoin de reactivation ? Contactez le support: <a href="https://wa.me/21693357722" target="_blank" rel="noopener noreferrer" style="color:#34d399;font-weight:700;text-decoration:none">+216 93 357 722 (WhatsApp)</a>
+          </div>
+        @endif
         @if($errors->any())<div style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);font-size:.82rem;color:#fca5a5">@foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach</div>@endif
         <form action="{{ route('confirmi.login.submit') }}" method="POST" style="display:flex;flex-direction:column;gap:1rem">
             @csrf
