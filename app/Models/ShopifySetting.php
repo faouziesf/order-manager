@@ -23,11 +23,15 @@ class ShopifySetting extends Model
         'sync_status',
         'sync_error',
         'last_sync_at',
+        'first_sync_date',
+        'resync_day_of_week',
+        'resync_time',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'last_sync_at' => 'datetime',
+        'first_sync_date' => 'datetime',
     ];
 
     // Relations

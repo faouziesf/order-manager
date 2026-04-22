@@ -253,6 +253,23 @@ class Kernel extends ConsoleKernel
             ->dailyAt('10:00')
             ->name('check-overdue-shipments')
             ->description('Vérification des expéditions en retard');
+
+        // ========================================
+        // SYNCHRONISATION INTÉGRATIONS PLANIFIÉES
+        // ========================================
+        // Synchronise les intégrations (WooCommerce, Shopify, PrestaShop, Wix, Google Sheets)
+        // selon le jour et l'heure configurés pour chacune
+        $schedule->command('sync:integrations-scheduled')
+            ->hourly()
+            ->withoutOverlapping(15)
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/integrations-scheduled.log'))
+            ->onSuccess(function () {
+                \Log::info('Scheduled integrations sync completed');
+            })
+            ->onFailure(function () {
+                \Log::error('Scheduled integrations sync failed');
+            });
     }
 
     /**

@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\SuspendedController;
 use App\Http\Controllers\Admin\WooCommerceController;
 use App\Http\Controllers\Admin\DeliveryController;
 use App\Http\Controllers\Admin\ConfirmiController;
+use App\Http\Controllers\Admin\GoogleSheetsController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
@@ -251,6 +252,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/stats', [\App\Http\Controllers\Admin\PrestashopController::class, 'syncStats'])->name('stats');
             Route::post('/toggle/{id}', [\App\Http\Controllers\Admin\PrestashopController::class, 'toggleIntegration'])->name('toggle');
             Route::delete('/delete/{id}', [\App\Http\Controllers\Admin\PrestashopController::class, 'deleteIntegration'])->name('delete');
+        });
+
+        // Routes Wix
+        Route::prefix('wix')->name('wix.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WixController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\WixController::class, 'store'])->name('store');
+            Route::get('/sync/{id}', [\App\Http\Controllers\Admin\WixController::class, 'sync'])->name('sync');
+            Route::post('/test-connection/{id}', [\App\Http\Controllers\Admin\WixController::class, 'testConnection'])->name('test-connection');
+            Route::get('/stats/{id}', [\App\Http\Controllers\Admin\WixController::class, 'syncStats'])->name('stats');
+            Route::post('toggle/{id}', [\App\Http\Controllers\Admin\WixController::class, 'toggleIntegration'])->name('toggle');
+            Route::delete('delete/{id}', [\App\Http\Controllers\Admin\WixController::class, 'deleteIntegration'])->name('delete');
+        });
+
+        // Routes Google Sheets
+        Route::prefix('google-sheets')->name('google-sheets.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\GoogleSheetsController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\GoogleSheetsController::class, 'store'])->name('store');
+            Route::post('/sync-now', [\App\Http\Controllers\Admin\GoogleSheetsController::class, 'syncNow'])->name('sync-now');
+            Route::get('/stats', [\App\Http\Controllers\Admin\GoogleSheetsController::class, 'stats'])->name('stats');
         });
 
         Route::get('get-cities', [WooCommerceController::class, 'getCities'])->name('get-cities');

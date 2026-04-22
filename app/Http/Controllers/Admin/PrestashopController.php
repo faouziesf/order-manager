@@ -51,6 +51,9 @@ class PrestashopController extends Controller
             'api_key' => 'required|string',
             'api_secret' => 'required|string',
             'access_token' => 'nullable|string',
+            'first_sync_date' => 'nullable|date',
+            'resync_day_of_week' => 'nullable|integer|between:0,6',
+            'resync_time' => 'nullable|date_format:H:i',
         ]);
 
         $admin = Auth::guard('admin')->user();
@@ -77,6 +80,17 @@ class PrestashopController extends Controller
 
         // Gestion correcte de la checkbox
         $settings->is_active = $request->has('is_active') && $request->boolean('is_active');
+
+        // Paramètres avancés de synchronisation
+        if ($request->filled('first_sync_date')) {
+            $settings->first_sync_date = $request->first_sync_date;
+        }
+        if ($request->filled('resync_day_of_week')) {
+            $settings->resync_day_of_week = $request->resync_day_of_week;
+        }
+        if ($request->filled('resync_time')) {
+            $settings->resync_time = $request->resync_time;
+        }
 
         // Tester la connexion avant de sauvegarder
         $testResult = $settings->testConnection();

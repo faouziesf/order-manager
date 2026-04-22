@@ -765,11 +765,11 @@
                 {{-- ═══════ IMPORTATION (can_import) ═══════ --}}
                 @if($user->can('can_import'))
                 <div class="menu-item">
-                    <div class="menu-link {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') || request()->routeIs('admin.shopify*') || request()->routeIs('admin.prestashop*') ? 'active expanded' : '' }}" onclick="toggleSubmenu(this)">
+                    <div class="menu-link {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') || request()->routeIs('admin.shopify*') || request()->routeIs('admin.prestashop*') || request()->routeIs('admin.wix*') ? 'active expanded' : '' }}" onclick="toggleSubmenu(this)">
                         <i class="fas fa-download"></i><span>Importation</span>
                         <i class="fas fa-chevron-down menu-chevron"></i>
                     </div>
-                    <div class="submenu {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') || request()->routeIs('admin.shopify*') || request()->routeIs('admin.prestashop*') ? 'show' : '' }}">
+                    <div class="submenu {{ request()->routeIs('admin.woocommerce*') || request()->routeIs('admin.import*') || request()->routeIs('admin.shopify*') || request()->routeIs('admin.prestashop*') || request()->routeIs('admin.wix*') ? 'show' : '' }}">
                         <a href="{{ route('admin.woocommerce.index') }}" class="submenu-link {{ request()->routeIs('admin.woocommerce.index') ? 'active' : '' }}">
                             <i class="fab fa-wordpress"></i>WooCommerce
                         </a>
@@ -779,10 +779,21 @@
                         <a href="{{ route('admin.prestashop.index') }}" class="submenu-link {{ request()->routeIs('admin.prestashop.index') ? 'active' : '' }}">
                             <i class="fas fa-shopping-bag"></i>PrestaShop
                         </a>
+                        <a href="{{ route('admin.wix.index') }}" class="submenu-link {{ request()->routeIs('admin.wix.index') ? 'active' : '' }}">
+                            <i class="fas fa-sitemap"></i>Wix
+                        </a>
                         <a href="{{ route('admin.import.index') }}" class="submenu-link {{ request()->routeIs('admin.import*') ? 'active' : '' }}">
                             <i class="fas fa-file-csv"></i>CSV
                         </a>
                     </div>
+                </div>
+                @endif
+
+                @if($user->can('can_import'))
+                <div class="menu-item">
+                    <a href="{{ route('admin.google-sheets.index') }}" class="menu-link {{ request()->routeIs('admin.google-sheets*') ? 'active' : '' }}">
+                        <i class="fas fa-table"></i><span>Google Sheets</span>
+                    </a>
                 </div>
                 @endif
 
