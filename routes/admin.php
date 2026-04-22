@@ -38,6 +38,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Dashboard
         Route::get('dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])
             ->name('dashboard');
+        Route::post('impersonation/stop', [\App\Http\Controllers\SuperAdmin\AdminController::class, 'stopImpersonation'])
+            ->name('impersonation.stop');
 
         // Profile
         Route::get('profile', [\App\Http\Controllers\Admin\ProfileController::class, 'show'])->name('profile');
@@ -317,6 +319,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
             // Vérification
             Route::get('verification',                        [\App\Http\Controllers\Admin\KolixyController::class, 'verification'])->name('verification');
+            Route::post('verification/import',                [\App\Http\Controllers\Admin\KolixyController::class, 'importFromVerification'])->name('verification.import');
             Route::get('packages/{tracking}/details',         [\App\Http\Controllers\Admin\KolixyController::class, 'getPackageDetails'])->name('packages.details');
 
             // Imprimer BL

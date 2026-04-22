@@ -166,27 +166,111 @@ class KolixyController extends Controller
     // ========================================
     // VERIFICATION
     // ========================================
-    public function verification()
+    public function verification(Request $request)
     {
         $admin            = Auth::guard('admin')->user();
         $effectiveAdminId = $admin->getEffectiveAdminId();
         $config           = MasafaConfiguration::where('admin_id', $effectiveAdminId)->first();
 
-        $packages = [];
+        $packages  = [];
         $connected = false;
+
+        // Statuts disponibles pour filtrage
+        $availableStatuses = [
+            'AWAITING_RETURN' => 'En attente de retour',
+            'UNAVAILABLE'     => 'Indisponible',
+            'REFUSED'         => 'Refusé',
+            'DELIVERED'       => 'Livré',
+            'IN_TRANSIT'      => 'En transit',
+        ];
+
+        $selectedStatuses = $request->get('statuses', ['AWAITING_RETURN', 'UNAVAILABLE', 'REFUSED']);
+        if (is_string($selectedStatuses)) {
+            $selectedStatuses = explode(',', $selectedStatuses);
+        }
 
         if ($config && $config->is_active && $config->api_token) {
             $connected = true;
-            $service = new KolixyService($config);
-            $result  = $service->listPackages([
-                'status' => 'AWAITING_RETURN,UNAVAILABLE,REFUSED',
+            $service   = new KolixyService($config);
+            $result    = $service->listPackages([
+                'status' => implode(',', $selectedStatuses),
             ]);
             if ($result['success']) {
                 $packages = $result['data']['packages'] ?? $result['data'] ?? [];
             }
         }
 
-        return view('admin.kolixy.verification', compact('packages', 'connected', 'config'));
+        return view('admin.kolixy.verification', compact('packages', 'connected', 'config', 'availableStatuses', 'selectedStatuses'));
+    }
+
+    public function importFromVerification(Request $request)
+    {
+        $request->validate([
+            'packages'   => 'required|array|min:1',
+            'packages.*' => 'required|array',
+        ]);
+
+        $admin            = Auth::guard('admin')->user();
+        $effectiveAdminId = $admin->getEffectiveAdminId();
+        $config           = MasafaConfiguration::where('admin_id', $effectiveAdminId)->first();
+
+        if (!$config || !$config->api_token) {
+            return response()->json(['success' => false, 'message' => 'Kolixy non configuré.'], 422);
+        }
+
+        $imported = 0;
+        $skipped  = 0;
+        $errors   = [];
+
+        foreach ($request->packages as $pkg) {
+            try {
+                $tracking = $pkg['tracking_number'] ?? $pkg['barcode'] ?? null;
+                if (!$tracking) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Éviter les doublons
+                $existing = Order::where('admin_id', $effectiveAdminId)
+                    ->where('tracking_number', $tracking)
+                    ->first();
+
+                if ($existing) {
+                    $skipped++;
+                    continue;
+                }
+
+                Order::create([
+                    'admin_id'           => $effectiveAdminId,
+                    'external_id'        => $tracking,
+                    'external_source'    => 'kolixy_verification',
+                    'tracking_number'    => $tracking,
+                    'carrier_name'       => 'Kolixy',
+                    'customer_name'      => $pkg['recipient_name']    ?? $pkg['customer_name']  ?? null,
+                    'customer_phone'     => $pkg['recipient_phone']   ?? $pkg['customer_phone'] ?? null,
+                    'customer_address'   => $pkg['recipient_address'] ?? $pkg['address']        ?? null,
+                    'customer_city'      => $pkg['recipient_city']    ?? $pkg['city']           ?? null,
+                    'total_price'        => (float) ($pkg['cod_amount'] ?? $pkg['total'] ?? 0),
+                    'status'             => 'nouvelle',
+                    'carrier_status_code'  => $pkg['status'] ?? null,
+                    'carrier_status_label' => $pkg['status_label'] ?? $pkg['status'] ?? null,
+                    'notes'              => 'Importé depuis Kolixy Vérification — statut: ' . ($pkg['status'] ?? '?'),
+                ]);
+
+                $imported++;
+            } catch (\Exception $e) {
+                Log::error('Kolixy verification import error', ['error' => $e->getMessage(), 'pkg' => $pkg]);
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'success'  => true,
+            'imported' => $imported,
+            'skipped'  => $skipped,
+            'errors'   => $errors,
+            'message'  => "{$imported} commande(s) importée(s), {$skipped} ignorée(s).",
+        ]);
     }
 
     public function getPackageDetails(string $trackingNumber)

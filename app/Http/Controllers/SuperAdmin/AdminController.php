@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Exports\AdminsExport;
 use App\Http\Controllers\SuperAdmin\NotificationController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
@@ -434,6 +435,46 @@ class AdminController extends Controller
         $pdf = Pdf::loadView('super-admin.admins.export-pdf', compact('admins'));
         
         return $pdf->download('admins_' . date('Y-m-d') . '.pdf');
+    }
+
+    public function loginAs(Admin $admin, Request $request)
+    {
+        if (!$admin->is_active) {
+            return back()->with('error', "Impossible d'ouvrir une session sur un compte admin inactif.");
+        }
+
+        $superAdmin = Auth::guard('super-admin')->user();
+
+        Auth::guard('super-admin')->logout();
+        Auth::guard('confirmi')->logout();
+        Auth::guard('admin')->logout();
+
+        $request->session()->put('impersonator_super_admin_id', $superAdmin->id);
+        $request->session()->put('impersonator_super_admin_name', $superAdmin->name ?? 'Super Admin');
+        $request->session()->regenerate();
+
+        Auth::guard('admin')->login($admin);
+
+        return redirect()->route('admin.dashboard')
+            ->with('success', "Session ouverte sur le compte admin {$admin->name}.");
+    }
+
+    public function stopImpersonation(Request $request)
+    {
+        $superAdminId = $request->session()->pull('impersonator_super_admin_id');
+        $superAdminName = $request->session()->pull('impersonator_super_admin_name', 'Super Admin');
+
+        Auth::guard('admin')->logout();
+
+        if (!$superAdminId) {
+            return redirect()->route('super-admin.login')->with('error', 'Session d\'impersonation introuvable.');
+        }
+
+        Auth::guard('super-admin')->loginUsingId($superAdminId);
+        $request->session()->regenerate();
+
+        return redirect()->route('super-admin.dashboard')
+            ->with('success', "Retour au compte {$superAdminName}.");
     }
 
     // API methods

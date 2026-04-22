@@ -36,6 +36,31 @@
         </div>
     </div>
 
+    <!-- Commandes & performance -->
+    <div class="sa-grid sa-grid-3" style="margin-bottom:24px">
+        <div class="sa-stat">
+            <div class="sa-stat-icon sa-stat-icon-success"><i class="fas fa-shopping-cart"></i></div>
+            <div>
+                <div class="sa-stat-value">{{ number_format($stats['totalOrders']) }}</div>
+                <div class="sa-stat-label">Total Commandes</div>
+            </div>
+        </div>
+        <div class="sa-stat">
+            <div class="sa-stat-icon sa-stat-icon-primary"><i class="fas fa-calendar-check"></i></div>
+            <div>
+                <div class="sa-stat-value">{{ number_format($stats['ordersThisMonth']) }}</div>
+                <div class="sa-stat-label">Commandes ce mois</div>
+            </div>
+        </div>
+        <div class="sa-stat">
+            <div class="sa-stat-icon sa-stat-icon-info"><i class="fas fa-chart-line"></i></div>
+            <div>
+                <div class="sa-stat-value">{{ number_format($stats['averageOrdersPerAdmin'], 1) }}</div>
+                <div class="sa-stat-label">Moyenne commandes / admin</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirmi & Emballage Stats -->
     <div class="sa-grid sa-grid-3" style="margin-bottom:24px">
         @php

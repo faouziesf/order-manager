@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -186,11 +187,12 @@ class DashboardController extends Controller
                 $totalManagers = Admin::where('role', Admin::ROLE_MANAGER)->count();
                 $totalEmployees = Admin::where('role', Admin::ROLE_EMPLOYEE)->count();
                 
-                // Activité des commandes
-                $totalOrders = Admin::sum('total_orders') ?? 0;
-                
-                // Revenus (si applicable)
-                $totalRevenue = Admin::sum('total_revenue') ?? 0;
+                // Activité des commandes (valeurs réelles)
+                $totalOrders = Order::count();
+                $ordersThisMonth = Order::where('created_at', '>=', now()->startOfMonth())->count();
+
+                // Revenus (basés sur commandes)
+                $totalRevenue = (float) Order::sum('total_price');
                 
                 return [
                     'totalAdmins' => $totalAdmins,
@@ -202,7 +204,7 @@ class DashboardController extends Controller
                     'totalManagers' => $totalManagers,
                     'totalEmployees' => $totalEmployees,
                     'totalOrders' => $totalOrders,
-                    'ordersThisMonth' => 0, // À implémenter si table orders existe
+                    'ordersThisMonth' => $ordersThisMonth,
                     'totalRevenue' => $totalRevenue,
                     'averageOrdersPerAdmin' => $totalAdmins > 0 ? round($totalOrders / $totalAdmins, 1) : 0
                 ];
@@ -311,15 +313,23 @@ class DashboardController extends Controller
 
     private function getOrdersActivityChart()
     {
-        // Simuler des données de commandes par jour
+        $start = now()->subDays(6)->startOfDay();
+        $raw = Order::select(
+                DB::raw('DATE(created_at) as day'),
+                DB::raw('COUNT(*) as total')
+            )
+            ->where('created_at', '>=', $start)
+            ->groupBy('day')
+            ->orderBy('day')
+            ->get()
+            ->keyBy('day');
+
         $data = collect();
         for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $orders = rand(50, 200);
-            
+            $d = now()->subDays($i)->toDateString();
             $data->push([
-                'date' => $date->format('d/m'),
-                'orders' => $orders
+                'date' => Carbon::parse($d)->format('d/m'),
+                'orders' => (int) ($raw[$d]->total ?? 0),
             ]);
         }
 

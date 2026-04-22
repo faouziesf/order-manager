@@ -66,6 +66,12 @@
                             <td>
                                 <div style="display:flex;gap:4px">
                                     <a href="{{ route('super-admin.confirmi-users.edit', $user) }}" class="sa-btn sa-btn-outline sa-btn-icon sa-btn-sm" title="Modifier"><i class="fas fa-pen"></i></a>
+                                    <form action="{{ route('super-admin.confirmi-users.login-as', $user) }}" method="POST" style="display:inline" onsubmit="return confirm('Se connecter comme cet utilisateur Confirmi ?')">
+                                        @csrf
+                                        <button type="submit" class="sa-btn sa-btn-primary sa-btn-icon sa-btn-sm" title="Se connecter comme utilisateur Confirmi">
+                                            <i class="fas fa-right-to-bracket"></i>
+                                        </button>
+                                    </form>
                                     <form action="{{ route('super-admin.confirmi-users.toggle-active', $user) }}" method="POST" style="display:inline">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="sa-btn sa-btn-icon sa-btn-sm {{ $user->is_active ? 'sa-btn-warning' : 'sa-btn-success' }}" title="{{ $user->is_active ? 'Désactiver' : 'Activer' }}">

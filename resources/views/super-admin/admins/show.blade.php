@@ -25,6 +25,10 @@
             </div>
             <div style="display:flex;gap:8px">
                 <a href="{{ route('super-admin.admins.edit', $admin) }}" class="sa-btn sa-btn-primary sa-btn-sm"><i class="fas fa-pen"></i> Modifier</a>
+                <form action="{{ route('super-admin.admins.login-as', $admin) }}" method="POST" onsubmit="return confirm('Se connecter comme cet admin ?')">
+                    @csrf
+                    <button type="submit" class="sa-btn sa-btn-outline sa-btn-sm"><i class="fas fa-right-to-bracket"></i> Se connecter</button>
+                </form>
                 <a href="{{ route('super-admin.admins.index') }}" class="sa-btn sa-btn-outline sa-btn-sm"><i class="fas fa-arrow-left"></i> Retour</a>
             </div>
         </div>
@@ -139,6 +143,11 @@
             <form action="{{ route('super-admin.admins.reset-password', $admin) }}" method="POST" onsubmit="return confirm('Réinitialiser le mot de passe ?')">
                 @csrf
                 <button type="submit" class="sa-btn sa-btn-outline sa-btn-sm"><i class="fas fa-key"></i> Réinitialiser MDP</button>
+            </form>
+
+            <form action="{{ route('super-admin.admins.login-as', $admin) }}" method="POST" onsubmit="return confirm('Se connecter comme cet admin ?')">
+                @csrf
+                <button type="submit" class="sa-btn sa-btn-primary sa-btn-sm"><i class="fas fa-right-to-bracket"></i> Se connecter comme Admin</button>
             </form>
 
             <form action="{{ route('super-admin.admins.destroy', $admin) }}" method="POST" onsubmit="return confirm('Supprimer définitivement ?')" style="margin-left:auto">

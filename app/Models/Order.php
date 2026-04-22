@@ -35,6 +35,8 @@ class Order extends Model
         'delivered_at',
         'tracking_number',
         'carrier_name',
+        'carrier_status_code',
+        'carrier_status_label',
         'delivery_route',
         'delivery_notes',
         'is_assigned',

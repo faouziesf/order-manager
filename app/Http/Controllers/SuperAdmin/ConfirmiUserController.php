@@ -96,4 +96,44 @@ class ConfirmiUserController extends Controller
         return redirect()->route('super-admin.confirmi-users.index')
             ->with('success', 'Utilisateur supprimé.');
     }
+
+    public function loginAs(ConfirmiUser $confirmiUser, Request $request)
+    {
+        if (!$confirmiUser->is_active) {
+            return back()->with('error', "Impossible d'ouvrir une session sur un compte Confirmi inactif.");
+        }
+
+        $superAdmin = Auth::guard('super-admin')->user();
+
+        Auth::guard('super-admin')->logout();
+        Auth::guard('admin')->logout();
+        Auth::guard('confirmi')->logout();
+
+        $request->session()->put('impersonator_super_admin_id', $superAdmin->id);
+        $request->session()->put('impersonator_super_admin_name', $superAdmin->name ?? 'Super Admin');
+        $request->session()->regenerate();
+
+        Auth::guard('confirmi')->login($confirmiUser);
+
+        return redirect()->route('confirmi.dashboard')
+            ->with('success', "Session ouverte sur le compte Confirmi {$confirmiUser->name}.");
+    }
+
+    public function stopImpersonation(Request $request)
+    {
+        $superAdminId = $request->session()->pull('impersonator_super_admin_id');
+        $superAdminName = $request->session()->pull('impersonator_super_admin_name', 'Super Admin');
+
+        Auth::guard('confirmi')->logout();
+
+        if (!$superAdminId) {
+            return redirect()->route('super-admin.login')->with('error', 'Session d\'impersonation introuvable.');
+        }
+
+        Auth::guard('super-admin')->loginUsingId($superAdminId);
+        $request->session()->regenerate();
+
+        return redirect()->route('super-admin.dashboard')
+            ->with('success', "Retour au compte {$superAdminName}.");
+    }
 }

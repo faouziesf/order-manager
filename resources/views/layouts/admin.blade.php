@@ -822,6 +822,15 @@
         </div>
 
         <div class="header-actions">
+            @if(session()->has('impersonator_super_admin_id'))
+                <form action="{{ route('admin.impersonation.stop') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="theme-toggle" style="width:auto;padding:0.5rem 0.8rem;border-radius:10px;background:#f59e0b;color:#fff;display:inline-flex;align-items:center;gap:6px;white-space:nowrap" title="Retour Super Admin">
+                        <i class="fas fa-right-from-bracket"></i> Retour Super Admin
+                    </button>
+                </form>
+            @endif
+
             <button class="theme-toggle" onclick="toggleTheme()" title="Changer le thème" aria-label="Changer le thème" id="adminThemeBtn">
                 <i class="fas fa-moon" id="adminThemeIcon"></i>
             </button>

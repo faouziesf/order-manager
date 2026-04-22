@@ -15,7 +15,7 @@
     }
     .package-detail-header {
         padding: 1rem 1.25rem; border-bottom: 1px solid var(--kolixy-border);
-        display: flex; align-items: center; justify-content: between;
+        display: flex; align-items: center;
     }
     .package-detail-body { padding: 1.25rem; }
     .detail-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid #f3f4f6; }
@@ -34,7 +34,7 @@
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <h4><i class="fas fa-clipboard-check me-2"></i>Vérification</h4>
-                    <p>Colis en attente de retour, refusés ou indisponibles</p>
+                    <p>Filtrez et importez des colis Kolixy comme commandes locales</p>
                 </div>
                 <a href="{{ route('admin.kolixy.dashboard') }}" class="kolixy-btn kolixy-btn-outline" style="background:rgba(255,255,255,0.15);color:white;border-color:rgba(255,255,255,0.3);">
                     <i class="fas fa-arrow-left"></i> Dashboard
@@ -53,6 +53,23 @@
         </div>
     </div>
     @else
+
+    {{-- Filtres statuts --}}
+    <div class="kolixy-card mb-3">
+        <div class="kolixy-card-body">
+            <form method="GET" action="{{ route('admin.kolixy.verification') }}" class="d-flex flex-wrap align-items-center gap-2">
+                <span style="font-size:.85rem;font-weight:600;color:var(--kolixy-dark)">Filtrer par statut :</span>
+                @foreach($availableStatuses as $key => $label)
+                    <label class="d-flex align-items-center gap-1" style="cursor:pointer;font-size:.82rem">
+                        <input type="checkbox" name="statuses[]" value="{{ $key }}" {{ in_array($key, $selectedStatuses) ? 'checked' : '' }}>
+                        {{ $label }}
+                    </label>
+                @endforeach
+                <button type="submit" class="kolixy-btn kolixy-btn-primary kolixy-btn-sm"><i class="fas fa-filter"></i> Filtrer</button>
+            </form>
+        </div>
+    </div>
+
     {{-- Summary badges --}}
     @php
         $countByStatus = collect($packages)->groupBy('status')->map->count();
@@ -66,17 +83,30 @@
 
     <div class="kolixy-card">
         <div class="kolixy-card-body p-0">
+            @if(count($packages) > 0)
+            <div class="p-3 border-bottom d-flex gap-2 align-items-center justify-content-between">
+                <div class="d-flex gap-2">
+                    <button class="kolixy-btn kolixy-btn-outline kolixy-btn-sm" onclick="selectAll(true)"><i class="fas fa-check-square"></i> Tout sélectionner</button>
+                    <button class="kolixy-btn kolixy-btn-outline kolixy-btn-sm" onclick="selectAll(false)"><i class="far fa-square"></i> Tout désélectionner</button>
+                </div>
+                <button class="kolixy-btn kolixy-btn-primary kolixy-btn-sm" onclick="importSelected()">
+                    <i class="fas fa-file-import"></i> Importer la sélection
+                </button>
+            </div>
+            @endif
+
             @if(count($packages) === 0)
             <div class="kolixy-empty py-5">
                 <i class="fas fa-check-double"></i>
                 <h6>Aucun colis à vérifier</h6>
-                <p class="text-muted">Tous vos colis sont en règle.</p>
+                <p class="text-muted">Modifiez les filtres pour afficher d'autres statuts.</p>
             </div>
             @else
             <div class="table-responsive">
-                <table class="kolixy-table">
+                <table class="kolixy-table" id="pkg-table">
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="chk-all" onchange="selectAll(this.checked)"></th>
                             <th>Code tracking</th>
                             <th>Destinataire</th>
                             <th>Gouvernorat</th>
@@ -86,11 +116,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($packages as $pkg)
-                        <tr>
+                        @foreach($packages as $i => $pkg)
+                        @php
+                            $trackingCode = $pkg['package_code'] ?? $pkg['tracking_number'] ?? $pkg['barcode'] ?? '';
+                        @endphp
+                        <tr data-pkg="{{ htmlspecialchars(json_encode($pkg), ENT_QUOTES, 'UTF-8') }}">
+                            <td><input type="checkbox" class="pkg-chk" data-tracking="{{ $trackingCode }}"></td>
                             <td>
                                 <span class="fw-bold" style="font-family:monospace;color:var(--kolixy-primary);">
-                                    {{ $pkg['package_code'] ?? $pkg['tracking_number'] ?? '-' }}
+                                    {{ $trackingCode ?: '-' }}
                                 </span>
                             </td>
                             <td>
@@ -107,13 +141,14 @@
                                         'AWAITING_RETURN' => 'kolixy-badge-yellow',
                                         'REFUSED' => 'kolixy-badge-red',
                                         'UNAVAILABLE' => 'kolixy-badge-gray',
+                                        'DELIVERED' => 'kolixy-badge-green',
                                         default => 'kolixy-badge-blue',
                                     };
                                 @endphp
                                 <span class="kolixy-badge {{ $stClass }}">{{ str_replace('_', ' ', $st) }}</span>
                             </td>
                             <td>
-                                <button class="kolixy-btn kolixy-btn-outline kolixy-btn-sm" onclick="viewDetails('{{ $pkg['package_code'] ?? $pkg['tracking_number'] ?? '' }}')">
+                                <button class="kolixy-btn kolixy-btn-outline kolixy-btn-sm" onclick="viewDetails('{{ $trackingCode }}')">
                                     <i class="fas fa-eye"></i> Détails
                                 </button>
                             </td>
@@ -145,13 +180,60 @@
 @section('scripts')
 <script>
 const CSRF = '{{ csrf_token() }}';
+const IMPORT_URL = '{{ route('admin.kolixy.verification.import') }}';
 
 function showToast(type, msg) {
     const t = document.getElementById('kolixy-toast');
     t.className = 'kolixy-toast ' + type;
     t.textContent = msg;
     t.style.display = 'block';
-    setTimeout(() => t.style.display = 'none', 4000);
+    setTimeout(() => t.style.display = 'none', 5000);
+}
+
+function selectAll(checked) {
+    document.querySelectorAll('.pkg-chk').forEach(c => c.checked = checked);
+    const chkAll = document.getElementById('chk-all');
+    if (chkAll) chkAll.checked = checked;
+}
+
+function importSelected() {
+    const rows  = document.querySelectorAll('tr[data-pkg]');
+    const pkgs  = [];
+
+    rows.forEach(row => {
+        const chk = row.querySelector('.pkg-chk');
+        if (chk && chk.checked) {
+            try {
+                pkgs.push(JSON.parse(row.dataset.pkg));
+            } catch (e) {}
+        }
+    });
+
+    if (pkgs.length === 0) {
+        showToast('error', 'Sélectionnez au moins un colis à importer.');
+        return;
+    }
+
+    if (!confirm(`Importer ${pkgs.length} colis comme commandes locales ?`)) return;
+
+    fetch(IMPORT_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': CSRF,
+        },
+        body: JSON.stringify({ packages: pkgs }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('success', data.message);
+        } else {
+            showToast('error', data.message || 'Erreur lors de l\'import.');
+        }
+    })
+    .catch(() => showToast('error', 'Erreur réseau lors de l\'import.'));
 }
 
 function viewDetails(tracking) {

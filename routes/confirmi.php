@@ -39,6 +39,8 @@ Route::prefix('confirmi')->name('confirmi.')->group(function () {
     Route::middleware(['confirmi'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/live-stats', [DashboardController::class, 'liveStats'])->name('dashboard.live-stats');
+        Route::post('/impersonation/stop', [\App\Http\Controllers\SuperAdmin\ConfirmiUserController::class, 'stopImpersonation'])
+            ->name('impersonation.stop');
 
         // ========================================
         // ROUTES COMMERCIAL (gestion des commandes, assignation, demandes)

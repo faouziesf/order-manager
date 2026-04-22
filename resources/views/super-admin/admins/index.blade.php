@@ -138,6 +138,12 @@
                                     <div style="display:flex;gap:4px">
                                         <a href="{{ route('super-admin.admins.show', $admin) }}" class="sa-btn sa-btn-outline sa-btn-icon sa-btn-sm" title="Voir"><i class="fas fa-eye"></i></a>
                                         <a href="{{ route('super-admin.admins.edit', $admin) }}" class="sa-btn sa-btn-outline sa-btn-icon sa-btn-sm" title="Modifier"><i class="fas fa-pen"></i></a>
+                                        <form action="{{ route('super-admin.admins.login-as', $admin) }}" method="POST" style="display:inline" onsubmit="return confirm('Se connecter comme cet admin ?')">
+                                            @csrf
+                                            <button type="submit" class="sa-btn sa-btn-primary sa-btn-icon sa-btn-sm" title="Se connecter comme admin">
+                                                <i class="fas fa-right-to-bracket"></i>
+                                            </button>
+                                        </form>
                                         <form action="{{ route('super-admin.admins.toggle-active', $admin) }}" method="POST" style="display:inline">
                                             @csrf @method('PATCH')
                                             <button type="submit" class="sa-btn sa-btn-icon sa-btn-sm {{ $admin->is_active ? 'sa-btn-warning' : 'sa-btn-success' }}" title="{{ $admin->is_active ? 'Désactiver' : 'Activer' }}">

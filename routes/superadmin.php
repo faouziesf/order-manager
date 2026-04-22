@@ -87,6 +87,7 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
             Route::patch('{admin}/toggle-active', [AdminController::class, 'toggleActive'])->name('toggle-active');
             Route::patch('{admin}/extend-subscription', [AdminController::class, 'extendSubscription'])->name('extend-subscription');
             Route::post('{admin}/reset-password', [AdminController::class, 'resetPassword'])->name('reset-password');
+            Route::post('{admin}/login-as', [AdminController::class, 'loginAs'])->name('login-as');
             Route::get('{admin}/activity-log', [AdminController::class, 'activityLog'])->name('activity-log');
             Route::get('{admin}/statistics', [AdminController::class, 'statistics'])->name('statistics');
             
@@ -196,6 +197,7 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
             Route::get('{confirmiUser}/edit', [ConfirmiUserController::class, 'edit'])->name('edit');
             Route::put('{confirmiUser}', [ConfirmiUserController::class, 'update'])->name('update');
             Route::patch('{confirmiUser}/toggle-active', [ConfirmiUserController::class, 'toggleActive'])->name('toggle-active');
+            Route::post('{confirmiUser}/login-as', [ConfirmiUserController::class, 'loginAs'])->name('login-as');
             Route::delete('{confirmiUser}', [ConfirmiUserController::class, 'destroy'])->name('destroy');
         });
 
